@@ -42,7 +42,7 @@
       "web": "le frasi di `accesso.*`, `account.*`, `social.*`, `codice.*` e `pav.*` (`mostraAccesso`, `schedaAccount`, `htmlAccessi`, `htmlCodiceUnaVolta`, `primoavvio.js`): «Google collegato: ora puoi entrare anche con Google.», «Google scollegato.», «Scollegare Google? Potrai entrare solo con la tua password.», «Password: impostata», «Account Google collegato: …» o «Google: non collegato», «Conferma con Google» con la sua spiegazione e «Confermato. Per 5 minuti puoi …», «Aggiungi una password», «Scrivi la tua password per collegare Google.»; il codice con «Il tuo codice di recupero», «Ti serve per rientrare …», «Salva questo codice. Non viene mostrato di nuovo …», «Copia il codice», «Ho salvato il codice»; «Primo avvio», «Salta», «Tutto pronto, Mister», «Hai finito la configurazione.», «Non sono riuscito a ricordare a che punto sei …», «Permesso negato: abilita gli avvisi …»; dopo «Continua con Google» la pagina «Scegli il tuo nome utente» con «Hai scelto Google: non ti serve nessuna password. Scegli solo come vuoi chiamarti nell'app.», i campi «Nome utente» e «Codice d'invito», la casella e «Crea l'account» (`social.scegli_nome`, `social.scegli_spiega`, `mostraNuovoGoogle`)",
       "iphone": "prima: «Google è collegato.», «Google è scollegato.», «Scollegare Google?» con «Potrai entrare solo con nome utente e password …», righe «Password · Impostata» e «Google · Collegato» (e «Password · Non so» quando il server non dice se la password c'è: ora la riga non compare), «Confermato con Google» e «Non hai una password: …», «Salva la password», «Per sicurezza, prima di collegare Google …»; il codice con «Salva il tuo codice di recupero» (o «Salva il nuovo codice»), «Se dimentichi la password, questo codice è l'unico modo …», «Copia», «L'ho salvato in un posto sicuro»; «Configurazione guidata», «Salta questo passo», «Tutto a posto» o «Per ora basta così», «SchieraXI è pronto.», frasi sue per il salvataggio e le notifiche; fino a #775 la schermata del nome dopo Google era rimasta con «Quasi fatto», «È il nome con cui ti vedono gli altri. Da 3 a 32 caratteri …», «Invito» e «L'invito te lo dà chi ti ha parlato di SchieraXI.»",
       "forma": "web",
-      "chi": "**fatto** (#497; la schermata del nome dopo Google con #775, `ScegliNomeGoogleView`, prova `scegliNomeComeLaWeb`): i testi vengono dal catalogo comune (`Catalogo.Accesso`, `Account`, `Social`, `Codice`, `Pav`, `Imp`, `Avv`), prova `AccessoImpostazioniDalCatalogoTests`. Dal #931 anche i passi della guida e «Tutto pronto» (riga 109; quelli che la web non ha, widget e avvisi, con la nota «solo iPhone»). Restano dell'iPhone «Leggi la Privacy», «Un attimo…» e «Annulla» del foglio del nome (la web lì ha una pagina, non un foglio)",
+      "chi": "**fatto** (#497; la schermata del nome dopo Google con #775, `ScegliNomeGoogleView`, prova `scegliNomeComeLaWeb`): i testi vengono dal catalogo comune (`Catalogo.Accesso`, `Account`, `Social`, `Codice`, `Pav`, `Imp`, `Avv`), prova `AccessoImpostazioniDalCatalogoTests`. Dal #931 anche i passi della guida e «Tutto pronto» (riga 110; quelli che la web non ha, widget e avvisi, con la nota «solo iPhone»). Restano dell'iPhone «Leggi la Privacy», «Un attimo…» e «Annulla» del foglio del nome (la web lì ha una pagina, non un foglio)",
       "stato": "fatto"
     },
     {
@@ -146,6 +146,15 @@
     },
     {
       "id": 109,
+      "schermata": "Impostazioni › Scrivici; Gestione › Commenti degli utenti (26/11/2026)",
+      "web": "con un account, la riga «Scrivici» («Un'idea, un problema, un dubbio») fra Informazioni e Gestione apre la pagina «Scrivici»: «Scrivi cosa non va o cosa ti piacerebbe trovare: lo legge chi gestisce SchieraXI.», la casella «Il tuo commento» (al massimo 2000 caratteri, va a capo) e «Invia», spento finché la casella è vuota; inviato: la casella si svuota e sotto «Grazie, l'abbiamo ricevuto.»; non inviato: il messaggio del server (per esempio il limite di 5 al giorno) e il testo resta (`paginaScrivici` in `impostazioni.js`, testi `scrivici.*`). In Gestione, per chi gestisce il server, «Commenti degli utenti»: il più recente in alto, chi · quando (ora italiana) · da dove e versione, il testo intero come testo semplice e «Segna come letto» (`schedaCommenti`, `caricaCommenti`)",
+      "iphone": "la stessa riga, solo con un account, e la stessa pagina con gli stessi testi del catalogo (`VociImpostazioni.informazioni(gestisce:scrivici:)`, `ScriviciPagina`, `ScriviciViewModel`): manda a `POST /api/feedback` testo e versione dell'app, la piattaforma la dice l'intestazione `X-Schieraxi-Client: ios`. L'elenco «Commenti degli utenti» non c'è: la Gestione dell'iPhone non ha gli strumenti degli account (inviti, utenti, errori), che sono della web",
+      "forma": "web; il contratto in docs/API.md («Scrivici»)",
+      "chi": "**fatto** (26/11/2026): server, web e iPhone insieme; prove `tests/test_feedback.py`, `tests/browser/test_scrivici.py`, `ScriviciComeLaWebTests`",
+      "stato": "fatto"
+    },
+    {
+      "id": 110,
       "schermata": "Primo avvio: i passi, i tempi della lega e «Tutto pronto» (#931)",
       "web": "tre passi, «Le rose», «La tua squadra» e «I tempi della lega» (`PA_PASSI`, `PA_NOMI`); i tempi con «Quando si chiude la formazione?» (all'inizio della prima partita o 5, 10, 15, 30, 60 minuti prima, più quella salvata se è diversa) e «Da quale giornata di Serie A è partita la lega?» («Dalla 1ª, con il campionato», «Dalla 2ª», «Dall'8ª»…), «Puoi cambiarle quando vuoi in Impostazioni › Regole e scadenza.» e «Salva», che rilegge le regole e cambia solo i due valori; con le regole non lette «Non riesco a leggere i tempi salvati della tua lega…» e niente salvato (`paTempiSalva`, #801); a «Tutto pronto» «Hai finito la configurazione.» o «Hai saltato I tempi della lega: puoi riprenderli quando vuoi dalla Formazione.» (senza rose «…li ritrovi toccando «Importa le rose» nella Formazione.»), la frase dei punteggi e «In Impostazioni trovi anche gli avvisi e lo stemma della tua squadra.» (`paFine`)",
       "iphone": "prima: cinque passi scritti a mano («Carica le rose», «Scegli la tua squadra», «Stemma e maglia», «Aggiungi il widget», «Attiva gli avvisi»), senza i tempi, con «Passo 1 di 5», «Più tardi», «L'ho già fatto», «Preparo la configurazione…» e a «Tutto pronto» «Quello che hai saltato lo trovi nella Formazione, nella lista «Da fare».» con «Fatto», «Saltato», «Da fare». Ora i passi della web con i loro nomi e frasi (`PassoGuidato`), poi «Il widget» e «Gli avvisi» (Differenze ammesse); i tempi come la web, con due menu (`TempiGuida`, `ConfigurazioneGuidataViewModel.caricaTempi` e `salvaTempi`); lo stemma non è più un passo; «Tutto pronto» con le frasi della web (`PrimoAvvioLogica.frasePronto`, `pav.il_resto`) e i passi con «(fatto)» e «(saltato)»; ogni testo dal catalogo (`pav.*`; quelli che ha solo l'iPhone con la nota «solo iPhone»)",
@@ -154,7 +163,7 @@
       "stato": "fatto"
     },
     {
-      "id": 110,
+      "id": 111,
       "schermata": "Il tuo account: la conferma di «Esci» (#931)",
       "web": "prima: «Esci» usciva subito. Ora la conferma del browser «Esci da SchieraXI su questo dispositivo? I dati salvati qui vengono cancellati: quelli sul server restano tuoi.» (`account.esci_conferma`, `account.esci_conferma_spiega`); annullata, non parte niente",
       "iphone": "prima: la conferma c'era, con frasi scritte a mano («Esci da SchieraXI su questo telefono?», «I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.»). Ora le stesse parole della web, anche nella sezione «Collegamento» (`RigaEsci`, `SessioneMinimaSezione`)",
@@ -163,7 +172,7 @@
       "stato": "fatto"
     },
     {
-      "id": 111,
+      "id": 112,
       "schermata": "Informazioni, la versione (#931)",
       "web": "«Versione» con la versione del server (`versione` di `/api/stato`, `info.versione`), «–» se manca (`paginaInformazioni`)",
       "iphone": "prima: «Versione» scritto a mano, con la versione dell'app («1.0.N») e «—» se mancava. Ora «Versione» con quella del server, come la web, e «–»; sotto «Versione dell'app» (Differenze ammesse) (`InformazioniPagina`, `VersioniInformazioni`)",
@@ -172,7 +181,7 @@
       "stato": "fatto"
     },
     {
-      "id": 113,
+      "id": 114,
       "schermata": "Aggiorna le rose: giocatori da sistemare e «Qual è la tua squadra?» (#931)",
       "web": "«Giocatori da sistemare (3)», «Non li ho trovati nel listone (magari ceduti o con un altro nome). Cerca quello giusto e toccalo; se non c'è, lascia stare: potrai farlo dopo.», «Cerca il giocatore giusto», «✓ Tutti i giocatori sono riconosciuti.» (`paNonRiconosciuti`, `pav.da_sistemare`, `onb.*`); nell'anteprima «Qual è la tua squadra?» con le squadre e niente sotto (`anteprima.js`)",
       "iphone": "prima: le stesse cose con frasi scritte a mano («Tocca un nome e cerca quello giusto; se non c'è, lascia stare.») e sotto «Qual è la tua squadra?» la frase «La formazione consigliata è per lei.». Ora le frasi del catalogo e niente frase sotto le squadre (`ImportaRoseView`); dove sta la sezione: Differenze ammesse",
@@ -181,7 +190,7 @@
       "stato": "fatto"
     },
     {
-      "id": 115,
+      "id": 116,
       "schermata": "Gestione: «Aggiorna i dati» che dura (#931)",
       "web": "dopo l'avvio si chiede al server ogni 2 secondi finché l'aggiornamento non finisce, senza un limite; dopo cinque domande senza risposta «Non riesco a sapere come è andato l'aggiornamento: riapri l'app tra poco» (`aggiornaDati`)",
       "iphone": "prima: dopo 150 domande (circa 5 minuti) smetteva con la frase scritta a mano «L'aggiornamento sta durando più del solito: controlla tra poco.». Ora come la web: continua finché il server non ha finito e poi dice com'è andata (`AggiornaDatiViewModel.avvia`)",

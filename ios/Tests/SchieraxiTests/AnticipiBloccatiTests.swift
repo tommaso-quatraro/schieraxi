@@ -3,9 +3,9 @@ import Testing
 @testable import Schieraxi
 
 /// Anticipi già cominciati (#373). Il server dice in `bloccati` (campo facoltativo di `GET /api/formazione`) chi gioca una partita
-/// già cominciata: nella lega non si sposta più. Come la web (`sostituti` in `fanta/web/app.js`), un titolare fermo non si
-/// sostituisce e uno fermo non entra dalla rosa; nella sua scheda, al posto di «Sostituisci», la frase della web
-/// (`formazione.bloccati`). Un salvataggio che ne sposta uno il server lo rifiuta (400 `giocatore_bloccato`): si mostra la sua frase,
+/// già cominciata: nella lega non si sposta più. Come la web, un titolare fermo non si sostituisce e uno fermo non entra (chi può
+/// entrare lo dice il server dal 26/11, `POST /api/formazione/sostituisci`, e i fermi non ci sono: tests/test_sostituisci.py);
+/// nella sua scheda, al posto di «Sostituisci», la frase della web (`formazione.bloccati`). Un salvataggio che ne sposta uno il server lo rifiuta (400 `giocatore_bloccato`): si mostra la sua frase,
 /// la stessa della web (`err.giocatore_bloccato`).
 @MainActor
 @Suite("Anticipi già cominciati come la web")
@@ -32,12 +32,9 @@ struct AnticipiBloccatiTests {
         let (vm, f) = try await caricata()
         let prima = vm.vista(f).titolari.map(\.id)
         #expect(prima.contains(Self.titolareFermo) && prima.contains(Self.titolareLibero))
-        let fermo = try #require(f.schede?[String(Self.titolareFermo)])
-        let libero = try #require(f.schede?[String(Self.titolareLibero)])
-        #expect(vm.sostituti(di: fermo, f).isEmpty)
-        let ids = vm.sostituti(di: libero, f).map(\.id)
-        #expect(!ids.contains(Self.fuoriFermo))
-        #expect(ids.contains(Self.fuoriLibero))
+        #expect(!vm.sostituibile(Self.titolareFermo) && vm.sostituibile(Self.titolareLibero))
+        await vm.sostituisci(Self.titolareFermo)
+        #expect(vm.elencoSostituti == nil, "per chi è fermo l'elenco non si apre")
         let esceFermo = await vm.sostituisciTitolare(Self.titolareFermo, con: Self.fuoriLibero)
         let entraFermo = await vm.sostituisciTitolare(Self.titolareLibero, con: Self.fuoriFermo)
         #expect(!esceFermo && !entraFermo)
@@ -51,8 +48,9 @@ struct AnticipiBloccatiTests {
     @Test("Senza `bloccati` la sostituzione è quella di sempre")
     func senzaCampoComeSempre() async throws {
         let (vm, f) = try await caricata(conBloccati: false)
-        let fermo = try #require(f.schede?[String(Self.titolareFermo)])
-        #expect(vm.sostituti(di: fermo, f).map(\.id).contains(Self.fuoriFermo))
+        let fatto = await vm.sostituisciTitolare(Self.titolareFermo, con: Self.fuoriFermo)
+        #expect(fatto)
+        #expect(vm.vista(f).titolari.map(\.id).contains(Self.fuoriFermo))
     }
 
     @Test("Nella scheda di chi è fermo niente «Sostituisci» ma la frase della web; senza `bloccati` «Sostituisci»")

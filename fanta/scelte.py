@@ -111,6 +111,34 @@ def chi_lascia_il_posto(entra: int, titolari, schede: dict, regole, fermi, punti
     return sorted(uscite, key=lambda u: -u["differenza"])
 
 
+# ---------------------------------------------------------------- «Sostituisci» (collaudo del 26/11)
+def chi_prende_il_posto(esce: int, titolari, schede: dict, fermi, punti) -> list[dict]:
+    """Chi può prendere il posto del titolare `esce`: i giocatori delle `schede` della Formazione ({id: scheda}) dello stesso
+    ruolo che non sono fra i `titolari` né fra i `fermi` (anticipo già cominciato, `bloccati`); infortunati e squalificati
+    compresi, con il loro stato nella riga. Per ognuno {entra, punteggio_atteso, differenza}: i punti attesi della formazione dopo
+    il cambio e quanto vale in più o in meno della formazione di adesso, con `punti(ids)` come «Metti in campo»
+    (`chi_lascia_il_posto`, la valutazione di POST /api/formazione/valuta): conta la formazione intera, panchina compresa, non il
+    confronto fra i due giocatori (un titolare che rischia di non giocare lo copre già la panchina). In cima il cambio che rende
+    di più; a pari differenza chi ha più punti attesi da solo (l'ordine di prima). Vuoto se `esce` non è titolare o è fermo."""
+    sch = {int(k): x for k, x in schede.items() if isinstance(x, dict)}
+    dentro = list(dict.fromkeys(int(i) for i in titolari))          # un titolare ripetuto conta una volta, come in `motivo_non_valida`
+    fermi = {int(i) for i in fermi}
+    if int(esce) not in dentro or int(esce) in fermi or int(esce) not in sch:
+        return []
+    ruolo = sch[int(esce)].get("ruolo")
+    candidati = [i for i, x in sch.items() if x.get("ruolo") == ruolo and i not in dentro and i not in fermi]
+    if not candidati:
+        return []
+    adesso = punti(dentro)
+    entrate = []
+    for entra in candidati:
+        valore = punti([entra if i == int(esce) else i for i in dentro])
+        entrate.append({"entra": entra, "punteggio_atteso": round(float(valore), 1),
+                        "differenza": float(frasi.differenza(valore, adesso))})
+    da_solo = lambda e: float(sch[e["entra"]].get("punti_attesi") or 0.0)      # noqa: E731
+    return sorted(entrate, key=lambda e: (-e["differenza"], -da_solo(e)))
+
+
 def ruoli_schierabili(rose, prev=None) -> dict[int, str]:
     """{id: ruolo} dei giocatori della tua rosa che si possono schierare, per `motivo_non_valida`. Con le previsioni della giornata
     da giocare (`prev`) come la Formazione: solo chi ne ha una, con il ruolo delle previsioni. Senza (giornata finita) tutta la

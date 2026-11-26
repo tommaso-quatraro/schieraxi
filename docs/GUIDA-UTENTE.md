@@ -98,7 +98,7 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate 
 
 - la **giornata** e **quando si chiude** la formazione («Si chiude oggi 18:20», con accanto quanto manca); se la Serie A non ha ancora fissato le date della giornata, **Data da definire**. Orari e giorni sono sempre quelli italiani, anche se sei all'estero;
 - le **decisioni**, se ce ne sono: al massimo due righe, la più urgente per prima, ognuna con il suo pulsante. Ci sono solo le cose che chiedono di fare qualcosa:
-  - **un titolare da cambiare**: per esempio «Rossi è in dubbio (40% di giocare). Meglio Bianchi.», con quanti punti attesi vale il cambio e **Sostituisci**, che lo fa subito. Te lo propone solo se anche la formazione consigliata lo toglie, e mai per differenze minime;
+  - **un titolare da cambiare**: per esempio «Rossi è in dubbio (40% di giocare). Meglio Bianchi.», con quanti punti attesi guadagna la formazione con il cambio e **Sostituisci**, che lo fa subito. Te lo propone solo se anche la formazione consigliata lo toglie. Per un titolare in dubbio o che parte dalla panchina mai per differenze minime: sotto un punto atteso in più per la formazione non c'è (spesso la panchina copre già chi rischia di non giocare). Per un titolare infortunato o squalificato c'è sempre, anche se il cambio vale pochi decimi;
   - **«La consigliata è cambiata da quando l'hai salvata»**, con chi entra e chi esce: **Usa la consigliata** prende quella nuova. Se uno dei tuoi titolari salvati è infortunato o squalificato, la riga è **Urgente**;
   - **Reparto scoperto**: in un ruolo hai troppo pochi giocatori disponibili (per esempio nessun portiere). **Vedi la rosa** apre la rosa della tua squadra;
   - **Aggiorna le rose**: solo nei periodi di aste e scambi (dopo le aste di settembre e febbraio, e nelle soste del campionato), se da allora non le hai aggiornate: «È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della Giornata 8 · 11ª di Serie A». Sparisce quando aggiorni le rose o quando si chiude quella giornata;
@@ -128,7 +128,7 @@ Altri due stati della riga sotto il campo:
 - **Perché è titolare**, quando la scelta può sembrare strana (vedi sotto);
 - **Perché questo numero**;
 - gli **ultimi voti**;
-- **Sostituisci**, se è un tuo titolare e la formazione è ancora aperta: mostra i compagni dello stesso ruolo, il migliore in cima, con i punti attesi in più o in meno rispetto a lui («+0,9», «−0,4»). Un tocco fa il cambio e lo salva;
+- **Sostituisci**, se è un tuo titolare e la formazione è ancora aperta: mostra i compagni dello stesso ruolo con quanti punti attesi guadagna o perde la formazione se entra lui («+0,9», «−0,4»), dal cambio che rende di più. È lo stesso numero di cui cambiano i punti attesi accanto al modulo dopo il cambio: se il titolare rischia di non giocare, entra già uno dalla panchina, e il cambio vale meno della differenza fra i due giocatori. Un tocco fa il cambio e lo salva;
 - **Metti in campo**, se è in panchina o fra i non schierati e la formazione è ancora aperta: è il contrario di **Sostituisci**. Mostra i titolari che possono lasciargli il posto, anche di un altro ruolo se il modulo che ne esce è ammesso dalla tua lega (la riga lo dice: «Si passa al 5-3-2»), con quanti punti attesi guadagna o perde la formazione. Un tocco fa il cambio e lo salva;
 - **Tutti i numeri**, chiuso finché non lo apri: la partita (difficoltà, gol attesi, probabilità di gol, assist e cartellini), le prossime partite, la forma, la stagione.
 
@@ -177,7 +177,7 @@ Gli avvisi sono due:
 
 - il **promemoria**, un'ora e un quarto d'ora prima della scadenza della formazione. Non arriva se hai una formazione salvata e hai spuntato **L'ho messa**, a meno che un tuo titolare sia diventato indisponibile. La web salva la formazione da sola a ogni tocco: senza la spunta il promemoria arriva e ti chiede se l'hai messa nell'app della lega. Lo stesso vale per l'app per iPhone, che ha anche lei la spunta **L'ho messa**. La cosa importante sta all'inizio, per esempio «Castro è infortunato: controlla la formazione che hai salvato.», e un titolare di cui ti ha appena parlato il **cambio pronto** non ti viene ripetuto;
 - il **cambio della formazione da schierare**:
-  - con una formazione salvata, **cambio pronto**: un tuo titolare è infortunato, squalificato o in panchina; l'avviso dice chi mettere al suo posto e quanti punti attesi guadagni (solo se anche la formazione consigliata lo toglie, come nelle decisioni in cima alla Formazione);
+  - con una formazione salvata, **cambio pronto**: un tuo titolare è infortunato, squalificato o in panchina; l'avviso dice chi mettere al suo posto e quanti punti attesi guadagna la formazione (solo se anche la formazione consigliata lo toglie, come nelle decisioni in cima alla Formazione; se il titolare è in panchina, solo se il cambio vale almeno un punto atteso, mentre per un infortunato o uno squalificato arriva sempre);
   - senza, **cambia un titolare**: la consigliata toglie un titolare che è diventato infortunato, squalificato o in panchina; l'avviso dice il motivo, chi entra e quando si chiude la formazione. Arriva una volta per ogni titolare che diventa fuori, anche giorni prima della scadenza;
   - **vicino alla scadenza** (da un'ora prima), se le ultime probabili cambiano la formazione da schierare, ti arriva il motivo in una frase, per esempio «Castoldi è infortunato: metti Bonvicini e passa al 3-4-3 (+1,8 punti attesi)». Arriva solo se vale almeno un punto atteso, al massimo due volte per giornata, mai nelle ore tranquille. La stessa notizia non arriva due volte.
 
@@ -238,6 +238,7 @@ pagina loro, con **‹ Impostazioni** in alto per tornare. Su uno schermo più l
 | Il tuo account | nome, email, Google collegato (**Accessi**), password (la nuova si scrive due volte: **Ripeti la nuova password**), nuovo codice di recupero, **Scarica i tuoi dati**, **Elimina l'account**, **Esci**, **Esci da tutti i dispositivi** |
 | Aspetto | tema (automatico, chiaro, scuro) e lingua (italiano o inglese). La dimensione del testo è quella del telefono o dello zoom del browser |
 | Informazioni | Privacy, Termini d'uso, Crediti e fonti, Codice sorgente, versione (sull'iPhone anche **Versione dell'app**) e **Novità**: le ultime dieci versioni, le altre con un tocco in fondo |
+| Scrivici | con un account: un commento per chi gestisce l'app (un'idea, un problema, un dubbio). Scrivi nella casella (fino a 2000 caratteri, va a capo), tocca **Invia** e compare «Grazie, l'abbiamo ricevuto.». Al massimo 5 commenti al giorno; lo legge solo chi gestisce l'app, ed entra in **Scarica i tuoi dati** |
 | Gestione | solo per chi gestisce l'app: vedi [GUIDA-GESTIONE.md](GUIDA-GESTIONE.md) |
 
 - **Scarica i tuoi dati**: un file con i tuoi dati (account e lega: regole, rose, scelte, avvisi), mai la password né quelli degli altri utenti. Serve per tenerne una copia; non si ricarica nell'app. Sull'iPhone si salva da **Condividi › Salva su File**.
@@ -293,4 +294,4 @@ Sulla schermata Home, a schermo intero, senza store:
 | «SchieraXI · Da rinnovare» sull'iPhone | Rinnova l'app da SideStore prima che scada (sezione 4, «L'app per iPhone: il rinnovo»). |
 | Dati che non sembrano aggiornati | Ricarica la pagina. Se non cambia, avvisa chi gestisce l'app. |
 
-Se l'errore non è in lista, annota cosa stavi facendo e a che ora, e scrivi al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
+Se l'errore non è in lista, annota cosa stavi facendo e a che ora, e scrivilo in **Impostazioni › Scrivici** (con un account) o al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).

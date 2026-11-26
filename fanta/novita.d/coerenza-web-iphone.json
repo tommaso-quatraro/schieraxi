@@ -8,6 +8,6 @@
   "tecnico": [
     "#931: le 9 differenze web-iPhone non registrate. Web: conferma di «Esci» con account.esci_conferma e account.esci_conferma_spiega (prove in tests/browser/test_impostazioni.py).",
     "iPhone: PassoGuidato con i passi della web (rose, squadra, tempi) più widget e avvisi, senza stemma; TempiGuida per le due domande; AttesaCalcolo e AvvisoCalcolo per la frase d'attesa del 202, comune.calcolo_lungo alla fine dei tentativi; Aggiorna i dati segue l'aggiornamento senza limite come la web; testi dal catalogo (pav.*, onb.*, info.*, avv.*, scambio.*).",
-    "Differenze ammesse nuove in docs/coerenza/ammesse.json e righe 109-115 di «Differenze di oggi»; riga 106 con le colonne «Forma giusta» e «Chi la sistema» sistemate."
+    "Differenze ammesse nuove in docs/coerenza/ammesse.json e righe 110-116 di «Differenze di oggi»; riga 106 con le colonne «Forma giusta» e «Chi la sistema» sistemate."
   ]
 }

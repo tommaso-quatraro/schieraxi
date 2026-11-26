@@ -1,5 +1,58 @@
 [
   {
+    "versione": "1.578",
+    "data": "2026-11-26T11:42:57",
+    "titolo": "Scrivici: un commento per chi gestisce SchieraXI",
+    "voci": [
+      "Impostazioni, Scrivici: con un account puoi mandare un'idea, un problema o un dubbio a chi gestisce SchieraXI. Scrivi, tocca «Invia» e compare «Grazie, l'abbiamo ricevuto.». Sul web e sull'iPhone.",
+      "Al massimo 5 commenti al giorno. Li legge solo chi gestisce l'app; se elimini l'account se ne vanno anche loro, e li trovi in «Scarica i tuoi dati». La pagina Privacy lo dice.",
+      "Per chi gestisce l'app: sulla web, in Impostazioni › Gestione, l'elenco «Commenti degli utenti», il più recente in alto, con «Segna come letto», e un avviso sul telefono a ogni commento nuovo (al massimo 6 all'ora)."
+    ],
+    "tecnico": [
+      "Rotte nuove (solo con gli account, docs/API.md «Scrivici»): POST /api/feedback {testo, versione?, schermata?} → {ok, id}; GET /api/admin/feedback → {commenti, da_leggere}; POST /api/admin/feedback/{id}/letto. Testo fino a 2000 caratteri (400 vuoto o troppo lungo, non conta), 5 al giorno per utente (limiti.MAX_COMMENTI_AL_GIORNO, FANTA_MAX_COMMENTI_AL_GIORNO; 429), corpo fino a 16 KB (413). La piattaforma la decide il server: X-Schieraxi-Client (ios, android), altrimenti web con il cookie o Sec-Fetch-Mode.",
+      "account.sqlite: migrazione nuova in fondo a MIGRAZIONI, tabella feedback (utente_id con ON DELETE CASCADE, testo, creato UTC, piattaforma, versione, schermata, letto). account.esporta aggiunge commenti alla sezione account di GET /api/backup.",
+      "Avviso al titolare dopo la risposta (BackgroundTasks): sentinella.manda_ntfy sul canale ~/.config/schieraxi/canale con priorità 3 e tag speech_balloon (nuovi parametri facoltativi; la sentinella resta a 4 e mag), senza testo né nome («Leggilo sulla web in Impostazioni › Gestione › Commenti degli utenti.»). Al massimo feedback.MAX_AVVISI_ORA = 6 all'ora per tutto il server (chiave avviso-commenti nella tabella tentativi): oltre, il commento si salva senza avviso. Senza canale non parte; invio fallito: una riga di avviso nel registro, il commento resta. Il testo non va mai nei registri. GET /api/admin/feedback: da_leggere conta i non letti fra i 100 mostrati. Migrazione con CREATE TABLE/INDEX IF NOT EXISTS: una tabella già presente non ferma il database.",
+      "Comando python -m fanta feedback --ultimi N (sola lettura, il più recente in alto, ora italiana).",
+      "Web: riga Scrivici in Impostazioni (solo con stato.account) e pagina ?vista=impostazioni&gruppo=scrivici; in Gestione la scheda «Commenti degli utenti» nella colonna di destra, con il testo dell'utente inserito solo come textContent. Testi nel catalogo fanta/testi/scrivici.json e quattro chiavi err.* per tradurre i messaggi nuovi. iPhone: ScriviciPagina e ScriviciViewModel, VociImpostazioni.informazioni(gestisce:scrivici:); l'elenco dei commenti resta solo della web.",
+      "Privacy (fanta/testi_legali.py, italiano e inglese): una voce in «Quali dati tiene» (cosa si salva, chi lo legge, fino all'eliminazione dell'account, niente a terzi: all'avviso esterno solo «un commento nuovo») e i commenti nell'elenco di «Scarica i tuoi dati»; data della pagina e VERSIONE_TERMINI restano 2026-11-26.",
+      "Calcolo non toccato."
+    ]
+  },
+  {
+    "versione": "1.577",
+    "data": "2026-11-26T11:03:52",
+    "titolo": "Formazione: «Sostituisci» e i cambi proposti dicono quanto cambia la formazione",
+    "voci": [
+      "Formazione, «Sostituisci»: accanto a ogni compagno c'è quanto guadagna o perde la formazione se entra lui, lo stesso numero di cui cambiano i punti attesi dopo il cambio. Prima c'era la differenza fra i due giocatori, che non tornava: se il titolare rischia di non giocare entra già uno dalla panchina.",
+      "Formazione, cambio proposto in cima («Meglio …»): il numero è quello della formazione, come sotto il campo, e per un titolare in dubbio o in panchina il cambio non compare più per differenze di pochi decimi (sotto un punto atteso). Per un infortunato o uno squalificato compare sempre, come prima.",
+      "Formazione sulla web: dopo un cambio, gli altri cambi proposti in cima si aggiornano subito, con il numero nuovo o spariscono se non valgono più, come sull'iPhone.",
+      "Avviso «cambio pronto»: lo stesso numero e la stessa regola: per chi va in panchina solo da un punto atteso in su, per chi è infortunato o squalificato sempre.",
+      "Primo avvio: la frase sui valori più comuni delle leghe non finisce più con i puntini."
+    ],
+    "tecnico": [
+      "Nuova rotta POST /api/formazione/sostituisci {esce, titolari, giornata?} → {giornata, esce, punteggio_atteso, entrate: [{entra, punteggio_atteso, differenza}]}: il contrario di /api/formazione/metti-in-campo, con le stesse schede, gli stessi bloccati (400 giocatore_bloccato se esce è fermo), 400 formazione_non_valida e 409 formazione_chiusa; regola in scelte.chi_prende_il_posto, punti di consigli.valuta, ordine per differenza e poi punti attesi da soli. docs/openapi.json e docs/API.md aggiornati; coperta da tests/test_isolamento.py.",
+      "Da fare, voce dubbio: campo nuovo differenza (consigli.valuta della formazione dopo il cambio meno quella di adesso, frasi.differenza); per un titolare in dubbio o in panchina il cambio (alternativa, decisione, «Sostituisci») si propone solo da da_fare.SOGLIA_CAMBIO = consigli.SOGLIA_CAMBIO_PUNTI (1,0) in su; per un infortunato o squalificato sempre, con la sua differenza. notifiche._cambi_pronti scrive differenza invece di alternativa.punti_attesi − atteso del titolare.",
+      "Web: apriSostituzione chiede la rotta nuova (come apriMettiInCampo: «Carico…», giocatore_bloccato come informazione, formazione_chiusa chiude e rilegge); tolta la funzione sostituti; guadagno delle decisioni legge v.differenza.",
+      "Web: dopo un salvataggio riuscito della scelta (salvaTitolari, tornaConsigliata) rileggiDecisioni rilegge /api/oggi e ridisegna se da_fare è cambiato (non con un elenco di Sostituisci o Metti in campo aperto), come rileggiDopoUnSalvataggio dell'iPhone.",
+      "Catalogo: formazione.sost_spiega senza il nome prima del punto finale (niente più «Chalobah T..»), formazione.punti_rispetto con «della formazione», onb.valori_piu_comuni senza «...»; rigenerati fanta/web/testi.js e il catalogo dell'iPhone.",
+      "Calcolo del fantavoto atteso e della consigliata non toccato."
+    ]
+  },
+  {
+    "versione": "1.576",
+    "data": "2026-11-26T10:47:42",
+    "titolo": "Scheda del giocatore: i fantavoti con i bonus della tua lega",
+    "voci": [
+      "Scheda del giocatore: fantamedia, ultime cinque giornate, grafico dei voti e «in crescita» o «in calo» ora contano i bonus e i malus della tua lega, come Formazione, Oggi e Giornate. Prima usavano i bonus classici: in una lega con il gol del difensore a 4,5, un difensore che prende 6 e segna faceva 10,5 in Giornate e 9 nella scheda. Uguale sull'iPhone.",
+      "Se una parte di Oggi o della Formazione non si riesce a calcolare, la schermata si apre come prima ma il guasto ora resta scritto per chi cura il server."
+    ],
+    "tecnico": [
+      "scheda.scheda riceve le Regole della lega (prima solo fonte_voto) e calcola voti[].fv con punteggio.fantavoto(riga, ruolo del listone, regole), bonus mancanti a zero, arrotondato a 2 cifre come fv_preso; non legge più fv_red, fv_stat e fv_ita. Ne dipendono stagione.fantamedia, stagione.ultime_5_fv e andamento. Con un ruolo del listone che non è P, D, C o A il calcolo si salta (fv, fantamedia e andamento null, riga nel registro) invece del 500. BONUS_E_MALUS sta in punteggio.py, unico per scheda e registro delle giornate. Chiamanti aggiornati: GET /api/giocatore/{id} e il comando giocatore. La scheda non ha una cache sul server.",
+      "fasi.aggiungi, fasi.formazione_a_giornata_iniziata e il blocco rinvio di gestione.oggi: l'except Exception ora scrive nel registro (logger fanta.fasi e fanta.gestione) il tipo d'errore e i punti del codice con registro_giornate._dove, senza il messaggio. formazione_a_giornata_iniziata dopo un errore tiene iniziata se l'ha già calcolata.",
+      "Stessi campi e stessi tipi nell'API; docs/API.md aggiornato sul significato di voti[].fv, stagione.fantamedia e andamento della scheda."
+    ]
+  },
+  {
     "versione": "1.575",
     "data": "2026-11-26T10:14:55",
     "titolo": "Widget dell'iPhone: una frase più corta sul recupero",
