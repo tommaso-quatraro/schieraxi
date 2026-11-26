@@ -1,10 +1,10 @@
 import SwiftUI
 
-/// Una riga delle scelte di un cambio, come `riga-gioc` di «Sostituisci» e di «Metti in campo» della web: volto, nome, partita e
-/// le etichette della web nel suo ordine (`EtichetteRiga`: lo stato, «gioca N%», le parole in più della riga come «Si passa al …»,
-/// «Diffidato», la nota); a destra il numero grande del cambio, se c'è, e sotto il fantavoto atteso. Con il testo molto
-/// grande i numeri vanno sotto il nome: affiancati, il nome andava a capo a ogni sillaba. La usano `SceltaSostituto` e
-/// `SceltaChiEsce`.
+/// Una riga delle scelte di un cambio, come `riga-gioc` di «Sostituisci» e di «Metti in campo» della web: volto, nome, partita (in
+/// «Sostituisci» con il posto in formazione, «Panchina 2») e le etichette della web nel suo ordine (`EtichetteRiga`: lo stato,
+/// «gioca N%», le parole in più della riga come «Si passa al …», «Diffidato», la nota); a destra il numero grande del cambio, se
+/// c'è, e sotto il fantavoto atteso. Con il testo molto grande i numeri vanno sotto il nome: affiancati, il nome andava a capo a
+/// ogni sillaba. La usano `SceltaSostituto` e `SceltaChiEsce`.
 struct RigaCambio: View {
     let giocatore: Giocatore
     /// Il numero grande, già scritto con il segno («+0,9», «−0,4»); nil = niente numero.
@@ -17,6 +17,8 @@ struct RigaCambio: View {
     let suggerimento: String
     /// Le parole in più della riga, dopo «gioca N%» e prima di «Diffidato» («Si passa al 4-4-2»).
     var altre: [String] = []
+    /// Dove sta il giocatore nella formazione in campo («Panchina 2», «Non schierato»), dopo la partita; nil = non si dice.
+    var posto: String? = nil
     @Environment(\.dynamicTypeSize) private var taglia
 
     var body: some View {
@@ -59,11 +61,18 @@ struct RigaCambio: View {
         AvatarGiocatore(id: giocatore.id, squadra: giocatore.squadra, dimensione: 40, nome: giocatore.nome, ruolo: giocatore.ruolo)
     }
 
-    /// Nome, partita e le etichette.
+    /// Sotto il nome la partita e, se c'è, il posto in formazione, con il punto in mezzo come `dettaglio` della web
+    /// («LEC vs FRO · sab 8 20:45 · Panchina 5»).
+    nonisolated static func dettaglio(_ g: Giocatore, posto: String?, adesso: Date) -> String {
+        [RigaGiocatore.sottotitolo(g, adesso: adesso), posto ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    /// Nome, partita con il posto e le etichette.
     private func dati(_ pezzi: [LetturaPedina.Pezzo]) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(giocatore.nome).font(.headline).fixedSize(horizontal: false, vertical: true)
-            Text(RigaGiocatore.sottotitolo(giocatore, adesso: Orologio.adesso())).font(.caption).foregroundStyle(Color.testoSecondario)
+            Text(Self.dettaglio(giocatore, posto: posto, adesso: Orologio.adesso()))
+                .font(.caption).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
             ForEach(Array(pezzi.enumerated()), id: \.offset) { _, pezzo in
                 Text(pezzo.testo).font(.caption.weight(.semibold))
@@ -86,11 +95,13 @@ struct RigaCambio: View {
         }
     }
 
-    /// La riga per VoiceOver: il nome, il numero con quello che vuol dire, il fantavoto atteso e le etichette, nel loro ordine.
+    /// La riga per VoiceOver: il nome, il numero con quello che vuol dire, il fantavoto atteso, il posto in formazione e le
+    /// etichette, nel loro ordine.
     private func voce(_ pezzi: [LetturaPedina.Pezzo]) -> String {
         var parti = [giocatore.nome]
         if let numero { parti.append("\(numero) \(voceNumero)") }
         parti.append(Catalogo.Formazione.fvAttesoBreve(fv: Formato.punti(giocatore.fvAtteso)))
+        if let posto { parti.append(posto) }
         return (parti + pezzi.map(\.testo)).joined(separator: ", ")
     }
 }

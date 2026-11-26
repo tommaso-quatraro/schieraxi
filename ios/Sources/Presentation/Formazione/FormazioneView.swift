@@ -58,15 +58,16 @@ struct FormazioneView: View {
             }
             .navigationTitle(Catalogo.Nav.formazione)
             // «Sostituisci» nella scheda: chi può prendere il posto del titolare, con i numeri del server; un tocco chiude l'elenco
-            // e fa il cambio
+            // e fa il cambio. Finché il cambio non si può fare le righe sono spente con il perché; un cambio che non parte lo dice
+            // il ViewModel sotto il campo (`messaggio`)
             .sheet(item: $vm.elencoSostituti) { elenco in
-                SceltaSostituto(elenco: elenco) { entra in
+                SceltaSostituto(elenco: elenco, motivoSpento: vm.motivoCambiSpenti) { entra in
                     Task { await vm.scegliSostituto(entra) }
                 }
             }
             // «Metti in campo» nella scheda (#778): chi può lasciargli il posto; un tocco chiude l'elenco e fa il cambio
             .sheet(item: $vm.elencoEntra) { elenco in
-                SceltaChiEsce(elenco: elenco) { esce in
+                SceltaChiEsce(elenco: elenco, motivoSpento: vm.motivoCambiSpenti) { esce in
                     Task { await vm.scegliChiEsce(esce) }
                 }
             }
@@ -93,6 +94,16 @@ struct FormazioneView: View {
             }
             .onChange(of: vm.messaggio) { _, nuovo in
                 if let nuovo { AccessibilityNotification.Announcement(nuovo).post() }
+            }
+            // la conferma della scelta sul rinvio passa dopo qualche secondo, come l'avviso della web (`oggi.rinvio_salvato`)
+            .task(id: oggi.confermaRinvio) {
+                guard oggi.confermaRinvio != nil else { return }
+                try? await Task.sleep(for: Self.durataAvviso)
+                guard !Task.isCancelled else { return }
+                oggi.confermaRinvio = nil
+            }
+            .onChange(of: oggi.confermaRinvio) { _, nuova in
+                if let nuova { AccessibilityNotification.Announcement(nuova).post() }
             }
         }
     }
@@ -194,6 +205,7 @@ struct FormazioneView: View {
     private var campionatoFinito: some View {
         VStack(alignment: .leading, spacing: Tema.spazioSchede) {
             TestaFormazioneView(oggi: oggi.oggi, formazione: nil, rinvioInCorso: oggi.rinvioInCorso, erroreRinvio: oggi.erroreRinvio,
+                                confermaRinvio: oggi.confermaRinvio,
                                 cambiaRinvio: { scelta, modo in await oggi.cambiaRinvio(scelta, modo: modo) },
                                 comeAndata: { giornata in nav.apriGiornate(giornata) })
         }
@@ -217,7 +229,7 @@ struct FormazioneView: View {
             // a giornata finita con un recupero che manca, sotto i punti il riquadro del rinvio (solo per la tua formazione: per
             // un'altra squadra la testa non ha Oggi). «Com'è andata»: la pagina Giornate, aperta sulla giornata appena finita (come la web)
             TestaFormazioneView(oggi: vm.squadraVista == nil ? oggi.oggi : nil, formazione: f, rinvioInCorso: oggi.rinvioInCorso,
-                                erroreRinvio: oggi.erroreRinvio,
+                                erroreRinvio: oggi.erroreRinvio, confermaRinvio: oggi.confermaRinvio,
                                 cambiaRinvio: { scelta, modo in await oggi.cambiaRinvio(scelta, modo: modo) },
                                 comeAndata: { giornata in nav.apriGiornate(giornata) })
             if let errore = vm.erroreGiornata { erroreGiornata(errore) }
@@ -457,7 +469,7 @@ struct FormazioneView: View {
                 }
             }
         }
-        Carta("Panchina", simbolo: "chair.lounge.fill") {
+        Carta(Catalogo.Scambi.panchina, simbolo: "chair.lounge.fill") {
             Text(Catalogo.Formazione.questOrdineEntra).font(.caption).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
             ForEach(Array(v.panchina.enumerated()), id: \.element.id) { i, g in
@@ -478,7 +490,7 @@ struct FormazioneView: View {
         elenco(Catalogo.Formazione.indisponibili(n: String(vm.indisponibili(f, v).count)), vm.indisponibili(f, v), nota: nil,
                dalVivo: dalVivo)
         if mia, let r = oggi.oggi?.partiteRinviate {
-            CartaPartitaRinviata(scelta: r, inCorso: oggi.rinvioInCorso, errore: oggi.erroreRinvio) { m in
+            CartaPartitaRinviata(scelta: r, inCorso: oggi.rinvioInCorso, errore: oggi.erroreRinvio, conferma: oggi.confermaRinvio) { m in
                 await oggi.cambiaRinvio(r, modo: m)
             }
             .id("rinvio")

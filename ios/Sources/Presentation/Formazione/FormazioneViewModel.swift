@@ -140,6 +140,20 @@ final class FormazioneViewModel: ViewModelBase {
     /// Si può scrivere sulla scelta: la tua formazione, aperta, con i comandi accesi.
     private var puoScrivere: Bool { squadraVista == nil && !chiusa && !comandiSpenti }
 
+    /// Perché adesso un cambio della tua formazione non si può fare, con la frase del catalogo che lo dice (nil = si può): la
+    /// formazione si è chiusa (`formazione.chiusa`), restano i dati salvati sul telefono (`formazione.copia_ferma`), stanno
+    /// arrivando i dati, si rilegge o un salvataggio è in volo (`formazione.sto_ancora_ricalcolando`, come `libero()` della web),
+    /// la scelta salvata non si è letta (`formazione.scelta_non_letta`). Negli elenchi di «Sostituisci» e «Metti in campo» spegne
+    /// le righe e si legge sopra di loro; un cambio che non parte lo dice sotto il campo (collaudo del 26/11).
+    var motivoCambiSpenti: String? {
+        guard squadraVista == nil else { return nil }
+        if chiusa { return Catalogo.Formazione.chiusa }
+        if copiaFerma { return Catalogo.Formazione.copiaFerma }
+        if leggendo || occupato || copia { return Catalogo.Formazione.stoAncoraRicalcolando }
+        if !sceltaLetta { return Catalogo.Formazione.sceltaNonLetta }
+        return nil
+    }
+
     /// La scelta da mostrare è nota: letta dal server o, mentre si vede la copia della Formazione o si sta rileggendo, dalla copia del
     /// telefono. Sempre della giornata in pagina.
     var sceltaNota: Bool {
@@ -402,7 +416,9 @@ final class FormazioneViewModel: ViewModelBase {
             return true
         }
         let nonValida = f.statoScelta == "non_valida"
-        if nonValida || Set(s.titolari) == Set(consigliati(f)) || moduloDi(f, s.titolari) != nil {
+        // a giornata in corso in campo c'è la formazione schierata di `/api/oggi` (`dalVivo`): valutare gli 11 salvati non serve, e
+        // la rilettura ogni 5 minuti non lo chiede più al server (come `caricaGiornata` della web, collaudo del 26/11)
+        if nonValida || dalVivo(f) != nil || Set(s.titolari) == Set(consigliati(f)) || moduloDi(f, s.titolari) != nil {
             ricorda(s, nonValida: nonValida, f, valutazione: nil)
             return true
         }
@@ -727,7 +743,16 @@ final class FormazioneViewModel: ViewModelBase {
         // a giornata in corso con lo stato vero della sua partita, come sul campo
         let previsione = dalVivo(f)?.giocatori.first { $0.id == id }.map { g.dalVivo($0) } ?? g
         return ContestoScheda(previsione: previsione, perche: percheTitolare(id), sostituibile: sostituibile(id),
-                              entrabile: entrabile(id), fermo: fermo(id))
+                              entrabile: entrabile(id), fermo: fermo(id), pronta: puoScrivere)
+    }
+
+    /// La scheda già aperta da qui, letta adesso (`SchedaAperta` la ridisegna a ogni cambio della Formazione), come la web che a ogni
+    /// ridisegno accende o spegne «Sostituisci» e «Metti in campo» nella scheda aperta: toccato un giocatore mentre arrivano i dati,
+    /// i pulsanti ci sono spenti e si accendono all'arrivo (prima la scheda teneva la fotografia dell'apertura, e i pulsanti non
+    /// comparivano più, collaudo del 26/11). Se la Formazione non ha più quel giocatore resta la previsione dell'apertura, senza
+    /// pulsanti.
+    func contestoAttuale(_ id: Int, aperta: ContestoScheda) -> ContestoScheda {
+        contestoScheda(id) ?? ContestoScheda(previsione: aperta.previsione)
     }
 
     /// «Perché è titolare» (`PercheTitolare`): solo con la consigliata in campo e a formazione aperta, come la web.
@@ -738,12 +763,13 @@ final class FormazioneViewModel: ViewModelBase {
     }
 
     /// La condizione sola di «Sostituisci» e di «Metti in campo», come `siSposta` della web (#643): la tua formazione, ancora
-    /// aperta, con i comandi accesi, e lui non gioca un anticipo già cominciato. I due pulsanti ci sono sempre insieme.
+    /// aperta, e lui non gioca un anticipo già cominciato. I due pulsanti ci sono sempre insieme; con i comandi spenti (copia del
+    /// telefono, scelta non letta, rilettura, scrittura in volo) ci sono ma spenti (`ContestoScheda.pronta`, `pronta()` della web).
     private func siSposta(_ id: Int) -> Bool {
-        squadraVista == nil && !chiusa && !fermi.contains(id) && !comandiSpenti
+        squadraVista == nil && !chiusa && !fermi.contains(id)
     }
 
-    /// Un titolare della tua formazione ancora aperta, con i comandi accesi: nella scheda «Sostituisci».
+    /// Un titolare della tua formazione ancora aperta: nella scheda «Sostituisci» (acceso quando i comandi sono accesi).
     func sostituibile(_ id: Int) -> Bool {
         siSposta(id) && inCampo(id)
     }
@@ -775,11 +801,15 @@ final class FormazioneViewModel: ViewModelBase {
     }
 
     /// Chiamata quando il foglio della scheda è sparito: apre la scelta del sostituto chiesta con «Sostituisci», se quel titolare si
-    /// può ancora sostituire.
+    /// può ancora sostituire. Se nel frattempo i comandi si sono spenti (è partita una rilettura) lo dice sotto il campo.
     func apriSostituzioneInAttesa() {
         guard let id = sostituzioneInAttesa else { return }
         sostituzioneInAttesa = nil
         guard sostituibile(id) else { return }
+        if let motivo = motivoCambiSpenti {
+            messaggio = motivo
+            return
+        }
         Task { await sostituisci(id) }
     }
 
@@ -791,7 +821,7 @@ final class FormazioneViewModel: ViewModelBase {
     /// lo dice e rilegge, un altro errore va nell'elenco. Una risposta arrivata a elenco chiuso o sostituito non lo tocca; se nel
     /// frattempo gli 11 in campo sono cambiati, l'elenco si chiude (direbbe di un'altra formazione).
     func sostituisci(_ id: Int) async {
-        guard let f = formazione, sostituibile(id), let uscente = f.schede?[String(id)] else { return }
+        guard let f = formazione, sostituibile(id), puoScrivere, let uscente = f.schede?[String(id)] else { return }
         numeroElenco += 1
         let numero = numeroElenco
         let titolari = vista(f).titolari.map(\.id)
@@ -805,9 +835,12 @@ final class FormazioneViewModel: ViewModelBase {
                 return
             }
             let schede = ora.schede ?? [:]
+            // il posto di chi entra nella formazione in campo («Panchina 2», «Non schierato»), come la web
+            let panchina = vista(ora).panchina.map(\.id)
             let righe: [ElencoSostituti.Riga] = (r.entrate ?? []).compactMap { e in
                 guard let entra = e.entra, !titolari.contains(entra), let g = schede[String(entra)] else { return nil }
-                return ElencoSostituti.Riga(entra: g, differenza: e.differenza)
+                let posto = PostoInFormazione.testo(entra, titolari: titolari, panchina: panchina, inRosa: true)
+                return ElencoSostituti.Riga(entra: g, differenza: e.differenza, posto: posto)
             }
             elencoSostituti?.stato = .entrate(righe)
         } catch {
@@ -833,12 +866,27 @@ final class FormazioneViewModel: ViewModelBase {
     }
 
     /// Un tocco su una riga dell'elenco: l'elenco si chiude e chi entra prende il posto del titolare (`sostituisciTitolare`: si salva
-    /// subito, al 412 si rilegge e lo si dice). false se il cambio non si può più fare da qui.
+    /// subito, al 412 si rilegge e lo si dice). false se il cambio non si può più fare da qui: allora lo si dice sotto il campo
+    /// (`cambioNonPartito`).
     @discardableResult
     func scegliSostituto(_ entra: Int) async -> Bool {
         guard let esce = elencoSostituti?.uscente.id else { return false }
         elencoSostituti = nil
-        return await sostituisciTitolare(esce, con: entra)
+        if await sostituisciTitolare(esce, con: entra) { return true }
+        cambioNonPartito(esce: esce, entra: entra)
+        return false
+    }
+
+    /// Un cambio scelto in un elenco non è partito: sotto il campo il perché, mai un elenco che si chiude senza niente (collaudo del
+    /// 26/11). La formazione chiusa, la rilettura, la copia del telefono o la scelta non letta (`motivoCambiSpenti`), oppure uno dei
+    /// due gioca ora una partita già cominciata (`formazione.bloccati`). Gli 11 cambiati nel frattempo non hanno una frase: in campo
+    /// si vede già la formazione nuova.
+    private func cambioNonPartito(esce: Int, entra: Int) {
+        if let motivo = motivoCambiSpenti {
+            messaggio = motivo
+        } else if fermi.contains(esce) || fermi.contains(entra) {
+            messaggio = Catalogo.Formazione.bloccati
+        }
     }
 
     // MARK: «Metti in campo» (#778, come `apriMettiInCampo` della web)
@@ -852,11 +900,15 @@ final class FormazioneViewModel: ViewModelBase {
     }
 
     /// Chiamata quando il foglio della scheda è sparito: apre l'elenco chiesto con «Metti in campo», se quel giocatore si può
-    /// ancora mettere in campo.
+    /// ancora mettere in campo. Se nel frattempo i comandi si sono spenti (è partita una rilettura) lo dice sotto il campo.
     func apriMettiInCampoInAttesa() {
         guard let id = mettiInCampoInAttesa else { return }
         mettiInCampoInAttesa = nil
         guard entrabile(id) else { return }
+        if let motivo = motivoCambiSpenti {
+            messaggio = motivo
+            return
+        }
         Task { await mettiInCampo(id) }
     }
 
@@ -867,7 +919,7 @@ final class FormazioneViewModel: ViewModelBase {
     /// e si rilegge. Un altro errore: il motivo nell'elenco. Se l'elenco si chiude, o se ne apre un altro, prima della risposta, la
     /// risposta non lo tocca; se nel frattempo gli 11 in campo sono cambiati, l'elenco si chiude (direbbe di un'altra formazione).
     func mettiInCampo(_ id: Int) async {
-        guard let f = formazione, entrabile(id), let entra = f.schede?[String(id)] else { return }
+        guard let f = formazione, entrabile(id), puoScrivere, let entra = f.schede?[String(id)] else { return }
         numeroElenco += 1
         let numero = numeroElenco
         let titolari = vista(f).titolari.map(\.id)
@@ -910,11 +962,13 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// Un tocco su una riga dell'elenco: l'elenco si chiude e quel titolare lascia il posto a chi entra, per la stessa strada di
     /// «Sostituisci» (`sostituisciTitolare`: si salva subito, al 412 si rilegge e lo si dice). false se il cambio non si può più
-    /// fare da qui (lui non è più fuori, quel titolare non è più in campo, la giornata si è chiusa).
+    /// fare da qui (lui non è più fuori, quel titolare non è più in campo, la giornata si è chiusa): allora lo si dice sotto il campo.
     @discardableResult
     func scegliChiEsce(_ esce: Int) async -> Bool {
         guard let entra = elencoEntra?.entra.id else { return false }
         elencoEntra = nil
-        return await sostituisciTitolare(esce, con: entra)
+        if await sostituisciTitolare(esce, con: entra) { return true }
+        cambioNonPartito(esce: esce, entra: entra)
+        return false
     }
 }
