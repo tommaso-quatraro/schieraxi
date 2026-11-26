@@ -3607,6 +3607,16 @@ function restanoCopie() {
 // Il tasto Indietro del browser può rimettere una pagina dalla sua memoria: con gli account si ricarica, così dopo un'uscita
 // non ricompaiono i dati di chi è uscito.
 window.addEventListener("pageshow", ev => { if (ev.persisted && (stato.account || accessoAperto)) location.reload(); });
+// Un'altra scheda esce, o entra con un altro account (collaudo del 26/11): questa ha ancora in memoria l'account di prima, e le copie
+// dei dati del secondo finirebbero sotto la chiave del primo. Quando l'account salvato nel browser cambia, la pagina si ricarica e
+// riparte con quello giusto (o con la schermata di accesso). Lo stesso account riscritto (a ogni apertura) non conta.
+window.addEventListener("storage", ev => {
+  if (ev.storageArea !== localStorage || (ev.key !== null && ev.key !== "account")) return;
+  let ora = null;
+  try { ora = JSON.parse(localStorage.getItem("account") || "null"); } catch { /* account rovinato: come uscito */ }
+  const idDi = a => (a && a.id != null ? String(a.id) : "");
+  if (idDi(ora) !== idDi(stato.account)) location.reload();
+});
 
 // Le notifiche di questo dispositivo sono dell'utente che esce: si tolgono, così non arrivano a chi entra dopo di lui.
 // `alServer` falso: la sessione è già chiusa e il server ha già tolto le iscrizioni (Esci da tutti), si toglie solo quella del browser.
