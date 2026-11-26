@@ -94,8 +94,9 @@ enum TempiLega {
 
     /// L'apostrofo davanti all'8ª e all'11ª, come la web (`elidiOrdinali`) e il server (`frasi.elidi_ordinali`):
     /// «dalla 11ª giornata di Serie A» → «dall'11ª giornata di Serie A», «la 8ª» → «l'8ª». Le altre («la 18ª», «la 1ª») restano.
+    /// Anche con la maiuscola, come la web: «Dalla 8ª» → «Dall'8ª» (le voci del primo avvio, #931).
     static func elidiOrdinali(_ testo: String) -> String {
-        testo.replacingOccurrences(of: #"\b(l|all|dall|dell|nell|sull)a (8ª|11ª)"#, with: "$1'$2", options: .regularExpression)
+        testo.replacingOccurrences(of: #"\b([Ll]|[Aa]ll|[Dd]all|[Dd]ell|[Nn]ell|[Ss]ull)a (8ª|11ª)"#, with: "$1'$2", options: .regularExpression)
     }
 
     /// La riga sotto il modulo in Formazione, come la web (#437): «Giornata 8 · 11ª di Serie A · la tua scelta» in modifica a mano

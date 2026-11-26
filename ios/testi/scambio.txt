@@ -32,3 +32,6 @@ scambio.lascia_liberi
 # Stato dei dati
 scambio.ultimi_aggiornamenti
 scambio.probabili_formazioni_raccolt
+# i titoli delle carte della web (#931)
+scambio.quanto_azzecca_modello
+scambio.quanto_affidabile_modello

@@ -87,6 +87,16 @@
     "it": "Esci",
     "en": "Sign out"
   },
+  "account.esci_conferma": {
+    "it": "Esci da SchieraXI su questo dispositivo?",
+    "en": "Sign out of SchieraXI on this device?",
+    "nota": "conferma di «Esci» (web e iPhone, #931); sulla web seguita da account.esci_conferma_spiega nella stessa finestra"
+  },
+  "account.esci_conferma_spiega": {
+    "it": "I dati salvati qui vengono cancellati: quelli sul server restano tuoi.",
+    "en": "The data saved here is deleted: what is on the server stays yours.",
+    "nota": "sotto account.esci_conferma (#931)"
+  },
   "account.esci_no": {
     "it": "Non riesco a farti uscire. {motivo}",
     "en": "I cannot sign you out. {motivo}",
