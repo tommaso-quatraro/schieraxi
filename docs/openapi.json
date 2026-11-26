@@ -742,6 +742,11 @@
       "title": "Endpoint",
       "type": "string"
      },
+     "iphone": {
+      "default": false,
+      "title": "Iphone",
+      "type": "boolean"
+     },
      "keys": {
       "additionalProperties": {
        "type": "string"

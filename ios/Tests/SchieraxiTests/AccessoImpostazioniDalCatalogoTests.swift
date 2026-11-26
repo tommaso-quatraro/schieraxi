@@ -51,7 +51,8 @@ struct AccessoImpostazioniDalCatalogoTests {
         Catalogo.Codice.copia, Catalogo.Codice.copiato, Catalogo.Codice.salvato,
         Catalogo.Legale.privacy, Catalogo.Legale.termini, Catalogo.Legale.crediti,
         Catalogo.Imp.account, Catalogo.Imp.aspetto, Catalogo.Imp.informazioni, Catalogo.Imp.avanzate, Catalogo.Imp.sezAvvisi,
-        Catalogo.Imp.avvisiQui, Catalogo.Imp.avvisiQuiAiutoApp, Catalogo.Imp.lega, Catalogo.Imp.regole, Catalogo.Imp.regoleSub,
+        Catalogo.Imp.avvisiQui, Catalogo.Imp.avvisiQuiAiutoApp, Catalogo.Imp.avvisiQuiAiutoWeb, Catalogo.Imp.lega,
+        Catalogo.Imp.regole, Catalogo.Imp.regoleSub,
         Catalogo.Imp.miaSquadraNessuna, Catalogo.Imp.altreSquadre, Catalogo.Imp.informazioniSub, Catalogo.Imp.gestione,
         Catalogo.Imp.aggiornaSpiega,
         // avv.* (Avvisi), pav.* (Primo avvio)
@@ -179,8 +180,11 @@ struct AccessoImpostazioniDalCatalogoTests {
             "Catalogo.Shell.aggiorna", "Catalogo.Av.stato",
         ]),
         ("Sources/Presentation/Lega/AvvisiDispositivoSezione.swift", [
-            "Catalogo.Imp.sezAvvisi", "Catalogo.Imp.avvisiQui", "Catalogo.Imp.avvisiQuiAiutoApp", "Catalogo.Avv.oreTranq",
-            "Catalogo.Avv.aveviSceltoOre",
+            "Catalogo.Imp.sezAvvisi", "Catalogo.Imp.avvisiQui", "Catalogo.Avv.oreTranq", "Catalogo.Avv.aveviSceltoOre",
+        ]),
+        // la riga sotto «Avvisi su questo dispositivo»: quella di sempre o, con i promemoria già dalla web app, quella che lo dice
+        ("Sources/Presentation/Lega/AvvisiDispositivoViewModel.swift", [
+            "Catalogo.Imp.avvisiQuiAiutoApp", "Catalogo.Imp.avvisiQuiAiutoWeb",
         ]),
         ("Sources/Presentation/Lega/GestionePagina.swift", [
             "Catalogo.Imp.gestione", "Catalogo.Imp.aggiornaSpiega", "Catalogo.Avv.nativa", "Catalogo.Avv.nativaAiuto",
