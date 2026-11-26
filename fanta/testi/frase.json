@@ -922,6 +922,14 @@
     "it": "{squadra}: {nome} compare due volte, l'ho tenuto una volta sola.",
     "en": "{squadra}: {nome} appears twice, I kept it only once."
   },
+  "frase.rose.forse_manca_riga_vuota.one": {
+    "it": "{squadra}: manca una riga vuota fra le squadre? {nomi} non è nel listone: se è il nome di una squadra, lascia una riga vuota prima e controlla di nuovo.",
+    "en": "{squadra}: is a blank line missing between the teams? {nomi} is not in the player list: if it is a team name, leave a blank line before it and check again."
+  },
+  "frase.rose.forse_manca_riga_vuota.other": {
+    "it": "{squadra}: manca una riga vuota fra le squadre? {nomi} non sono nel listone: se uno è il nome di una squadra, lascia una riga vuota prima e controlla di nuovo.",
+    "en": "{squadra}: is a blank line missing between the teams? {nomi} are not in the player list: if one is a team name, leave a blank line before it and check again."
+  },
   "frase.regole.panchina_posti_fissi": {
     "it": "La tua panchina ha posti fissi per ruolo, {n} in tutto: cambia a mano i posti di ogni ruolo nei valori delle regole.",
     "en": "Your bench has fixed spots per position, {n} in total: change the spots for each position by hand in the rule values.",

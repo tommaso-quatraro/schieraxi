@@ -18,7 +18,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .frasi import F, Frase
+from .frasi import F, Frase, elenco
 from .nomi import Esito, Indice, normalizza
 from .regole import RUOLI
 
@@ -310,11 +310,14 @@ ROSA_DI_BASE = 25          # giocatori di una rosa classic (3 + 8 + 8 + 6), se c
 
 
 def _da_un_valore_per_riga(griglia: list[list], indice: Indice, attesi: int = ROSA_DI_BASE,
-                           squadre_note: set[str] | frozenset = frozenset()) -> tuple[list[list[str]], set[int]]:
+                           squadre_note: set[str] | frozenset = frozenset(),
+                           avvisi: list[str] | None = None) -> tuple[list[list[str]], set[int]]:
     """Testo con un valore per riga (es. copiato da una pagina a schede, o scritto a mano): ricompone le righe dei giocatori.
     Un nome che il listone non conosce è un giocatore non trovato, mai una squadra, se non c'è un segno chiaro che sia il titolo
     di una squadra (`_e_titolo`): un nome di giocatore plausibile non deve aprire una squadra (collaudo del 26/11).
-    Restituisce le righe ricomposte e quali sono giocatori (anche non trovati), per `_Celle`."""
+    Restituisce le righe ricomposte e quali sono giocatori (anche non trovati), per `_Celle`. In `avvisi` (se c'è) la domanda
+    «manca una riga vuota fra le squadre?» per i nomi sconosciuti che potrebbero essere il titolo di una squadra
+    (`_forse_manca_una_riga_vuota`). Le righe vuote separano le squadre, tranne quando ce n'è una fra quasi ogni riga."""
     celle = _Celle([[r[0] if r else ""] for r in griglia], indice)
     tipi = [celle.tipo[r, 0] for r in range(len(celle.g))]
     valori = [riga[0] for riga in celle.g]
@@ -331,20 +334,30 @@ def _da_un_valore_per_riga(griglia: list[list], indice: Indice, attesi: int = RO
                        or (prossima[r] is not None and tipi[prossima[r]] == "squadra_a"))
     strutturato = bool(trovati) and 2 * con_dettagli >= len(trovati)
     note = {normalizza(n) for n in squadre_note}
+    piene = [r for r, t in enumerate(tipi) if t != "vuoto"]
+    dopo_vuote = sum(1 for r in piene[1:] if tipi[r - 1] == "vuoto")
+    vuote_separano = 2 * dopo_vuote <= max(1, len(piene) - 1)    # una riga vuota fra ogni giocatore non separa niente
     nuove: list[list[str]] = []
     giocatori: set[int] = set()
     ruolo_in_attesa = ""
     corrente: list[str] | None = None
     aperta, in_squadra, dopo_vuota = False, 0, True              # una squadra (anche senza nome) è aperta? quanti giocatori ha?
+    titolo: str | None = None
+    righe_squadra: list[tuple[str, bool]] = []                   # (nome, sconosciuto in mezzo alla squadra) della squadra aperta
+
+    def chiudi_squadra():
+        _forse_manca_una_riga_vuota(titolo, righe_squadra, attesi, dopo_vuote == 0, avvisi)
+
     for r, (tipo, v) in enumerate(zip(tipi, valori)):
         if tipo == "vuoto":
-            dopo_vuota = True
+            dopo_vuota = dopo_vuota or vuote_separano
             continue
         if tipo == "ruolo":
             ruolo_in_attesa = v
         elif tipo == "giocatore" or (tipo == "testo" and (ruolo_in_attesa or not _e_titolo(
                 r, v, tipi, valori, prossima, aperta, dopo_vuota, strutturato, in_squadra >= attesi, note))):
             # un testo dopo un ruolo, o in mezzo ai giocatori di una squadra, è un giocatore non riconosciuto
+            righe_squadra.append((v, tipo == "testo" and not ruolo_in_attesa))
             corrente = [ruolo_in_attesa, v, "", ""]
             giocatori.add(len(nuove))
             nuove.append(corrente)
@@ -355,6 +368,8 @@ def _da_un_valore_per_riga(griglia: list[list], indice: Indice, attesi: int = RO
         elif tipo == "numero" and corrente is not None and not corrente[3]:
             corrente[3] = v
         elif tipo == "testo":
+            chiudi_squadra()
+            titolo, righe_squadra = v, []
             nuove.append([v])
             corrente = None
             aperta, in_squadra = True, 0
@@ -364,7 +379,22 @@ def _da_un_valore_per_riga(griglia: list[list], indice: Indice, attesi: int = RO
             dopo_vuota = True                                  # i crediti chiudono la squadra: dopo può venire la prossima
             continue
         dopo_vuota = False
+    chiudi_squadra()
     return nuove, giocatori
+
+
+def _forse_manca_una_riga_vuota(titolo: str | None, righe: list[tuple[str, bool]], attesi: int, senza_righe_vuote: bool,
+                                avvisi: list[str] | None) -> None:
+    """Squadre una sotto l'altra senza riga vuota diventano una squadra sola (revisione della #939): un nome sconosciuto in mezzo
+    ai giocatori, con altri giocatori trovati dopo, potrebbe essere il titolo della squadra dopo. L'avviso lo chiede quando
+    il testo non ha righe vuote fra le righe, oppure quando la squadra ha più giocatori di una rosa intera. Chi separa le
+    squadre con le righe vuote e ha una rosa normale non lo vede: un giocatore sconosciuto ha già la sua riga fra i non trovati."""
+    if avvisi is None or titolo is None or not (senza_righe_vuote or len(righe) > attesi):
+        return
+    forse = [nome for i, (nome, sconosciuto) in enumerate(righe) if sconosciuto and any(not s for _, s in righe[i + 1:])]
+    if forse:
+        avvisi.append(F("rose.forse_manca_riga_vuota", squadra=titolo, n=len(forse),
+                        nomi=elenco([f"«{nome}»" for nome in forse], con_e=True)))
 
 
 def _e_titolo(r: int, v: str, tipi: list[str], valori: list[str], prossima: list[int | None], aperta: bool, dopo_vuota: bool,
@@ -391,7 +421,9 @@ ARTICOLI_DAVANTI = {"i", "il", "gli"}       # «La», «Lo», «Le» no: Lo Cels
 
 def _sembra_squadra(v: str) -> bool:
     """Un nome che non può essere di un calciatore: una parola da fantasquadra, un articolo davanti, cifre, più di tre parole o
-    segni come «&», «!», «,»."""
+    segni come «&», «!», «,». Il numero dell'elenco davanti («2. Rossi») e il costo in fondo («Rossi 15») non contano: sono
+    di un giocatore (revisione della #939)."""
+    v = re.sub(r"^\s*\d+[.)]?\s+|\s+\d+(?:[.,]\d+)?\s*$", "", v)
     parole = normalizza(v).split()
     return (bool(set(parole) & PAROLE_SQUADRA) or (parole[:1] and parole[0] in ARTICOLI_DAVANTI) or len(parole) > 3
             or bool(re.search(r"\d|[&!?#@+,/]", v)))
@@ -422,11 +454,12 @@ def estrai(griglie: list[tuple[str, list[list]]], indice: Indice,
             continue
         piene = [r for r in griglia if any(_testo(x) for x in r)]
         giocatori: set[int] = set()
+        avvisi_foglio: list[str] = []
         if piene and sum(1 for r in piene if sum(1 for x in r if _testo(x)) == 1) / len(piene) > 0.8:
-            griglia, giocatori = _da_un_valore_per_riga(griglia, indice, sum(rosa.values()) if rosa else ROSA_DI_BASE, squadre_note)
+            griglia, giocatori = _da_un_valore_per_riga(griglia, indice, sum(rosa.values()) if rosa else ROSA_DI_BASE, squadre_note,
+                                                        avvisi_foglio)
         celle = _Celle(griglia, indice, giocatori)
         lette: dict[str, SquadraLetta] = {}
-        avvisi_foglio: list[str] = []
         for c0, c1 in celle.blocchi():
             _estrai_blocco(celle, c0, c1, nome_foglio, lette, avvisi_foglio)
         tipo = _foglio_non_rosa(celle, lette)

@@ -280,6 +280,11 @@ CATALOGO: dict[str, str] = {
     "rose.piu_giocatori_riga": "Riga {riga}: più giocatori sulla stessa riga ({nomi}). Se sono squadre affiancate, lascia una colonna vuota tra una squadra e l'altra.",
     "rose.riga_non_chiara": "Riga {riga}: ignorata ({celle}): non è chiaro se sia un'intestazione o il nome di più squadre.",
     "rose.nome_doppio": "{squadra}: {nome} compare due volte, l'ho tenuto una volta sola.",
+    # testo con un nome per riga e squadre forse una sotto l'altra (rose._forse_manca_una_riga_vuota): {nomi} = «Nome», con «e»
+    "rose.forse_manca_riga_vuota.one": "{squadra}: manca una riga vuota fra le squadre? {nomi} non è nel listone: se è il nome di una "
+                                       "squadra, lascia una riga vuota prima e controlla di nuovo.",
+    "rose.forse_manca_riga_vuota.other": "{squadra}: manca una riga vuota fra le squadre? {nomi} non sono nel listone: se uno è il nome "
+                                         "di una squadra, lascia una riga vuota prima e controlla di nuovo.",
     "rose.fogli_non_letti": "Ho letto solo i primi {letti} fogli su {totale}: se negli altri ci sono delle rose, non le ho lette. "
                             "Togli dal file i fogli che non servono, oppure carica gli altri in un secondo file.",
     # una lega già mista (squadre di esempio rimaste insieme a quelle vere, #683): server._rose_di_prima

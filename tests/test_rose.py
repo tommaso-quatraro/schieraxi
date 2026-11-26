@@ -127,6 +127,35 @@ def test_uno_per_riga_titolo_riconosciuto_dall_allenatore_o_dalle_squadre_salvat
     assert list(_da_testo("Alfa\nSommer\nBeta\nKean\n", indice)) == ["Alfa"]
 
 
+FORSE_SQUADRA = ("Alfa: manca una riga vuota fra le squadre? «Pantere» non è nel listone: se è il nome di una squadra, lascia "
+                 "una riga vuota prima e controlla di nuovo.")
+
+
+def test_uno_per_riga_senza_righe_vuote_avvisa_che_forse_manca_una_riga_vuota(indice):
+    """Revisione della #939: squadre una sotto l'altra senza riga vuota diventano una squadra sola. Un nome sconosciuto in mezzo
+    ai giocatori potrebbe essere il nome della seconda: l'anteprima lo chiede. Con le righe vuote fra le squadre no: chi le usa
+    sa come separarle, e un giocatore sconosciuto ha già la sua riga fra i non trovati."""
+    avvisi = []
+    squadre = _da_testo("Alfa\nSommer\nBastoni\nPantere\nKean\nDimarco\n", indice, avvisi=avvisi)
+    assert list(squadre) == ["Alfa"] and avvisi == [FORSE_SQUADRA]
+    avvisi = []
+    _da_testo("Alfa\nSommer\nPantere\nBastoni\nKean\n\nBeta\nDimarco\n", indice, avvisi=avvisi)
+    assert avvisi == []
+    avvisi = []                                                    # rosa più lunga di quella delle regole: anche con le righe vuote
+    _da_testo("Alfa\nSommer\nBastoni\nPantere\nKean\nDimarco\n\nBeta\nBarella\n", indice, ROSA_PICCOLA, avvisi=avvisi)
+    assert avvisi == [FORSE_SQUADRA]
+
+
+@pytest.mark.parametrize("testo", ["Alfa\nSommer 15\nPinco Pallino 3\nBastoni 20\nKean 30\n",
+                                   "Alfa\n1. Sommer\n2. Pinco Pallino\n3. Bastoni\n4. Kean\n",
+                                   "Alfa\n\nSommer\n\nPinco Pallino\n\nBastoni\n\nKean\n"])
+def test_uno_per_riga_costo_numero_o_riga_vuota_fra_i_giocatori_non_aprono_squadre(indice, testo):
+    # revisione della #939: il costo sulla stessa riga, l'elenco numerato e una riga vuota fra ogni giocatore
+    squadre = _da_testo(testo, indice)
+    assert list(squadre) == ["Alfa"], testo
+    assert len(squadre["Alfa"].righe) == 4 and "Pinco Pallino" in squadre["Alfa"].righe[1].testo
+
+
 def test_csv_con_punto_e_virgola(tmp_path, indice):
     f = tmp_path / "rose.csv"
     f.write_text("Squadra Uno;;\nCalciatore;Ruolo;Costo\nSommer;P;10\nKean;A;20\n", encoding="utf-8")
