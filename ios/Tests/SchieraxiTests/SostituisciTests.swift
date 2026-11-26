@@ -52,6 +52,49 @@ struct SostituisciTests {
         #expect(vm.messaggio == nil)
     }
 
+    // MARK: il posto di chi entra (collaudo del 26/11)
+
+    @Test("Ogni riga dice dov'è chi entra nella formazione in campo, come la web: «Panchina 5», «Panchina 3», «Non schierato»")
+    func postoDiChiEntra() async throws {
+        let (vm, _) = try await caricata(rotta: { _ in Data(Prova.rispostaConFuori.utf8) })
+        await vm.sostituisci(Prova.incerto)
+        let righe = try #require(vm.elencoSostituti?.stato.righe)
+        #expect(righe.map(\.entra.id) == [7457, 6994, 5678])
+        #expect(righe.map(\.posto) == [Catalogo.Mercato.panchinaN(n: "5"), Catalogo.Mercato.panchinaN(n: "3"), Catalogo.Mercato.postoFuori])
+        #expect(Catalogo.Mercato.panchinaN(n: "3") == "Panchina 3")
+        #expect(Catalogo.Mercato.postoFuori == "Non schierato")
+    }
+
+    @Test("Con un altro modulo in campo il posto è quello della sua panchina")
+    func postoConUnAltroModulo() async throws {
+        let (vm, _) = try await caricata(rotta: { _ in Data(Prova.rispostaConFuori.utf8) })
+        await vm.scegliModulo("5-3-2")
+        try #require(vm.manuale == Prova.titolari532)
+        await vm.sostituisci(Prova.incerto)
+        let righe = try #require(vm.elencoSostituti?.stato.righe)
+        #expect(righe.map(\.entra.id) == [5678], "7457 e 6994 nel 5-3-2 sono titolari: non sono righe")
+        #expect(righe.first?.posto == Catalogo.Mercato.panchinaN(n: "5"), "nel 5-3-2 Roselli è il quinto della panchina")
+    }
+
+    @Test("Il posto a parole: titolare, panchina con il numero, non schierato; chi non è nella formazione niente")
+    func postoAParole() {
+        #expect(PostoInFormazione.testo(1, titolari: [1, 2], panchina: [3, 4], inRosa: true) == Catalogo.Mercato.postoTitolare)
+        #expect(PostoInFormazione.testo(4, titolari: [1, 2], panchina: [3, 4], inRosa: true) == Catalogo.Mercato.panchinaN(n: "2"))
+        #expect(PostoInFormazione.testo(5, titolari: [1, 2], panchina: [3, 4], inRosa: true) == Catalogo.Mercato.postoFuori)
+        #expect(PostoInFormazione.testo(5, titolari: [1, 2], panchina: [3, 4], inRosa: false) == nil)
+        #expect(Catalogo.Mercato.postoTitolare == "Titolare")
+    }
+
+    @Test("Sotto il nome la partita e poi il posto, con il punto in mezzo come la web; senza posto solo la partita")
+    func dettaglioDellaRiga() throws {
+        let g: Giocatore = try Decodifica.decodifica(Data(#"{"id": 7, "nome": "Mario Prova", "ruolo": "D", "squadra": "lecce", "avversario": "frosinone", "in_casa": true}"#.utf8))
+        let adesso = Date()
+        let partita = RigaGiocatore.sottotitolo(g, adesso: adesso)
+        try #require(!partita.isEmpty)
+        #expect(RigaCambio.dettaglio(g, posto: "Panchina 3", adesso: adesso) == partita + " · Panchina 3")
+        #expect(RigaCambio.dettaglio(g, posto: nil, adesso: adesso) == partita)
+    }
+
     @Test("Nessun compagno può entrare: l'elenco è vuoto (la frase la scrive la vista)")
     func elencoVuoto() async throws {
         let (vm, _) = try await caricata(rotta: { _ in Data(#"{"giornata": 9, "esce": 6523, "entrate": []}"#.utf8) })
@@ -215,6 +258,15 @@ private enum Prova {
       {"entra": 4510, "punteggio_atteso": 64.3, "differenza": 0.2},
       {"entra": 6994, "punteggio_atteso": 64.0, "differenza": -0.1},
       {"entra": 6980, "punteggio_atteso": 64.0}
+    ]}
+    """
+
+    /// La risposta per 6523 con due difensori in panchina (nel 4-3-3 quinto e terzo) e uno che non è fra i 18 (5678).
+    static let rispostaConFuori = """
+    {"giornata": 9, "esce": 6523, "punteggio_atteso": 64.1, "entrate": [
+      {"entra": 7457, "punteggio_atteso": 64.4, "differenza": 0.3},
+      {"entra": 6994, "punteggio_atteso": 64.0, "differenza": -0.1},
+      {"entra": 5678, "punteggio_atteso": 63.0, "differenza": -1.1}
     ]}
     """
 }

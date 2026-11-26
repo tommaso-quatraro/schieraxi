@@ -12,9 +12,13 @@ final class OggiViewModel: ViewModelBase {
     /// Cresce a ogni lettura della giornata che passa a promemoria e widget (`leggi`): una lettura partita prima di un'altra e
     /// arrivata dopo, o mentre l'altra è in viaggio, è superata e non decide niente.
     private var letture = 0
-    /// Partite rinviate: la scelta «per questa giornata» è in viaggio (il menu si blocca) e l'eventuale errore da mostrare.
+    /// Partite rinviate: la scelta «per questa giornata» è in viaggio (il menu si blocca) e l'eventuale errore da mostrare, finché
+    /// una lettura della giornata non riesce o la scelta dopo non si salva (collaudo del 26/11: prima restava per sempre).
     @Published private(set) var rinvioInCorso = false
     @Published var erroreRinvio: String?
+    /// La scelta sul rinvio si è salvata: la conferma della web («Fatto: consigli aggiornati per questa giornata»,
+    /// `TestiRinvio.salvato`), sotto il menu; la Formazione la toglie dopo qualche secondo.
+    @Published var confermaRinvio: String?
     /// Cosa si fa con una giornata appena letta dal server (mai con la copia sul telefono), l'ora in cui è partita la lettura e di
     /// chi era (server e sessione di quel momento, `ChiLegge`): permesso per le notifiche la prima volta, promemoria e widget
     /// (`passaAWidgetEPromemoria`). Senza promemoria (test) niente; `OggiPerWidgetTests` la sostituisce per vedere che la giornata arriva.
@@ -72,11 +76,13 @@ final class OggiViewModel: ViewModelBase {
     func cambiaRinvio(_ scelta: SceltaRinvio, modo: String) async {
         guard modo != scelta.modo, !rinvioInCorso else { return }
         rinvioInCorso = true
+        confermaRinvio = nil
         defer { rinvioInCorso = false }
         do {
             let corpo = CorpoRinvio(giornata: scelta.giornata, modo: modo == scelta.predefinito ? nil : modo, stagione: scelta.stagione)
             _ = try await server.corpoJSON("PUT", "/api/regole/rinvio", corpo)
             erroreRinvio = nil
+            confermaRinvio = TestiRinvio.salvato
             Haptics.esito(riuscito: true)
             NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
         } catch {
@@ -122,6 +128,7 @@ final class OggiViewModel: ViewModelBase {
         await caricatore.ricarica()
         guard numero == letture else { return .superata }
         guard let oggi = caricatore.dato, caricatore.datiSalvati == nil, !caricatore.dallaCache else { return .nonRiuscita }
+        erroreRinvio = nil          // la giornata è arrivata: l'errore di una scelta sul rinvio di prima non vale più
         return .fresca(oggi, chiestaIl: chiesta, chi: chi)
     }
 

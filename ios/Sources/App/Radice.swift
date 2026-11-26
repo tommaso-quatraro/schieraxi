@@ -341,15 +341,16 @@ struct RadiceView: View {
             modello.formazione.apriSostituzioneInAttesa()
             modello.formazione.apriMettiInCampoInAttesa()
         }) { g in
-            GiocatoreSheet(id: g.id, server: modello.server, contesto: g.contesto,
-                           sostituisci: {
-                               modello.formazione.chiediSostituzione(g.id)
-                               nav.scheda = nil
-                           },
-                           mettiInCampo: {
-                               modello.formazione.chiediMettiInCampo(g.id)
-                               nav.scheda = nil
-                           })
+            // dalla Formazione la scheda legge lo stato di adesso: i pulsanti si accendono quando arrivano i dati (`SchedaAperta`)
+            SchedaAperta(scheda: g, server: modello.server, formazione: modello.formazione,
+                         sostituisci: {
+                             modello.formazione.chiediSostituzione(g.id)
+                             nav.scheda = nil
+                         },
+                         mettiInCampo: {
+                             modello.formazione.chiediMettiInCampo(g.id)
+                             nav.scheda = nil
+                         })
             .navigationTransition(.zoom(sourceID: g.id, in: zoom))
             // sull'iPad un foglio grande come una pagina, alto quasi quanto lo schermo: quello predefinito era piccolo al centro
             // e tagliava «Sostituisci» (#896). Sull'iPhone il foglio è già a tutta larghezza: non cambia niente

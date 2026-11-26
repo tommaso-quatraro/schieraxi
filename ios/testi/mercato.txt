@@ -59,3 +59,9 @@ mercato.rigori_calciati
 mercato.passaggi_chiave
 mercato.punizioni
 mercato.stagione_prec
+
+# Il posto in formazione di chi può entrare, nelle righe di «Sostituisci» (PostoInFormazione, RigaCambio): «Titolare»,
+# «Panchina 2», «Non schierato», come `postoInFormazione` della web
+mercato.posto_titolare
+mercato.panchina_n
+mercato.posto_fuori

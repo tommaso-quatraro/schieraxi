@@ -24,6 +24,8 @@ final class DominioTests: XCTestCase {
         let panchina = [try giocatore(6, "Pelucci", ruolo: "P"), try giocatore(7, "Fosaldi", ruolo: "P")]
         let testo = TestoFormazione.crea(giornata: 9, modulo: "2-1-1", titolari: [a, c, d1, p, d2], panchina: panchina)
         XCTAssertEqual(testo, "9ª giornata di Serie A · 2-1-1\nP: Noraldi\nD: Foselli, Barucci\nC: Delardi\nA: Castotti\nPanchina: 1) Pelucci, 2) Fosaldi")
+        // la parola della web (`scambi.panchina` in `testoFormazione`), dal catalogo comune
+        XCTAssertTrue(testo.contains("\n\(Catalogo.Scambi.panchina): 1) Pelucci"))
         XCTAssertFalse(TestoFormazione.crea(giornata: 1, modulo: "x", titolari: [], panchina: []).contains("Panchina"))
     }
 

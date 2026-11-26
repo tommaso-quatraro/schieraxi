@@ -60,6 +60,30 @@ struct FormazioneCopiaEInCorsoTests {
         #expect(CampoFormazione.inFila("A", titolari).contains { $0.id == sconosciuto }, "senza ruolo in attacco (`linee.A` della web)")
     }
 
+    @Test("A giornata in corso la rilettura non chiede di valutare gli 11 salvati: in campo c'è la formazione di Oggi (come la web)")
+    func inCorsoSenzaValutazione() async throws {
+        let f0: Formazione = try Fixture.decodifica("formazione")
+        let salvati = f0.titolari.map(\.id).map { $0 == 6523 ? 6994 : $0 }     // un cambio solo: non è un modulo già calcolato
+        let srv = try Self.server(Self.indirizzo(), scelta: SalvataggioAutomaticoTests.json(salvati),
+                                  oggi: Self.oggiInCorso(titolari: salvati, panchina: []))
+        let oggi = OggiViewModel(server: srv, conPromemoria: false)
+        let vm = FormazioneViewModel(server: srv, oggi: oggi)
+        // come la rilettura ogni 5 minuti (`seguiGiornata`): prima la giornata, poi formazione e scelta
+        await oggi.caricatore.ricarica()
+        let letta = await vm.carica()
+        #expect(letta && vm.sceltaLetta, "la scelta si legge lo stesso")
+        let f = try #require(vm.formazione)
+        try #require(vm.dalVivo(f) != nil, "in campo la formazione schierata di Oggi")
+        #expect(srv.quante("POST /api/formazione/valuta") == 0, "a giornata in corso valutare gli 11 salvati non serve")
+        #expect(vm.vista(f).titolari.map(\.id) == salvati)
+        await vm.carica()
+        #expect(srv.quante("POST /api/formazione/valuta") == 0, "nemmeno alla rilettura dopo")
+        // prima della giornata in corso la stessa scelta si fa valutare dal server, come sempre
+        let prima = try Self.server(Self.indirizzo(), scelta: SalvataggioAutomaticoTests.json(salvati))
+        await FormazioneViewModel(server: prima).carica()
+        #expect(prima.quante("POST /api/formazione/valuta") == 1)
+    }
+
     @Test("Con la giornata in corso di un'altra giornata (copia vecchia) il campo non la usa")
     func inCorsoDiUnAltraGiornata() async throws {
         let schierati = try SalvataggioAutomaticoTests.altroModulo()
