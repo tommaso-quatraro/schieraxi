@@ -47,14 +47,25 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
     /// Un messaggio dopo un'azione che non è andata (notifiche rifiutate, salvataggio non riuscito).
     @Published var avviso: String?
     @Published private(set) var inCorso = false
-    /// «I tempi della lega» (#931): i due menu, con i valori più comuni finché le regole della lega non si leggono, come la web.
-    @Published var scadenza = TempiGuida.partenza.scadenza
-    @Published var prima = TempiGuida.partenza.prima
+    /// «I tempi della lega» (#931): i due menu, con i valori più comuni finché le regole della lega non si leggono, come la web. Un
+    /// cambio che non viene dalla lettura delle regole è una scelta dell'utente e la lettura non lo tocca più.
+    @Published var scadenza = TempiGuida.partenza.scadenza {
+        didSet { if !applicoLettura, scadenza != oldValue { scadenzaScelta = true } }
+    }
+    @Published var prima = TempiGuida.partenza.prima {
+        didSet { if !applicoLettura, prima != oldValue { primaScelta = true } }
+    }
     /// Le voci del menu della scadenza: le più comuni più quella salvata, se è diversa.
     @Published private(set) var scadenzeScelte = TempiGuida.scadenze
     /// Le regole della lega sono state lette: solo allora «Salva» le scrive (come la web, #801: altrimenti i valori di partenza
     /// andrebbero sopra quelli veri).
     private(set) var tempiLetti = false
+    private var scadenzaScelta = false
+    private var primaScelta = false
+    /// Vero mentre i menu prendono i valori letti dal server (quel cambio non è una scelta dell'utente).
+    private var applicoLettura = false
+    /// La lettura delle regole in corso, che chi arriva dopo aspetta invece di farne un'altra.
+    private var letturaTempi: Task<Bool, Never>?
 
     /// Come la web (`pav.non_sono_riuscito`); il salvataggio si ritenta da solo al passo dopo.
     static let erroreSalvataggio = Catalogo.Pav.nonSonoRiuscito
@@ -159,7 +170,15 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
         avanza()
     }
 
+    /// «L'ho già fatto» di widget e avvisi: come `segnaFatto`, ma non mentre un'altra azione è in corso (il pulsante è spento).
+    func giaFatto(_ passo: PassoGuidato) async {
+        guard !inCorso else { return }
+        await segnaFatto(passo)
+    }
+
+    /// «Salta». Mentre un'azione è in corso (per esempio «Salva» dei tempi) non vale: il passo avanzerebbe due volte.
     func salta(_ passo: PassoGuidato) async {
+        guard !inCorso else { return }
         saltatiOra.insert(passo)
         await salva(fatti: [], saltati: [passo], chiuso: false)
         avanza()
@@ -195,28 +214,43 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
     // MARK: i tempi della lega
 
     /// All'apertura del passo «I tempi della lega» i menu prendono i valori salvati della lega, come `paTempiLeggi` della web. Un
-    /// menu cambiato mentre si leggono le regole resta come l'ha messo l'utente: si confronta con i valori che c'erano quando la
-    /// lettura è partita (`partenza`, nil = quelli di adesso). Se le regole non si leggono restano i valori di prima e «Salva» non
-    /// li scrive (`tempiLetti`).
-    func caricaTempi(partenza: TempiGuida.Valori? = nil) async {
-        let primaDellaLettura = partenza ?? TempiGuida.Valori(scadenza: scadenza, prima: prima)
-        guard let regole: JSONValue = try? await server.get("/api/regole", snake: false) else { return }
-        let salvati = TempiGuida.valori(regole)
-        scadenzeScelte = TempiGuida.sceltaScadenze(salvata: salvati.scadenza)
-        if scadenza == primaDellaLettura.scadenza { scadenza = salvati.scadenza }
-        if prima == primaDellaLettura.prima { prima = salvati.prima }
-        tempiLetti = true
+    /// menu scelto a mano (`scadenzaScelta`, `primaScelta`, come `data-scelto` della web) la lettura non lo tocca, anche se arriva
+    /// dopo. Una lettura alla volta: chi chiama mentre ce n'è una in corso la aspetta (`letturaTempi`); a lettura riuscita non si
+    /// rilegge più. Vero se le regole sono lette; se non si leggono i menu restano come sono e «Salva» non li scrive (#801).
+    @discardableResult
+    func caricaTempi() async -> Bool {
+        if tempiLetti { return true }
+        if let giaPartita = letturaTempi { return await giaPartita.value }
+        let lettura = Task { await leggiTempi() }
+        letturaTempi = lettura
+        let letti = await lettura.value
+        letturaTempi = nil
+        return letti
     }
 
-    /// «Salva» del passo «I tempi della lega», come `paTempiSalva` della web: se le regole non si sono lette non scrive niente, lo
-    /// dice e le rilegge per il tocco dopo; altrimenti le rilegge e le salva tutte, cambiando solo i due valori, e il passo è fatto.
+    private func leggiTempi() async -> Bool {
+        guard let regole: JSONValue = try? await server.get("/api/regole", snake: false) else { return false }
+        let salvati = TempiGuida.valori(regole)
+        scadenzeScelte = TempiGuida.sceltaScadenze(salvata: salvati.scadenza)
+        applicoLettura = true
+        if !scadenzaScelta { scadenza = salvati.scadenza }
+        if !primaScelta { prima = salvati.prima }
+        applicoLettura = false
+        // una scadenza scelta a mano resta fra le voci anche dopo che il menu ha preso quelle della lega
+        if !scadenzeScelte.contains(scadenza) { scadenzeScelte.append(scadenza) }
+        tempiLetti = true
+        return true
+    }
+
+    /// «Salva» del passo «I tempi della lega», come `paTempiSalva` della web: aspetta la lettura delle regole (quella in corso, o una
+    /// nuova se la prima non è riuscita); se non riesce non scrive niente e lo dice; altrimenti rilegge le regole e le salva tutte,
+    /// cambiando solo i due valori dei menu, e il passo è fatto.
     func salvaTempi() async {
         guard !inCorso else { return }
         inCorso = true
         defer { inCorso = false }
-        guard tempiLetti else {
+        guard await caricaTempi() else {
             avviso = Catalogo.Pav.tempiNonLetti
-            await caricaTempi()
             return
         }
         do {

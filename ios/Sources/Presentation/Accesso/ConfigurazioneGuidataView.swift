@@ -100,22 +100,25 @@ struct ConfigurazioneGuidataView: View {
             if passo == .tempi { domandeTempi }
             VStack(spacing: 10) {
                 principale(passo)
+                // spenti mentre un'azione è in corso (per esempio «Salva» dei tempi), come il pulsante principale
                 if passo.siSegnaAMano {
-                    Button { Task { await vm.segnaFatto(passo) } } label: {
+                    Button { Task { await vm.giaFatto(passo) } } label: {
                         Label(Catalogo.Pav.giaFatto, systemImage: "checkmark.circle").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                     }
                     .pulsanteVetro()
+                    .disabled(vm.inCorso)
                 }
                 Button { Task { await vm.salta(passo) } } label: {
                     Text(Catalogo.Pav.salta).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(Color.testoSecondario)
+                .disabled(vm.inCorso)
             }
         }
         // i tempi salvati della lega si leggono quando il passo compare, come `paTempiCarica` della web
         .task(id: passo) {
-            if passo == .tempi, !vm.tempiLetti { await vm.caricaTempi() }
+            if passo == .tempi { await vm.caricaTempi() }
         }
     }
 

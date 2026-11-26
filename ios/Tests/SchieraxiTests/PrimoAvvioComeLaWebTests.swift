@@ -120,20 +120,45 @@ struct TempiGuidaTests {
     }
 }
 
-/// Un server finto per il passo dei tempi: la guida, lo stato della lega e le regole (con il loro ultimo PUT).
+/// Un server finto per il passo dei tempi: la guida, lo stato della lega e le regole (con il loro ultimo PUT). `fallite`: quante
+/// letture delle regole non riescono prima di riuscire; `ferma`: le letture aspettano `sblocca()`, per toccare «Salva» mentre la
+/// lettura è in corso.
 private final class ServerTempi: @unchecked Sendable {
     private let blocco = NSLock()
     private var regole: String
     let regoleLeggibili: Bool
+    private var fallite: Int
+    private var ferma: Bool
 
-    init(regole: String = #"{"scadenza_minuti": 10, "prima_giornata_lega": 4, "moduli": ["3-4-3", "4-4-2"]}"#, leggibili: Bool = true) {
+    init(regole: String = #"{"scadenza_minuti": 10, "prima_giornata_lega": 4, "moduli": ["3-4-3", "4-4-2"]}"#, leggibili: Bool = true,
+         fallite: Int = 0, ferma: Bool = false) {
         self.regole = regole
         regoleLeggibili = leggibili
+        self.fallite = fallite
+        self.ferma = ferma
     }
 
     var regoleSalvate: String {
         blocco.lock(); defer { blocco.unlock() }
         return regole
+    }
+
+    func sblocca() {
+        blocco.lock(); defer { blocco.unlock() }
+        ferma = false
+    }
+
+    private var fermo: Bool {
+        blocco.lock(); defer { blocco.unlock() }
+        return ferma
+    }
+
+    /// Vero se questa lettura deve fallire (e ne toglie una dal conto).
+    private func falliscePerFinta() -> Bool {
+        blocco.lock(); defer { blocco.unlock() }
+        guard fallite > 0 else { return false }
+        fallite -= 1
+        return true
     }
 
     private func salva(_ testo: String) {
@@ -154,7 +179,8 @@ private final class ServerTempi: @unchecked Sendable {
                     salva(testo)
                     return Data(testo.utf8)
                 }
-                guard regoleLeggibili else { throw ErroreApi.rete("giù") }
+                while fermo { try await Task.sleep(nanoseconds: 5_000_000) }
+                guard regoleLeggibili, !falliscePerFinta() else { throw ErroreApi.rete("giù") }
                 return Data(regoleSalvate.utf8)
             }
             throw ErroreApi.server("nessuna risposta per \(percorso)")
@@ -162,9 +188,25 @@ private final class ServerTempi: @unchecked Sendable {
     }
 }
 
+/// Aspetta (al massimo 5 secondi) che `condizione` sia vera; chi chiama la controlla dopo con `#expect`.
+@MainActor
+private func aspetta(_ condizione: @MainActor () -> Bool) async {
+    for _ in 0..<250 where !condizione() {
+        try? await Task.sleep(nanoseconds: 20_000_000)
+    }
+}
+
 @MainActor
 @Suite("Primo avvio, «I tempi della lega»: si leggono e si salvano come la web (#931)")
 struct TempiNellaGuidaTests {
+    @Test("Nella demo il server conosce il passo «tempi», come quello vero (foto `guida`)")
+    func demoConITempi() async throws {
+        let risposta: PrimoAvvioRisposta = try await FinteServer.demo.get("/api/primo-avvio")
+        #expect(risposta.passi.contains("tempi"))
+        let corpo = PrimoAvvioLogica.corpo(precedente: nil, passiAmmessi: risposta.passi, fatti: [.tempi], saltati: [], chiuso: false)
+        #expect(corpo.fatti == ["tempi"], "il passo fatto nella demo si manda, non si scarta")
+    }
+
     @Test("Con rose e squadra già fatte la guida parte dai tempi")
     func parteDaiTempi() async {
         let vm = ConfigurazioneGuidataViewModel(server: ServerTempi().server)
@@ -219,14 +261,70 @@ struct TempiNellaGuidaTests {
         #expect(vm.esito(.tempi) == .daFare)
     }
 
-    @Test("Un menu cambiato mentre si leggono le regole non torna al valore salvato")
+    @Test("Un menu scelto a mano prima che le regole arrivino non torna al valore salvato, come `data-scelto` della web")
     func sceltaNonSovrascritta() async {
         let vm = ConfigurazioneGuidataViewModel(server: ServerTempi().server)
         await vm.carica()
         vm.scadenza = 60
-        await vm.caricaTempi(partenza: TempiGuida.Valori(scadenza: 0, prima: 1))
+        await vm.caricaTempi()
         #expect(vm.scadenza == 60, "scelto a mano: resta la scelta")
         #expect(vm.prima == 4, "non toccato: prende il valore salvato")
+    }
+
+    @Test("«Salva» toccato mentre si leggono le regole aspetta la lettura e poi salva i menu, come la web (#801)")
+    func salvaAspettaLaLettura() async throws {
+        let finto = ServerTempi(ferma: true)
+        let s = finto.server
+        let vm = ConfigurazioneGuidataViewModel(server: s)
+        await vm.carica()
+        let lettura = Task { await vm.caricaTempi() }
+        await aspetta { s.quante("GET /api/regole") == 1 }
+        vm.prima = 8                                         // scelto a mano mentre la lettura è in corso
+        let salva = Task { await vm.salvaTempi() }
+        await aspetta { vm.inCorso }
+        #expect(vm.inCorso, "«Salva» è partito e aspetta la lettura")
+        finto.sblocca()
+        _ = await lettura.value
+        await salva.value
+        #expect(vm.avviso == nil, "niente «Non riesco a leggere i tempi salvati»: la lettura c'era, bastava aspettarla")
+        #expect(s.quante("GET /api/regole") == 2, "una lettura sola all'apertura, più quella prima di salvare")
+        let salvate: JSONValue = try Decodifica.decodifica(Data(finto.regoleSalvate.utf8), snake: false)
+        #expect(salvate.valore("scadenza_minuti") == .intero(10), "il menu non toccato ha il valore salvato")
+        #expect(salvate.valore("prima_giornata_lega") == .intero(8), "il menu scelto a mano resta")
+        #expect(vm.esito(.tempi) == .fatto)
+    }
+
+    @Test("Dopo una lettura non riuscita, «Salva» rilegge e salva i menu scelti a mano: non li riporta ai valori salvati")
+    func sceltaDopoUnaLetturaNonRiuscita() async throws {
+        let finto = ServerTempi(fallite: 1)
+        let vm = ConfigurazioneGuidataViewModel(server: finto.server)
+        await vm.carica()
+        await vm.caricaTempi()
+        #expect(!vm.tempiLetti)
+        vm.scadenza = 30
+        await vm.salvaTempi()
+        let salvate: JSONValue = try Decodifica.decodifica(Data(finto.regoleSalvate.utf8), snake: false)
+        #expect(vm.scadenza == 30)
+        #expect(salvate.valore("scadenza_minuti") == .intero(30), "la scelta a mano, non quella salvata prima (10)")
+        #expect(salvate.valore("prima_giornata_lega") == .intero(4))
+        #expect(vm.passoCorrente == .widget)
+    }
+
+    @Test("Mentre «Salva» è in corso «Salta» e «L'ho già fatto» non fanno niente: il passo avanza una volta sola")
+    func comandiFermiMentreSalva() async {
+        let finto = ServerTempi(ferma: true)
+        let vm = ConfigurazioneGuidataViewModel(server: finto.server)
+        await vm.carica()
+        let salva = Task { await vm.salvaTempi() }
+        await aspetta { vm.inCorso }
+        await vm.salta(.tempi)
+        await vm.giaFatto(.tempi)
+        #expect(vm.passoCorrente == .tempi, "il tocco su «Salta» durante il salvataggio non vale")
+        #expect(vm.esito(.tempi) == .daFare)
+        finto.sblocca()
+        await salva.value
+        #expect(vm.esito(.tempi) == .fatto)
+        #expect(vm.passoCorrente == .widget, "un passo solo: prima saltava anche il widget")
     }
 
     @Test("«Tutto pronto» dice i passi saltati per nome")
