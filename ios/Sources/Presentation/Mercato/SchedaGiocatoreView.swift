@@ -67,40 +67,37 @@ struct GiocatoreCorpo: View {
     var body: some View {
         ZStack {
             Sfondo()
-            ScrollViewReader { proxy in
-                ScrollView {
-                    Colonne(spazio: 14) {
-                        if let t = testa {
-                            cartaTesta(t)
-                            if let perche = contesto?.perche {
-                                Carta(Catalogo.Formazione.percheTitolare) {
-                                    Text(perche).font(.subheadline).fixedSize(horizontal: false, vertical: true)
-                                }
+            ScrollView {
+                Colonne(spazio: 14) {
+                    if let t = testa {
+                        cartaTesta(t)
+                        if let perche = contesto?.perche {
+                            Carta(Catalogo.Formazione.percheTitolare) {
+                                Text(perche).font(.subheadline).fixedSize(horizontal: false, vertical: true)
                             }
-                            if let p = t.previsione, let motivi = LetturaScheda.perche(p) {
-                                Carta(PercheNumero.titolo) { BloccoPercheNumero(perche: motivi) }
-                            }
-                            cartaUltimiVoti
-                            azioneFormazione
-                            cartaTuttiINumeri
-                        } else if let e = vm.caricatore.errore {
-                            ErroreVista(messaggio: e) { Task { await vm.carica() } }
-                        } else {
-                            Scheletro(schede: 3, righe: 2, testo: Catalogo.Mercato.caricoScheda)
                         }
+                        if let p = t.previsione, let motivi = LetturaScheda.perche(p) {
+                            Carta(PercheNumero.titolo) { BloccoPercheNumero(perche: motivi) }
+                        }
+                        cartaUltimiVoti
+                        azioneFormazione
+                        cartaTuttiINumeri
+                    } else if let e = vm.caricatore.errore {
+                        ErroreVista(messaggio: e) { Task { await vm.carica() } }
+                    } else {
+                        Scheletro(schede: 3, righe: 2, testo: Catalogo.Mercato.caricoScheda)
                     }
-                    .padding(16)
-                    .animation(Tema.morbida, value: vm.caricatore.dato != nil)
                 }
-                .demoInFondo()
-                // foto `giocatore-fondo`: si ferma sul fondo di «Statistiche avanzate», così anche col testo grande si vede «Dati
-                // fino al …», l'ultima riga (#862, #911); col testo normale il blocco sta già nell'ultima schermata
-                .demoScorriA(TuttiINumeri.idAvanzate, proxy: proxy, schermate: ["giocatore"], inFondo: true, ancora: .bottom,
-                             pronto: vm.caricatore.dato != nil)
-                .refreshable { await vm.carica() }
-                .avvisoDatiSalvati(vm.caricatore)
-                .bordiMorbidi()
+                .padding(16)
+                .animation(Tema.morbida, value: vm.caricatore.dato != nil)
             }
+            // foto `giocatore-fondo`: la scheda parte scorsa in fondo, dove sta «Dati fino al …», l'ultima riga di «Tutti i
+            // numeri» (#911), anche col testo grande. Dal #862 la foto scorreva al titolo «Statistiche avanzate», dove la riga
+            // stava allora: con la riga in fondo, scorrere al fondo del blocco col testo al massimo si fermava più in alto
+            .demoInFondo()
+            .refreshable { await vm.carica() }
+            .avvisoDatiSalvati(vm.caricatore)
+            .bordiMorbidi()
         }
         // Il nome si legge una volta sola, grande, nell'intestazione.
         .navigationTitle("")

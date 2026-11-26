@@ -185,10 +185,6 @@ struct TuttiINumeri: View {
         }
     }
 
-    /// L'identità del blocco «Statistiche avanzate»: la foto `giocatore-fondo` ne mostra il fondo (`demoScorriA` in
-    /// `SchedaGiocatoreView`), così anche col testo grande si vede «Dati fino al …», l'ultima riga (#862, #911).
-    static let idAvanzate = "scheda-statistiche-avanzate"
-
     /// Le statistiche avanzate e, in fondo, una volta sola, fin dove arrivano i dati della fonte (#911, come `riempiScheda` della
     /// web): vale anche per «Gol e assist rispetto alle occasioni», che c'è solo quando c'è questo blocco. Non in cima a «Tutti i
     /// numeri», perché «Stagione» e i voti vengono da un'altra fonte, che va avanti.
@@ -217,7 +213,6 @@ struct TuttiINumeri: View {
                     nota(finoAl).padding(.top, 4)
                 }
             }
-            .id(Self.idAvanzate)
         }
     }
 }
