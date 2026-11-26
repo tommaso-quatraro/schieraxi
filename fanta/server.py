@@ -338,8 +338,11 @@ async def _risposta(request: Request, chiama):
     if funzione and not funzioni.acceso(funzione) and (funzione in funzioni.SEMPRE_BLOCCATE or not await run_in_threadpool(_vede_tutto, request, funzione)):
         return JSONResponse(status_code=404, content={"detail": funzioni.messaggio_spenta(funzione), "funzione": funzione},
                             headers={"Cache-Control": "no-store"})
-    # Con gli account i calcoli pesanti non bloccano la richiesta: partono in coda e la richiesta riceve 202 «sto calcolando» (vedi calcolo.py)
-    calcolo.in_coda.set(account.multiutente() and request.url.path.startswith("/api/"))
+    # Con gli account i calcoli pesanti non bloccano la richiesta: partono in coda e la richiesta riceve 202 «sto calcolando» (vedi calcolo.py),
+    # dopo averli aspettati al massimo calcolo.ATTESA_MAX secondi in tutto (#907: spesso finiscono prima, e l'app non deve riprovare)
+    in_coda = account.multiutente() and request.url.path.startswith("/api/")
+    calcolo.in_coda.set(in_coda)
+    calcolo.attesa.set(calcolo.Attesa(calcolo.ATTESA_MAX) if in_coda else None)
     calcolo.solo_cache.set(bool(getattr(request.state, "solo_widget", False)))     # il token del widget non fa partire calcoli
     # chi chiede, per la parte di ciascuno di calcoli e memorie condivise (limiti.MAX_CALCOLI_UTENTE...); senza account nessuno
     utente = getattr(request.state, "utente", None)
@@ -1746,8 +1749,9 @@ def analizza_scambio(request: Request, con: str, do: str, ricevo: str, conguagli
     if not r_ose.mia_squadra:
         raise ValueError("Indica prima la tua squadra in «La mia squadra»")
     da, a = _lista_id(do), _lista_id(ricevo)
-    # tetto al minuto per utente e analisi contemporanee limitate (la stessa analisi ripetuta, come fa l'app sul 202, non conta)
-    with limiti.analisi_scambio(ctx, (con, tuple(da), tuple(a), conguaglio, bool(completo))):
+    # tetto al minuto per utente e analisi contemporanee limitate (la stessa analisi ripetuta, come fa l'app sul 202, non conta);
+    # con il posto preso non si aspetta un calcolo in coda (#907): 202 subito e posto libero
+    with limiti.analisi_scambio(ctx, (con, tuple(da), tuple(a), conguaglio, bool(completo))), calcolo.senza_attesa():
         db = _db()
         try:
             if completo or conguaglio is not None:
@@ -1803,7 +1807,7 @@ def scambio_da_testo(dati: OffertaTesto, request: Request, ctx: Contesto = Depen
     if trovati["con"] and trovati["do"] and trovati["ricevo"] and not dati.completo:
         # stesso limite di /api/scambi/analizza (al minuto per utente, analisi contemporanee): anche l'analisi completa N contro M
         # passa di qui; la stessa offerta ripetuta non conta di nuovo
-        with limiti.analisi_scambio(ctx, ("testo", trovati["con"], tuple(trovati["do"]), tuple(trovati["ricevo"]))):
+        with limiti.analisi_scambio(ctx, ("testo", trovati["con"], tuple(trovati["do"]), tuple(trovati["ricevo"]))), calcolo.senza_attesa():
             risposta["analisi"] = _analisi_da_testo(trovati, r, r_ose, request)
     return risposta
 
