@@ -1,16 +1,17 @@
 {
-  "titolo": "Iscrizioni aperte: ci si registra senza invito",
+  "titolo": "Iscrizioni: si possono aprire a tutti, senza invito",
   "voci": [
-    "Accesso, Registrati: basta scegliere un nome utente e una password; l'email è facoltativa e l'account è subito pronto, poi parte il primo avvio. Non serve più un invito. Uguale sull'iPhone.",
+    "Accesso, Registrati: quando chi gestisce il server apre le iscrizioni basta scegliere un nome utente e una password; l'email è facoltativa, l'account è subito pronto e poi parte il primo avvio. Finché non le apre si entra con l'invito, come prima. Uguale sull'iPhone.",
     "Accesso, Registrati: se i posti sono finiti l'app dice «Iscrizioni chiuse: siamo al completo».",
     "Impostazioni, Gestione: con le iscrizioni aperte al posto di «Nuovo invito» c'è «Iscrizioni», con l'avviso quando i posti sono pieni.",
-    "Password dimenticata: si parte dal codice di recupero, perché l'email è facoltativa."
+    "Password dimenticata: con le iscrizioni aperte si parte dal codice di recupero, perché l'email è facoltativa."
   ],
   "tecnico": [
-    "FANTA_REGISTRAZIONE: predefinito `aperta` (prima `invito`); `aperta` ora vuol dire nome e password, niente invito, email facoltativa, account subito (account.registra con senza_invito, percorso classico come l'invito, anche con FANTA_MAIL=spento). L'iscrizione in due tempi con il codice per posta resta solo nel modo `email`. `invito` (anche `inviti`) richiude; un valore sconosciuto vale `invito`.",
+    "FANTA_REGISTRAZIONE: il predefinito resta `invito` (anche per un valore sconosciuto); `aperta`, da accendere a mano, ora vuol dire nome e password, niente invito, email facoltativa, account subito (account.registra con senza_invito, percorso classico come l'invito, anche con FANTA_MAIL=spento). L'iscrizione in due tempi con il codice per posta resta solo nel modo `email`. `inviti` vale come `invito`.",
     "Tetti: MAX_UTENTI predefinito 15 (era 30), FANTA_ISCRIZIONI_GIORNO predefinito 5 (era 10) e spostato in account.py (tetto_del_giorno, iscrizioni_al_giorno); valgono anche i tetti per indirizzo (REGISTRAZIONI_PER_IP, ACCOUNT_PER_IP). account.controlla_posti con il messaggio «Iscrizioni chiuse: siamo al completo» per invito, email, aperta e Google.",
     "POST /api/account/registra: campo facoltativo `sito`, la trappola del modulo della web (campo nascosto): pieno = 400, conta in registra-ip, evento di sicurezza registrazione_trappola. GET /api/account/me: campo nuovo `registrazione`. GET /api/admin/utenti e POST /api/admin/inviti: con `aperta` l'avviso dei posti pieni ha la chiave admin.posti_pieni_aperta e niente admin.posti_promessi.",
     "account_email.indirizzo_base: per gmail.com e googlemail.com toglie i punti e unifica il dominio (oltre al +etichetta di prima). posta.modello_verifica non riceve più il nome utente: l'email di iscrizione non contiene testo scelto da chi si registra.",
-    "Testi legali: iscrizione_aperta ed email_aperta per il nuovo modo; VERSIONE_TERMINI 2026-11-26. Catalogo: accesso.registrazione_aperta (al posto di accesso.serve_email), accesso.sito_web, admin.iscrizioni_titolo, admin.iscrizioni_aperte, err.trappola, errori.evento_registrazione_trappola, frase.admin.posti_pieni_aperta; err.registrazioni_chiuse con il testo nuovo."
+    "Testi legali: iscrizione_aperta ed email_aperta per il nuovo modo; VERSIONE_TERMINI 2026-11-26. Catalogo: accesso.registrazione_aperta (al posto di accesso.serve_email), accesso.sito_web, admin.iscrizioni_titolo, admin.iscrizioni_aperte, err.trappola, errori.evento_registrazione_trappola, frase.admin.posti_pieni_aperta; err.registrazioni_chiuse con il testo nuovo.",
+    "Testi di prima di `aperta` con l'email: Google con un'email non affidabile risponde «Con questo account Google non puoi iscriverti: usa il modulo di registrazione.» (err.google_usa_modulo, social.email_non_affidabile); senza FANTA_CONTATTO la Privacy dice solo «chi gestisce l'app». Test del secondo controllo dei posti dentro la transazione della registrazione aperta."
   ]
 }

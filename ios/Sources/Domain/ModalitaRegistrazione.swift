@@ -1,7 +1,7 @@
 import Foundation
 
 /// Come ci si registra su un server (campo `registrazione` della risposta 401): serve l'invito (`invito`), l'invito e l'email
-/// verificata con un codice (`email`), oppure niente (`aperta`, il modo predefinito del server dal 26/11/2026: nome utente e
+/// verificata con un codice (`email`), oppure niente (`aperta`, dal 26/11/2026 quando il server lo accende: nome utente e
 /// password, email facoltativa come con l'invito).
 enum ModalitaRegistrazione: String, Equatable {
     case invito, email, aperta

@@ -332,7 +332,7 @@ def scambio(db: sqlite3.Connection, codice: str, verificatore: str, utente_sessi
     if modo != "invito" and not esito["affidabile"]:
         db.execute("UPDATE flussi_social SET esito = NULL WHERE id = ?", (riga["id"],))
         db.commit()
-        raise ErroreSocial("Per iscriverti usa il modulo con la tua email.", 403, codice="email_non_affidabile")
+        raise ErroreSocial("Con questo account Google non puoi iscriverti: usa il modulo di registrazione.", 403, codice="email_non_affidabile")
     segreto = secrets.token_urlsafe(32)
     db.execute("UPDATE flussi_social SET iscrizione_hash = ?, iscrizione_scade = ? WHERE id = ?",
                (_h(segreto), _t(adesso + DURATA_ISCRIZIONE), riga["id"]))
@@ -407,7 +407,7 @@ def completa(db: sqlite3.Connection, iscrizione: str, nome_utente: str, invito: 
         esito = json.loads(riga["esito"])
         modo = account_email.modo_registrazione()
         if modo != "invito" and not esito["affidabile"]:
-            raise ErroreSocial("Per iscriverti usa il modulo con la tua email.", 403, codice="email_non_affidabile")
+            raise ErroreSocial("Con questo account Google non puoi iscriverti: usa il modulo di registrazione.", 403, codice="email_non_affidabile")
         inv = None
         if modo in ("invito", "email"):
             inv = account_email._invito_vivo(db, invito, adesso, ip)              # stessi limiti e stesso messaggio di sempre

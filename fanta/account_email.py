@@ -338,15 +338,14 @@ def _hash_segreto(segreto) -> str:
 
 
 def modo_registrazione() -> str:
-    """- `aperta` (predefinito, decisione del proprietario del 26/11/2026): chi vuole si registra con nome utente e password;
-      l'email è facoltativa e l'account nasce subito (tetti MAX_UTENTI e FANTA_ISCRIZIONI_GIORNO, limiti per indirizzo IP). Un invito
-      valido funziona lo stesso (dà il suo ruolo).
-    - `invito` (anche `inviti`): serve un invito dell'amministratore; l'email è facoltativa. È l'interruttore per richiudere.
+    """- `invito` (predefinito, anche `inviti`): serve un invito dell'amministratore; l'email è facoltativa.
+    - `aperta` (decisione del proprietario del 26/11/2026, da accendere apposta con FANTA_REGISTRAZIONE=aperta): chi vuole si
+      registra con nome utente e password; l'email è facoltativa e l'account nasce subito (tetti MAX_UTENTI e
+      FANTA_ISCRIZIONI_GIORNO, limiti per indirizzo IP). Un invito valido funziona lo stesso (dà il suo ruolo).
     - `email`: serve l'invito E un'email: l'account nasce solo quando l'email è verificata col codice.
-    Variabile assente o vuota: `aperta`. Un valore che non si riconosce vale `invito`: scritto male, non apre per sbaglio."""
+    Variabile assente, vuota o con un valore che non si riconosce: `invito`. Le iscrizioni non si aprono mai da sole né per un
+    valore scritto male: aprirle è una scelta di chi gestisce il server."""
     m = os.environ.get("FANTA_REGISTRAZIONE", "").strip().lower()
-    if not m:
-        return "aperta"
     m = ALTRI_NOMI.get(m, m)
     return m if m in MODI_REGISTRAZIONE else "invito"
 

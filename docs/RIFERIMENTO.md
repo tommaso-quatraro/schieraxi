@@ -287,8 +287,8 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
   stesso tetto di celle per ogni formato (`MAX_CELLE_IMPORTAZIONE`) e un tempo massimo per riconoscere i giocatori
   (`MAX_SECONDI_RICONOSCIMENTO`); avvisi con un tempo massimo per ogni invio (`MAX_SECONDI_INVIO`, vale sempre) e un tetto di prove
   all'ora (`MAX_PROVE_AVVISI_ORA`). Ogni tetto nuovo si cambia sul server con `FANTA_<nome della costante>`.
-- Registrazione: `FANTA_REGISTRAZIONE=aperta|invito|email` (predefinito `aperta` dal 26/11/2026: nome utente e password, email
-  facoltativa, account subito; `invito` richiude; un valore sconosciuto vale `invito`). Tetti: `MAX_UTENTI` (predefinito 15) e
+- Registrazione: `FANTA_REGISTRAZIONE=invito|aperta|email` (predefinito `invito`, anche per un valore sconosciuto; `aperta`, dal
+  26/11/2026, da accendere a mano: nome utente e password, email facoltativa, account subito). Tetti: `MAX_UTENTI` (predefinito 15) e
   `FANTA_ISCRIZIONI_GIORNO` (account nuovi senza invito in 24 ore, predefinito 5). Il modulo della web ha un campo trappola (`sito`).
 - Posta: `FANTA_MAIL=spento|log|smtp|resend` (predefinito `spento`: nessun invio; `log` scrive in `dati/posta.log` solo che un
   messaggio sarebbe partito, mai il codice). Con registrazione `email` servono `smtp` o `resend`; con `aperta` e `invito` l'email è

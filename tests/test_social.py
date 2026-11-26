@@ -56,7 +56,7 @@ def scena(multiutente, dati_isolati, monkeypatch):
     monkeypatch.setenv("FANTA_GOOGLE_CLIENT_SECRET", "segreto-di-prova")
     monkeypatch.setenv("FANTA_GOOGLE_REDIRECT", "https://esempio.test/api/account/social/google/ritorno")
     monkeypatch.delenv("FANTA_GOOGLE_DOMINI", raising=False)
-    monkeypatch.setenv("FANTA_REGISTRAZIONE", "invito")              # le prove di Google sono scritte per il modo con gli inviti
+    monkeypatch.delenv("FANTA_REGISTRAZIONE", raising=False)
     s = Scena()
 
     def chiavi():

@@ -1,7 +1,8 @@
-"""Registrazione aperta (decisione del proprietario del 26/11/2026): chi vuole si registra dalla schermata d'accesso con nome
-utente e password, l'email è facoltativa e l'account nasce subito, anche con la posta del server spenta. Restano il tetto di utenti
-(MAX_UTENTI), il tetto di account nuovi al giorno (FANTA_ISCRIZIONI_GIORNO), i limiti per indirizzo e una trappola per i programmi
-che compilano i moduli da soli. `FANTA_REGISTRAZIONE=invito` richiude: si entra solo con un invito, come prima."""
+"""Registrazione aperta (decisione del proprietario del 26/11/2026), accesa con FANTA_REGISTRAZIONE=aperta: chi vuole si registra
+dalla schermata d'accesso con nome utente e password, l'email è facoltativa e l'account nasce subito, anche con la posta del server
+spenta. Restano il tetto di utenti (MAX_UTENTI), il tetto di account nuovi al giorno (FANTA_ISCRIZIONI_GIORNO), i limiti per indirizzo
+e una trappola per i programmi che compilano i moduli da soli. Senza la variabile (o con `invito`) si entra solo con un invito, come
+prima: le iscrizioni non si aprono da sole quando il server si aggiorna."""
 import contextlib
 import re
 from datetime import datetime, timedelta, timezone
@@ -29,8 +30,8 @@ def posta_finta(monkeypatch):
 
 @pytest.fixture
 def aperta(multiutente, dati_isolati, monkeypatch):
-    """Il server come lo trova chi si registra: nessuna variabile sul modo (vale quello predefinito), posta spenta."""
-    monkeypatch.delenv("FANTA_REGISTRAZIONE", raising=False)
+    """Un server con le iscrizioni aperte (FANTA_REGISTRAZIONE=aperta) e la posta spenta, come oggi."""
+    monkeypatch.setenv("FANTA_REGISTRAZIONE", "aperta")
     monkeypatch.delenv("FANTA_ISCRIZIONI_GIORNO", raising=False)
     monkeypatch.setattr(posta, "attiva", lambda: False)
     return multiutente
@@ -54,11 +55,12 @@ def invecchia_gli_account(giorni=2):
 
 
 # ---------------------------------------------------------------- l'interruttore
-@pytest.mark.parametrize("valore, atteso", [(None, "aperta"), ("", "aperta"), ("  Aperta ", "aperta"), ("invito", "invito"),
+@pytest.mark.parametrize("valore, atteso", [(None, "invito"), ("", "invito"), ("  Aperta ", "aperta"), ("invito", "invito"),
                                             ("inviti", "invito"), ("INVITO", "invito"), ("email", "email"), ("boh", "invito"),
                                             ("chiusa", "invito")])
-def test_aperta_e_il_modo_predefinito_e_un_valore_sbagliato_chiude(monkeypatch, valore, atteso):
-    """Senza la variabile si registra chi vuole. Un valore scritto male non apre per sbaglio: vale come `invito`."""
+def test_senza_la_variabile_si_entra_con_l_invito_e_un_valore_sbagliato_non_apre(monkeypatch, valore, atteso):
+    """Senza la variabile vale `invito`, come prima: aggiornato il server, le iscrizioni non si aprono da sole. Si aprono solo con
+    FANTA_REGISTRAZIONE=aperta; un valore scritto male vale come `invito`."""
     if valore is None:
         monkeypatch.delenv("FANTA_REGISTRAZIONE", raising=False)
     else:
@@ -68,6 +70,14 @@ def test_aperta_e_il_modo_predefinito_e_un_valore_sbagliato_chiude(monkeypatch, 
 
 def test_la_risposta_senza_accesso_dice_aperta(aperta):
     assert cliente().get("/api/regole").json()["registrazione"] == "aperta"
+
+
+def test_senza_la_variabile_le_iscrizioni_restano_chiuse(aperta, monkeypatch):
+    """Il server di oggi non ha FANTA_REGISTRAZIONE: dopo l'aggiornamento chi non ha un invito resta fuori."""
+    monkeypatch.delenv("FANTA_REGISTRAZIONE")
+    assert cliente().get("/api/regole").json()["registrazione"] == "invito"
+    _, r = registrati()
+    assert r.status_code == 403 and r.json()["detail"] == rotte_account.INVITO_DA_CHIEDERE and utenti() == []
 
 
 def test_chi_e_entrato_legge_il_modo_dal_suo_account(aperta, monkeypatch):
@@ -162,6 +172,25 @@ def test_tentativi_non_riusciti_da_un_indirizzo(aperta):
     stati = [registrati(nome="anna")[1].status_code for _ in range(account.REGISTRAZIONI_PER_IP[0] + 1)]
     assert set(stati[:-1]) == {400} and stati[-1] == 429
     assert registrati(ip="5.5.5.5", nome="bruno")[1].status_code == 200      # un altro indirizzo non è toccato
+
+
+def test_i_posti_si_ricontrollano_quando_nasce_l_account(aperta, monkeypatch):
+    """Due iscrizioni insieme con un posto solo: tutte e due passano il primo controllo (prima di scrypt). Vale quello dentro la
+    transazione che crea l'account: se intanto un altro ha preso l'ultimo posto, «siamo al completo» e il secondo account non nasce."""
+    monkeypatch.setenv("MAX_UTENTI", "1")
+    vero = account.hash_password
+
+    def un_altro_entra_intanto(password):                 # fra il primo controllo e la transazione (scrypt sta in mezzo)
+        with contextlib.closing(account.apri()) as altro:
+            altro.execute("INSERT INTO utenti (nome_utente, password_hash, recupero_hash, ruolo, creato) "
+                          "VALUES ('svelto', 'x', 'y', 'utente', '2026-11-26T08:00:00+00:00')")
+            altro.commit()
+        return vero(password)
+
+    monkeypatch.setattr(account, "hash_password", un_altro_entra_intanto)
+    _, r = registrati()
+    assert r.status_code == 403 and r.json()["detail"] == AL_COMPLETO, r.text
+    assert utenti() == ["svelto"]
 
 
 def test_account_nati_da_un_indirizzo(aperta, monkeypatch):

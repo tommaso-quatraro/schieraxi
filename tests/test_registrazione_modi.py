@@ -1,5 +1,6 @@
 """Registrazione configurabile (FANTA_REGISTRAZIONE = aperta | invito | email): ogni modo, con i suoi limiti e i suoi attacchi.
-La registrazione aperta (predefinita dal 26/11/2026, account subito ed email facoltativa) ha i suoi test in test_registrazione_aperta.py;
+La registrazione aperta (dal 26/11/2026, con FANTA_REGISTRAZIONE=aperta: account subito ed email facoltativa) ha i suoi test in
+test_registrazione_aperta.py;
 qui l'iscrizione in due tempi con il codice per posta, che dal 26/11/2026 resta solo nel modo `email` (invito ed email obbligatoria)."""
 import contextlib
 import re
@@ -58,9 +59,9 @@ def utenti() -> list[str]:
 
 
 # ---------------------------------------------------------------- invito
-def test_predefinito_e_aperta_e_un_valore_sbagliato_chiude(monkeypatch):
+def test_predefinito_e_invito(monkeypatch):
     monkeypatch.delenv("FANTA_REGISTRAZIONE", raising=False)
-    assert account_email.modo_registrazione() == "aperta"
+    assert account_email.modo_registrazione() == "invito"
     modo(monkeypatch, "boh")
     assert account_email.modo_registrazione() == "invito"
 

@@ -9,9 +9,9 @@ password; l'email è facoltativa (vedi `account_email.py`).
   password e nomi si normalizzano in Unicode NFKC (la «é» composta o scomposta, le lettere a larghezza piena...);
 - sessione: token casuale da 256 bit; nel database c'è solo il suo SHA-256, quindi chi legge il file non può usarlo; scade
   dopo 30 giorni senza uso e comunque dopo 180; si revoca; cambiando la password si chiudono tutte e se ne apre una nuova;
-- registrazione: aperta (predefinita, FANTA_REGISTRAZIONE, vedi `account_email.modo_registrazione`: nome utente e password, email
-  facoltativa, con un tetto di account nuovi al giorno) oppure solo con un codice d'invito (7 giorni, monouso o per più amici)
-  generato da un amministratore; tetto MAX_UTENTI; il controllo dell'invito, dei tetti e del nome avviene in una transazione sola
+- registrazione: solo con un codice d'invito (predefinita: 7 giorni, monouso o per più amici, generato da un amministratore)
+  oppure aperta se il server lo dice (FANTA_REGISTRAZIONE=aperta, vedi `account_email.modo_registrazione`: nome utente e password,
+  email facoltativa, con un tetto di account nuovi al giorno); tetto MAX_UTENTI; il controllo dell'invito, dei tetti e del nome avviene in una transazione sola
   (due richieste insieme non creano due account);
 - password dimenticata, due vie: il «codice di recupero» (mostrato una volta sola alla registrazione) oppure un codice
   monouso di 24 ore generato da un amministratore;

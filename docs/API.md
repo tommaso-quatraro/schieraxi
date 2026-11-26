@@ -20,14 +20,15 @@ Sigle usate qui:
 3. **Sessione**: con gli account accesi (`FANTA_MULTIUTENTE=1`), ogni `/api/` senza sessione valida risponde `401`:
 
    ```json
-   {"detail": "Accesso richiesto", "multiutente": true, "registrazione": "aperta"}
+   {"detail": "Accesso richiesto", "multiutente": true, "registrazione": "invito"}
    ```
 
    Il campo `registrazione` vale `aperta`, `invito` o `email` (come ci si registra, variabile `FANTA_REGISTRAZIONE`, vedi
-   `account_email.modo_registrazione`). Dal 26/11/2026 `aperta` è il modo predefinito e vuol dire: nome utente e password, niente
+   `account_email.modo_registrazione`). Il predefinito resta `invito` (variabile assente, vuota o sconosciuta). Dal 26/11/2026
+   `aperta` (da accendere con `FANTA_REGISTRAZIONE=aperta`) vuol dire: nome utente e password, niente
    invito, email facoltativa, l'account nasce subito come con l'invito (prima `aperta` chiedeva un'email verificata con il codice per
    posta: ora quel giro resta solo nel modo `email`). `invito` = serve un invito, email facoltativa; `email` = invito ed email
-   verificata prima che l'account nasca. Un valore della variabile che non si riconosce vale `invito`. Le app di prima che leggono
+   verificata prima che l'account nasca. Le app di prima che leggono
    `aperta` chiedono l'email: il server la accetta e crea l'account subito (risposta con `codice_recupero`, che sanno già leggere).
    Le uniche rotte senza sessione sono: `POST /api/account/accedi`, `POST /api/account/registra`, `POST /api/account/registra/conferma`, `POST /api/account/recupero`, `POST /api/account/recupero-email`, `POST /api/account/recupero-email/conferma`, e i file statici della pagina (`/`, `/app.js`, `/stile.css`, `/sw.js`, `/manifest.webmanifest`, `/privacy`, `/termini`, `/crediti`, `/elimina-account`, icone e schermate del manifest `/screenshot-*.png`).
    Con gli account spenti non si fa nessun login: c'è un utente locale implicito (con i poteri dell'amministratore), quindi il server
