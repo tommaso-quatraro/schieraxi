@@ -117,6 +117,7 @@ def test_un_invio_rifiutato_da_apple_resta_segnato_e_l_iscrizione_non_conta_piu(
     import pywebpush
 
     f = tmp_path / "push.json"
+    monkeypatch.setattr(push, "FILE_ISCRIZIONI", f)                     # push.log nella cartella temporanea, non in dati/
     push.iscrivi({"endpoint": APPLE, "keys": CHIAVI, "iphone": True}, f, adesso=datetime.now() - timedelta(hours=1))
     assert server._promemoria_da(push.iscrizioni(f), False, datetime.now()) == "web"
 
