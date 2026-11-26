@@ -373,10 +373,31 @@ def test_novita_in_inglese_a_richiesta(client, monkeypatch):
         assert [v["titolo"] for v in en] == ["New", "Translated", "Rotta"] and en[0]["voci"] == ["x", "y"] and en[1]["voci"] == ["z"]
         assert en[2]["voci"] == [server.NOVITA_EN_VOCE] and "voci_en" not in en[0]   # traduzione con un numero di voci diverso: si scarta
     monkeypatch.setattr(server, "_novita_en", lambda: {})
-    solo_it = client.get("/api/novita?lingua=en").json()                          # senza traduzione: testo generico in inglese
-    assert [v["titolo"] for v in solo_it] == ["New", server.NOVITA_EN_TITOLO, server.NOVITA_EN_TITOLO]
-    assert solo_it[1]["voci"] == [server.NOVITA_EN_VOCE] and solo_it[0]["voci"] == ["x", "y"]
+    solo_it = client.get("/api/novita?lingua=en").json()      # senza traduzione: le due versioni di fila in una scheda sola (#949)
+    assert [v["titolo"] for v in solo_it] == ["New", server.NOVITA_EN_TITOLO]
+    assert solo_it[0]["voci"] == ["x", "y"] and solo_it[1]["versione"] == "9.2"
+    assert solo_it[1]["voci"] == [server.NOVITA_EN_GRUPPO.format(da="9.1", a="9.2")]
     assert client.get("/api/novita?lingua=it", headers={"Accept-Language": "en"}).json() == it
+
+
+def test_novita_in_inglese_senza_dieci_schede_uguali(client, monkeypatch):
+    """In inglese le versioni senza traduzione di fila diventano una scheda sola, con la versione e la data della più nuova e una
+    frase che dice quali sono (#949: prima erano dieci schede «no English description yet» una dopo l'altra). Una sola versione
+    senza traduzione resta una scheda generica; le tradotte restano dove sono; il campo `tecnico` non esce dalle schede unite."""
+    voce = lambda v, **altro: {"versione": v, "data": f"2026-11-{int(v.split('.')[1]):02d}T10:00:00", "titolo": "T", "voci": ["a"],
+                               "tecnico": ["dettaglio"], **altro}
+    monkeypatch.setattr(server, "_novita", lambda: [
+        voce("1.20"), voce("1.19"), voce("1.18"), voce("1.17", titolo_en="Seventeen", voci_en=["s"]), voce("1.16"),
+        voce("1.15", titolo_en="Fifteen", voci_en=["f"]), voce("1.14"), voce("1.13")])
+    monkeypatch.setattr(server, "_novita_en", lambda: {})
+    en = client.get("/api/novita?lingua=en").json()
+    assert [v["versione"] for v in en] == ["1.20", "1.17", "1.16", "1.15", "1.14"]
+    assert en[0] == {"versione": "1.20", "data": "2026-11-20T10:00:00", "titolo": server.NOVITA_EN_TITOLO,
+                     "voci": [server.NOVITA_EN_GRUPPO.format(da="1.18", a="1.20")]}
+    assert en[1]["titolo"] == "Seventeen" and en[1]["voci"] == ["s"]
+    assert en[2]["titolo"] == server.NOVITA_EN_TITOLO and en[2]["voci"] == [server.NOVITA_EN_VOCE]
+    assert en[4]["voci"] == [server.NOVITA_EN_GRUPPO.format(da="1.13", a="1.14")] and "tecnico" not in en[4]
+    assert len(client.get("/api/novita").json()) == 8                          # in italiano tutte, come prima
 
 
 def test_traduzioni_delle_novita_corrispondono_alle_versioni_vere():
