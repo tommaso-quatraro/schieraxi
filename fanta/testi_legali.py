@@ -73,7 +73,7 @@ TESTI: dict[str, dict] = {
                 "La tua lega: regole, rose, la squadra che hai scelto, le tue scelte di formazione, i giocatori che osservi, gli stemmi e le maglie che carichi e, "
                 "se li importi, le formazioni e i punti delle giornate passate e il calendario della lega.",
                 "Dati degli altri partecipanti della tua lega: quello che carichi contiene i nomi delle loro squadre (a volte con un nome o un soprannome), "
-                "le loro rose e, se li importi, formazioni e punti. Servono solo ai calcoli della tua lega (per esempio la formazione consigliata delle altre squadre) e li vedi solo tu:"
+                "le loro rose e, se li importi, formazioni e punti. Servono solo ai calcoli della tua lega (per esempio la formazione consigliata delle altre squadre) e li vedi solo tu: "
                 "gli altri partecipanti non ricevono niente e non vengono contattati. Quando l'app legge le rose da un testo, scarta le righe con il nome "
                 "dell'allenatore (per esempio «Allenatore: Marco»).",
                 "Se prendi le rose da una foto dello schermo (per esempio con il riconoscimento del testo del telefono), la lettura dell'immagine avviene sul tuo telefono: "
@@ -274,7 +274,7 @@ TESTI: dict[str, dict] = {
                 "Your league: rules, rosters, the team you chose, your lineup choices, the players you watch, the crests and shirts you upload and, "
                 "if you import them, the lineups and points of past matchdays and the league calendar.",
                 "Data about the other members of your league: what you upload contains the names of their teams (sometimes with a name or nickname), "
-                "their rosters and, if you import them, lineups and points. They are used only for your league's calculations (for example the recommended lineup of the other teams) and only you see them:"
+                "their rosters and, if you import them, lineups and points. They are used only for your league's calculations (for example the recommended lineup of the other teams) and only you see them: "
                 "the other members receive nothing and are not contacted. When the app reads rosters from a text, it drops the lines with the manager's "
                 "name (for example «Allenatore: Marco»).",
                 "If you take the rosters from a screenshot (for example with your phone's text recognition), the image is read on your phone: "

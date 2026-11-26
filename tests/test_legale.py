@@ -48,6 +48,27 @@ def test_privacy_e_termini_parlano_dell_app_di_oggi(lingua, scambi, vecchie, nuo
     assert nuove in tl.pagina("privacy", lingua)
 
 
+AMBIENTE_LEGALE = ("FANTA_CONTATTO", "FANTA_TITOLARE", "FANTA_SORGENTE", "FANTA_BACKUP_GIORNI", "FANTA_REGISTRO_WEB_GIORNI",
+                   "FANTA_HOSTING", "FANTA_POSTA_FORNITORE")
+# nomi di siti e di file citati nel testo (ntfy.sh, Fantacalcio.it, football-data.co.uk, THIRD-PARTY-NOTICES.md): lì il punto
+# fra due lettere è giusto
+INDIRIZZI = re.compile(r"https?://\S+|\b[\w.-]+\.(?:it|sh|uk|org|com|net|io|md)\b")
+
+
+@pytest.mark.parametrize("lingua", tl.LINGUE)
+@pytest.mark.parametrize("quale", tl.PAGINE)
+def test_niente_parole_attaccate_dopo_i_due_punti_o_il_punto(quale, lingua, monkeypatch):
+    """Le frasi lunghe stanno su più righe che Python incolla: se una riga perde lo spazio in fondo, due parole si attaccano
+    («li vedi solo tu:gli altri»). Sulla pagina generata, dopo «:» o «.» fra due lettere ci vuole uno spazio."""
+    import html
+    for v in AMBIENTE_LEGALE:
+        monkeypatch.delenv(v, raising=False)
+    corpo = tl.pagina(quale, lingua).split("<body", 1)[1]
+    testo = INDIRIZZI.sub(" ", html.unescape(re.sub(r"<[^>]+>", " ", corpo)))
+    attaccate = [testo[max(0, m.start() - 25):m.end() + 25] for m in re.finditer(r"[a-zà-ù][:.][A-Za-zÀ-ù]", testo)]
+    assert not attaccate, attaccate
+
+
 def test_termini_dicono_che_i_dati_non_sono_ufficiali():
     t = tl.pagina("termini").lower()
     assert "non sono dati ufficiali" in t and "14 anni" in t
