@@ -39,7 +39,16 @@ Chi è già entrato con quell'invito tiene il suo account. Gli inviti usati, sca
   solito dalla pagina prima dell'ingresso) sono dette a parte; un accesso con un codice o una sessione che non vale, o una
   richiesta a una parte riservata, resta fra le rifiutate. Nessuna password e nessun dato delle richieste.
 
-Sul PC, da 1100 px, la pagina ha due colonne: gli strumenti a sinistra, **Errori recenti** a destra.
+- **Commenti degli utenti**: quello che gli amici scrivono da **Impostazioni › Scrivici** (web e iPhone), il più recente in
+  alto: chi, quando (ora italiana), da dove (web, iPhone, Android) con la versione dell'app, e il testo intero. **Segna come
+  letto** toglie il commento da quelli da leggere (il numero sta sotto il titolo). A ogni commento nuovo arriva un avviso sul
+  canale ntfy del server (lo stesso della sentinella e degli script, `~/.config/schieraxi/canale`): «SchieraXI · un commento
+  nuovo», senza il testo e senza il nome, che restano sul server. Senza quel file l'avviso non parte, il commento si salva lo
+  stesso. Ognuno ne manda al massimo 5 al giorno (sul server si cambia con `FANTA_MAX_COMMENTI_AL_GIORNO`); con l'account
+  eliminato se ne vanno anche i suoi commenti. Sul server, via ssh, gli ultimi 20 con il testo intero:
+  `.venv/bin/python -m fanta feedback --ultimi 20` (dalla cartella dell'app, sola lettura).
+
+Sul PC, da 1100 px, la pagina ha due colonne: gli strumenti a sinistra, **Commenti degli utenti** ed **Errori recenti** a destra.
 
 Le email (codice per la password dimenticata, avvisi di sicurezza, cambio dell'email) partono solo se il server ha l'invio
 acceso (`fanta/posta.py`, variabili `FANTA_MAIL` e `FANTA_SMTP_*`). Se è spento, l'app lo dice: il recupero passa solo dal codice
