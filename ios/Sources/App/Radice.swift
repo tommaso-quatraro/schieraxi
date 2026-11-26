@@ -78,8 +78,29 @@ final class Navigazione: ObservableObject {
     @Published var collegaWidgetAperto = false
     /// La configurazione guidata («Primo avvio»): parte da sola senza rose, si riapre dalla lista «Da fare» di Oggi.
     @Published var guidaAperta = false {
-        // riaperta: la prossima chiusura torna a essere dell'utente
-        didSet { if guidaAperta { guidaChiusaDallApp = false } }
+        // riaperta: la prossima chiusura torna a essere dell'utente; chiusa: la prossima apertura (da sola, da «Da fare») parte
+        // dall'inizio
+        didSet {
+            if guidaAperta {
+                guidaChiusaDallApp = false
+            } else {
+                guidaRiprendeDa = nil
+                guidaPassoFatto = nil
+            }
+        }
+    }
+    /// Il passo da cui riparte la guida riaperta dopo una pagina in cui l'aveva portata (#880): la legge il foglio della guida.
+    private(set) var guidaRiprendeDa: PassoGuidato?
+    /// Il passo fatto nella pagina da cui torna la guida (il widget collegato): la guida lo segna da sola (#880).
+    private(set) var guidaPassoFatto: PassoGuidato?
+
+    /// Riapre la guida dopo una pagina (o il foglio del widget) in cui l'aveva portata `passo`: sulla Formazione, come la web dove
+    /// dietro «Tutto pronto» c'è già la Formazione, e da quel passo (`PrimoAvvioLogica.inizio`, #880).
+    func riapriGuida(da passo: PassoGuidato, fatto: Bool = false) {
+        guidaRiprendeDa = passo
+        guidaPassoFatto = fatto ? passo : nil
+        sezione = .formazione
+        guidaAperta = true
     }
     /// Una pagina delle Impostazioni da aprire (da un indirizzo `schieraxi://` o dalle decisioni della Formazione): la radice la apre.
     @Published var paginaDaAprire: PaginaImpostazioni?
@@ -177,8 +198,11 @@ final class Navigazione: ObservableObject {
 
     /// Si è usciti dall'account (anche per la sessione scaduta): un arrivo da fuori già aperto non conta più, così al prossimo
     /// accesso la guida può partire da sola. Un file o un'immagine ancora da aprire restano: si aprono dopo l'accesso.
-    func uscitoDallAccount() {
+    /// Al nuovo accesso l'app si apre come all'avvio, sull'ultima sezione fra Formazione e Giornate, non sulle Impostazioni dove
+    /// c'era «Esci» (#880, come `entraNellApp` della web dopo la #878).
+    func uscitoDallAccount(memoria: UserDefaults = .standard) {
         controllaFineArrivo(importaAperta: false)
+        sezione = Self.sezioneDiAvvio(memoria)
     }
 
     /// Le immagini che si accettano per stemma e divisa (il controllo vero sul contenuto è al caricamento).
@@ -276,7 +300,8 @@ struct RadiceView: View {
             nav.sezione = .formazione
         }
         .sheet(isPresented: $nav.collegaWidgetAperto) {
-            CollegaWidgetView()
+            // collegato il widget, il passo della guida che ha aperto il foglio si segna fatto da solo (#880)
+            CollegaWidgetView(collegato: { modello.lega.ritornoAllaGuida.widgetCollegato() })
                 .tint(Color.verde)
         }
         .sheet(item: $nav.immagineRicevuta) { r in

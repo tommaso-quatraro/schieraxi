@@ -105,7 +105,8 @@ struct ContenitoreApp: View {
                 Demo.applica(nav: nav, modello: modello)
             }
             .sheet(isPresented: $nav.guidaAperta) {
-                ConfigurazioneGuidataView(server: modello.server, vai: apriDaGuida,
+                ConfigurazioneGuidataView(server: modello.server, riprendiDa: nav.guidaRiprendeDa, passoFatto: nav.guidaPassoFatto,
+                                          vai: apriDaGuida,
                                           chiusaDallApp: { [navigazione = nav, cambiata = sessioneCambiata] in
                                               navigazione.guidaChiusaDallApp || cambiata()
                                           })
@@ -115,6 +116,16 @@ struct ContenitoreApp: View {
                     .onDisappear { nav.guidaSparita() }
             }
             .task { await avviaGuidaSeServe() }
+            // una pagina aperta da un passo della guida (rose, squadra, stemma) è stata lasciata: la guida si riapre da quel passo (#880)
+            .onReceive(modello.lega.$percorso) { pagine in
+                if let passo = modello.lega.ritornoAllaGuida.pilaCambiata(pagine) { riapriGuida(da: passo) }
+            }
+            // lo stesso per il foglio «Collega il widget», aspettando che sia sparito (un foglio alla volta); collegato, il passo è fatto
+            .onChange(of: nav.collegaWidgetAperto) { _, aperto in
+                if let ritorno = modello.lega.ritornoAllaGuida.foglioWidget(aperto: aperto) {
+                    riapriGuida(da: ritorno.passo, fatto: ritorno.fatto, dopo: .milliseconds(700))
+                }
+            }
     }
 
     /// Una sola volta all'apertura, come `primoAvvioSeServe` della web: se la lega non ha le rose la guida parte da sola (mai
@@ -131,17 +142,38 @@ struct ContenitoreApp: View {
         }
     }
 
+    /// Lasciata una pagina aperta da un passo della guida, la guida torna sulla Formazione (come la web, dove dietro «Tutto pronto»
+    /// c'è già la Formazione) e riparte da quel passo, o dal primo dopo se è fatto: dopo le rose salvate dalla squadra, dopo la
+    /// squadra scelta dallo stemma (#880). Fuori dal cambio che l'ha annunciato.
+    private func riapriGuida(da passo: PassoGuidato, fatto: Bool = false, dopo attesa: Duration = .zero) {
+        Task {
+            if attesa > .zero { try? await Task.sleep(for: attesa) }
+            nav.riapriGuida(da: passo, fatto: fatto)
+        }
+    }
+
     /// Un passo della guida porta in un'altra schermata (la guida si è già chiusa).
     private func apriDaGuida(_ azione: AzioneGuida) {
         switch azione {
+        // lasciata la pagina (o chiuso il foglio del widget) la guida si riapre da quel passo (`RitornoAllaGuida`, #880)
         case .importaRose:
+            modello.lega.ritornoAllaGuida.chiesta(.pagina(.importa), dalPasso: .rose)
             nav.sezione = modello.lega.apri([.importa])
-        case .squadre(let nome):
-            // senza il nome il passo «La tua squadra»: la sua scelta, come «La mia squadra» non ancora scelta (#863)
-            nav.sezione = modello.lega.apri(nome.map { [PaginaImpostazioni.rosa($0)] } ?? [.sceltaSquadra])
+        case .scegliSquadra:
+            modello.lega.ritornoAllaGuida.chiesta(.pagina(.sceltaSquadra), dalPasso: .squadra)
+            nav.sezione = modello.lega.apri([.sceltaSquadra])
+        case .stemma(let nome):
+            let pagina = nome.map { PaginaImpostazioni.rosa($0) } ?? .sceltaSquadra   // prima la squadra, poi lo stemma (#868)
+            modello.lega.ritornoAllaGuida.chiesta(.pagina(pagina), dalPasso: .stemma)
+            nav.sezione = modello.lega.apri([pagina])
         case .impostazioni:
             nav.sezione = .impostazioni
+        case .formazione:
+            nav.sezione = .formazione
+        case .regole:
+            nav.sezione = modello.lega.apri([.regole])
         case .collegaWidget:
+            modello.lega.ritornoAllaGuida.chiesta(.widget, dalPasso: .widget)
             Task {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 nav.collegaWidgetAperto = true
