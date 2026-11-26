@@ -115,9 +115,20 @@ def _invia_ntfy(titolo: str, testo: str, priorita: int, tag: str, apri: str | No
         corpo["click"] = apri
     try:
         r = requests.post("https://ntfy.sh", json=corpo, timeout=20)
-        return r.ok
-    except requests.RequestException:
+    except requests.RequestException as e:
+        _ntfy_non_partito(tag, type(e).__name__)
         return False
+    if not r.ok:
+        _ntfy_non_partito(tag, f"codice {r.status_code}")
+    return r.ok
+
+
+def _ntfy_non_partito(tag: str, motivo: str) -> None:
+    """Un avviso che ntfy non ha preso lascia una riga nel registro: senza, un promemoria non partito sparirebbe senza traccia,
+    mentre le notifiche web la lasciano in push.log. Il comando del giro non configura i registri, quindi la riga va sull'uscita
+    degli errori, che `script/server/promemoria.sh` scrive in `dati/promemoria.log`. Solo il tipo di avviso (il tag) e il motivo:
+    mai il canale (fa da password), il titolo o il testo (nomi dei calciatori). Nelle ore tranquille `invia` non arriva qui."""
+    LOG.warning("Avvisi: avviso non partito su ntfy (%s, %s)", tag, motivo)
 
 
 def manda_di(file_impostazioni: Path, file_iscrizioni: Path, ntfy: bool) -> Callable[..., bool]:

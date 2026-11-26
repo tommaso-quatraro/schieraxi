@@ -203,7 +203,9 @@ def test_notifiche_web_chiavi_iscrizioni_e_invio(tmp_path, monkeypatch):
     assert k == push.chiavi(tmp_path / "v.json") and k["pubblica"].startswith("B") and len(k["pubblica"]) == 87        # la stessa a ogni richiesta
     f = tmp_path / "p.json"
     sub = {"endpoint": "https://web.push.apple.com/abc", "keys": {"p256dh": "P" * 40, "auth": "A" * 20}}
-    assert push.iscrivi(sub, f) == [sub] and push.iscrivi(sub, f) == [sub]                                             # niente doppioni
+    salvata = sub | {"confermata": "2026-11-26T09:30:00"}                    # quando è arrivata (la web la rimanda ogni giorno)
+    assert push.iscrivi(sub, f, adesso=datetime(2026, 11, 26, 9, 30)) == [salvata]
+    assert push.iscrivi(sub, f, adesso=datetime(2026, 11, 26, 9, 30)) == [salvata]                                     # niente doppioni
     with pytest.raises(ValueError):
         push.iscrivi({"endpoint": "http://non-sicuro", "keys": {"p256dh": "x", "auth": "y"}}, f)
     mandate = []
