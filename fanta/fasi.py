@@ -32,6 +32,7 @@ ORE_PROSSIMA_VICINA = 24                       # ...ma se la prossima si chiude 
 ORE_PROBABILI = 72                             # le probabili escono di solito negli ultimi 2-3 giorni: da lì conviene preparare
 FINESTRA_TURNO = turni.FINESTRA               # oltre è un recupero, non chiude la giornata (regola unica in turno.py)
 FUORI = ("infortunato", "squalificato")
+CONFERMA_RITARDO = timedelta(minutes=15)       # un «da giocare» della diretta dopo l'orario vale se la fonte l'ha dato da così poco
 # stati di una partita per i client: da_giocare, in_corso, finita, rinviata
 _DA_LIVE = {"primo_tempo": IN_CORSO, "intervallo": IN_CORSO, "secondo_tempo": IN_CORSO, "in_corso": IN_CORSO,
             "finita": "finita", "rinviata": "rinviata", "sospesa": "rinviata"}
@@ -67,6 +68,12 @@ def stato_partita(p: dict, adesso: datetime, live: dict | None = None, turno: da
     if turno is not None and not turni.della_giornata(inizio, turno):       # un anticipo non è «rinviata» (turno.py)
         return "rinviata"
     if inizio is None or adesso < inizio:
+        return "da_giocare"
+    # calcio d'inizio in ritardo (#901): vince sull'orario il «da giocare» che la fonte ha dato DOPO l'orario previsto e da poco
+    # (`visto`, live.Raccoglitore.stati); uno letto prima dell'inizio e rimasto in cache con la fonte giù non conta
+    q = (live or {}).get((p.get("casa"), p.get("trasferta"))) or {}
+    visto = _data(q.get("visto"))
+    if q.get("stato") == "da_giocare" and visto is not None and inizio <= visto and adesso - visto <= CONFERMA_RITARDO:
         return "da_giocare"
     return IN_CORSO if adesso < inizio + DURATA_PARTITA else "finita"
 

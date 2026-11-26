@@ -96,6 +96,32 @@ def test_stato_partita_calendario_diretta_orario():
     assert fasi.stato_partita(p | {"giocata": True}, datetime(2026, 11, 8, 18, 0)) == "finita"
 
 
+def test_partita_ritardata_resta_da_giocare_come_dice_la_diretta():
+    """#901: la fonte conferma «da giocare» DOPO l'orario previsto e da poco (`visto`, al più 15 minuti fa): calcio d'inizio in
+    ritardo, Oggi dice lo stesso invece di dedurre «in corso» e poi «finita» dall'orario. Il calendario «giocata» vince sempre."""
+    p = {"data": "2026-11-08 20:45", "casa": "roma", "trasferta": "lazio", "giocata": False}
+    def diretta(visto):
+        return {("roma", "lazio"): {"stato": "da_giocare", "visto": visto}}
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 21, 30), diretta("2026-11-08T21:29:10")) == "da_giocare"
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 23, 30), diretta("2026-11-08T23:25:00")) == "da_giocare"
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 21, 30), diretta("2026-11-08T21:14:00")) == "in_corso"   # 16 minuti fa
+    assert fasi.stato_partita(p | {"giocata": True}, datetime(2026, 11, 8, 21, 30), diretta("2026-11-08T21:29:10")) == "finita"
+
+
+def test_da_giocare_letto_prima_del_calcio_d_inizio_non_ferma_l_orario():
+    """#901, revisione: la diretta legge già 10 minuti prima dell'inizio («da giocare», 20:38), poi la fonte smette di rispondere.
+    Quel valore vecchio non è la conferma di un ritardo: dalle 20:45 vale l'orario («in corso», poi «finita»). Lo stesso senza `visto`
+    (il ripiego che scrive «da giocare» non lo lascia: non sa distinguere una partita da giocare da una in corso)."""
+    p = {"data": "2026-11-08 20:45", "casa": "roma", "trasferta": "lazio", "giocata": False}
+    vecchia = {("roma", "lazio"): {"stato": "da_giocare", "visto": "2026-11-08T20:38:00"}}
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 20, 40), vecchia) == "da_giocare"
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 20, 50), vecchia) == "in_corso"             # prima: «da_giocare»
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 21, 0), vecchia) == "in_corso"
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 23, 30), vecchia) == "finita"
+    senza = {("roma", "lazio"): {"stato": "da_giocare", "visto": None}}
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 21, 0), senza) == "in_corso"
+
+
 def test_partita_spostata_dal_calendario_e_rinviata():
     """Collaudo 2/11/2026: un rinvio già scritto nel calendario (recupero settimane dopo, o senza data) ora ha l'etichetta."""
     turno = [{"data": f"2026-11-0{g} 15:00", "casa": f"c{g}", "trasferta": f"t{g}", "giocata": False} for g in (7, 8, 8, 9)]
