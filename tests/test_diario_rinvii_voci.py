@@ -113,6 +113,47 @@ def test_con_le_stesse_regole_la_voce_resta(mondo):
     assert mondo.riepilogo(UFFICIO)["nel_diario"] is True and mondo.riepilogo(UFFICIO)["punti_fatti"] == 66.0
 
 
+def test_con_le_regole_di_adesso_il_diario_non_legge_l_archivio(mondo):
+    """Revisione di #947: una voce calcolata con le regole di adesso non chiede niente all'archivio (prima ogni GET /api/diario e
+    /api/widget lo leggeva una volta per voce). Un archivio vuoto, senza tabelle, farebbe alzare un errore a ogni lettura."""
+    mondo.aggiorna(UFFICIO)
+    vuoto = sqlite3.connect(":memory:")
+    assert [v["giornata"] for v in diario.elenco(mondo.file, UFFICIO, vuoto)["giornate"]] == [1]
+
+
+def _giornata_2_giocata(db) -> None:
+    """La giornata 2, l'8 settembre, tutta giocata (senza voti: non entra nel Diario)."""
+    for i, d in ((5, "2026-09-08 18:00"), (6, "2026-09-08 20:45")):
+        db.execute("INSERT INTO partite (id, stagione, giornata, data, casa, trasferta, giocata) VALUES (?, ?, 2, ?, 'x', 'y', 1)",
+                   (i, ST, d))
+
+
+def test_recupero_giocato_oltre_le_ultime_giornate_rifa_la_voce(mondo, monkeypatch):
+    """Revisione di #947: il recupero si gioca mesi dopo, quando la giornata non è più fra le ultime MASSIMO_GIORNATE (qui 1, con
+    la giornata 2 finita dopo). Prima la voce tornava visibile con i punti del voto d'ufficio, per sempre; ora si rifà lo stesso,
+    perché le sue regole non sono quelle di adesso."""
+    assert mondo.aggiorna(UFFICIO) == 1
+    aspetta = rinvii.con_eccezione(UFFICIO, ST, 1, "aspetta", ST)
+    _giornata_2_giocata(mondo.db)
+    monkeypatch.setattr(diario, "MASSIMO_GIORNATE", 1)
+    mondo.recupero(TUTTI_SEI | {21: 7.0, 25: 10.0})
+    assert mondo.aggiorna(aspetta) == 1
+    v = mondo.voce(aspetta)
+    assert v["schierata"]["reale"] == 9 * 6.0 + 7.0 + 10.0 and v["spiegazione_punti"] is None
+    assert mondo.aggiorna(aspetta) == 0                                          # una volta sola
+
+
+def test_recupero_giocato_ma_voti_in_arrivo_la_voce_resta_nascosta(mondo):
+    """Revisione di #947: il recupero è giocato ma i suoi voti non sono ancora usciti. La giornata è di nuovo finita, ma la voce
+    (calcolata con il voto d'ufficio) non si mostra finché il Diario non la rifà con i voti; Oggi aspetta i voti, senza numeri."""
+    assert mondo.aggiorna(UFFICIO) == 1
+    aspetta = rinvii.con_eccezione(UFFICIO, ST, 1, "aspetta", ST)
+    mondo.db.execute("UPDATE partite SET giocata = 1 WHERE id = 2")
+    assert mondo.aggiorna(aspetta) == 0
+    assert diario.elenco(mondo.file, aspetta, mondo.db)["giornate"] == []
+    assert mondo.riepilogo(aspetta) is None
+
+
 # ---------------------------------------------------------------- 2. il voto contato dalla lega nella tabella degli 11
 @pytest.mark.parametrize("modo, preso, segno", [("voto_ufficio", 6.0, "voto_ufficio"), ("senza_voto", None, "senza_voto"),
                                                 ("aspetta", 10.0, None)])

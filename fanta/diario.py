@@ -795,8 +795,11 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
     """Aggiunge al diario le giornate finite che mancano (e quelle fatte senza la tua scelta, se nel frattempo l'hai salvata).
     Una giornata entra solo quando i voti di tutte le sue partite giocate sono arrivati (`fasi.voti_arrivati`, la regola del
     riepilogo di Oggi), finché resta fra le ultime MASSIMO_GIORNATE. Quando cambiano i suoi voti (`impronta_voti`, o la voce non
-    ce l'ha) se ne rifanno solo i punti (`rifai_i_punti`); quando cambiano le regole si rifà da zero (#793). Restituisce quante voci ha scritto. `scadenza` (ora di `time.monotonic()`): passata quella, non
-    comincia altre giornate e salva quelle già fatte (il resto al giro dopo)."""
+    ce l'ha) se ne rifanno solo i punti (`rifai_i_punti`); quando cambiano le regole si rifà da zero (#793). Una giornata con
+    partite fuori dal turno e la voce calcolata con altre regole si rifà anche se non è più fra le ultime MASSIMO_GIORNATE: un
+    recupero giocato mesi dopo la sua giornata non lascia la voce con i punti di un'altra regola dei rinvii (revisione di #947,
+    vedi `sospesa`). Restituisce quante voci ha scritto. `scadenza` (ora di
+    `time.monotonic()`): passata quella, non comincia altre giornate e salva quelle già fatte (il resto al giro dopo)."""
     squadra = rose.squadra(rose.mia_squadra) if rose and rose.mia_squadra else None
     if not squadra:
         return 0
@@ -807,7 +810,14 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
     voci = dati_diario["giornate"]
     istantanee = dati_diario["istantanee"] if isinstance(dati_diario.get("istantanee"), dict) else {}
     nuove_voci: dict = {}
-    for g in [x for x in rinvii.giornate_chiuse(db, stagione, regole) if x >= regole.prima_giornata_lega][-MASSIMO_GIORNATE:]:
+    chiuse = [x for x in rinvii.giornate_chiuse(db, stagione, regole) if x >= regole.prima_giornata_lega]
+    ultime = chiuse[-MASSIMO_GIORNATE:]
+    # le giornate più vecchie solo con partite fuori dal turno e la voce calcolata con altre regole: sono le sole che `sospesa`
+    # nasconde e poi rimostra a giornata richiusa. Le altre voci vecchie restano com'erano anche se cambiano le regole (rifarle con
+    # la rosa di oggi può togliere il confronto con la consigliata mostrata). Dopo le ultime: con il tempo finito, prima loro
+    vecchie = [x for x in chiuse[:len(chiuse) - len(ultime)] if isinstance(v := voci.get(f"{stagione}/{x}"), dict)
+               and rinvii.ha_fuori_turno(db, stagione, x) and v.get("regole") != impronta_regole(regole, stagione, x, True)]
+    for g in ultime + vecchie:
         if scadenza is not None and time.monotonic() > scadenza:
             break
         if not fasi.voti_arrivati(db, stagione, g, regole):
@@ -1237,20 +1247,23 @@ def motivo_vuoto(db: sqlite3.Connection, regole: Regole, rose: Rose | None) -> s
 
 
 def sospesa(db: sqlite3.Connection, regole: Regole, voce: dict) -> bool:
-    """Vero se la voce non va mostrata, né nel Diario né nel riepilogo di Oggi: la sua giornata (della stagione in corso) per la
-    lega non è più finita e la voce è stata calcolata con regole diverse da quelle di adesso (`impronta_regole`). Succede quando
-    la regola delle partite rinviate di quella giornata torna ad «aspetta» dopo il calcolo: i punti della voce (con il voto
-    d'ufficio o senza voto) non sono più quelli della lega, che aspetta il recupero. Quando la giornata si richiude `aggiorna` la
-    rifà, perché l'impronta è cambiata. L'archivio si legge solo se l'impronta della voce non è quella di adesso."""
+    """Vero se la voce non va mostrata, né nel Diario né nel riepilogo di Oggi: è stata calcolata con regole diverse da quelle di
+    adesso (`impronta_regole`) e la sua giornata (della stagione in corso) per la lega non è più finita, oppure lo è di nuovo ma i
+    voti non sono ancora tutti arrivati (`fasi.voti_arrivati`: `aggiorna` non l'ha ancora rifatta). Succede quando la regola delle
+    partite rinviate di quella giornata torna ad «aspetta» dopo il calcolo: i punti della voce (con il voto d'ufficio o senza voto)
+    non sono più quelli della lega, che aspetta il recupero. Arrivati i voti del recupero `aggiorna` la rifà, anche fuori dalle
+    ultime MASSIMO_GIORNATE (revisione di #947), perché l'impronta è cambiata.
+    L'archivio si legge solo per le voci calcolate con altre regole: con le regole di adesso una giornata ha una di due impronte
+    (senza o con partite fuori dal turno), e una voce con una delle due resta. Resta anche nel solo caso in cui l'impronta giusta è
+    l'altra, cioè quando il calendario ha spostato una partita dentro o fuori dal turno dopo il calcolo: allora la giornata è finita
+    lo stesso e la rifà `aggiorna`, che usa l'impronta esatta."""
     stagione = consigli.stagione_corrente()
     g, fatta = voce.get("giornata"), voce.get("regole")
     if voce.get("stagione") != stagione or not isinstance(g, int) or not isinstance(fatta, str):
         return False                    # un'altra stagione, o una voce senza l'impronta delle regole: non si sa, resta
-    if fatta == impronta_regole(regole, stagione, g, False) == impronta_regole(regole, stagione, g, True):
-        return False                    # le stesse regole, con o senza partite fuori dal turno
-    if g in rinvii.giornate_chiuse(db, stagione, regole):
-        return False
-    return fatta != impronta_regole(regole, stagione, g, rinvii.ha_fuori_turno(db, stagione, g))
+    if fatta in (impronta_regole(regole, stagione, g, False), impronta_regole(regole, stagione, g, True)):
+        return False                    # calcolata con le regole di adesso: niente da chiedere all'archivio
+    return not (g in rinvii.giornate_chiuse(db, stagione, regole) and fasi.voti_arrivati(db, stagione, g, regole))
 
 
 def elenco(percorso: Path | None = None, regole: Regole | None = None, db: sqlite3.Connection | None = None) -> dict:
