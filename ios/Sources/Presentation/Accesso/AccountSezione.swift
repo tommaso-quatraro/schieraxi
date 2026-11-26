@@ -273,11 +273,11 @@ struct RigaEsci: View {
         }
         .accessibilityHint("Esci dal tuo account su questo telefono")
         .accessibilityIdentifier(Self.idDemo)
-        // sul pulsante, non sulla Section (vedi `FoglioAccount`)
-        .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
+        // sul pulsante, non sulla Section (vedi `FoglioAccount`); la domanda e la frase della web (`account.esci_conferma`, #931)
+        .confirmationDialog(Catalogo.Account.esciConferma, isPresented: $chiediEsci, titleVisibility: .visible) {
             Button(Catalogo.Account.esci, role: .destructive) { Task { await esci() } }
         } message: {
-            Text("I dati salvati su questo telefono vengono cancellati. Quelli sul server restano tuoi.")
+            Text(Catalogo.Account.esciConfermaSpiega)
         }
     }
 

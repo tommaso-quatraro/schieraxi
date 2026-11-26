@@ -1,8 +1,8 @@
 import Foundation
 
 /// Una pagina aperta da un passo della configurazione guidata (#880). Sulla web tutto succede dentro la guida, che continua con i
-/// passi che restano fino a «Tutto pronto»; sull'iPhone «Importa le rose», «Scegli la squadra» e «Scegli stemma e maglia» portano
-/// a una pagina delle Impostazioni e «Collega il widget» al suo foglio. Quando la pagina si lascia (anche con «indietro» senza
+/// passi che restano fino a «Tutto pronto»; sull'iPhone «Importa le rose» e «Scegli la squadra» portano a una pagina delle
+/// Impostazioni e «Collega il widget» al suo foglio. Quando la pagina si lascia (anche con «indietro» senza
 /// salvare) o il foglio si chiude, la guida si riapre e riparte da quel passo (`PrimoAvvioLogica.inizio`).
 /// Vive nel `LegaViewModel` della sessione: uscendo dall'account se ne va con lui.
 struct RitornoAllaGuida {

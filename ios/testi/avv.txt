@@ -24,3 +24,10 @@ avv.n_di_11
 # Stato dei dati, «Prova delle previsioni» (LegaExtra): la frase che spiega «da fantamedia», come la web dopo #839 (#840)
 avv.prova_su.one
 avv.prova_su.other
+# Stato dei dati, «Quanto è affidabile il modello»: le etichette dei tre numeri e le frasi della web (mostraAffidabilita), #931
+avv.errore_sui_fantavoti
+avv.errore_fantamedia
+avv.punti_formazione_modello
+avv.punti_medi
+avv.mancano_probabili
+avv.prova_sola_dopo

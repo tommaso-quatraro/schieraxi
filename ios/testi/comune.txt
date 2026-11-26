@@ -19,6 +19,11 @@ comune.carico
 comune.rete_no
 comune.server_non_risponde
 
+# Un calcolo del server (risposta 202) che dura: la frase d'attesa sopra la barra e quella quando si smette di aspettare,
+# come mostraCalcolo e api() della web (AttesaCalcolo, ServerHTTP), #931
+comune.calcolo_attesa
+comune.calcolo_lungo
+
 # La striscia dei dati salvati quando il server ha risposto con un errore (DatiVecchi.frase): il motivo in testa e la nota fra
 # parentesi, come la web (comune.cache_errore in app.js), #830; nella nota il giorno e l'ora della copia, #845
 comune.cache_errore

@@ -207,7 +207,8 @@ final class ServerHTTPAccountTests: XCTestCase {
             _ = try await server.grezzo("/api/formazione")
             XCTFail("doveva arrendersi")
         } catch {
-            XCTAssertTrue(error.localizedDescription.contains("Riprova tra poco"), error.localizedDescription)
+            // la frase della web (`comune.calcolo_lungo`, #931)
+            XCTAssertEqual(error.localizedDescription, Catalogo.Comune.calcoloLungo)
         }
         XCTAssertEqual(conteggio.valore, 6, "una richiesta più cinque tentativi")
     }

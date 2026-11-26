@@ -5,8 +5,8 @@ import Testing
 /// Le parole di Accesso, Il tuo account, Accessi (Google), codice di recupero, Primo avvio e Impostazioni vengono dal catalogo
 /// comune con la web (#497, parte di #167): `fanta/testi/` è la fonte, i file Swift di `Support/Catalogo/` li genera
 /// `python script/testi.py --scrivi` per le chiavi elencate in `ios/testi/`. Una frase riscritta a mano in Swift non seguirebbe
-/// più la web, e qui fallisce. I testi che ha solo l'iPhone («Leggi la Privacy», «Un attimo…», i passi della guida che la web
-/// non ha) restano in Swift.
+/// più la web, e qui fallisce. I testi che ha solo l'iPhone («Leggi la Privacy», «Un attimo…») restano in Swift; quelli dei passi
+/// della guida che la web non ha (widget, avvisi) stanno nel catalogo con la nota «solo iPhone» (#931).
 @Suite("Accesso e Impostazioni: le parole vengono dal catalogo (#497)")
 struct AccessoImpostazioniDalCatalogoTests {
 
@@ -163,8 +163,9 @@ struct AccessoImpostazioniDalCatalogoTests {
             "Catalogo.Codice.titolo", "Catalogo.Codice.aCosaServe", "Catalogo.Codice.salva", "Catalogo.Codice.spiega",
             "Catalogo.Codice.copia", "Catalogo.Codice.copiato", "Catalogo.Codice.salvato", "Catalogo.Account.recupero",
         ]),
+        // «Hai finito la configurazione.» o i passi saltati per nome: la frase la sceglie `PrimoAvvioLogica.frasePronto` (#931)
         ("Sources/Presentation/Accesso/ConfigurazioneGuidataView.swift", [
-            "Catalogo.Pav.primoAvvio", "Catalogo.Pav.salta", "Catalogo.Pav.tuttoProntoMister", "Catalogo.Pav.haiFinito",
+            "Catalogo.Pav.primoAvvio", "Catalogo.Pav.salta", "Catalogo.Pav.tuttoProntoMister", "vm.frasePronto",
             "Catalogo.Shell.chiudi",
         ]),
         ("Sources/Presentation/Accesso/ConfigurazioneGuidataViewModel.swift", [
@@ -191,7 +192,7 @@ struct AccessoImpostazioniDalCatalogoTests {
         ]),
         // i promemoria del certificato (#906) e il passo «Attiva gli avvisi» del primo avvio
         ("Sources/Support/Notifiche.swift", ["Catalogo.Avv.certificatoTitolo", "Catalogo.Avv.certificatoOre("]),
-        ("Sources/Domain/PrimoAvvioGuidato.swift", ["Catalogo.Pav.avvisiSpiega"]),
+        ("Sources/Domain/PrimoAvvioGuidato.swift", ["Catalogo.Pav.avvisiSpiega", "Catalogo.Pav.haiFinito"]),
     ])
     func vistaUsaIlCatalogo(percorso: String, costanti: [String]) throws {
         let codice = try SorgenteAccesso.codice(percorso)

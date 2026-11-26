@@ -4316,7 +4316,10 @@ function collegaAccount() {
   };
   const provaCosi = async (cosa, fai) => { try { await fai(); } catch (e) { avviso(e.message || cosa, 6000); } };
   collegaEmailAccount();
-  $("#acc-esci").addEventListener("click", () => esciDa("/api/account/esci"));
+  // «Esci» chiede conferma come sull'iPhone, con le stesse parole (#931)
+  $("#acc-esci").addEventListener("click", () => {
+    if (confirm(`${t("account.esci_conferma")} ${t("account.esci_conferma_spiega")}`)) esciDa("/api/account/esci");
+  });
   $("#acc-esci-tutti").addEventListener("click", () => esciDaTutti());
   $("#acc-scarica-dati").addEventListener("click", () => scaricaIMieiDati());
   if ($("#acc-accessi")) collegaAccessi();

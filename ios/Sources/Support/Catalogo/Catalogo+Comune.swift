@@ -30,6 +30,12 @@ extension Catalogo {
         /// `comune.server_non_risponde`
         static let serverNonRisponde = "Il server non risponde: riprova fra poco"
 
+        /// `comune.calcolo_attesa`
+        static let calcoloAttesa = "Un attimo, mister: ci sto lavorando."
+
+        /// `comune.calcolo_lungo`
+        static let calcoloLungo = "Il calcolo sta durando più del previsto: riprova tra poco."
+
         /// `comune.cache_errore`
         static func cacheErrore(errore: String, giorno: String, ora: String) -> String {
             "\(errore) (dati salvati il \(giorno) alle \(ora), potrebbero non essere aggiornati)."

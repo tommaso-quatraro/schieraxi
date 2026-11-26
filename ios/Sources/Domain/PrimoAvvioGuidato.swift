@@ -1,8 +1,9 @@
 import Foundation
 
 // Configurazione guidata («Primo avvio»): pochi passi che si possono saltare, ricordati sul server (GET/PUT /api/primo-avvio)
-// così si riprende anche da un altro dispositivo. Questa app gestisce rose, squadra, stemma e maglia, widget e avvisi; gli altri
-// passi del server (server, accesso, pwa) li segnano altri client: qui si lasciano come sono.
+// così si riprende anche da un altro dispositivo. I passi sono quelli della web (rose, squadra, tempi della lega, #931) più widget e
+// avvisi, che ha solo l'iPhone; gli altri passi del server (server, accesso, stemma, pwa) li segnano altri client o versioni di
+// prima: qui si lasciano come sono.
 
 /// Cosa il server ricorda del percorso guidato.
 struct AvanzamentoPrimoAvvio: Decodable, Equatable {
@@ -66,34 +67,32 @@ struct CorpoPrimoAvvio: Codable, Equatable {
     var chiuso: Bool
 }
 
-/// I passi che gestisce questa app, nell'ordine in cui si propongono.
+/// I passi che gestisce questa app, nell'ordine in cui si propongono: i tre della web (`PA_PASSI` di primoavvio.js), poi widget e
+/// avvisi, che la web non ha (differenza ammessa, #931). Lo stemma non è un passo: «Tutto pronto» dice che sta in Impostazioni.
 enum PassoGuidato: String, CaseIterable, Identifiable {
-    case rose, squadra, stemma, widget, avvisi
+    case rose, squadra, tempi, widget, avvisi
     var id: String { rawValue }
 
+    /// Il nome del passo, come `PA_NOMI` della web («Le rose», «La tua squadra», «I tempi della lega»).
     var titolo: String {
         switch self {
-        case .rose: return "Carica le rose"
-        case .squadra: return "Scegli la tua squadra"
-        case .stemma: return "Stemma e maglia"
-        case .widget: return "Aggiungi il widget"
-        case .avvisi: return "Attiva gli avvisi"
+        case .rose: return Catalogo.Pav.nRose
+        case .squadra: return Catalogo.Pav.nSquadra
+        case .tempi: return Catalogo.Pav.nTempi
+        case .widget: return Catalogo.Pav.nWidget
+        case .avvisi: return Catalogo.Pav.nAvvisi
         }
     }
 
+    /// La frase sotto il nome. Rose e squadra si fanno poi nella loro pagina (sulla web dentro la guida), i tempi qui sotto.
     var spiegazione: String {
         switch self {
-        case .rose:
-            return "Incolla la pagina delle rose o scegli il file della lega (Excel, CSV o testo). Prima di salvare controlli cosa ho capito e scegli la tua squadra. Basta anche solo la tua rosa: le altre puoi aggiungerle dopo."
-        case .squadra:
-            return "Indica quale delle squadre è la tua: la formazione consigliata è per lei."
-        case .stemma:
-            return "Scegli lo stemma e la maglia della tua squadra dalle tue foto. Compaiono nella Formazione."
-        case .widget:
-            return "Tieni premuto sulla Home, tocca + e cerca SchieraXI. Il widget si collega da solo: se dice «Tocca per collegare», toccalo."
-        case .avvisi:
-            // solo ciò che fanno i promemoria dell'app (#906): l'avviso quando cambia la formazione lo manda il server alla web
-            return Catalogo.Pav.avvisiSpiega
+        case .rose: return Catalogo.Pav.roseSpiega
+        case .squadra: return Catalogo.Pav.qualeSquadraTua
+        case .tempi: return Catalogo.Pav.tempiSpiega
+        case .widget: return Catalogo.Pav.widgetSpiega
+        // solo ciò che fanno i promemoria dell'app (#906): l'avviso quando cambia la formazione lo manda il server alla web
+        case .avvisi: return Catalogo.Pav.avvisiSpiega
         }
     }
 
@@ -101,22 +100,25 @@ enum PassoGuidato: String, CaseIterable, Identifiable {
         switch self {
         case .rose: return "square.and.arrow.down"
         case .squadra: return "person.3"
-        case .stemma: return "shield.lefthalf.filled"
+        case .tempi: return "clock"
         case .widget: return "rectangle.on.rectangle"
         case .avvisi: return "bell.badge"
         }
     }
 
-    /// Il testo del pulsante principale.
+    /// Il testo del pulsante principale; per gli avvisi quello di «Tutto pronto» della web.
     var azione: String {
         switch self {
-        case .rose: return "Importa le rose"
-        case .squadra: return "Scegli la squadra"
-        case .stemma: return "Scegli stemma e maglia"
-        case .widget: return "Collega il widget"
-        case .avvisi: return "Attiva le notifiche"
+        case .rose: return Catalogo.Comune.importaRose
+        case .squadra: return Catalogo.Pav.scegliSquadra
+        case .tempi: return Catalogo.Pav.tempiSalva
+        case .widget: return Catalogo.Pav.collegaWidget
+        case .avvisi: return Catalogo.Onb.attivaGliAvvisiB
         }
     }
+
+    /// Widget e avvisi dipendono dal telefono e l'app non li vede fatti dai dati della lega: si segnano anche con «L'ho già fatto».
+    var siSegnaAMano: Bool { self == .widget || self == .avvisi }
 
     /// Il nome usato dal server.
     var nomeServer: String { rawValue }
@@ -126,14 +128,13 @@ enum PassoGuidato: String, CaseIterable, Identifiable {
 struct StatoConfigurazione: Equatable {
     var roseImportate: Bool?
     var miaSquadra: String?
-    var stemmaEMaglia: Bool?
 
-    /// Passi che risultano fatti dai dati della lega (widget e avvisi dipendono dal telefono: si segnano a mano).
+    /// Passi che risultano fatti dai dati della lega, come `paGiaFatti` della web (i tempi li ricorda il server; widget e avvisi
+    /// dipendono dal telefono: si segnano a mano).
     var fattiDaiDati: Set<PassoGuidato> {
         var fatti = Set<PassoGuidato>()
         if roseImportate == true { fatti.insert(.rose) }
         if let s = miaSquadra, !s.isEmpty { fatti.insert(.squadra) }
-        if stemmaEMaglia == true { fatti.insert(.stemma) }
         return fatti
     }
 }
@@ -186,7 +187,8 @@ enum PrimoAvvioLogica {
     /// Un passo non sta mai in «fatti» e «saltati» insieme; i nomi che il server non conosce non si mandano (darebbero errore).
     static func corpo(precedente: AvanzamentoPrimoAvvio?, passiAmmessi: [String], fatti nuoviFatti: Set<PassoGuidato>,
                       saltati nuoviSaltati: Set<PassoGuidato>, chiuso: Bool) -> CorpoPrimoAvvio {
-        let ammessi = passiAmmessi.isEmpty ? Set(["server", "accesso", "rose", "squadra", "stemma", "pwa", "widget", "avvisi"]) : Set(passiAmmessi)
+        let ammessi = passiAmmessi.isEmpty ? Set(["server", "accesso", "rose", "stemma", "squadra", "tempi", "pwa", "widget", "avvisi"])
+                                           : Set(passiAmmessi)
         let ordine = passiAmmessi.isEmpty ? PassoGuidato.allCases.map(\.nomeServer) : passiAmmessi
         var fatti = Set(precedente?.fatti ?? []).union(nuoviFatti.map(\.nomeServer))
         var saltati = Set(precedente?.saltati ?? []).union(nuoviSaltati.map(\.nomeServer))
@@ -200,22 +202,31 @@ enum PrimoAvvioLogica {
         return CorpoPrimoAvvio(fatti: ordinati(fatti), saltati: ordinati(saltati), chiuso: chiuso)
     }
 
-    /// Una riga per ogni passo, per il riepilogo: «Fatto», «Saltato», «Da fare».
+    /// Una riga per ogni passo, per il riepilogo: fatto, saltato o da fare.
     static func esito(_ passo: PassoGuidato, avanzamento: AvanzamentoPrimoAvvio?, stato: StatoConfigurazione, saltatiOra: Set<PassoGuidato> = []) -> EsitoPasso {
         if fatti(avanzamento, stato: stato).contains(passo) { return .fatto }
         if saltatiOra.contains(passo) || (avanzamento?.saltati ?? []).contains(passo.nomeServer) { return .saltato }
         return .daFare
+    }
+
+    /// La frase di «Tutto pronto», come `paFine` della web: «Hai finito la configurazione.» o i passi non fatti per nome, con dove
+    /// ritrovarli (dalla Formazione; senza rose con «Importa le rose» della Formazione, che riapre la guida).
+    static func frasePronto(nonFatti: [PassoGuidato], roseImportate: Bool) -> String {
+        guard !nonFatti.isEmpty else { return Catalogo.Pav.haiFinito }
+        let nomi = nonFatti.map(\.titolo).joined(separator: ", ")
+        return roseImportate ? Catalogo.Pav.haiSaltato(nomi: nomi) : Catalogo.Pav.haiSaltatoSenzaRose(nomi: nomi)
     }
 }
 
 enum EsitoPasso: Equatable {
     case fatto, saltato, daFare
 
-    var testo: String {
+    /// Accanto al nome del passo nel riepilogo, come l'indicatore dei passi della web: «Le rose (fatto)», «Il widget (saltato)».
+    var suffisso: String {
         switch self {
-        case .fatto: return "Fatto"
-        case .saltato: return "Saltato"
-        case .daFare: return "Da fare"
+        case .fatto: return Catalogo.Pav.fattoPar
+        case .saltato: return Catalogo.Pav.saltatoPar
+        case .daFare: return ""
         }
     }
 }

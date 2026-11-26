@@ -119,6 +119,38 @@
       "precisazione": "(solo dopo un «Esci» che non arriva al server)",
       "testo": "sull'iPhone, se «Esci» non riesce perché la rete è giù o il server non risponde, sotto «Non riesco a farti uscire.» c'è anche il pulsante «Esci solo da questo telefono» con la frase «Sul server la sessione resta aperta finché non scade.»: toglie sessione, dati e widget dal telefono senza chiedere altro al server. Con un server che risponde con un errore (5xx, troppe richieste) non compare. La web non ha questo pulsante (`RigaEsci`, `SessioneAccount.esciSoloDaQuestoTelefono`, #809).",
       "motivo": "senza server la web non si apre, quindi non può restare chiusa dentro; l'app invece si apre anche senza server, e un utente con un server sparito per sempre non avrebbe altro modo di uscire (revisione della #812). I due testi stanno nel catalogo comune (`account.esci_solo_qui`, `account.esci_solo_qui_spiega`) anche se li mostra solo l'iPhone."
+    },
+    {
+      "titolo": "Primo avvio, «Il widget» e «Gli avvisi»",
+      "precisazione": "(solo iPhone, dopo i tre passi della web)",
+      "testo": "sull'iPhone dopo «Le rose», «La tua squadra» e «I tempi della lega» ci sono due passi in più: «Il widget» («Collega il widget») e «Gli avvisi» («Attiva gli avvisi», che chiede il permesso di iOS), tutti e due anche con «L'ho già fatto». Sopra i puntini «Passo 2 di 5» al posto dei nomi dei passi, e «Più tardi» al posto della ✕. «Le rose» e «La tua squadra» aprono la loro pagina (Importa le rose, la scelta della squadra) e lasciata quella la guida si riapre; sulla web succede tutto dentro la guida. Sulla web gli avvisi si accendono con «Attiva gli avvisi» in «Tutto pronto» (`ConfigurazioneGuidataView`, `PassoGuidato`, testi `pav.*` con la nota «solo iPhone», #931).",
+      "motivo": "il widget c'è solo sull'iPhone e i promemoria dell'app chiedono il permesso di iOS; i nomi di cinque passi non stanno in una riga del telefono. Proposta dell'issue #931."
+    },
+    {
+      "titolo": "Informazioni, «Versione dell'app»",
+      "testo": "sotto «Versione» (la versione del server, come la web) l'iPhone ha anche «Versione dell'app» con quella installata («1.0.12»); la web non ha un'app da aggiornare (`InformazioniPagina`, `VersioniInformazioni`, `info.versione_app`, #931).",
+      "motivo": "l'app si aggiorna a parte dal server: per capire un difetto servono tutte e due le versioni. Proposta dell'issue #931."
+    },
+    {
+      "titolo": "Aggiorna le rose, «Giocatori da sistemare»",
+      "testo": "sull'iPhone i giocatori rimasti senza codice nelle rose salvate stanno in fondo ad Aggiorna le rose; sulla web nel passo «La tua squadra» del primo avvio (`paNonRiconosciuti`). Le parole sono le stesse: «Giocatori da sistemare (3)», «Non li ho trovati nel listone…», «Cerca il giocatore giusto», «✓ Tutti i giocatori sono riconosciuti.» (`pav.da_sistemare`, `onb.*`, `ImportaRoseView`, #931).",
+      "motivo": "sull'iPhone il passo «La tua squadra» apre la scelta della squadra, non un elenco da sistemare; in Aggiorna le rose i giocatori da sistemare si ritrovano anche dopo il primo avvio. Proposta dell'issue #931."
+    },
+    {
+      "titolo": "Senza rete, le copie salvate",
+      "testo": "l'iPhone salva una copia di ogni lettura e, senza rete o con il server che non risponde, la mostra con la striscia dei dati salvati; la web salva solo Formazione e Giornate (`caricaConCache`), nelle altre pagine dice l'errore (`Caricatore` e `Cache` dell'iPhone, #931).",
+      "motivo": "l'app si apre anche senza server e deve mostrare l'ultima cosa vista; la web senza server non si apre. Le frasi della striscia sono quelle della web (righe 97 e 98 di «Differenze di oggi»)."
+    },
+    {
+      "titolo": "Stato dei dati, cosa c'è",
+      "precisazione": "(Gestione, solo per chi gestisce il server)",
+      "testo": "i titoli delle carte sono quelli della web («Ultimi aggiornamenti», «Probabili formazioni raccolte», «Quanto ci azzecca il modello», «Quanto è affidabile il modello»), ma sull'iPhone i numeri in cima sono righe (stagione, calciatori, partite giocate, voti, coppe europee fino al) e non la frase della web (`sd.riepilogo`), gli ultimi aggiornamenti stanno ripiegati, e mancano «Fonti dei dati» (con accendi e spegni), «Quanto si usa l'app», la carta «Date delle coppe europee» e «Controlli sui dati» (`StatoDatiView`, #931).",
+      "motivo": "sono strumenti di chi gestisce il server, che li usa dalla web; sull'iPhone resta quello che serve a capire se i dati sono freschi e quanto è giusto il modello. Proposta dell'issue #931."
+    },
+    {
+      "titolo": "Impostazioni, la riga sotto «Gestione»",
+      "testo": "sulla web sotto «Gestione» c'è «Inviti, utenti, stato e aggiornamento dei dati» (`imp.gestione_sub`); sull'iPhone «Aggiorna i dati · Stato dei dati» (`shell.aggiorna`, `av.stato`), cioè solo quello che ha la sua Gestione (`VociImpostazioni.sottoGestione`, #931).",
+      "motivo": "inviti e utenti si gestiscono solo dalla web: la riga dell'iPhone dice quello che si trova aprendo la sua pagina. Proposta dell'issue #931."
     }
   ]
 }
