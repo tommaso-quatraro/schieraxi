@@ -89,6 +89,79 @@ def test_la_tua_squadra_resta_se_aggiungi_le_rose_degli_altri(calciatori):
     assert leggi("Altra\nA\tThuram\t20\n", calciatori, prima=prima)["mia_squadra"] == "Mia"     # non l'unica letta
 
 
+def test_nel_testo_uno_per_riga_le_squadre_gia_salvate_sono_titoli(ambiente):
+    """Un nome per riga, senza righe vuote: «Beta» potrebbe essere un giocatore che il listone non conosce, ma è una squadra già
+    salvata, quindi è il titolo della squadra dopo (collaudo del 26/11)."""
+    a, _ = nuovo_utente("utentea")
+    assert importa(a, "Alfa\nP\tSommer\t1\nBeta\nA\tKean\t1\n").status_code == 200
+    r = a.post("/api/rose/anteprima", json={"testo": "Alfa\nSommer\nBeta\nKean\n"})
+    assert r.status_code == 200, r.text
+    assert [s["nome"] for s in r.json()["squadre"]] == ["Alfa", "Beta"]
+
+
+def test_ricaricando_lo_stesso_testo_le_scelte_di_prima_restano(ambiente):
+    """Collaudo del 26/11: ricaricando lo stesso file le scelte fatte sui dubbi si perdevano («Cosa cambia» mostrava movimenti
+    finti e si salvavano come non riconosciuti). La scelta salvata per lo stesso nome scritto, nella stessa squadra, torna
+    proposta e già scelta, ma resta da controllare (revisione della #939: una scelta sbagliata si deve poter cambiare); quelli
+    lasciati non trovati restano così."""
+    a, _ = nuovo_utente("utentea")
+    testo = TESTO.replace("Altra\n", "D\tPellegrini\t3\nAltra\n")      # «Pellegrini» è «Pellegrini Lu.» nel listone
+    righe = {g["testo"]: g["riga"] for g in per_testo(a.post("/api/rose/anteprima", json={"testo": testo}).json()).values()}
+    corr = [{"squadra": "Mia", "testo": "Rossi", "id": 15, "riga": righe["Rossi"]},
+            {"squadra": "Mia", "testo": "Pellegrini", "id": 17, "riga": righe["Pellegrini"]}]
+    assert a.post("/api/rose/testo", json={"testo": testo, "correzioni": corr, "mia_squadra": "Mia"}).status_code == 200
+    pellegrini = next(g for g in a.get("/api/rosa").json()["giocatori"] if g["id"] == 17)
+    assert (pellegrini["nome"], pellegrini["testo"]) == ("Pellegrini Lu.", "Pellegrini")      # il nome scritto resta salvato
+
+    r = a.post("/api/rose/anteprima", json={"testo": testo}).json()
+    g = per_testo(r)
+    for testo, gid in (("Rossi", 15), ("Pellegrini", 17)):
+        assert (g[testo]["stato"], g[testo]["id"], g[testo]["metodo"]) == ("da_controllare", gid, "precedente"), g[testo]
+        assert g[testo]["alternative"][0]["id"] == gid                       # il menu si apre sulla scelta di prima
+        assert g[testo]["avviso"] == "scelto da te l'ultima volta"
+    assert [x["id"] for x in g["Rossi"]["alternative"]] == [15, 16]           # e si può scegliere l'altro
+    assert g["Pinco Pallino"]["stato"] == "non_trovato"
+    assert r["differenze"]["nessuna_differenza"] is True, r["differenze"]
+    assert a.post("/api/rose/testo", json={"testo": testo}).status_code == 200            # salvato di nuovo senza scelte
+    ids = {x["id"] for x in a.get("/api/rosa").json()["giocatori"]}
+    assert {15, 17} <= ids
+
+
+def test_anche_le_scelte_fatte_dopo_in_giocatori_da_sistemare_restano(ambiente):
+    a, _ = nuovo_utente("utentea")
+    assert importa(a, TESTO).status_code == 200
+    corr = a.post("/api/rose/correggi", json={"squadra": "Mia", "nome": "Pinco Pallino", "id": 12})
+    assert corr.status_code == 200, corr.text
+    g = per_testo(a.post("/api/rose/anteprima", json={"testo": TESTO}).json())
+    assert (g["Pinco Pallino"]["stato"], g["Pinco Pallino"]["id"]) == ("da_controllare", 12)  # Barella, centrocampista come nel file
+
+
+def test_una_scelta_di_prima_sbagliata_si_cambia(ambiente):
+    """Revisione della #939: la scelta di prima torna proposta, non decisa. Nell'anteprima si sceglie un altro e si salva quello;
+    salvata senza toccarla resta la scelta di prima e «Giocatori da sistemare» (/api/rose/correggi) la può ancora cambiare."""
+    a, _ = nuovo_utente("utentea")
+    corr = [{"squadra": "Mia", "testo": "Rossi", "id": 15}]
+    assert importa(a, TESTO).status_code == 200
+    assert a.post("/api/rose/testo", json={"testo": TESTO, "correzioni": corr}).status_code == 200
+    rossi = per_testo(a.post("/api/rose/anteprima", json={"testo": TESTO}).json())["Rossi"]
+    altra = [{"squadra": "Mia", "testo": "Rossi", "id": 16, "riga": rossi["riga"]}]
+    assert a.post("/api/rose/testo", json={"testo": TESTO, "correzioni": altra}).status_code == 200
+    ids = {g["id"] for g in a.get("/api/rosa", params={"squadra": "Mia"}).json()["giocatori"]}
+    assert 16 in ids and 15 not in ids
+    assert a.post("/api/rose/testo", json={"testo": TESTO}).status_code == 200           # senza scelte: resta la scelta di prima
+    r = a.post("/api/rose/correggi", json={"squadra": "Mia", "nome": "Rossi", "id": 15})
+    assert r.status_code == 200, r.text
+    assert (r.json()["giocatore"]["id"], r.json()["giocatore"]["riconosciuto"]) == (15, "manuale")
+
+
+def test_le_scelte_di_prima_valgono_solo_nella_stessa_squadra(ambiente):
+    a, _ = nuovo_utente("utentea")
+    corr = [{"squadra": "Mia", "testo": "Rossi", "id": 15}]
+    assert a.post("/api/rose/testo", json={"testo": "Mia\nP\tSommer\t1\nRossi\t7\n", "correzioni": corr}).status_code == 200
+    g = per_testo(a.post("/api/rose/anteprima", json={"testo": "Altra\nP\tSommer\t1\nRossi\t7\n"}).json(), "Altra")
+    assert g["Rossi"]["stato"] == "da_controllare"
+
+
 def test_correzione_su_chi_ce_gia_non_crea_un_doppione(ambiente):
     a, _ = nuovo_utente("utentea")
     corr = [{"squadra": "Mia", "testo": "Rossi", "id": 2}]                      # Sommer, già nella stessa rosa
@@ -255,8 +328,11 @@ def test_il_buono_non_torna_all_infinito(ambiente, tmp_path):
         codici.append(a.post("/api/rose/file", files=file, data={"mia_squadra": "Inesistente"}).status_code)
         contati.append(limiti.usati_oggi(uid, "importazioni"))
     assert codici[:2] == [400, 400] and contati[:2] == [1, 1]          # il buono torna una volta, poi si consuma
-    assert contati[2] == 2                                              # dal terzo invio conta come sempre
-    assert contati[-1] == limiti.MAX_IMPORTAZIONI_AL_GIORNO and codici[-1] == 429
+    # dal collaudo del 26/11 un'importazione che fallisce non conta tra quelle del giorno, ma dal terzo invio ognuno prende un
+    # posto delle letture all'ora (con l'anteprima): oltre il tetto, 429
+    assert set(contati) == {1}
+    n = limiti.MAX_ANTEPRIME_ALL_ORA + 1                                # l'anteprima ha preso un posto, i due invii col buono no
+    assert codici[:n] == [400] * n and set(codici[n:]) == {429}
 
 
 def test_un_excel_alla_volta(ambiente, tmp_path, monkeypatch):
@@ -310,7 +386,7 @@ def test_excel_occupato_ha_un_tetto_e_non_lavora_a_vuoto(ambiente, tmp_path, mon
     n = limiti.MAX_EXCEL_OCCUPATO_ALL_ORA
     assert codici[:n] == [503] * n and codici[n:] == [429] * (100 - n)
     assert zip_controllati == [] and temporanei == []                  # nessun lavoro a vuoto
-    assert limiti.usati_oggi(uid, "importazioni") == limiti.MAX_IMPORTAZIONI_AL_GIORNO   # i tentativi oltre il tetto contano
+    assert limiti.usati_oggi(uid, "importazioni") == 0          # rifiutati: non contano tra le importazioni (collaudo del 26/11)
 
 
 def test_il_turno_si_libera_anche_se_la_lettura_fallisce(ambiente, tmp_path, monkeypatch):
@@ -404,8 +480,26 @@ def test_l_importazione_manda_le_frasi_degli_avvisi_come_l_anteprima(ambiente):
         assert r.status_code == 200, r.text
         esito = r.json()
         assert len(esito["avvisi_frasi"]) == len(esito["avvisi"]) > 0
-        pinco = esito["avvisi_frasi"][next(i for i, x in enumerate(esito["avvisi"]) if "'Pinco Pallino'" in x)]
+        pinco = esito["avvisi_frasi"][next(i for i, x in enumerate(esito["avvisi"]) if "«Pinco Pallino»" in x)]
         assert pinco["chiave"] == "rose.non_riconosciuto" and pinco["param"]["nome"] == "Pinco Pallino"
+
+
+def test_l_esito_di_aggiorna_le_rose_parla_semplice_e_solo_delle_squadre_del_file(ambiente):
+    """Collaudo del 26/11: l'esito di Aggiorna le rose era pieno di sigle («(C, ROM)», «rosa diversa dalle regole (P 2/3…)»,
+    nomi fra apici) e dava avvisi anche sulle squadre che il file non toccava. Ora frasi come nell'anteprima, solo per le
+    squadre del file."""
+    a, _ = nuovo_utente("utentea")
+    assert importa(a, "Mia\nP\tSommer\t1\nAltra\nC\tPinco Pallino\t3\n").status_code == 200
+    esito = importa(a, "Mia\nP\tSommer\t1\nRossi\t7\nPellegrini\t5\nKean\tJUV\t9\n").json()
+    avvisi = esito["avvisi"]
+    assert not [x for x in avvisi if "Altra" in x], avvisi                    # la squadra che il file non tocca
+    assert "Mia: mancano 2 portieri, 7 difensori, 8 centrocampisti e 5 attaccanti." in avvisi, avvisi
+    assert not [x for x in avvisi if "senza ruolo" in x], avvisi         # Rossi, senza ruolo, ha già la sua frase: una volta sola
+    assert "Mia: non so chi è «Rossi»: potrebbe essere uno fra Rossi (difensore, Genoa) e Rossi (attaccante, Lecce)." in avvisi
+    assert "Mia: ho riconosciuto Pellegrini Lu. dal nome scritto abbreviato: controlla che sia lui." in avvisi, avvisi
+    assert "Mia: Kean: squadra diversa: nel file JUV, nel listone Fiorentina." in avvisi, avvisi
+    assert not [x for x in avvisi if "'" in x or "/" in x or "(D," in x], avvisi      # niente apici, conti «P 1/3», sigle di ruolo
+    assert len(esito["avvisi_frasi"]) == len(avvisi) and all(esito["avvisi_frasi"])
 
 
 def test_senza_account_l_anteprima_funziona_e_non_salva(dati_isolati, calciatori, monkeypatch):

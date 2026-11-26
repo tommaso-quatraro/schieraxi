@@ -75,6 +75,48 @@ def test_dopo_un_rilascio_con_la_rete_debole_la_pagina_ha_una_versione_sola(inst
     assert not installata.errori, installata.errori
 
 
+# L'app torna in primo piano (la si riprende dal multitasking): la pagina diventa nascosta e poi visibile. Restituisce quante
+# volte la pagina ha chiesto al browser di cercare una versione nuova (vedi CONTA_CONTROLLI), a eventi finiti.
+TORNA_IN_PRIMO_PIANO = """() => new Promise(fatto => {
+  for (const v of ['hidden', 'visible']) {
+    Object.defineProperty(document, 'visibilityState', { value: v, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }
+  setTimeout(() => fatto(window.__controlli), 0);
+})"""
+CONTA_CONTROLLI = """() => { window.__controlli = 0; const cerca = ServiceWorkerRegistration.prototype.update;
+  ServiceWorkerRegistration.prototype.update = function () { window.__controlli++; return cerca.call(this); }; }"""
+
+
+def test_tornata_in_primo_piano_l_app_trova_la_versione_nuova_senza_interrompere(installata):
+    """Una web installata resta aperta in memoria per giorni: il browser cerca una versione nuova solo a una navigazione. Tornata
+    in primo piano, l'app lo chiede lei, al massimo una volta ogni qualche ora: la versione nuova si prepara, la pagina aperta
+    resta quella (con «Ricarica») e la versione nuova si apre al prossimo caricamento."""
+    web = installata.web
+    originali = {n: (web / n).read_text(encoding="utf-8") for n in SCRIPT + ["index.html", "stile.css"]}
+    rilascio(web, originali, "v1")
+    installata.installa()
+    pagina = installata.scheda("/?vista=formazione")
+    installata.aspetta(pagina)
+    pagina.evaluate(CONTA_CONTROLLI)
+    pagina.evaluate("() => { window.__stessa = true; }")
+    rilascio(web, originali, "v2")
+    alza_versione(web)
+    assert pagina.evaluate(TORNA_IN_PRIMO_PIANO) == 0, "appena aperta l'app non ha bisogno di cercare una versione nuova"
+
+    adesso = pagina.evaluate("() => Date.now()") / 1000
+    installata.contesto.clock.set_fixed_time(adesso + 4 * 3600)       # quattro ore dopo, l'app ripresa dal multitasking
+    assert pagina.evaluate(TORNA_IN_PRIMO_PIANO) == 1, "tornata in primo piano dopo ore l'app non cerca la versione nuova"
+    pagina.get_by_role("button", name="Ricarica").wait_for(timeout=30000)
+    assert pagina.evaluate(TORNA_IN_PRIMO_PIANO) == 1, "subito dopo l'app cerca di nuovo: al massimo una volta ogni qualche ora"
+    assert pagina.evaluate("() => window.__stessa") is True, "la pagina si è ricaricata da sola: chi stava lavorando è interrotto"
+    assert set(pagina.evaluate(VERSIONI).values()) == {"v1"}
+
+    nuova = installata.scheda("/?vista=formazione")                  # il prossimo caricamento
+    assert set(nuova.evaluate(VERSIONI).values()) == {"v2"}, "al prossimo caricamento non c'è la versione nuova"
+    assert not installata.errori, installata.errori
+
+
 def test_mentre_il_server_riparte_si_apre_l_app_salvata(installata):
     installata.installa()
     installata.proxy.modo = "502"                                   # nginx davanti, il servizio dietro sta ripartendo

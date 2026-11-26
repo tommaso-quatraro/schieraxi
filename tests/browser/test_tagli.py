@@ -7,6 +7,7 @@ non bastano (le pedine del campo, i volti) si usa la classe di oggi: quei test s
 I test che non dipendono dalla fase della giornata girano solo prima della scadenza (`solo`).
 """
 import re
+import time
 from urllib.parse import urlsplit
 
 import pytest
@@ -249,13 +250,19 @@ def test_le_schermate_sane_non_hanno_avvisi_di_errore(web):
 
 def test_mentre_una_schermata_carica_l_area_principale_lo_dice(web):
     """Patto dei test del browser (tests/browser/LEGGIMI.md): finché una schermata carica, `<main>` ha aria-busy="true"; quando
-    ha finito non più. Qui la risposta della Formazione si tiene ferma finché il test non la lascia passare."""
+    ha finito non più. Qui la risposta della Formazione si tiene ferma finché il test non la lascia passare.
+    Dal 26/11 (#948) il caricamento compare prima delle richieste (la Formazione chiede i suoi dati quando è arrivato lo stato
+    d'avvio): si aspetta che la richiesta parta, e mentre è ferma la schermata deve dire che carica."""
     solo(web, "prima")
     ferme = []
     web.pagina.route(lambda indirizzo: urlsplit(indirizzo).path == "/api/formazione", lambda richiesta: ferme.append(richiesta))
-    web.pagina.goto(web.server.indirizzo + "/?vista=formazione", wait_until="load")
-    web.pagina.locator('main[aria-busy="true"]').wait_for(state="attached", timeout=5000)
+    with web.pagina.expect_request(lambda r: urlsplit(r.url).path == "/api/formazione", timeout=10000):
+        web.pagina.goto(web.server.indirizzo + "/?vista=formazione", wait_until="load")
+    fine = time.monotonic() + 5
+    while not ferme and time.monotonic() < fine:          # partita: fra un attimo la prende il gestore qui sopra
+        web.pagina.wait_for_timeout(20)
     assert ferme, "la Formazione non ha chiesto /api/formazione"
+    web.pagina.locator('main[aria-busy="true"]').wait_for(state="attached", timeout=5000)
     for richiesta in ferme:
         richiesta.continue_()
     web.aspetta()
@@ -290,7 +297,7 @@ def _apri_il_riconoscimento(web):
     web.apri("/?vista=squadra&voce=importa")
     principale(web).locator("summary", has_text="Incolla il testo delle rose").click()
     principale(web).get_by_placeholder("Incolla qui il testo delle rose").fill("Atletico Prova\nRossi\nBianki")
-    principale(web).get_by_role("button", name="Controlla il testo").click()
+    principale(web).get_by_role("button", name="Controlla le rose").click()
     principale(web).get_by_role("heading", name="Controlla prima di salvare").wait_for(timeout=10000)
     web.aspetta()
     web.pagina.evaluate(OSSERVA_REGIONI)
@@ -342,7 +349,7 @@ def test_in_inglese_gli_avvisi_dopo_conferma_e_salva_sono_tradotti(web):
     web.apri("/?vista=impostazioni&gruppo=rose")
     principale(web).locator("summary", has_text="Paste the roster text").click()
     principale(web).get_by_placeholder("Paste the roster text here").fill("Atletico Prova\nRossi\nBianki")
-    principale(web).get_by_role("button", name="Check the text").click()
+    principale(web).get_by_role("button", name="Check the rosters").click()
     principale(web).get_by_role("heading", name="Check before saving").wait_for(timeout=10000)
     web.aspetta()
     tocca(web, principale(web).get_by_role("button", name="Confirm and save"))

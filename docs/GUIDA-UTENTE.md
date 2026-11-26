@@ -47,6 +47,7 @@ Alla prima apertura il **Primo avvio** ti guida in tre passi, scritti in alto: *
 Se ti fermi prima di caricare le rose, alla prossima apertura la guida riprende da lì, anche da un altro telefono o computer. Se la chiudi con la ✕, i passi rimasti contano come saltati e la guida non si riapre da sola: la ritrovi toccando **Importa le rose** nella Formazione. Se hai salvato le rose senza dire qual è la tua squadra, la Formazione te lo chiede: **Quale squadra è la tua?**, poi **Questa è la mia**.
 
 1. **Le rose.** Esporta le rose da Leghe (Excel, CSV o testo copiato), poi incolla il testo e tocca **Controlla le rose**, oppure tocca **Scegli il file (Excel o CSV)**. Non si salva ancora niente.
+   Nel testo scritto a mano va un nome per riga: in cima il nome della squadra, sotto i suoi giocatori, e una riga vuota prima della squadra dopo. Un nome che SchieraXI non conosce resta un giocatore da sistemare, non diventa una squadra; se sembra il nome di una squadra rimasta senza riga vuota, l'anteprima chiede «manca una riga vuota fra le squadre?». Va bene anche un CSV con la squadra scritta su ogni riga (colonna «Fantasquadra»).
    Per cominciare basta anche **solo la tua squadra**: formazione e consigli funzionano subito. Le rose degli altri servono per guardare le altre squadre e le aggiungi quando vuoi. Se vuoi solo guardare l'app, sotto **Prova con gli esempi** ci sono quattro squadre inventate.
 2. **La tua squadra.** Sotto **Controlla prima di salvare** SchieraXI mostra cosa ha capito, squadra per squadra. In alto scegli **Qual è la tua squadra?**, poi guarda i giocatori:
    - **da controllare** (arancione): nome simile a un altro o cognome doppio. Scegli quello giusto dal menu, cerca a mano con **Un altro: lo cerco io**, oppure **Toglilo dalla rosa**;
@@ -62,9 +63,9 @@ Sull'iPhone i passi sono altri: **Carica le rose**, **Scegli la tua squadra**, *
 
 Su un computer la guida sta in un pannello a destra. Se in un secondo momento le rose cambiano da un altro telefono, SchieraXI le rilegge e ti chiede di ricontrollare; le scelte già fatte restano.
 
-Limiti: file fino a 5 MB, al massimo 20 squadre da 40 giocatori, 10 importazioni al giorno (controllare e poi salvare lo stesso file conta una volta). Se l'app dice che nel file non ci sono rose, controlla di aver preso il file delle rose e non il calendario o la classifica. Se il file Excel della lega ha anche altri fogli (listone, calendario, classifica), SchieraXI li salta e legge solo le rose.
+Limiti: file fino a 5 MB, al massimo 20 squadre da 40 giocatori, 10 importazioni al giorno. Conta solo un controllo riuscito: un file rifiutato (per esempio il calendario, o una lega oltre i limiti) non conta, e controllare e poi salvare lo stesso file conta una volta. Se l'app dice che nel file non ci sono rose, controlla di aver preso il file delle rose e non il calendario o la classifica. Se il file Excel della lega ha anche altri fogli (listone, calendario, classifica), SchieraXI li salta e legge solo le rose.
 
-Un giocatore che SchieraXI non riconosce resta fra i non trovati: se lo lasci così, lo sistemi dopo (nel primo avvio, **Giocatori da sistemare**; sull'iPhone anche in fondo a **Impostazioni › Aggiorna le rose**).
+Un giocatore che SchieraXI non riconosce resta fra i non trovati: se lo lasci così, lo sistemi dopo (nel primo avvio, **Giocatori da sistemare**; sull'iPhone anche in fondo a **Impostazioni › Aggiorna le rose**). Le scelte fatte restano: se ricarichi lo stesso file, i giocatori che avevi già scelto per un nome tornano già scelti, con la scritta «scelto da te l'ultima volta», e non compaiono come cambiati. Se la scelta era sbagliata, cambiala dal menu.
 
 Da iPhone puoi anche mandare il file Excel dal menu **Condividi**: le istruzioni sono in **Impostazioni › Aggiorna le rose**.
 
@@ -113,7 +114,7 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate 
 
 Sotto ci sono quanto sono fresche le **probabili formazioni** (se sono vecchie e la scadenza è vicina, un avviso ti dice di ricontrollare), la **Panchina** nell'ordine in cui entra, i **Non schierati** e gli **Infortunati e squalificati** (chiusi: si aprono con un tocco). Negli elenchi, sotto il nome di ogni giocatore c'è la sua partita, con la sua squadra davanti: «INT @ MIL · sab 31 20:45» (in trasferta) o «ATA vs PAR» (in casa). Chi è in dubbio, infortunato o squalificato ha sotto anche la nota che dice perché.
 
-Quando apri l'app vedi subito l'ultima formazione letta, tenuta sul telefono: finché non arrivano i dati aggiornati (di solito un attimo) il menu del modulo, la spunta e **Sostituisci** sono spenti, così un cambio non si perde. Se i dati aggiornati non arrivano (per esempio senza rete) una riga in alto lo dice, con il giorno e l'ora dei dati che vedi e **Riprova**.
+Quando apri l'app vedi subito l'ultima formazione letta, tenuta sul telefono (con la rete lenta al massimo dopo pochi secondi): finché non arrivano i dati aggiornati (di solito un attimo) il menu del modulo, la spunta e **Sostituisci** sono spenti, così un cambio non si perde. Se i dati aggiornati non arrivano (per esempio senza rete) una riga in alto lo dice, con il giorno e l'ora dei dati che vedi e **Riprova**.
 
 Sul tablet e sul PC le colonne sono due: a sinistra il campo con modulo, stato e pulsanti, a destra la panchina e gli altri elenchi.
 
@@ -153,7 +154,7 @@ Altre cose da sapere:
 
 Rose, squadre e regole stanno nella sezione **La mia lega** di Impostazioni (sezione 6). Ogni voce apre la sua pagina; **‹ Impostazioni**, in alto, torna indietro.
 
-- **Aggiorna le rose**: stessa procedura del primo avvio (sezione 2), anche con testo incollato. Con **Togli le squadre che non sono nel file** le squadre mancanti vengono tolte.
+- **Aggiorna le rose**: stessa procedura del primo avvio (sezione 2): **Scegli il file (Excel o CSV)**, oppure apri **Incolla il testo delle rose** e tocca **Controlla le rose**. Con **Togli le squadre che non sono nel file**, sotto il pulsante del file, le squadre mancanti vengono tolte (vale per il file e per il testo). Dopo **Conferma e salva**, **Cosa è cambiato** dice le novità e, sotto **Da controllare**, cosa non torna nelle squadre del file, in frasi come «Real Esempio: manca 1 difensore.».
 - **La mia squadra** (accanto c'è il suo nome): la rosa della tua squadra, con stemma e maglia se li hai caricati (**Stemma e maglia**) e i crediti. Ogni giocatore ha il costo d'acquisto e la quotazione, quando ci sono. Se non è la tua, **Non è la tua squadra?** la cambia. **Cambia il nome** corregge il nome della squadra (per esempio se l'importazione ha letto quello sbagliato): stemma, maglia e «la tua squadra» lo seguono.
 - **Regole e scadenza**: in cima i **Tempi della lega**, le due domande del primo avvio, che si salvano appena le cambi. Sotto, **Incolla il regolamento**: incolli il testo del regolamento di Leghe, tocchi **Riconosci le regole**, controlli cosa ha capito SchieraXI e tocchi **Salva queste regole**: si salva solo ciò che sta sotto **Riconosciuto**. Quello che non può applicare sta sotto **Non applicato**, con il perché; le righe che non ha saputo leggere con sicurezza stanno in **Righe da controllare a mano**, da impostare tu. I singoli valori (punteggi, modificatore difesa, moduli, panchina, partite rinviate, rosa e crediti, nome della lega) stanno dietro **Modifica i valori**, con **Salva le regole** in fondo. I malus si scrivono con il meno davanti, «−0,5» o «-0,5», con la virgola o con il punto; i numeri interi, come i crediti, con le sole cifre («1000», non «1.000»). Un campo vuoto, una scritta che non è un numero o un numero fuori dai limiti si segnala prima di salvare, con il nome del campo.
 - **Le altre squadre** (accanto quante sono): le squadre della lega senza la tua. Un tocco apre la rosa di una squadra e, da lì, la sua formazione consigliata. Di norma questa voce non c'è: la accende chi gestisce l'app.
@@ -268,7 +269,7 @@ Sulla schermata Home, a schermo intero, senza store:
 
 **Una partita è stata rinviata: schiero i suoi giocatori?** Dipende dalla tua lega. Se aspetta il recupero, il loro voto arriverà con il recupero e restano schierabili; se restano senza voto, SchieraXI mette chi gioca davvero; con il voto d'ufficio contano con quel voto. Scegli la regola in Impostazioni › Regole e scadenza › Modifica i valori e, per una sola giornata, da **Partita rinviata** nella Formazione.
 
-**Più telefoni?** Sì, con lo stesso account. Se un altro telefono ha cambiato i dati, l'app te lo dice e ricarica.
+**Più telefoni?** Sì, con lo stesso account. Se un altro telefono ha cambiato i dati, l'app te lo dice e ricarica. Nel browser, se in un'altra scheda esci o entri con un altro account, la scheda rimasta aperta si ricarica con l'account giusto.
 
 **Dove sono i miei dati?** Sul server di SchieraXI. Privacy e Termini dicono quali vengono tenuti.
 
@@ -281,7 +282,7 @@ Sulla schermata Home, a schermo intero, senza store:
 | «Server non raggiungibile» | Controlla la connessione, poi tocca **Riprova** (o ricarica la pagina). |
 | «Non riesco a collegarmi: controlla internet e riprova» | Il dispositivo è senza rete: controlla Wi-Fi o dati mobili, poi riprova. |
 | «Il server non risponde: riprova fra poco» | La rete c'è, ma il server è spento o sta ripartendo: riprova dopo qualche minuto. Se dura, avvisa chi gestisce l'app. |
-| «Aggiornamento pronto» in basso, con **Ricarica** | È uscita una versione nuova dell'app: tocca **Ricarica** per usarla. |
+| «Aggiornamento pronto» in basso, con **Ricarica** | È uscita una versione nuova dell'app: tocca **Ricarica** per usarla, oppure finisci quello che stai facendo e la trovi la prossima volta che apri l'app. |
 | «Un attimo, mister: ci sto lavorando.» | Aspetta: l'app riprova da sola. |
 | «Questi dati sono stati cambiati da un altro dispositivo» | L'app ha ricaricato la versione nuova: controlla e rifai la modifica. |
 | «Troppi tentativi» | Aspetta il tempo indicato e riprova. |
