@@ -766,6 +766,25 @@ def test_prova_dice_se_le_firme_sono_a_posto_e_non_scrive(server):
     assert _istantanea(s.stato) == prima and s.riavvii() == 0
 
 
+@con_bash
+def test_prova_non_tocca_il_portachiavi_di_un_altro_giro(server):
+    """--prova lanciato mentre gira l'aggiornamento (26/11): prima il portachiavi aveva un nome fisso e chi partiva per secondo
+    cancellava quello dell'altro, che poteva rifiutare una versione buona. Ora ognuno ha il suo e toglie solo quello."""
+    s = server
+    _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V2"})
+    assert s.esegui("aggiorna-app.sh").returncode == 0                       # il clone c'e'
+    _commit(s.lavoro, "codice", **{"fanta/__init__.py": "V3"})
+    git = s.casa / "schieraxi-src" / ".git"
+    altri = [git / "verifica-firme", git / "verifica-firme.ALTRO1"]           # nome di prima e nome nuovo, di un altro processo
+    for d in altri:
+        d.mkdir()
+        (d / "pubring.kbx").write_text("dell'altro giro", encoding="utf-8")
+    r = s.esegui("aggiorna-app.sh", "--prova")
+    assert r.returncode == 0 and "firme a posto" in r.stdout, r.stdout + r.stderr
+    assert all((d / "pubring.kbx").exists() for d in altri)
+    assert sorted(git.glob("verifica-firme*")) == sorted(altri)              # il suo portachiavi l'ha tolto
+
+
 def _venv(s, nome=".venv"):
     p = s.app / nome / "QUALE"
     return p.read_text(encoding="utf-8") if p.exists() else ("nuova" if (s.app / nome / "bin" / "python").exists() else None)
