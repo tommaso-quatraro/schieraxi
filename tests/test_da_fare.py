@@ -40,6 +40,17 @@ def mondo(tmp_path, monkeypatch):
                                                                           "panchina": [{"id": i} for i in sistema.panchina]})
     monkeypatch.setattr(da_fare.consigli, "mercato", lambda *a, **k: {"proposte": []})
     monkeypatch.setattr(da_fare.consigli, "proposte_scambi", lambda *a, **k: (None, []))
+    valori: dict[frozenset, float] = {}
+
+    def valuta(db, regole, rose, titolari, squadra=None, giornata=None, *a, **k):
+        """La valutazione finta di una formazione (quella vera è consigli.valuta, la stessa di POST /api/formazione/valuta): il
+        numero che un test ha scritto in `valori` per quegli 11, altrimenti «gioca» × 10 per ogni titolare. Così un cambio verso
+        chi gioca di più vale più della soglia dei cambi proposti; i test sulla soglia scrivono i due numeri a mano."""
+        chiave = frozenset(int(i) for i in titolari)
+        if chiave in valori:
+            return {"punteggio_atteso": valori[chiave]}
+        return {"punteggio_atteso": round(sum(10 * da_fare.consigli.scheda_previsione(i, None)["p_voto"] for i in chiave), 2)}
+    monkeypatch.setattr(da_fare.consigli, "valuta", valuta)
     rose = NS(mia_squadra="Mia", squadra=lambda n: NS(giocatori=[NS(id=i, ruolo=RUOLI[i]) for i in range(1, 15)]))
     db = sqlite3.connect(":memory:")
     db.execute("CREATE TABLE partite (stagione TEXT, giornata INTEGER, data TEXT, giocata INTEGER)")
@@ -50,7 +61,7 @@ def mondo(tmp_path, monkeypatch):
     ctx = NS(utente_id=None, rose=rose_file, scelte=tmp_path / "scelte.json", diario=tmp_path / "diario.json",
              impostazioni_avvisi=tmp_path / "imp.json")
     oggi = {"giornata": 9, "ore_mancanti": 30.0, "iniziata": False}
-    return NS(db=db, rose=rose, ctx=ctx, oggi=oggi, tmp=tmp_path, sistema=sistema)
+    return NS(db=db, rose=rose, ctx=ctx, oggi=oggi, tmp=tmp_path, sistema=sistema, valori=valori)
 
 
 def vai(m, **k):
@@ -194,6 +205,57 @@ def test_nome_con_il_punto_non_raddoppia_il_punto(mondo, monkeypatch):
     la_consigliata_cambia(mondo, (5, 14))
     testo = [x for x in vai(mondo) if x["id"] == "dubbio:5"][0]["testo"]
     assert "Meglio Adams A." in testo and ".." not in testo
+
+
+def _con(ids, esce, entra) -> frozenset:
+    return frozenset(entra if i == esce else i for i in ids)
+
+
+def test_il_guadagno_del_cambio_e_quello_della_formazione(mondo):
+    """Il collaudo del 26/11: «Meglio Chalobah T. +1,1 punti attesi» in cima e, sotto il campo, la stessa formazione «+0,1» dalla
+    consigliata. Il +1,1 era la differenza fra i due giocatori; il numero del cambio è quanto cambiano i punti attesi della
+    FORMAZIONE (consigli.valuta, come «Sostituisci» e «Metti in campo»), nel campo `differenza` della voce."""
+    la_consigliata_cambia(mondo, (5, 12))
+    salvati = list(range(1, 12))
+    mondo.valori[frozenset(salvati)], mondo.valori[_con(salvati, 5, 12)] = 65.34, 66.56
+    d = next(x for x in vai(mondo) if x["id"] == "dubbio:5")
+    assert d["alternativa"]["id"] == 12 and d["azione"] == "Sostituisci" and "decisione" in d
+    assert d["differenza"] == 1.3                                           # 66,6 − 65,3: i due numeri scritti, non 1,22
+    assert round(d["alternativa"]["punti_attesi"] - 6.0, 1) == -1.5          # fra i due giocatori il contrario
+
+
+def test_per_differenze_minime_nessun_cambio_proposto(mondo):
+    """Il caso del collaudo: la consigliata schiera l'altro, ma con lui la formazione vale solo 0,1 in più (la panchina copre già
+    il titolare che rischia). Sotto la soglia dei cambi (un punto atteso, la stessa della consigliata che cambia e degli avvisi) la
+    voce non propone il cambio: niente «Meglio», niente «Sostituisci», nessuna decisione in cima alla Formazione."""
+    la_consigliata_cambia(mondo, (5, 12))
+    salvati = list(range(1, 12))
+    mondo.valori[frozenset(salvati)], mondo.valori[_con(salvati, 5, 12)] = 65.3, 65.4
+    d = next(x for x in vai(mondo) if x["id"] == "dubbio:5")
+    assert "alternativa" not in d and "differenza" not in d and "decisione" not in d
+    assert d["testo"] == "Rossi è in dubbio (55% di giocare)." and d["azione"] == "Apri la formazione"
+    mondo.valori[_con(salvati, 5, 12)] = 65.3 + da_fare.SOGLIA_CAMBIO                 # proprio sulla soglia: sì
+    d = next(x for x in vai(mondo) if x["id"] == "dubbio:5")
+    assert d["alternativa"]["id"] == 12 and d["differenza"] == da_fare.SOGLIA_CAMBIO
+
+
+def test_per_chi_e_infortunato_o_squalificato_il_cambio_si_propone_anche_sotto_la_soglia(mondo):
+    """Decisione del coordinatore sulla #928: la soglia vale solo per chi è in dubbio o va in panchina. Per un titolare infortunato
+    o squalificato il cambio che la consigliata fa si propone sempre (decisione in cima e «cambio pronto», come prima), con il
+    numero vero della formazione anche se piccolo: la panchina può già coprirlo quasi del tutto."""
+    la_consigliata_cambia(mondo, (6, 14))
+    salvati = list(range(1, 12))
+    mondo.valori[frozenset(salvati)], mondo.valori[_con(salvati, 6, 14)] = 65.3, 65.6
+    d = next(x for x in vai(mondo) if x["id"] == "dubbio:6")
+    assert d["alternativa"]["id"] == 14 and d["differenza"] == 0.3 and d["azione"] == "Sostituisci" and "decisione" in d
+    assert d["priorita"] == 1 and d["testo"] == "Bianchi è infortunato. Meglio g14."
+    mondo.valori[_con(salvati, 6, 14)] = 65.3                                   # la panchina lo copre del tutto: si propone lo stesso
+    d = next(x for x in vai(mondo) if x["id"] == "dubbio:6")
+    assert d["alternativa"]["id"] == 14 and d["differenza"] == 0.0
+
+
+def test_la_soglia_e_quella_della_consigliata_e_degli_avvisi():
+    assert da_fare.SOGLIA_CAMBIO == da_fare.consigli.SOGLIA_CAMBIO_PUNTI == notifiche.SOGLIA_AVVISO_PUNTI == 1.0
 
 
 def _etichettati(monkeypatch, **cambi):

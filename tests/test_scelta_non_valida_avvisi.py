@@ -43,6 +43,9 @@ def _prima_della_scadenza(monkeypatch, consigliata=TITOLARI) -> pd.DataFrame:
     prev = pd.DataFrame([{"nome": NOMI[i], "ruolo": RUOLI[i], "stato": "titolare", "percentuale": 90.0, "dubbio": False,
                           "p_voto": 0.95, "atteso": 6.0} for i in NOMI], index=list(NOMI))
     monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None: (prev, 9, True))
+    # la valutazione della formazione (quella vera è consigli.valuta): gioca × punti attesi di ogni titolare, senza panchina
+    monkeypatch.setattr(consigli, "valuta", lambda db, regole, rose, titolari, *a, **k: {
+        "punteggio_atteso": float(sum(prev.at[i, "p_voto"] * prev.at[i, "atteso"] for i in titolari))})
     panchina = [i for i in NOMI if i not in consigliata]
     monkeypatch.setattr(consigli, "formazione", lambda *a, **k: {
         "modulo": "4-4-2", "punteggio_atteso": 71.2,

@@ -14,6 +14,10 @@ extension FinteServer {
     /// il corpo della domanda e risponde sempre per lui, con gli 11 della consigliata (foto `formazione-metti-in-campo`).
     static let entraMettiInCampo = 105
 
+    /// Il titolare di «Sostituisci» nella demo: Marténi, titolare in dubbio nella consigliata. Il server finto non legge il corpo
+    /// della domanda e risponde sempre per lui, con gli 11 della consigliata (foto `formazione-sostituisci`).
+    static let esceSostituisci = 120
+
     /// La stessa demo costruita in un istante preciso: i test confrontano app e widget (`LegaDemo.widget`) nello stesso momento.
     static func demoFissata(adesso: Date) -> FinteServer {
         // ricerca, confronto ed elenco dei giocatori dipendono dalla domanda: li calcola `DatiDemo.calcolata`
@@ -424,6 +428,26 @@ private extension LegaDemo {
         return json(["giornata": giornata, "entra": entra.id, "punteggio_atteso": prima, "uscite": uscite])
     }
 
+    /// «Sostituisci» (`POST /api/formazione/sostituisci`), come `scelte.chi_prende_il_posto` del server: chi può prendere il posto
+    /// del titolare della demo (`FinteServer.esceSostituisci`) negli 11 della consigliata, cioè i compagni dello stesso ruolo che
+    /// non sono titolari (anche chi non gioca, come sul server). Il server finto non legge il corpo della domanda: la risposta è
+    /// sempre questa. I punti attesi sono quelli della demo (`punteggio`), la differenza è fatta sui due numeri arrotondati a una
+    /// cifra e l'ordine va dal cambio che rende di più, poi da chi vale di più da solo.
+    static func sostituisci() -> String {
+        func tondo(_ x: Double) -> Double { (x * 10).rounded() / 10 }
+        let esce = calciatore(FinteServer.esceSostituisci)
+        let titolari = moduli[0].titolari
+        let prima = tondo(punteggio(titolari))
+        let entrate = miaRosa.filter { $0.ruolo == esce.ruolo && !titolari.contains($0.id) }
+            .map { c -> (id: Int, punti: Double, da: Double, differenza: Double) in
+                let dopo = tondo(punteggio(titolari.map { $0 == esce.id ? c.id : $0 }))
+                return (c.id, dopo, c.puntiAttesi, tondo(dopo - prima))
+            }
+            .sorted { ($0.differenza, $0.da) > ($1.differenza, $1.da) }
+            .map { e -> [String: Any] in ["entra": e.id, "punteggio_atteso": e.punti, "differenza": e.differenza] }
+        return json(["giornata": giornata, "esce": esce.id, "punteggio_atteso": prima, "entrate": entrate])
+    }
+
     static var valutazioneScelta: [String: Any] {
         // la valutazione e la consigliata sono gli stessi undici: un numero solo, `attesiGiornata`
         let attesi = attesiGiornata
@@ -555,9 +579,17 @@ private extension LegaDemo {
         // il candidato: il libero del suo ruolo con più punti attesi (la consigliata è la formazione stessa: non schiera nessun altro
         // al suo posto); il cambio solo se la regola del confronto sceglie lui
         let candidati = miaRosa.filter { !titolari.contains($0.id) && $0.ruolo == x.ruolo && !$0.assente }
-        if let alt = candidati.max(by: { $0.puntiAttesi < $1.puntiAttesi }), daSchierare(x, alt, titolari: titolari).id == alt.id {
+        // il numero del cambio è quello della formazione (`differenza`, sui due numeri arrotondati), e sotto un punto atteso il
+        // cambio non si propone (`SOGLIA_CAMBIO` del server)
+        func tondo(_ v: Double) -> Double { (v * 10).rounded() / 10 }
+        func differenza(_ alt: Calciatore) -> Double {
+            tondo(tondo(punteggio(titolari.map { $0 == x.id ? alt.id : $0 })) - tondo(punteggio(titolari)))
+        }
+        if let alt = candidati.max(by: { $0.puntiAttesi < $1.puntiAttesi }), daSchierare(x, alt, titolari: titolari).id == alt.id,
+           differenza(alt) >= 1.0 {
             voce["testo"] = "\(x.nome) è in dubbio (\(p)% di giocare). Meglio \(alt.nome)."
             voce["alternativa"] = ["id": alt.id, "nome": alt.nome, "ruolo": alt.ruolo, "punti_attesi": alt.puntiAttesi]
+            voce["differenza"] = differenza(alt)
             voce["azione"] = "Sostituisci"
             voce["decisione"] = 1           // un cambio da fare: la prima decisione, come `segna_decisioni` del server (#673)
             voce["destinazione"] = ["scheda": "formazione", "sezione": NSNull(), "link": "schieraxi://giocatore/\(x.id)", "giocatore": x.id]
@@ -1202,6 +1234,7 @@ private extension LegaDemo {
             "/api/formazione/valuta": valutazione(),
             // con la sua chiave: senza, risponderebbe il prefisso «/api/formazione» (la Formazione), e l'elenco sarebbe vuoto
             "/api/formazione/metti-in-campo": mettiInCampo(),
+            "/api/formazione/sostituisci": sostituisci(),
             "/api/scelta": "null",   // nessuna scelta salvata: si vede la consigliata
             "/api/formazione": formazione(adesso: adesso),
             "/api/primo-avvio": json(["primo_avvio": NSNull(), "passi": ["server", "accesso", "rose", "squadra", "stemma", "pwa", "widget", "avvisi"]]),

@@ -135,6 +135,8 @@ def letture(m: str):
         ("GET", "/api/asta", {}), ("GET", "/api/formazione/testo", {}), ("GET", "/api/confronto", dict(params={"a": 1, "b": 2})),
         # «Metti in campo» (#643) non scrive niente e legge solo la rosa di chi chiede: anche B manda gli 11 di A, che non sono suoi
         ("POST", "/api/formazione/metti-in-campo", dict(json={"entra": RISERVA_A, "titolari": TITOLARI_A, "giornata": 9})),
+        # «Sostituisci» (collaudo del 26/11): come «Metti in campo», dalla parte di chi esce (un attaccante titolare di A)
+        ("POST", "/api/formazione/sostituisci", dict(json={"esce": 10, "titolari": TITOLARI_A, "giornata": 9})),
         ("GET", "/api/oggi", {}), ("GET", "/api/widget", {}), ("GET", "/api/calendario", {}), ("GET", "/api/mercato", {}), ("GET", "/api/classifica", {}),
         ("GET", "/api/giocatore/{calciatore_id}", dict(calciatore_id=2)), ("GET", "/api/scambi/proposte", {}), ("GET", "/api/scambi/limite", {}),
         ("GET", "/api/scambi/analizza", dict(params={"con": "x", "do": "1", "ricevo": "2"})),
@@ -238,6 +240,9 @@ def test_a_e_b_non_si_vedono(due, dati_isolati):
     entra_a = risposte_a[("POST", "/api/formazione/metti-in-campo")]                # una risposta completa, sulla rosa di A
     assert entra_a.status_code == 200, entra_a.text
     assert entra_a.json()["entra"] == RISERVA_A and {u["esce"] for u in entra_a.json()["uscite"]} == {7, 8, 10}
+    esce_a = risposte_a[("POST", "/api/formazione/sostituisci")]                    # la riserva di A prende il posto dell'attaccante
+    assert esce_a.status_code == 200, esce_a.text
+    assert esce_a.json()["esce"] == 10 and [e["entra"] for e in esce_a.json()["entrate"]] == [RISERVA_A]
     assert risposte_a[("GET", "/api/squadre/immagine")].content == dati_di("A")["stemma"]
     anteprima_a = risposte_a[("POST", "/api/rose/anteprima")].json()
     assert [s["nuova"] for s in anteprima_a["squadre"]] == [False, True] and anteprima_a["totale_squadre"] == 3   # confronta con le SUE rose
@@ -252,6 +257,7 @@ def test_a_e_b_non_si_vedono(due, dati_isolati):
     assert vuote[("GET", "/api/rosa")].status_code == 409
     assert vuote[("GET", "/api/formazione")].status_code == 409
     assert vuote[("POST", "/api/formazione/metti-in-campo")].status_code == 409     # gli 11 di A, senza rosa: non quella di A
+    assert vuote[("POST", "/api/formazione/sostituisci")].status_code == 409
     assert vuote[("GET", "/api/scelta")].json() is None
     assert vuote[("GET", "/api/regole")].json()["nome_lega"] != "LEGA-DI-A"
     assert vuote[("GET", "/api/icona")].json()["scelta"] == "verde"
@@ -279,6 +285,8 @@ def test_a_e_b_non_si_vedono(due, dati_isolati):
     assert risposte_b[("GET", "/api/formazione")].json()["lega"] == "LEGA-DI-B"
     entra_b = risposte_b[("POST", "/api/formazione/metti-in-campo")]                # gli 11 di A non sono della rosa di B
     assert entra_b.status_code == 400 and entra_b.json()["codice"] == "formazione_non_valida", entra_b.text
+    esce_b = risposte_b[("POST", "/api/formazione/sostituisci")]
+    assert esce_b.status_code == 400 and esce_b.json()["codice"] == "formazione_non_valida", esce_b.text
     assert risposte_b[("GET", "/api/squadre/immagine")].content == dati_di("B")["stemma"]
 
     # 4. A rilegge: niente di B, tutto come prima
