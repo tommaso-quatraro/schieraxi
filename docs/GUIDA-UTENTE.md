@@ -34,7 +34,7 @@ Parole che vedrai spesso:
 1. Apri il **link d'invito** che ti ha mandato chi gestisce l'app: si apre la scheda **Registrati** con il codice già scritto (lo dice la riga **Codice d'invito già inserito**). Senza link: apri **https://app.schieraxi.it** (o l'app per iPhone), scheda **Registrati**, e scrivi il **codice d'invito**.
    Se l'invito è scaduto o qualcuno l'ha già usato, l'app lo dice: chiedine uno nuovo a chi te l'ha mandato. Quello che hai scritto, password compresa, resta.
    Se chi gestisce il server ha aperto le iscrizioni, in cima a **Registrati** c'è scritto **Scegli un nome utente e una password.** e il campo del codice non c'è: non serve nessun invito. Se il server è al completo l'app dice **Iscrizioni chiuse: siamo al completo**; se in un giorno si sono già registrate molte persone, **Per oggi le iscrizioni sono chiuse: riprova domani**.
-2. Scegli un **nome utente** (3-32 caratteri: lettere senza accenti, numeri, punto, trattino) e una **password** di almeno 10 caratteri. L'**email** è facoltativa: serve a recuperare la password (se sul server le email sono spente il campo non c'è).
+2. Scegli un **nome utente** (da 3 a 32 caratteri: lettere senza accenti, numeri, punto, trattino o trattino basso; comincia con una lettera o un numero: le regole sono scritte anche sotto il campo) e una **password** di almeno 10 caratteri. L'**email** è facoltativa: serve a recuperare la password (se sul server le email sono spente il campo non c'è).
 3. Spunta la casella (hai letto Privacy e Termini e hai almeno 14 anni) e tocca **Crea l'account**.
 4. **Salva il codice di recupero** che compare una sola volta: serve se dimentichi la password.
 
@@ -246,7 +246,7 @@ pagina loro, con **‹ Impostazioni** in alto per tornare. Sulla web, su uno sch
 - **Scarica i tuoi dati**: un file con i tuoi dati (account e lega: regole, rose, scelte, avvisi, e i commenti mandati con **Scrivici**), mai la password né quelli degli altri utenti. Serve per tenerne una copia; non si ricarica nell'app. Sull'iPhone si salva da **Condividi › Salva su File**.
 - **Esci**: dopo una conferma, chiude l'accesso su questo dispositivo e toglie da qui i tuoi dati e gli avvisi. Se non riesce (per esempio senza rete) l'app lo dice e resti dentro: riprova.
 - **Esci da tutti i dispositivi**: se non riconosci un accesso (te lo segnala anche un'email di sicurezza), chiude l'accesso su ogni telefono e computer, anche su quello che stai usando, dopo una conferma. Si chiudono anche il widget e le notifiche. Poi si rientra come sempre.
-- **Elimina l'account** cancella anche tutti i tuoi dati dal server e non si annulla. Se entri solo con Google, per aggiungere una password, cambiare l'email o eliminare l'account l'app chiede prima **Conferma con Google**.
+- **Elimina l'account** cancella anche tutti i tuoi dati dal server e non si annulla. Scrivi la tua password e tocca **Elimina il mio account**: prima l'app controlla la password (se è sbagliata dice «La password non è giusta» e non chiede altro), poi chiede conferma. Dopo l'eliminazione la pagina d'accesso dice «Il tuo account e tutti i tuoi dati sono stati eliminati.». Se entri solo con Google, per aggiungere una password, cambiare l'email o eliminare l'account l'app chiede prima **Conferma con Google**.
 - **Cambiare l'email**: quando confermi il codice del nuovo indirizzo, gli altri dispositivi escono (resta dentro quello che stai usando) e all'indirizzo di prima arriva un messaggio con i passi da fare se non sei stato tu. Lo stesso messaggio arriva se togli l'email.
 - **Stemma e maglia**: da **Impostazioni › La mia squadra › Stemma e maglia** (le altre squadre dalla loro rosa, in **Le altre squadre**) o, sull'iPhone, dal menu Condividi. Nel foglio scegli la squadra, poi per lo stemma o la maglia **Da file o foto** (PNG, JPEG o WebP, massimo 4 MB). Carica solo immagini della tua squadra; **Rimuovi** la toglie.
 
@@ -287,7 +287,7 @@ Sulla schermata Home, a schermo intero, senza store:
 | «Un attimo, mister: ci sto lavorando.» | Aspetta: l'app riprova da sola. |
 | «Il calcolo sta durando più del previsto: riprova tra poco.» | Il server è ancora al lavoro: riprova fra qualche minuto. |
 | «Questi dati sono stati cambiati da un altro dispositivo» | L'app ha ricaricato la versione nuova: controlla e rifai la modifica. |
-| «Troppi tentativi» | Aspetta il tempo indicato e riprova. |
+| «Troppi tentativi» | Aspetta: nella pagina d'accesso il pulsante conta da solo («Riprova tra 24 secondi») e, quando torna come prima, puoi riprovare. Quello che hai scritto resta. |
 | «La sessione è finita: accedi di nuovo.» | Entra di nuovo con nome e password. |
 | «Nessuna rosa importata» | Importa le rose (sezione 2). |
 | «Non ho trovato rose nel file» | Hai scelto un altro file (calendario, classifica): riesporta le rose da Leghe e riprova. |
