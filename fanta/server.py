@@ -39,7 +39,7 @@ from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 from . import da_fare, etichette, frasi, note_infortuni, stato_utente
 from . import lingua as lingua_testi
 from . import widget as widget_riassunto
-from . import account, affidabilita, aggiorna, anteprima_rose, archivio, avatar, calcolo, asta, backup, consigli, diario, fonti_attive, funzioni, push as notifiche_web, gestione, immagini, importa_sicuro, lega, limiti, listone, movimenti, nomi, notifiche, onboarding, osservati, precisione, regole, regole_testo, rinvii, rose, scelte, scheda, sotto_il_cofano as sotto_il_cofano_mod, stato_dati, uso, versioni
+from . import account, affidabilita, aggiorna, anteprima_rose, archivio, avatar, calcolo, asta, backup, consigli, diario, funzioni, push as notifiche_web, gestione, immagini, importa_sicuro, lega, limiti, listone, movimenti, nomi, notifiche, onboarding, osservati, precisione, regole, regole_testo, rinvii, rose, scelte, scheda, sotto_il_cofano as sotto_il_cofano_mod, stato_dati, uso, versioni
 from . import avvisi as avvisi_pronta
 from . import avvisi_utenti
 from . import fasi, live
@@ -75,9 +75,10 @@ async def _ciclo(_):
                      name="pianificatore", daemon=True).start()          # giri in più vicino alla scadenza (FANTA_PIANIFICATORE=0 lo spegne)
     threading.Thread(target=copia_scadenza.sorveglia, args=(fermo, lambda: copia_scadenza.contesti(_contesto_locale), _db),
                      name="copia-scadenza", daemon=True).start()       # copia della consigliata alla scadenza per ogni utente (FANTA_COPIA_SCADENZA=0 la spegne)
-    if fonti_attive.acceso("espn") and funzioni.acceso("live"):          # risultati in diretta: un solo raccoglitore per tutto il servizio
-        live.unico = live.Raccoglitore(_calendario_live, file=live.FILE)        # la cache resta anche dopo un riavvio
-        threading.Thread(target=live.sorveglia, args=(live.unico, fermo), name="live", daemon=True).start()
+    # risultati in diretta: un solo raccoglitore per tutto il servizio, sempre avviato; a ogni giro `live.sorveglia` guarda la funzione
+    # «live» e la fonte ESPN, così un interruttore cambiato dall'app vale senza riavvio
+    live.unico = live.Raccoglitore(_calendario_live, file=live.FILE)            # la cache resta anche dopo un riavvio
+    threading.Thread(target=live.sorveglia, args=(live.unico, fermo), name="live", daemon=True).start()
     try:
         yield
     finally:
@@ -1568,7 +1569,8 @@ def _stati_live() -> dict:
     """Lo stato in diretta delle partite ({(casa, trasferta): partita, con `visto`}) per le fasi di Oggi: solo la cache, nessuna
     richiesta esterna."""
     try:
-        return live.unico.stati() if live.unico else {}
+        r = live.in_servizio()                               # diretta spenta: niente cache
+        return r.stati() if r else {}
     except Exception:                                        # noqa: BLE001 - senza diretta Oggi usa il calendario
         return {}
 
@@ -1602,7 +1604,7 @@ def _risposta_live() -> dict:
         righe = []
     finally:
         db.close()
-    return live.risposta(live.unico or live.Raccoglitore(lambda: []), righe, dopo)
+    return live.risposta(live.in_servizio() or live.Raccoglitore(lambda: []), righe, dopo)
 
 
 @app.get("/api/live")

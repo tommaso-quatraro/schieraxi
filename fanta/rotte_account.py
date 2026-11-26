@@ -670,7 +670,7 @@ def fonti_dati():
 @router.put("/api/admin/fonti", dependencies=[Depends(solo_amministratore)])
 def scegli_fonte(dati: SceltaFonte, utente: Utente = Depends(solo_amministratore)):
     """Accende o spegne una fonte. Accendere una fonte significa assumersi il rispetto delle condizioni d'uso del sito.
-    Le richieste già in corso finiscono; i risultati in diretta (ESPN) si riavviano al prossimo avvio del servizio."""
+    Le richieste già in corso finiscono; i risultati in diretta (ESPN) seguono la scelta dal giro dopo (entro 15 secondi), senza riavvio."""
     if dati.fonte not in fonti_attive.FONTI:
         raise HTTPException(400, "Fonte sconosciuta")
     fonti_attive.imposta(dati.fonte, dati.acceso)

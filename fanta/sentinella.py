@@ -686,10 +686,10 @@ def leggi_live(file: Path | None = None):
 
 
 def _prepara_live() -> None:
-    """In questo processo non c'è il raccoglitore del servizio: si usa la sua copia su file, alle stesse condizioni con cui il
-    servizio lo accende (server._ciclo). Così /api/live e le fasi di Oggi sono quelle che vede l'utente."""
-    from . import fonti_attive, funzioni, live
-    if live.unico is None and fonti_attive.acceso("espn") and funzioni.acceso("live"):
+    """In questo processo non c'è il raccoglitore del servizio: si usa la sua copia su file, solo con la diretta accesa
+    (`live.attiva`, come per chi legge la cache del servizio). Così /api/live e le fasi di Oggi sono quelle che vede l'utente."""
+    from . import live
+    if live.unico is None and live.attiva():
         live.unico = leggi_live()
 
 
