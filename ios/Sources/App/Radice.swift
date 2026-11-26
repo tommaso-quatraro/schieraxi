@@ -292,8 +292,6 @@ struct RadiceView: View {
                     RicercaGiocatoreView(server: modello.server)
                         .destinazioniGiocatore(server: modello.server)
                 }
-                // sull'iPad la colonna della web anche per il campo di ricerca nella barra, non solo per i risultati (#919)
-                .colonnaPagina()
                 .avvisoNonSalvata(modello.formazione, attiva: nav.sezione == .cerca)
                 .environment(\.horizontalSizeClass, classeOrizzontale)
             }

@@ -19,16 +19,10 @@ enum LarghezzaPagina {
         return ((larghezza - massima) / 2).rounded(.down)
     }
 
-    /// Il margine per lato della colonna di una pagina con `larghezza` punti liberi: solo sull'iPad largo e alto, 0 altrove.
+    /// Il margine per lato della colonna di una pagina larga `larghezza`: solo sull'iPad largo e alto, 0 altrove.
     static func margineColonna(larghezza: CGFloat, orizzontale: UserInterfaceSizeClass?,
                                verticale: UserInterfaceSizeClass?) -> CGFloat {
         SpazioIPad.largoEAlto(orizzontale: orizzontale, verticale: verticale) ? margine(larghezza: larghezza) : 0
-    }
-
-    /// La larghezza libera di una vista larga `larghezza`: quella dentro i suoi margini sicuri ai lati. Una pagina dentro una
-    /// `NavigationStack` già stretta alla colonna (Impostazioni, Cerca) ha 720 punti liberi e non aggiunge altro.
-    static func libera(larghezza: CGFloat, margini: EdgeInsets) -> CGFloat {
-        max(0, larghezza - margini.leading - margini.trailing)
     }
 
     /// `massima` sull'iPad largo e alto; `nil` (nessun limite) sugli iPhone e sull'iPad stretto.
@@ -38,29 +32,20 @@ enum LarghezzaPagina {
     }
 }
 
-/// Lo spazio che avanza oltre la colonna va ai due lati come margine sicuro (`safeAreaPadding`): lo sfondo resta pieno, ma righe e
-/// schede stanno nella colonna al centro. Su una `NavigationStack` il margine vale anche per la barra (titolo grande, campo di
-/// ricerca, pulsanti), se iOS lo passa alla barra: va guardato nelle foto dell'iPad. Con margine 0 (iPhone) è come senza.
+/// Lo spazio che avanza oltre la colonna va ai due lati come margine sicuro (`safeAreaPadding`): la lista scorre ancora da tutta
+/// la larghezza e lo sfondo resta pieno, ma righe e schede stanno nella colonna al centro. Con margine 0 (iPhone) è come senza.
+/// Va sulla lista, non sulla `NavigationStack`: lì iOS non passava il margine alla barra (titolo grande e campo di ricerca restavano
+/// al bordo) e in orizzontale, con la barra laterale, la colonna spariva del tutto (foto della corsa 45771221535, #919).
 private struct ColonnaPagina: ViewModifier {
     @Environment(\.horizontalSizeClass) private var orizzontale
     @Environment(\.verticalSizeClass) private var verticale
-    /// I punti liberi che la pagina riceve da fuori, dentro i margini sicuri. 0 finché non sono misurati.
-    @State private var libera: CGFloat = 0
+    @State private var larghezza: CGFloat = 0
 
     func body(content: Content) -> some View {
         content
-            .safeAreaPadding(.horizontal, LarghezzaPagina.margineColonna(larghezza: libera, orizzontale: orizzontale,
+            .safeAreaPadding(.horizontal, LarghezzaPagina.margineColonna(larghezza: larghezza, orizzontale: orizzontale,
                                                                          verticale: verticale))
-            // La misura sta fuori dal margine aggiunto qui sopra, che vale solo per la pagina: non lo conta. Se un contenitore
-            // sopra ha già stretto la colonna (la `NavigationStack` di Impostazioni e di Cerca) i punti liberi sono già 720 e qui
-            // non si aggiunge niente; se il suo margine non arriva fin qui, la colonna la fa questa pagina.
-            .background {
-                Color.clear
-                    .onGeometryChange(for: CGFloat.self) {
-                        LarghezzaPagina.libera(larghezza: $0.size.width, margini: $0.safeAreaInsets)
-                    } action: { libera = $0 }
-                    .accessibilityHidden(true)
-            }
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { larghezza = $0 }
     }
 }
 
@@ -92,8 +77,8 @@ private struct LarghezzaSuIPad: ViewModifier {
 }
 
 extension View {
-    /// Una pagina a elenco (o la `NavigationStack` che la contiene): sull'iPad largo e alto in una colonna larga al massimo come
-    /// quella della web (`LarghezzaPagina.colonna`).
+    /// Una pagina a elenco: sull'iPad largo e alto in una colonna larga al massimo come quella della web
+    /// (`LarghezzaPagina.colonna`).
     func colonnaPagina() -> some View {
         modifier(ColonnaPagina())
     }

@@ -3,7 +3,7 @@ import SwiftUI
 import Testing
 @testable import Schieraxi
 
-/// Un dispositivo, con le sue classi di dimensione e la larghezza libera di una pagina (dentro i margini sicuri), in punti.
+/// Un dispositivo, con le sue classi di dimensione e la larghezza di una pagina, in punti.
 struct DispositivoDiProva: Sendable, CustomTestStringConvertible {
     let nome: String
     let orizzontale: UserInterfaceSizeClass?
@@ -56,17 +56,6 @@ struct IPadLarghezzeTests {
         #expect(LarghezzaPagina.margine(larghezza: 0) == 0)
         #expect(LarghezzaPagina.margine(larghezza: .infinity) == 0)
         #expect(LarghezzaPagina.margine(larghezza: -5) == 0)
-    }
-
-    @Test("La larghezza libera è quella dentro i margini sicuri")
-    func larghezzaLibera() {
-        let iPhoneOrizzontale = EdgeInsets(top: 0, leading: 62, bottom: 21, trailing: 62)
-        #expect(LarghezzaPagina.libera(larghezza: 874, margini: iPhoneOrizzontale) == 750)
-        // una pagina dentro una NavigationStack già stretta a 720 (Impostazioni, Cerca): niente da aggiungere
-        let giaStretta = EdgeInsets(top: 0, leading: 156, bottom: 0, trailing: 156)
-        #expect(LarghezzaPagina.libera(larghezza: 1032, margini: giaStretta) == 720)
-        #expect(LarghezzaPagina.margine(larghezza: LarghezzaPagina.libera(larghezza: 1032, margini: giaStretta)) == 0)
-        #expect(LarghezzaPagina.libera(larghezza: 100, margini: giaStretta) == 0)
     }
 
     // MARK: solo l'iPad largo e alto (#919)

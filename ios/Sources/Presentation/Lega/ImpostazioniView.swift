@@ -96,9 +96,6 @@ struct ImpostazioniView: View {
             .task { await vm.carica() }
             .task { await avvisi.carica() }
         }
-        // sull'iPad anche la barra nella colonna: il titolo grande allineato alle schede invece che al bordo dello schermo (#919).
-        // Se il margine arriva fino alle pagine, la loro `colonnaPagina()` non aggiunge altro
-        .colonnaPagina()
         .schermoProtetto()   // rose, nomi e dati dell'account non devono comparire nell'anteprima del selettore delle app
     }
 
