@@ -51,7 +51,7 @@
       "web": "in «Modifica a mano» i `bloccati` non si sostituiscono né entrano, riga `formazione.bloccati`; rifiuto del server con la sua frase",
       "iphone": "uguale alla web: nella scheda di un titolare fermo la frase di `formazione.bloccati` al posto di «Sostituisci»; i fermi non compaiono fra i sostituti; 400 `giocatore_bloccato` mostra la frase del server",
       "forma": "server (`bloccati`, 400 `giocatore_bloccato`)",
-      "chi": "fatto sull'iPhone con il passo 1b di #673 (Formazione unica): `FormazioneViewModel.fermo`, `sostituti`; prova `AnticipiBloccatiTests`. Prima: fatto con #373",
+      "chi": "fatto sull'iPhone con il passo 1b di #673 (Formazione unica): `FormazioneViewModel.fermo`; dal 26/11/2026 i sostituti li dice il server (`POST /api/formazione/sostituisci`, senza i fermi); prova `AnticipiBloccatiTests`. Prima: fatto con #373",
       "stato": "fatto"
     },
     {

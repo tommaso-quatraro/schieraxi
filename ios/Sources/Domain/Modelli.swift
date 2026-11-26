@@ -447,8 +447,13 @@ struct DaFareVoce: Decodable, Identifiable, Equatable {
     var giocatore: PersonaDaFare? = nil
     /// Il sostituto proposto da una voce `dubbio` (azione «Sostituisci»), con i suoi punti attesi (facoltativo).
     var alternativa: AlternativaDaFare? = nil
+    /// Con `alternativa`: i punti attesi della FORMAZIONE in più con il cambio proposto (dal 26/11/2026), il numero da mostrare
+    /// accanto al cambio («+1,3 punti attesi.»), non la differenza fra i due giocatori. Facoltativo: un server vecchio non lo manda.
+    var differenza: Double? = nil
 
-    private enum Chiavi: String, CodingKey { case id, tipo, testo, priorita, azione, destinazione, motivo, decisione, giocatore, alternativa }
+    private enum Chiavi: String, CodingKey {
+        case id, tipo, testo, priorita, azione, destinazione, motivo, decisione, giocatore, alternativa, differenza
+    }
 
     init(from decoder: Decoder) throws {
         let k = try decoder.container(keyedBy: Chiavi.self)
@@ -466,13 +471,15 @@ struct DaFareVoce: Decodable, Identifiable, Equatable {
         decisione = (try? k.decodeIfPresent(Int.self, forKey: .decisione)) ?? nil
         giocatore = (try? k.decodeIfPresent(PersonaDaFare.self, forKey: .giocatore)) ?? nil
         alternativa = (try? k.decodeIfPresent(AlternativaDaFare.self, forKey: .alternativa)) ?? nil
+        differenza = (try? k.decodeIfPresent(Double.self, forKey: .differenza)) ?? nil
     }
 
     init(id: String, tipo: String? = nil, testo: String, priorita: Int? = nil, azione: String? = nil, destinazione: DestinazioneDaFare? = nil,
-         motivo: String? = nil, decisione: Int? = nil, giocatore: PersonaDaFare? = nil, alternativa: AlternativaDaFare? = nil) {
+         motivo: String? = nil, decisione: Int? = nil, giocatore: PersonaDaFare? = nil, alternativa: AlternativaDaFare? = nil,
+         differenza: Double? = nil) {
         self.motivo = motivo
         self.id = id; self.tipo = tipo; self.testo = testo; self.priorita = priorita; self.azione = azione; self.destinazione = destinazione
-        self.decisione = decisione; self.giocatore = giocatore; self.alternativa = alternativa
+        self.decisione = decisione; self.giocatore = giocatore; self.alternativa = alternativa; self.differenza = differenza
     }
 }
 

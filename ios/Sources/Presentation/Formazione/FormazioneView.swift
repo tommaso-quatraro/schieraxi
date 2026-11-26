@@ -56,12 +56,11 @@ struct FormazioneView: View {
                 .bordiMorbidi()
             }
             .navigationTitle(Catalogo.Nav.formazione)
-            .sheet(item: $vm.daSostituire) { g in
-                if let f = vm.formazione {
-                    SceltaSostituto(uscente: g, candidati: vm.sostituti(di: g, f)) { nuovo in
-                        vm.daSostituire = nil
-                        Task { await vm.sostituisciTitolare(g.id, con: nuovo) }
-                    }
+            // «Sostituisci» nella scheda: chi può prendere il posto del titolare, con i numeri del server; un tocco chiude l'elenco
+            // e fa il cambio
+            .sheet(item: $vm.elencoSostituti) { elenco in
+                SceltaSostituto(elenco: elenco) { entra in
+                    Task { await vm.scegliSostituto(entra) }
                 }
             }
             // «Metti in campo» nella scheda (#778): chi può lasciargli il posto; un tocco chiude l'elenco e fa il cambio

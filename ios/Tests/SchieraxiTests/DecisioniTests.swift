@@ -25,11 +25,14 @@ struct DecisioniTests {
     }
 
     /// «Rossi è in dubbio: meglio Bianchi», con il cambio proposto.
-    static func dubbio(esce: Int = 4, entra: Int = 40, decisione: Int? = 1, priorita: Int = 1) throws -> DaFareVoce {
+    /// `differenza`: i punti attesi della formazione in più con il cambio, come li manda il server (nil = senza il campo, un server
+    /// di prima). Fra i due giocatori la differenza è un'altra (6,4 contro i 5,5 del titolare: +0,9).
+    static func dubbio(esce: Int = 4, entra: Int = 40, decisione: Int? = 1, priorita: Int = 1, differenza: Double? = 1.3) throws -> DaFareVoce {
         let campo = campoDecisione(decisione)
+        let numero = differenza.map { "\"differenza\": \($0)," } ?? ""
         return try voce(#"""
         {"id": "dubbio:\#(esce)", "tipo": "dubbio", "testo": "Rossi è in dubbio (45% di giocare). Meglio Bianchi.", "priorita": \#(priorita),
-         "azione": "Sostituisci", \#(campo)
+         "azione": "Sostituisci", \#(campo) \#(numero)
          "giocatore": {"id": \#(esce), "nome": "Rossi"},
          "alternativa": {"id": \#(entra), "nome": "Bianchi", "ruolo": "D", "punti_attesi": 6.4}}
         """#)
@@ -134,15 +137,16 @@ struct DecisioniTests {
 
     // MARK: cosa dice e cosa fa
 
-    @Test("«+0,9 punti attesi.»: quanto vale in più il sostituto, solo da 0,05 in su e con i due numeri")
+    @Test("«+1,3 punti attesi.»: quanto guadagna la formazione (la `differenza` del server), non la differenza fra i due giocatori")
     func guadagno() throws {
         let d = try Self.dubbio()
-        #expect(Decisioni.guadagno(d, puntiTitolare: 5.5) == "+0,9 punti attesi.")
-        #expect(Decisioni.guadagno(d, puntiTitolare: 5.5) == Catalogo.Formazione.decisionePunti(d: "+0,9"))
-        #expect(Decisioni.guadagno(d, puntiTitolare: 6.38) == nil, "meno di 0,05")
-        #expect(Decisioni.guadagno(d, puntiTitolare: 7) == nil, "il sostituto vale meno")
-        #expect(Decisioni.guadagno(d, puntiTitolare: nil) == nil)
-        #expect(Decisioni.guadagno(try Self.rose(), puntiTitolare: 5) == nil)
+        #expect(d.differenza == 1.3)
+        #expect(Decisioni.guadagno(d) == "+1,3 punti attesi.", "collaudo del 26/11: +1,1 fra i due giocatori, +0,1 la formazione")
+        #expect(Decisioni.guadagno(d) == Catalogo.Formazione.decisionePunti(d: "+1,3"))
+        #expect(Decisioni.guadagno(try Self.dubbio(differenza: 0.04)) == nil, "meno di 0,05")
+        #expect(Decisioni.guadagno(try Self.dubbio(differenza: -0.4)) == nil, "la formazione perde")
+        #expect(Decisioni.guadagno(try Self.dubbio(differenza: nil)) == nil, "senza il numero del server niente numero")
+        #expect(Decisioni.guadagno(try Self.rose()) == nil)
     }
 
     @Test("Il pulsante: quello del server, «Usa la consigliata» per la consigliata cambiata; urgente lo dice a parole")
@@ -171,7 +175,8 @@ struct DecisioniTests {
         let oggi: Oggi = try Decodifica.decodifica(Data(#"""
         {"giornata": 9, "da_fare": [
           {"id": "dubbio:6523", "tipo": "dubbio", "testo": "Barucci è in dubbio.", "priorita": 1, "azione": "Sostituisci", "decisione": 1,
-           "giocatore": {"id": \#(titolare), "nome": "Barucci"}, "alternativa": {"id": \#(riserva), "nome": "Altro", "punti_attesi": 5.64}}]}
+           "giocatore": {"id": \#(titolare), "nome": "Barucci"}, "alternativa": {"id": \#(riserva), "nome": "Altro", "punti_attesi": 5.64},
+           "differenza": 1.2}]}
         """#.utf8))
         let srv = ServerDiProva { _, percorso, _ in
             if percorso.hasPrefix("/api/scelta") { return Data("null".utf8) }
@@ -183,8 +188,9 @@ struct DecisioniTests {
         #expect(decisioni.map(\.id) == ["dubbio:6523"])
         let barucci = try #require(f.schede?[String(titolare)]?.puntiAttesi)
         let prima = try #require(decisioni.first)
-        #expect(vm.guadagno(prima) == Decisioni.guadagno(prima, puntiTitolare: barucci))
-        #expect(vm.guadagno(prima) == "+1,9 punti attesi.")
+        #expect(vm.guadagno(prima) == Decisioni.guadagno(prima))
+        #expect(vm.guadagno(prima) == "+1,2 punti attesi.", "il numero della formazione, dal server")
+        #expect(abs(5.64 - barucci - 1.93) < 0.01, "fra i due giocatori sarebbe +1,9: non si scrive")
         vm.vediSquadra("Gli Amici")
         #expect(vm.decisioni(oggi, tecniche: false).isEmpty)
     }
