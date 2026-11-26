@@ -413,24 +413,21 @@ final class TokenWidgetTests: XCTestCase {
         XCTAssertNil(TokenWidget.leggi(server: indirizzo))
     }
 
-    func testUscendoIlServerTogliIlTokenEIlTelefonoLoDimentica() async {
-        TokenWidget.archivio.salva("fw_daRevocare1234567", server: indirizzo)
-        Condiviso.sincronizza(indirizzo: indirizzo, token: "fw_daRevocare1234567")
-        let s = server { metodo, percorso in
-            if metodo == "DELETE", percorso == "/api/account/token-widget" { return Data(#"{"revocato": true}"#.utf8) }
-            throw ErroreApi.server("niente")
-        }
-        await TokenWidget.revoca(server: s, memoria: memoria)
-        XCTAssertEqual(s.quante("DELETE /api/account/token-widget"), 1)
+    /// Il token del widget di questo dispositivo lo toglie il server insieme alla sessione (`POST /api/account/esci`, #814): dal
+    /// 26/11/2026 l'app non manda più `DELETE /api/account/token-widget`, che con il server di prima spegneva anche il widget degli
+    /// altri dispositivi dello stesso account. Il telefono lo dimentica da solo.
+    func testAllUscitaIlTelefonoDimenticaIlTokenSenzaChiedereAlServer() {
+        TokenWidget.archivio.salva("fw_daDimenticare12345", server: indirizzo)
+        Condiviso.sincronizza(indirizzo: indirizzo, token: "fw_daDimenticare12345")
+        TokenWidget.pulisciLocale(indirizzo: indirizzo, memoria: memoria)
         XCTAssertNil(TokenWidget.leggi(server: indirizzo))
         XCTAssertNil(Condiviso.leggi().token)
     }
 
-    func testAncheSeIlServerNonRispondeIlTelefonoDimentica() async {
-        TokenWidget.archivio.salva("fw_daRevocare1234567", server: indirizzo)
-        Condiviso.sincronizza(indirizzo: indirizzo, token: "fw_daRevocare1234567")
-        await TokenWidget.revoca(server: server { _, _ in throw ErroreApi.rete("spento") }, memoria: memoria)
-        XCTAssertNil(TokenWidget.leggi(server: indirizzo))
-        XCTAssertNil(Condiviso.leggi().token)
+    /// Il file condiviso porta il token del widget: resta fuori dai backup del telefono, come gli elementi del Keychain.
+    func testIlFileCondivisoConIlTokenStaFuoriDaiBackup() throws {
+        Condiviso.sincronizza(indirizzo: indirizzo, token: "fw_tokenDiProva123456")
+        let valori = try cartella.appendingPathComponent("condiviso.json").resourceValues(forKeys: [.isExcludedFromBackupKey])
+        XCTAssertEqual(valori.isExcludedFromBackup, true)
     }
 }

@@ -254,6 +254,9 @@ struct RiassuntoWidget: Decodable {
     private var prossimaLetta: Facoltativo<ProssimaGiornata>?
     /// Il campionato è finito (#656): la frase del server, come in `/api/oggi` (facoltativo: un server di prima non lo manda).
     private var campionatoFinitoLetto: Facoltativo<CampionatoFinito>?
+    /// Quanti avvisi dei titolari ci sono, contati dal server su tutti (`da_controllare`, 26/11/2026): `avvisi` ne porta al più 6.
+    /// Facoltativo: un server di prima non lo manda.
+    private var daControllareLetto: Facoltativo<Int>?
     var mancano: [String]?
     /// Quali funzioni sono accese per questo utente (facoltativo: un server vecchio non lo manda). Chiave assente = acceso.
     var funzioni: [String: Bool]?
@@ -281,6 +284,7 @@ struct RiassuntoWidget: Decodable {
         case campionatoFinitoLetto = "campionatoFinito"
         case senzaFormazioneLetto = "senzaFormazione"
         case prossimaLetta = "prossima"
+        case daControllareLetto = "daControllare"
     }
 
     /// La fase con i suoi blocchi (ognuno solo nella sua fase).
@@ -298,7 +302,17 @@ struct RiassuntoWidget: Decodable {
     var inizio: Date? { Quando.data(scadenza) }
 
     /// Chi della formazione ha un dubbio, un infortunio o una squalifica. Vuoto a formazione chiusa (giornata in corso o finita).
+    /// Sono solo quelli arrivati (al più 6): il numero da mostrare è `contoDaControllare`.
     var daControllare: [GiocatoreWidget] { faseGiornata.chiusa ? [] : (avvisi ?? []).filter { $0.inFormazione == true } }
+
+    /// Il numero di «Da controllare»: quello del server (`da_controllare`, contato su tutti gli avvisi e non sui 6 che arrivano, che
+    /// con tanti infortunati fuori formazione lasciavano fuori i dubbi dei titolari). Con un server di prima, quelli arrivati.
+    /// Zero a formazione chiusa, come `daControllare`.
+    var contoDaControllare: Int {
+        if faseGiornata.chiusa { return 0 }
+        if let n = daControllareLetto?.valore, n >= 0 { return n }
+        return daControllare.count
+    }
 
     /// I giocatori della mia rosa che giocano a breve, in ordine di orario (solo con la partita nota).
     func giocanoPresto(dopo adesso: Date = Date(), massimo: Int = 8) -> [GiocatoreWidget] {
@@ -313,7 +327,7 @@ struct RiassuntoWidget: Decodable {
         guard giornata != nil || campionatoFinito != nil else { return nil }
         let dubbi = daControllare
         return RiassuntoOggi(giornata: giornata, inizio: inizio, modulo: formazione?.modulo, punti: formazione?.puntiAttesi,
-                             daControllare: dubbi.count, probabili: conProbabili, scaricatoIl: scaricatoIl,
+                             daControllare: contoDaControllare, probabili: conProbabili, scaricatoIl: scaricatoIl,
                              dubbi: dubbi.prefix(6).map {
                                  DubbioRiassunto(id: $0.id, nome: $0.nome, ruolo: $0.ruolo, tipo: $0.tipo, pVoto: $0.pVoto, etichetta: $0.etichetta?.testoPronto)
                              },
@@ -457,8 +471,9 @@ enum MemoriaWidget {
 
     /// Applica la risposta del server alla copia del collegamento `chi`: i dati nuovi si salvano con l'impronta, il 304 rinfresca
     /// l'ora, senza rete resta la copia. Con il 401 (token del widget revocato all'uscita dall'account, scaduto o rinnovato) le copie
-    /// si cancellano tutte (`accessoNegato`) e non si mostra niente.
-    static func applica(_ esito: ScaricoWidget.Esito, copia: CopiaWidget?, chi: String, adesso: Date = .now,
+    /// si cancellano tutte (`accessoNegato`) e non si mostra niente; se il widget scaricava con un token (`conToken`) lascia anche il
+    /// segnale all'app (`SegnaleWidget`), che ne chiede uno nuovo.
+    static func applica(_ esito: ScaricoWidget.Esito, copia: CopiaWidget?, chi: String, conToken: Bool = false, adesso: Date = .now,
                         cartella: URL? = Condiviso.cartella(), memoria: UserDefaults = .standard) -> EsitoCopia {
         let salvata = copia.flatMap { $0.chi == chi && $0.riassunto != nil ? $0 : nil }
         switch esito {
@@ -474,7 +489,7 @@ enum MemoriaWidget {
         case .inCalcolo, .errore:
             return EsitoCopia(copia: salvata)
         case .accessoRichiesto:
-            accessoNegato(cartella: cartella, memoria: memoria)
+            accessoNegato(segnala: conToken ? chi : nil, cartella: cartella, memoria: memoria)
             return EsitoCopia(accessoRichiesto: true)
         case .nonDisponibile:
             return EsitoCopia(nonDisponibile: true)
@@ -482,11 +497,13 @@ enum MemoriaWidget {
     }
 
     /// Il server ha rifiutato il token del widget: via tutte le copie del widget, nel gruppo e nelle UserDefaults di chi la chiama
-    /// (anche quelle che l'app non raggiunge quando il gruppo manca).
-    static func accessoNegato(cartella: URL? = Condiviso.cartella(), memoria: UserDefaults = .standard) {
+    /// (anche quelle che l'app non raggiunge quando il gruppo manca). `segnala`: l'impronta del collegamento rifiutato, se il widget
+    /// aveva un token; finisce nel segnale per l'app (`SegnaleWidget`, solo con il gruppo).
+    static func accessoNegato(segnala chi: String? = nil, cartella: URL? = Condiviso.cartella(), memoria: UserDefaults = .standard) {
         dimentica(cartella: cartella, memoria: memoria)
         memoria.removeObject(forKey: chiaveRiassunto)
         memoria.removeObject(forKey: chiaveRiassuntoChi)
+        if let chi { SegnaleWidget.scrivi(chi: chi, cartella: cartella) }
     }
 
     static func salva(_ copia: CopiaWidget, cartella: URL? = Condiviso.cartella(), memoria: UserDefaults = .standard) {
