@@ -840,7 +840,7 @@ def test_una_regola_con_due_decimali_resta_uguale_nel_campo_e_nel_salvataggio(we
     salvate = _scritture(web, "/api/regole")
     web.apri("/?vista=impostazioni&gruppo=regole")
     tocca(web, principale(web).get_by_text("Modifica i valori", exact=True))
-    assert principale(web).get_by_label("Ammonizione", exact=True).input_value() == "-0,25"
+    assert principale(web).get_by_label("Ammonizione", exact=True).input_value() == "−0,25"      # col meno vero (collaudo del 26/11)
     principale(web).get_by_label("Assist", exact=True).fill("1,5")
     tocca(web, principale(web).get_by_role("button", name="Salva le regole"))
     assert salvate, "le regole non sono state salvate"
@@ -870,7 +870,7 @@ def test_meno_e_piu_da_un_valore_fuori_dai_passi_vanno_al_passo_vicino(web):
             for nome, partenza in (("Assist", "1,25"), ("Ammonizione", "-1,25"), ("Rigore segnato", "3,0"))
             for pulsante in ("Aumenta", "Diminuisci")}
     assert dopo == {("Assist", "1,25", "Aumenta"): "1,5", ("Assist", "1,25", "Diminuisci"): "1,0",
-                    ("Ammonizione", "-1,25", "Aumenta"): "-1,0", ("Ammonizione", "-1,25", "Diminuisci"): "-1,5",
+                    ("Ammonizione", "-1,25", "Aumenta"): "−1,0", ("Ammonizione", "-1,25", "Diminuisci"): "−1,5",   # meno vero
                     ("Rigore segnato", "3,0", "Aumenta"): "3,5", ("Rigore segnato", "3,0", "Diminuisci"): "2,5"}, dopo
     assert not web.errori_mostrati()
 
@@ -1600,6 +1600,72 @@ def test_l_iscrizione_che_non_arriva_si_rimanda_all_apertura_dopo(web):
     assert len(iscritte) == 2, f"l'iscrizione non arrivata non è stata rimandata: {iscritte}"
     web.apri("/")
     assert len(iscritte) == 2, f"l'iscrizione arrivata è stata rimandata ancora: {iscritte}"
+
+
+# ---------------------------------------------------------------- promemoria anche dalla web app (26/11/2026)
+# Il server dice all'app per iPhone che il promemoria arriva anche dalla web app solo per un'iscrizione nata su un iPhone e
+# confermata da poco (`promemoria_da` di /api/avvisi): la web dice se gira su un iPhone (iPad e Mac si presentano come «Macintosh») e, con il permesso delle
+# notifiche, rimanda la sua iscrizione una volta al giorno. Qui il browser finge di essere un iPhone, un iPad o un Mac.
+DISPOSITIVO = """(() => {
+  Object.defineProperty(Navigator.prototype, 'userAgent', { configurable: true, get: () => __UA__ });
+  Object.defineProperty(Notification, 'permission', { configurable: true, get: () => __PERMESSO__ });
+})();"""
+UA_IPHONE = ("Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 "
+             "Mobile/15E148 Safari/604.1")
+UA_IPAD_MAC = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 "
+               "Safari/605.1.15")
+
+
+def dispositivo(web, ua: str, permesso: str) -> None:
+    """Prima di `apri`: il browser dice di essere `ua` e di avere il permesso delle notifiche `permesso`."""
+    web.pagina.add_init_script(DISPOSITIVO.replace("__UA__", json.dumps(ua)).replace("__PERMESSO__", json.dumps(permesso)))
+
+
+@pytest.mark.parametrize(("ua", "iphone"), [(UA_IPHONE, True), (UA_IPAD_MAC, False)], ids=["iphone", "ipad-o-mac"])
+def test_accendendo_gli_avvisi_la_web_dice_se_e_un_iphone(web, ua, iphone):
+    solo(web, "prima")
+    dispositivo(web, ua, "default")
+    notifiche_finte(web)
+    iscritte = _scritture(web, "/api/push/iscrivi")
+    web.apri("/?vista=impostazioni")
+    with web.pagina.expect_request(iscrizione_mandata):
+        accendi_qui(web)
+    web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
+    assert [(c["endpoint"], c.get("iphone")) for c in iscritte] == [("https://push.example/prova", iphone)], iscritte
+
+
+def test_con_il_permesso_l_iscrizione_si_conferma_una_volta_al_giorno(web):
+    """Già dentro da prima (niente da rimandare per un accesso nuovo): con il permesso delle notifiche la prima apertura del giorno
+    rimanda l'iscrizione al server, con `iphone`; le aperture dopo, nello stesso giorno, no."""
+    solo(web, "prima")
+    da_utente(web)
+    web.memoria({"account": json.dumps(UTENTE["utente"])})
+    iscrizione_gia_qui(web)
+    dispositivo(web, UA_IPHONE, "granted")
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    iscritte = _scritture(web, "/api/push/iscrivi")
+    with web.pagina.expect_request(iscrizione_mandata):
+        web.apri("/")
+    web.apri("/")
+    web.apri("/?vista=impostazioni")
+    assert [(c["endpoint"], c.get("iphone")) for c in iscritte] == [(ENDPOINT, True)], iscritte
+    assert interruttore_qui(web).is_checked()
+
+
+@pytest.mark.parametrize("permesso", ["denied", "default"])
+def test_senza_il_permesso_l_iscrizione_non_si_conferma(web, permesso):
+    """Notifiche spente nelle impostazioni del telefono: la web non conferma più l'iscrizione, e dopo qualche giorno il server
+    non dice più all'app per iPhone che il promemoria arriva anche dalla web app."""
+    solo(web, "prima")
+    da_utente(web)
+    web.memoria({"account": json.dumps(UTENTE["utente"])})
+    iscrizione_gia_qui(web)
+    dispositivo(web, UA_IPHONE, permesso)
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    iscritte = _scritture(web, "/api/push/iscrivi")
+    web.apri("/")
+    web.apri("/?vista=impostazioni")
+    assert iscritte == [], iscritte
 
 
 # ---------------------------------------------------------------- Stato dei dati: le etichette del server

@@ -88,9 +88,9 @@ def _attivo(utente: Utente) -> Attivo | None:
 
 def utenti_attivi() -> list[Attivo]:
     """Chi ha una squadra e almeno un modo per ricevere gli avvisi. Un utente con un file rovinato o strano per ora non riceve
-    avvisi, e non ferma gli altri."""
+    avvisi, e non ferma gli altri. Un account bloccato da chi gestisce il server non riceve niente."""
     with contextlib.closing(account.apri()) as db:
-        elenco = [account.trova(db, r["id"]) for r in account.elenco(db)]
+        elenco = [account.trova(db, r["id"]) for r in account.elenco(db) if not r["bloccato"]]
     attivi = []
     for utente in elenco:
         try:

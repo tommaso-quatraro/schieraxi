@@ -157,6 +157,7 @@ ORDINE = [
     "_riparazione_sessione_hash",
     "token_widget ADD COLUMN sessione_id",
     "CREATE TABLE IF NOT EXISTS feedback",
+    "_aggiungi_bloccato",
     "_token_widget_per_sessione",
 ]
 

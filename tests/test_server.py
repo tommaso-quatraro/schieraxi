@@ -511,7 +511,7 @@ def test_avvisi_impostazioni_e_prova(client, tmp_path, monkeypatch):
     monkeypatch.setattr(server.notifiche, "FILE_IMPOSTAZIONI", tmp_path / "avvisi.json")
     monkeypatch.setattr(server.notifiche, "canale", lambda: None)
     monkeypatch.setattr(server.notifiche_web, "FILE_ISCRIZIONI", tmp_path / "push-vuoto.json")
-    assert client.get("/api/avvisi").json() == {"impostazioni": {"cambi": True, "promemoria_60": True, "promemoria_15": True, "riepilogo": True, "app_nativa": False, "silenzio": False, "copertura": True, "silenzio_da": 23, "silenzio_a": 7, "avviso_prima": 60, "lingua": "it"}, "canale": False, "dispositivi": 0}
+    assert client.get("/api/avvisi").json() == {"impostazioni": {"cambi": True, "promemoria_60": True, "promemoria_15": True, "riepilogo": True, "app_nativa": False, "silenzio": False, "copertura": True, "silenzio_da": 23, "silenzio_a": 7, "avviso_prima": 60, "lingua": "it"}, "canale": False, "dispositivi": 0, "promemoria_da": "app"}
     r = client.put("/api/avvisi", json={"cambi": False, "promemoria_60": True, "promemoria_15": False, "riepilogo": True})
     assert r.json()["impostazioni"] == {"cambi": False, "promemoria_60": True, "promemoria_15": False, "riepilogo": True, "app_nativa": False,
                                         "silenzio": False, "copertura": True, "silenzio_da": 23, "silenzio_a": 7, "avviso_prima": 60, "lingua": "it"}

@@ -316,15 +316,17 @@ function pagina(html, opz = {}) {
 }
 // La riga di stato: [stemma] Giornata N · nome della mia squadra · dati del … (i pezzi li prepara caricaInfo, lo stemma caricaSquadre).
 // Ogni pezzo sta intero: se la riga non ci sta si va a capo dopo un « · » (a 390 px la data si tagliava).
-// Senza server «Server non raggiungibile» (`stato-offline`): non si vede se la pagina lo dice già lei con «Riprova» (stile.css, #864).
+// Senza server «Server non raggiungibile» (`stato-offline`), su una riga sua sopra i pezzi della copia salvata se ci sono (caricaInfo):
+// non si vede se la pagina lo dice già lei con «Riprova» (stile.css, #864), e allora restano i pezzi.
 function rigaStato() {
   const r = stato.rigaStato;
   if (!r) return "";
-  if (r.offline) return `<span class="stato-offline">${esc(t("testata.offline"))}</span>`;
+  const offline = r.offline ? `<span class="stato-offline">${esc(t("testata.offline"))}</span>` : "";
+  const pezzi = [r.giornata, r.squadra, r.dati].filter(Boolean);
+  if (!pezzi.length) return offline;
   const mia = miaSquadra();
   const stemma = mia && mia.immagini && mia.immagini.stemma ? `<img class="stemma-stato" src="${esc(urlImg(mia.nome, "stemma"))}" alt="" width="20" height="20">` : "";
-  const pezzi = [r.giornata, r.squadra, r.dati].filter(Boolean);
-  return stemma + pezzi.map(p => `<span>${esc(p)}</span>`).join(" · ");
+  return offline + stemma + pezzi.map(p => `<span>${esc(p)}</span>`).join(" · ");
 }
 // Dati nuovi (avvio, «Aggiorna i dati», rose o squadra cambiate): la riga di stato già in pagina si riscrive.
 function aggiornaRigaStato() {
@@ -342,7 +344,9 @@ function alRitornoDellaRete(riprova) {
 // Formazione tiene spenti i comandi che scrivono finché non lo sa); `sola()` dice se quei comandi sono spenti.
 // Se i dati nuovi non arrivano resta la copia: la nota dice perché non si può cambiare niente e ha «Riprova»; se è caduta la rete,
 // quando il browser dice che è tornata si riprova da soli, una volta. Restituisce se i dati nuovi sono arrivati in pagina.
-async function caricaConCache(chiave, percorso, mostra, testo) {
+// `daSalvare(dati)` (facoltativo): false per una risposta che non è un dato da ritrovare senza rete (la domanda della squadra della
+// Formazione, revisione della #929): non si salva, e la copia di prima, che non vale più, si toglie.
+async function caricaConCache(chiave, percorso, mostra, testo, { daSalvare = () => true } = {}) {
   const mia = nuovaRichiesta();
   alRitornoDellaRete(null);
   let salvata = leggiCache(chiave), vista = null;
@@ -354,7 +358,7 @@ async function caricaConCache(chiave, percorso, mostra, testo) {
     try {
       const dati = typeof percorso === "function" ? await percorso() : await api(percorso);
       if (!ancoraValida(mia)) return false;
-      salvaCache(chiave, dati);
+      if (daSalvare(dati)) salvaCache(chiave, dati); else rimuoviCache(chiave);
       if (!salvata || JSON.stringify(salvata.dati) !== JSON.stringify(dati)) { mostra(dati, { sostituisce: !!salvata }); return true; }
       const b = $("#nota-cache");
       if (b && b.contains(document.activeElement)) $("#titolo-pagina").focus({ preventScroll: true });   // il fuoco era su «Riprova», che sparisce
@@ -816,23 +820,37 @@ async function caricaFunzioni() {
   } catch { stato.funzioni = null; }
 }
 
+// Giornata, nome della mia squadra e data dei dati: i pezzi della riga di stato sotto il titolo (pagina()), da /api/stato o dalla sua copia.
+function pezziRigaStato(i) {
+  const quandoAgg = parseData(i.ultimo_aggiornamento);
+  return {
+    giornata: i.prossima_giornata ? nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata) : null,   // «Giornata 8 · 11ª di Serie A», come altrove
+    squadra: i.mia_squadra || null,
+    dati: (quandoAgg ? elidiGiorno(t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) })) : t("testata.mai")).replace(/^\s*·\s*/, ""),
+  };
+}
+// Restituisce l'errore della lettura, o null se /api/stato è arrivato (la Formazione senza squadra lo guarda, revisione della #929).
 async function caricaInfo() {
+  let errore = null;
   try {
     stato.info = await api("/api/stato");
     const i = stato.info;
-    const quandoAgg = parseData(i.ultimo_aggiornamento);
-    // giornata, nome della mia squadra e data dei dati: la riga di stato sotto il titolo di ogni schermata (pagina())
-    stato.rigaStato = {
-      giornata: i.prossima_giornata ? nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata) : null,   // «Giornata 8 · 11ª di Serie A», come altrove
-      squadra: i.mia_squadra || null,
-      dati: (quandoAgg ? elidiGiorno(t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) })) : t("testata.mai")).replace(/^\s*·\s*/, ""),
-    };
+    stato.rigaStato = pezziRigaStato(i);
+    // la copia dei soli campi della riga, per quando la pagina si ricarica senza server (collaudo del 26/11)
+    salvaCache("stato", { prossima_giornata: i.prossima_giornata, prossima_giornata_lega: i.prossima_giornata_lega,
+                          mia_squadra: i.mia_squadra, ultimo_aggiornamento: i.ultimo_aggiornamento });
     segnaAggiornamento(!!i.aggiornamento_in_corso);
   } catch (e) {
-    stato.rigaStato = { offline: true };
+    // Senza server la riga dice «Server non raggiungibile» e, se c'è la copia dell'ultima lettura buona, sotto i suoi pezzi: dopo una
+    // ricarica la riga è quella che si vede quando la rete cade senza ricaricare (prima restava vuota, collaudo del 26/11). I pezzi
+    // dicono già di quando sono i dati («dati del …»). stato.info non si tocca: le scelte che ne dipendono aspettano dati veri.
+    const copia = leggiCache("stato", true);
+    stato.rigaStato = { ...(copia ? pezziRigaStato(copia.dati) : {}), offline: true };
     segnaAvvioDaRileggere(e);
+    errore = e;
   }
   aggiornaRigaStato();
+  return errore;
 }
 // La schermata in pagina, di nuovo, dal suo indirizzo (anche una pagina dentro Impostazioni): «Riprova», dati nuovi.
 function vaiQui(opz = {}) {
@@ -920,6 +938,30 @@ function testoConto(o) {
   // ogni numero resta attaccato alla sua unità (spazio che non va a capo): «1 giorno» / «8 h», mai «h» da sola su una riga (issue #286)
   const tempo = (g >= 1 ? tp("oggi.giorni_ore", g, { h }) : h >= 1 ? `${h} h ${m} min` : `${m} min`).replace(/(\d) /g, "$1 ");
   return { chiude: t("formazione.si_chiude", { quando: quando(quandoChiude) }), manca: t("formazione.fra", { tempo }) };
+}
+
+// Rose importate, la tua squadra non ancora scelta (primo avvio lasciato al passo «La tua squadra», collaudo del 26/11): al posto
+// dell'errore «Indica la tua squadra…» con un «Riprova» che non serviva, la domanda della guida, con le stesse parole e lo stesso
+// pulsante (un menu che salva al cambio non farebbe scegliere la prima squadra, già in vista). Scelta, la Formazione si ricarica.
+// Senza l'elenco delle squadre (non letto), il collegamento a La mia squadra.
+function mostraSenzaSquadra(opz) {
+  clearInterval(timerConto);
+  const squadre = stato.squadre || [];
+  pagina(`<div class="carta benvenuto"><h2>${t("pav.quale_squadra_tua")}</h2>
+    ${squadre.length ? `${sceltaMiaSquadra(squadre)}<div class="pulsanti"><button class="bottone" type="button" id="fz-mia-squadra">${t("pav.questa_mia")}</button></div>`
+      : `<p class="debole">${t("err.indica_squadra")}</p><div class="pulsanti"><button class="bottone" type="button" data-imp-gruppo="squadra">${t("lega.mia_squadra")}</button></div>`}</div>`,
+  { ...opz, stato: false });
+  const b = $("#fz-mia-squadra");
+  if (b) b.addEventListener("click", async () => {
+    b.disabled = true;
+    try {
+      await api("/api/mia-squadra", { method: "PUT", body: JSON.stringify({ nome: $("#mia-squadra").value }) });
+      svuotaCache(); stato.squadraVista = null;
+      avviso(t("lega.squadra_salvata"));
+      await Promise.all([caricaInfo(), caricaSquadre()]);
+      if (stato.vista === "formazione") vaiQui();
+    } catch (e) { avviso(e.message); b.disabled = false; }
+  });
 }
 
 // Account nuovo, senza rose: benvenuto e un solo pulsante. Il primo avvio guidato si apre da solo (una volta, vedi primoAvvioSeServe).
@@ -1087,7 +1129,9 @@ function vistaFormazione() {
     return caricaConCache("formazione-" + squadra, async () => ({ o: null, f: await api(`/api/formazione?squadra=${encodeURIComponent(squadra)}`) }),
       (b, opz) => mostraFormazione(b, squadra, opz), t("formazione.calcolo"));
   }
-  return caricaConCache("giornata", caricaGiornata, (b, opz) => mostraFormazione(b, null, opz), t("formazione.calcolo"));
+  // la domanda della squadra non è un dato da ritrovare senza rete: non va nella copia (revisione della #929)
+  return caricaConCache("giornata", caricaGiornata, (b, opz) => mostraFormazione(b, null, opz), t("formazione.calcolo"),
+    { daSalvare: b => !b.senza_squadra });
 }
 
 // Tutto ciò che serve alla schermata, in una volta: la giornata (/api/oggi), la formazione, la scelta salvata e, se gli 11 salvati non
@@ -1100,6 +1144,17 @@ async function caricaGiornata() {
   // gli errori, quindi si chiede solo /api/oggi, che dà il benvenuto. Se le rose nel frattempo ci sono, la formazione si chiede dopo.
   // Lo stesso senza una giornata da giocare (`prossima_giornata` nullo): a campionato finito /api/oggi dice `campionato_finito` e
   // /api/formazione risponderebbe 409 (#656); d'estate, senza calendario, è /api/oggi a dire che il calendario non c'è ancora.
+  // Con le rose ma senza la tua squadra (primo avvio a metà) le due rotte rispondono 400 («Indica la tua squadra…»): due errori nel
+  // browser e una pagina d'errore con «Riprova» (collaudo del 26/11). Lo stato letto all'avvio può essere vecchio (squadra scelta
+  // dall'iPhone o da un'altra scheda): si rilegge; se la squadra manca ancora non si chiede niente e la pagina la chiede lei. Se la
+  // rilettura non riesce non si sa se la squadra c'è: l'errore va a caricaConCache, che mostra la copia con la nota e «Riprova» (o
+  // l'errore con «Riprova»), non la domanda (revisione della #929; come Giornate senza rose).
+  const senzaSquadra = () => !!stato.info && stato.info.rose_importate === true && !stato.info.mia_squadra;
+  if (senzaSquadra()) {
+    const errore = await caricaInfo();
+    if (errore) throw errore;
+    if (senzaSquadra()) return { senza_squadra: true };
+  }
   const senzaRose = !!stato.info && stato.info.rose_importate === false;
   const senzaGiornata = !!stato.info && stato.info.prossima_giornata === null;
   const [o, letta] = await Promise.all([api("/api/oggi"), senzaRose || senzaGiornata ? null : api("/api/formazione").catch(e => e)]);
@@ -1180,6 +1235,7 @@ function cambiInCorso(c) {
 // `b`: ciò che caricaGiornata ha letto ({o, f, scelta, valutata, non_valida}); per un'altra squadra solo {f}.
 function mostraFormazione(b, squadra, opz = {}) {
   const { o, f } = b;
+  if (b.senza_squadra) { mostraSenzaSquadra(opz); return; }
   if (o && o.senza_rose) { mostraSenzaRose(opz); return; }
   if (o && o.campionato_finito) { mostraCampionatoFinito(o, opz); return; }
   const l = livelloBase(f);
@@ -2612,7 +2668,7 @@ function dettaglioGiornata(d, g, stagioni) {
   const righe = (f.titolari || []).map(x => {
     const n = numeri.get(x.id), atteso = mostrati.has(x.id) ? mostrati.get(x.id) : n ? n.fv_atteso : null;
     const senza = !!n && n.fv == null;
-    return `<tr><th scope="row">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</th><td>${num(atteso)}</td><td${senza ? ' class="gn-senza"' : ""}>${senza ? t("giornate.senza_voto") : num(n ? n.fv : null)}</td></tr>`;
+    return `<tr role="row"><th scope="row" role="rowheader">${badgeRuolo(x.ruolo, true)}${esc(x.nome)}</th><td role="cell">${num(atteso)}</td><td role="cell"${senza ? ' class="gn-senza"' : ""}>${senza ? t("giornate.senza_voto") : num(n ? n.fv : null)}</td></tr>`;
   }).join("");
   const s = tipo === "tua" && mostrata ? sceltaDi(d, g) : null;
   const allora = fraseGiornata(g, "nota_consigliata"), scarti = fraseGiornata(g.fatti_e_attesi);
@@ -2625,11 +2681,13 @@ function dettaglioGiornata(d, g, stagioni) {
   const perche = testiDi(g.spiegazione_punti, "righe").filter(x => typeof x === "string" && x.trim());
   const spiegati = perche.length ? `<ul class="gn-perche" aria-label="${t("giornate.perche_punti")}">${perche.map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
   const correggi = g.modificabile === false ? "" : `<div class="pulsanti"><button class="bottone secondario" type="button" data-correggi="${id}">${t("giornate.correggi")}</button></div>`;
+  // I ruoli della tabella scritti anche a mano: nella pagina strettissima (zoom al 200%) righe e celle si dispongono con display: grid
+  // (stile.css), e qualche browser con quello smette di leggerle come tabella
   return `<section class="gn-dettaglio" id="gn-d-${id}" aria-label="${nome}">
     <h2 class="gn-titolo">${titolo}</h2>${nota}${scarti ? `<p class="gn-scarti">${scarti}</p>` : ""}
-    <table class="gn-tabella"><caption class="solo-lettori">${t("giornate.tabella")}</caption>
-      <thead><tr><th scope="col">${t("giornate.col_giocatore")}</th><th scope="col">${t("giornate.col_atteso")}</th><th scope="col">${t("giornate.col_preso")}</th></tr></thead>
-      <tbody>${righe}</tbody></table>
+    <table class="gn-tabella" role="table"><caption class="solo-lettori">${t("giornate.tabella")}</caption>
+      <thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">${t("giornate.col_giocatore")}</th><th scope="col" role="columnheader">${t("giornate.col_atteso")}</th><th scope="col" role="columnheader">${t("giornate.col_preso")}</th></tr></thead>
+      <tbody role="rowgroup">${righe}</tbody></table>
     ${spiegati}${cambi}${correggi}</section>`;
 }
 
@@ -2838,7 +2896,7 @@ async function notificheWeb(dispositivi) {
     if (await Notification.requestPermission() !== "granted") throw new Error(t("avv.permesso_negato_abilita"));
     const { chiave } = await api("/api/push/chiave");
     sub = await iscrizioneMia(reg, chiave);              // mai quella di un altro account (#874)
-    dispositivi = (await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) })).dispositivi;
+    dispositivi = (await api("/api/push/iscrivi", { method: "POST", body: corpoIscrizione(sub) })).dispositivi;
     segnaAvvisiDi();                                       // l'iscrizione è di chi l'ha accesa (#804)
   };
   const spegni = async () => {
@@ -3147,6 +3205,15 @@ const cifraLimite = v => (v < 0 ? "−" : "") + num(Math.abs(v), Number.isIntege
 // I decimali per scrivere un valore delle regole senza arrotondarlo, fino a due: 0 se è intero, 1 se basta, altrimenti 2 («−0,25»
 // e non «−0,3», #911). La stessa regola dell'iPhone (RegoleLogica.descrivi); la usano l'anteprima del regolamento e i campi.
 const decimaliRegola = v => (Number.isInteger(v) ? 0 : Number.isInteger(v * 10) ? 1 : 2);
+// Un numero scritto in un campo delle regole (collaudo del 26/11): il meno vero «−» (U+2212, quello che i campi stessi mostrano) o il
+// trattino «-», la virgola o il punto per i decimali. `testoNumero` lo porta alla forma che Number capisce; un campo vuoto resta vuoto
+// (lo dice problemaCampo, Number("") sarebbe 0).
+const testoNumero = s => String(s).trim().replace(/−/g, "-").replace(",", ".");
+const numeroScritto = s => Number(testoNumero(s));
+// Un valore delle regole nel suo campo: «−0,5» con il meno tipografico, come l'anteprima del regolamento e gli avvisi. Il campo resta un
+// campo di testo con la tastiera dei numeri (inputmode="decimal"): il meno è testo come le cifre e la virgola, la tastiera non cambia.
+// Arrotondato a zero, niente segno («0,0», non «−0,0»).
+const cifraCampo = (v, dec) => { const s = num(Math.abs(v), dec); return v < 0 && /[1-9]/.test(s) ? "−" + s : s; };
 // I nomi dei campi negli avvisi prima di salvare, dove due righe della pagina hanno lo stesso titolo (#889): «Difensori» nella rosa
 // e nei posti fissi in panchina, «Voto d'ufficio» due volte. Sono i nomi dei campi del server (err.p_regola_*), gli stessi
 // dell'iPhone; la riga e il suo nome per i lettori di schermo restano quelli della pagina.
@@ -3159,10 +3226,10 @@ function stepper(id, valore, { passo = 0.5, dec = 1, lim = "", min = -50, max = 
   if (lim) ({ min, max } = limitiRegole[lim]);
   return `<div class="stepper" data-passo="${passo}" data-min="${min}" data-max="${max}" data-dec="${dec}"${nome ? ` data-nome="${esc(nome)}"` : ""}>
     <button type="button" data-step="-1" aria-label="${t("regole.diminuisci")}">−</button>
-    <input id="${id}" inputmode="decimal" autocomplete="off" value="${num(valore, Math.max(dec, decimaliRegola(valore)))}">
+    <input id="${id}" inputmode="decimal" autocomplete="off" value="${cifraCampo(valore, Math.max(dec, decimaliRegola(valore)))}">
     <button type="button" data-step="1" aria-label="${t("regole.aumenta")}">+</button></div>`;
 }
-const leggiN = id => { const el = $("#" + id); return el ? Number(String(el.value).replace(",", ".")) : NaN; };
+const leggiN = id => { const el = $("#" + id); return el ? numeroScritto(el.value) : NaN; };
 const interruttore = (id, testo, acceso, aiuto = "") => `<label class="interruttore-ios"><span>${testo}${aiuto ? `<small>${aiuto}</small>` : ""}</span><input type="checkbox" id="${id}" ${acceso ? "checked" : ""}><i></i></label>`;
 // Il campo della riga prende come nome per i lettori di schermo il testo della riga (testo semplice, passato per esc): prima restava senza nome o
 // con il titolo della sezione («Gol» anche per l'assist).
@@ -3194,14 +3261,14 @@ document.addEventListener("click", ev => {
   if (!b) return;
   const s = b.closest(".stepper"), campo = $("input", s);
   const passo = Number(s.dataset.passo), dec = Number(s.dataset.dec);
-  let v = Number(String(campo.value).replace(",", "."));
+  let v = numeroScritto(campo.value);
   if (!Number.isFinite(v)) v = 0;
   // «+» va al primo multiplo del passo sopra il valore, «−» al primo sotto, come su un righello (#911): da −0,25 con i passi
   // da 0,5 «+» dà 0 e «−» −0,5, senza saltare valori; da un valore già sui passi ci si sposta di un passo, come prima.
   // Il margine assorbe gli errori della divisione con la virgola mobile.
   const q = v / passo, k = Number(b.dataset.step) > 0 ? Math.floor(q + 1e-9) + 1 : Math.ceil(q - 1e-9) - 1;
   v = Math.min(Number(s.dataset.max), Math.max(Number(s.dataset.min), k * passo));
-  campo.value = num(v, Math.max(dec, decimaliRegola(v)));
+  campo.value = cifraCampo(v, Math.max(dec, decimaliRegola(v)));
   campo.dispatchEvent(new Event("input", { bubbles: true }));
 });
 
@@ -3315,7 +3382,7 @@ async function vistaRegole() {
 
   // --- comportamenti
   const leggiFasce = () => [...document.querySelectorAll("#fasce .fascia")].map(f => [leggiN2($("input.f-media", f)), leggiN2($("input.f-bonus", f))]);
-  const leggiN2 = el => Number(String(el.value).replace(",", "."));
+  const leggiN2 = el => numeroScritto(el.value);
   const aggiornaProva = () => {
     const voti = [0, 1, 2, 3].map(k => leggiN("pv" + k));
     const media = voti.reduce((a, b) => a + b, 0) / 4;
@@ -3410,7 +3477,7 @@ async function vistaRegole() {
       $("#salva-riconosciute")?.addEventListener("click", () => { applicaModifiche(esito.modifiche); salva(); });
     } catch (e) { dove.innerHTML = errore(e); }
   });
-  const imposta = (id, valore, dec) => { const el = $("#" + id); if (el) { el.value = num(valore, dec ?? decimaliRegola(valore)); el.closest(".riga-regola")?.classList.add("evidenzia"); } };
+  const imposta = (id, valore, dec) => { const el = $("#" + id); if (el) { el.value = cifraCampo(valore, dec ?? decimaliRegola(valore)); el.closest(".riga-regola")?.classList.add("evidenzia"); } };
   const applicaModifiche = mods => {
     for (const m of mods) {
       const k = m.chiave, v = m.valore;
@@ -3438,13 +3505,15 @@ async function vistaRegole() {
   // Cosa non va in un campo che si salva (#881): vuoto (prima diventava 0), non un numero, con la virgola in un campo di numeri
   // interi (quelli senza decimali: portieri, panchina, cambi, crediti...), fuori dai limiti del server (gli stessi di − e +). Il
   // nome del campo è quello della riga, o quello del campo quando due righe hanno lo stesso titolo (data-nome, #889); "" se va bene.
+  // Anche «non è un numero» dice quale campo (collaudo del 26/11: «Ci sono valori non numerici» non diceva dove).
   const problemaCampo = campo => {
-    const s = campo.closest(".stepper"), testo = String(campo.value).trim().replace(",", "."),
+    const s = campo.closest(".stepper"), testo = testoNumero(campo.value),
       nome = s.dataset.nome || campo.getAttribute("aria-label") || "";
     if (!testo) return t("regole.campo_vuoto", { campo: nome });
     const v = Number(testo);
-    if (!Number.isFinite(v)) return t("regole.sono_valori_non");
-    if (s.dataset.dec === "0" && !Number.isInteger(v)) return t("regole.intero", { campo: nome });
+    if (!Number.isFinite(v)) return t("regole.non_numero", { campo: nome });
+    // in un campo di numeri interi punto e virgola non valgono: «1.000» crediti si leggeva 1 (revisione della #929)
+    if (s.dataset.dec === "0" && (!Number.isInteger(v) || testo.includes("."))) return t("regole.intero", { campo: nome });
     const min = Number(s.dataset.min), max = Number(s.dataset.max);
     return v < min || v > max ? t("regole.fuori_limiti", { campo: nome, min: cifraLimite(min), max: cifraLimite(max) }) : "";
   };
@@ -3935,12 +4004,29 @@ function avvisiDiQuestoAccount() {
   if (!n) return true;
   try { return localStorage.getItem(AVVISI_DI) === n; } catch { return false; }
 }
+// Il corpo di POST /api/push/iscrivi: l'iscrizione con `iphone`, vero se questo browser gira su un iPhone (iPad e Mac si presentano
+// come «Macintosh»). Il server dice all'app per iPhone che il promemoria arriva anche dalla web app (`promemoria_da` di /api/avvisi)
+// solo per un'iscrizione nata su un iPhone e confermata da poco: l'app lo scrive sotto «Avvisi su questo dispositivo».
+function corpoIscrizione(sub) {
+  return JSON.stringify({ ...sub.toJSON(), iphone: /iPhone/.test(navigator.userAgent || "") });
+}
+// La conferma di ogni giorno: con il permesso delle notifiche, la prima apertura del giorno rimanda l'iscrizione al server, che ne
+// segna la data. Una web app tolta dalla Home, o con le notifiche spente, smette di confermare: dopo qualche giorno il server non la
+// conta più. Il giorno dell'ultima conferma sta in AVVISI_CONFERMATI.
+const AVVISI_CONFERMATI = "avvisi-confermati";
+const giornoDiOggi = () => new Date().toISOString().slice(0, 10);
 async function rimandaAvvisi() {
-  try { if (localStorage.getItem(AVVISI_DA_RIMANDARE) !== "1") return; } catch { return; }
-  const fatto = () => { try { localStorage.removeItem(AVVISI_DA_RIMANDARE); } catch { /* niente memoria */ } };
+  let daRimandare, confermati;
+  try { daRimandare = localStorage.getItem(AVVISI_DA_RIMANDARE) === "1"; confermati = localStorage.getItem(AVVISI_CONFERMATI); }
+  catch { return; }
+  const daConfermare = confermati !== giornoDiOggi() && "Notification" in window && Notification.permission === "granted";
+  if (!daRimandare && !daConfermare) return;
+  const fatto = () => {
+    try { localStorage.removeItem(AVVISI_DA_RIMANDARE); localStorage.setItem(AVVISI_CONFERMATI, giornoDiOggi()); } catch { /* niente memoria */ }
+  };
   const sub = await iscrizionePushQui();
   if (!sub || !avvisiDiQuestoAccount()) { fatto(); return; }            // fatta da un altro account: non si rimanda (#804)
-  try { await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) }); fatto(); }
+  try { await api("/api/push/iscrivi", { method: "POST", body: corpoIscrizione(sub) }); fatto(); }
   catch (e) { if (!(e.rete || e.status >= 500 || e.status === 429)) fatto(); }        // rifiutata per sempre: riprovare non serve
 }
 // Un'iscrizione fatta da un altro account non resta in questo browser (#874). Finché c'è, il server manda qui gli avvisi di
@@ -4127,8 +4213,14 @@ function schedaAmministratore() {
     <div class="debole piccolo">${t("admin.reset_spiega")}</div>
     <label class="accesso-campo"><span class="debole piccolo">${t("accesso.nome_utente")}</span><input class="campo-testo" id="adm-nome" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off"></label>
     <div class="pulsanti"><button class="bottone secondario" id="adm-reset">${t("admin.genera_codice")}</button></div><div id="adm-esito-reset"></div>
-    <h3>${t("admin.utenti_titolo")}</h3><div id="adm-utenti" class="debole piccolo">${t("admin.carico")}</div></div>` : "";
+    <h3 id="adm-utenti-titolo" tabindex="-1">${t("admin.utenti_titolo")}</h3><div id="adm-utenti"><p class="debole piccolo">${t("admin.carico")}</p></div></div>` : "";
 }
+// Gestione › Utenti: i testi di ogni azione su un account (pulsante, nome per i lettori di schermo, conferma, esito, errore)
+const AZIONI_UTENTE = {
+  blocca: { nome: "admin.blocca", per: "admin.blocca_per", conferma: "admin.blocca_conferma", fatto: "admin.blocca_fatto", no: "admin.blocca_no" },
+  sblocca: { nome: "admin.sblocca", per: "admin.sblocca_per", conferma: "admin.sblocca_conferma", fatto: "admin.sblocca_fatto", no: "admin.sblocca_no" },
+  elimina: { nome: "admin.elimina", per: "admin.elimina_per", conferma: "admin.elimina_conferma", fatto: "admin.elimina_fatto", no: "admin.elimina_no" },
+};
 // «Errori recenti», accanto agli strumenti da 1100 px (paginaGestione).
 function schedaErrori() {
   return gestisceAccount() ? `<div class="carta" id="scheda-errori"><h3>${t("errori.titolo")}</h3>
@@ -4265,15 +4357,44 @@ function collegaAmministratore() {
     mostraCodice("#adm-esito-reset", r.codice);
     $("#adm-esito-reset").insertAdjacentHTML("afterbegin", `<div class="debole piccolo">${t("admin.reset_esito", { ore: r.valido_ore })}</div>`);
   }));
+  // Utenti: quanti sono e, per ognuno, il nome, la frase del server (iscrizione e ultimo accesso) e, se è bloccato, da quando.
+  // Sugli altri account «Blocca» (o «Sblocca») ed «Elimina»; il proprio non ha pulsanti («Sei tu»): si elimina da Il tuo account.
+  // Nemmeno quelli degli altri amministratori: si gestiscono solo sul server, dalla riga di comando (il server rifiuta con 403).
   const caricaUtenti = async () => {
+    const dove = $("#adm-utenti");
+    if (!dove) return;
     try {
       const r = await api("/api/admin/utenti");
-      if (!$("#adm-utenti")) return;
+      if (!document.body.contains(dove)) return;
       avvisoPosti(r);
-      const elenco = r.utenti.map(u => esc(u.nome_visualizzato || u.nome_utente) + (u.ruolo === "amministratore" ? t("admin.admin_breve") : "")).join(", ");
-      $("#adm-utenti").innerHTML = tp("admin.utenti_riepilogo", r.utenti.length, { massimo: r.massimo, elenco });
-    } catch (e) { if ($("#adm-utenti")) $("#adm-utenti").textContent = e.message; }
+      const io = stato.account && stato.account.id;
+      const riga = u => {
+        const nome = u.nome_visualizzato || u.nome_utente, mio = u.id === io;
+        const pulsante = azione => `<button class="azione-testo${azione === "elimina" ? " distruttiva" : ""}" type="button" data-utente="${Number(u.id)}" data-azione="${azione}"
+          aria-label="${esc(t(AZIONI_UTENTE[azione].per, { nome }))}">${t(AZIONI_UTENTE[azione].nome)}</button>`;
+        return `<li class="riga"><div><div>${esc(nome)}${u.ruolo === "amministratore" ? t("admin.admin_breve") : ""}</div>
+          ${u.bloccato && u.blocco ? `<div class="piccolo">${esc(testoDi(u, "blocco"))}</div>` : ""}
+          ${u.dettaglio ? `<div class="debole piccolo">${esc(testoDi(u, "dettaglio"))}</div>` : ""}</div>
+          ${mio ? `<span class="debole piccolo">${t("admin.tu")}</span>` : u.ruolo === "amministratore" ? ""
+            : `<div class="adm-azioni">${pulsante(u.bloccato ? "sblocca" : "blocca")}${pulsante("elimina")}</div>`}</li>`;
+      };
+      dove.innerHTML = `<p class="debole piccolo">${tp("admin.utenti_conteggio", r.utenti.length, { massimo: r.massimo })}</p>
+        <ul class="elenco adm-utenti" aria-labelledby="adm-utenti-titolo">${r.utenti.map(riga).join("")}</ul>`;
+      for (const b of dove.querySelectorAll("[data-utente]"))
+        b.addEventListener("click", () => azioneUtente(b.dataset.azione, r.utenti.find(u => Number(u.id) === Number(b.dataset.utente))));
+    } catch (e) { if (document.body.contains(dove)) dove.textContent = e.message; }
   };
+  // Blocca, sblocca, elimina: prima la conferma con il nome (l'eliminazione non si annulla), poi l'elenco si rilegge e il focus va
+  // sul titolo «Utenti» (il pulsante premuto non c'è più)
+  const azioneUtente = (azione, u) => u && AZIONI_UTENTE[azione] && provaCosi(t(AZIONI_UTENTE[azione].no), async () => {
+    if (!confirm(t(AZIONI_UTENTE[azione].conferma, { nome: u.nome_visualizzato || u.nome_utente }))) return;
+    const id = Number(u.id);
+    if (azione === "elimina") await api(`/api/admin/utenti/${id}`, { method: "DELETE" });
+    else await api(`/api/admin/utenti/${id}/${azione}`, { method: "POST" });
+    avviso(t(AZIONI_UTENTE[azione].fatto), 4000);
+    await caricaUtenti();
+    if ($("#adm-utenti-titolo")) $("#adm-utenti-titolo").focus();
+  });
   caricaUtenti();
   // inviti aperti (#894): il nome, la frase del server (creato, scade, posti liberi) e «Annulla»; gli inviti chiusi (usati,
   // scaduti, annullati) non si mostrano. Annullare chiede prima (il link dell'amico smette di valere), toglie il link appena creato

@@ -192,6 +192,36 @@ def test_i_token_scaduti_dell_utente_se_ne_vanno_con_il_prossimo(multiutente, da
         assert db.execute("SELECT COUNT(*) FROM token_widget").fetchone()[0] == 1
 
 
+def test_bloccare_o_eliminare_toglie_i_token_di_tutti_i_dispositivi(multiutente, dati_isolati):
+    """Con la #933: bloccare un account (`esci_da_tutti`) o eliminarlo (cascata) toglie tutti i suoi token del widget, uno per
+    sessione e anche quello senza legame, non solo uno. Le righe spariscono davvero: non basta che `_utente_attivo` fermi un
+    bloccato. I token di un altro account restano."""
+    adesso = datetime(2026, 11, 26, 10, 0, tzinfo=timezone.utc)
+    with contextlib.closing(account.apri()) as db:
+        for nome in ("luca", "sara", "anna"):
+            db.execute("INSERT INTO utenti (nome_utente, password_hash, recupero_hash, creato) VALUES (?, 'h', 'r', '2026-01-01T00:00:00')",
+                       (nome,))
+        db.commit()
+        token = {}
+        for uid in (1, 2, 3):
+            token[uid] = [account.crea_token_widget(db, uid, adesso, sessione=account._apri_sessione(db, uid, disp, adesso))[0]
+                          for disp in ("iphone", "ipad")]
+        db.execute("UPDATE token_widget SET sessione_id = NULL WHERE utente_id IN (1, 2) AND id IN "
+                   "(SELECT MIN(id) FROM token_widget GROUP BY utente_id)")      # uno senza legame, come quelli di prima del 20/11
+        db.commit()
+
+        def righe(uid):
+            return db.execute("SELECT COUNT(*) FROM token_widget WHERE utente_id = ?", (uid,)).fetchone()[0]
+
+        assert (righe(1), righe(2), righe(3)) == (2, 2, 2)
+        account.blocca(db, 1, adesso=adesso)
+        assert righe(1) == 0, "bloccato: via tutti i suoi token"
+        account.elimina(db, 2)
+        assert righe(2) == 0, "eliminato: via tutti i suoi token"
+        assert all(account.utente_da_token_widget(db, t, adesso) is None for t in token[1] + token[2])
+        assert righe(3) == 2 and all(account.utente_da_token_widget(db, t, adesso) is not None for t in token[3])
+
+
 def test_senza_sessione_non_si_crea_ne_si_revoca(due_utenti):  # noqa: F811
     assert cliente().post("/api/account/token-widget").status_code == 401
     assert cliente().delete("/api/account/token-widget").status_code == 401

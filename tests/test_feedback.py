@@ -108,7 +108,7 @@ def test_la_tabella_gia_presente_non_ferma_il_database(multiutente, tmp_path):
     import sqlite3
     percorso = tmp_path / "account.sqlite"
     db = sqlite3.connect(percorso)
-    # le migrazioni fino a quella che crea `feedback` esclusa (dopo ce ne sono altre: i token del widget per sessione, ...)
+    # le migrazioni fino a quella che crea `feedback` esclusa (dopo ce ne sono altre: `bloccato`, i token del widget per sessione)
     fino = next(i for i, v in enumerate(account.MIGRAZIONI) if isinstance(v, str) and "TABLE IF NOT EXISTS feedback" in v)
     for numero, voce in enumerate(account.MIGRAZIONI[:fino]):
         if callable(voce):

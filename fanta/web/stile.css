@@ -195,9 +195,12 @@ main > .capo-pagina { animation: none; }                    /* il titolo resta f
 .stato-pagina { margin: 2px 0 0; font-size: var(--t-sec); color: var(--testo-2); line-height: 1.45; overflow-wrap: anywhere; }
 .stato-pagina:empty { display: none; }
 /* Server giù: la pagina lo dice già lei, con «Riprova» (la nota della copia salvata, o l'errore al posto della schermata), e la riga
-   non ripete «Server non raggiungibile» (#864) */
-main:has(> #nota-cache [data-riprova], > .errore) .stato-pagina:has(> .stato-offline) { display: none; }
+   non ripete «Server non raggiungibile» (#864). Restano i pezzi della copia salvata, se ci sono (collaudo del 26/11); senza, la riga
+   sparisce */
+main:has(> #nota-cache [data-riprova], > .errore) .stato-pagina > .stato-offline,
+main:has(> #nota-cache [data-riprova], > .errore) .stato-pagina:has(> .stato-offline:only-child) { display: none; }
 .stato-pagina > span { display: inline-block; max-width: 100%; }   /* un pezzo («dati del 26 ott 23:55») va a capo intero */
+.stato-pagina > .stato-offline { display: block; }                 /* su una riga sua, sopra i pezzi della copia salvata */
 .stemma-stato { width: 20px; height: 20px; object-fit: contain; vertical-align: -5px; margin-right: 6px; }
 
 /* ---------------------------------------------------------------- barra in basso (telefono e tablet in verticale) */
@@ -979,6 +982,13 @@ body.pagina-testo { padding: 0 0 40px; }
 .adm-inviti li { min-height: 56px; padding: 6px 0; }
 .adm-inviti li > div { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
 .adm-inviti .azione-testo { flex: none; }
+/* Gestione › Utenti: il nome, sotto il blocco (se c'è) e la frase del server; a destra «Blocca» o «Sblocca» ed «Elimina», in rosso
+   perché non si annulla. Un nome lungo va a capo; su telefono i due pulsanti restano affiancati */
+.adm-utenti li { min-height: 56px; padding: 6px 0; }
+.adm-utenti li > div:first-child { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.adm-utenti li > span { flex: none; }
+.adm-azioni { display: flex; flex: none; margin-right: -8px; }
+.azione-testo.distruttiva { color: var(--rosso); }
 /* Gestione › Commenti degli utenti (Scrivici): chi, quando e da dove piccolo; sotto il testo intero, a capo dove è andato a capo chi
    l'ha scritto (anche una parola lunghissima va a capo); in fondo «Segna come letto» o «Letto» */
 .commenti-elenco li { padding: 10px 0; }
@@ -1217,6 +1227,22 @@ body { container: pagina / inline-size; }
   .voce-g > .testo-g { margin-top: 6px; }
   .voce-g > .pv-g, .voce-g > .valore { justify-self: end; }
   .intestazione-colonne { display: none; }
+  /* Giornate (collaudo del 26/11): nella riga di una giornata i punti vanno sotto il nome e lo stato, a destra come i numeri delle
+     altre righe (accanto, lo stato restava largo una parola e «Formazione…» finiva sopra «punti (attesi …)»). Negli 11 il giocatore
+     ha una riga sua e atteso e preso stanno sotto, ognuno sotto il nome della sua colonna (con le colonne dei numeri larghe come a
+     390 px i nomi andavano a capo lettera per lettera, «Pi/ss/eri»). Resta una tabella per i lettori di schermo: i ruoli sono
+     scritti nell'HTML (dettaglioGiornata in app.js), perché con display: grid qualche browser li toglie. */
+  .gn-riga { grid-template-columns: minmax(0, 1fr) 14px; }
+  .gn-sx { grid-area: 1 / 1; }
+  .gn-dx { grid-area: 2 / 1; }
+  .gn-riga::after { grid-area: 1 / 2 / 3 / 3; }
+  .gn-attesi, .gn-diff, .gn-tabella td.gn-senza { white-space: normal; }
+  .gn-tabella, .gn-tabella thead, .gn-tabella tbody { display: block; }
+  .gn-tabella tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; border-top: 1px solid var(--filo); }
+  .gn-tabella thead tr { border-top: 0; }
+  .gn-tabella tr > th, .gn-tabella tr > td { width: auto; padding: 0 0 7px; border-top: 0; }
+  .gn-tabella tr > :first-child { grid-column: 1 / -1; padding: 7px 0 2px; }
+  .gn-tabella thead tr > th { padding-bottom: 2px; }
   /* Regole e Notifiche: il −/+ o il menu va sotto il nome della regola quando accanto il nome resterebbe una parola per riga */
   .riga-regola { flex-wrap: wrap; row-gap: 6px; }
   .riga-regola > span { flex: 1 1 10em; }
