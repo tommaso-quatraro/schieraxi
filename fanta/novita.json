@@ -1,5 +1,57 @@
 [
   {
+    "versione": "1.576",
+    "data": "2026-11-26T10:47:42",
+    "titolo": "Scheda del giocatore: i fantavoti con i bonus della tua lega",
+    "voci": [
+      "Scheda del giocatore: fantamedia, ultime cinque giornate, grafico dei voti e «in crescita» o «in calo» ora contano i bonus e i malus della tua lega, come Formazione, Oggi e Giornate. Prima usavano i bonus classici: in una lega con il gol del difensore a 4,5, un difensore che prende 6 e segna faceva 10,5 in Giornate e 9 nella scheda. Uguale sull'iPhone.",
+      "Se una parte di Oggi o della Formazione non si riesce a calcolare, la schermata si apre come prima ma il guasto ora resta scritto per chi cura il server."
+    ],
+    "tecnico": [
+      "scheda.scheda riceve le Regole della lega (prima solo fonte_voto) e calcola voti[].fv con punteggio.fantavoto(riga, ruolo del listone, regole), bonus mancanti a zero, arrotondato a 2 cifre come fv_preso; non legge più fv_red, fv_stat e fv_ita. Ne dipendono stagione.fantamedia, stagione.ultime_5_fv e andamento. Con un ruolo del listone che non è P, D, C o A il calcolo si salta (fv, fantamedia e andamento null, riga nel registro) invece del 500. BONUS_E_MALUS sta in punteggio.py, unico per scheda e registro delle giornate. Chiamanti aggiornati: GET /api/giocatore/{id} e il comando giocatore. La scheda non ha una cache sul server.",
+      "fasi.aggiungi, fasi.formazione_a_giornata_iniziata e il blocco rinvio di gestione.oggi: l'except Exception ora scrive nel registro (logger fanta.fasi e fanta.gestione) il tipo d'errore e i punti del codice con registro_giornate._dove, senza il messaggio. formazione_a_giornata_iniziata dopo un errore tiene iniziata se l'ha già calcolata.",
+      "Stessi campi e stessi tipi nell'API; docs/API.md aggiornato sul significato di voti[].fv, stagione.fantamedia e andamento della scheda."
+    ]
+  },
+  {
+    "versione": "1.575",
+    "data": "2026-11-26T10:14:55",
+    "titolo": "Widget dell'iPhone: una frase più corta sul recupero",
+    "voci": [
+      "Widget «Prossima giornata» medio, a giornata in corso, con l'app aggiornata: quando qualcuno dei tuoi aspetta il recupero di una partita rinviata, sotto i punti c'è una frase più corta, «3 giocatori aspettano il recupero; mancano i voti ufficiali.», che con il testo normale sta intera senza rimpicciolirsi, anche sull'iPad. Con il testo grande la frase resta intera, ma il widget medio resta alla misura del testo normale. I nomi restano nella Formazione dell'app e sulla web."
+    ],
+    "tecnico": [
+      "GET /api/widget: in `in_corso`, facoltativi, `situazione_breve` e `situazione_breve_frase` ({chiave, param}) solo quando `situazione` è `in_corso.recupero` o `in_corso.voti_e_recupero` (le righe con i nomi); chiavi nuove `in_corso.recupero_breve` e `in_corso.voti_e_recupero_breve` (.one/.other, parametro `n`), italiano e inglese nel catalogo, testi.js rigenerato. Regola in `fasi.situazione_breve`, che legge `situazione_frase`.",
+      "`situazione` e `situazione_frase` non cambiano (le leggono i widget già installati); GET /api/oggi non ha il campo nuovo. Nessuna rotta nuova: docs/openapi.json invariato."
+    ]
+  },
+  {
+    "versione": "1.574",
+    "data": "2026-11-26T09:01:05",
+    "titolo": "Scheda del giocatore: la data delle statistiche avanzate una volta sola",
+    "voci": [
+      "Scheda del giocatore, «Tutti i numeri»: «Dati fino al …» compare una volta sola, in fondo, dopo le statistiche avanzate, e vale anche per «Gol e assist rispetto alle occasioni»; prima si leggeva due volte. Uguale sull'iPhone."
+    ],
+    "tecnico": [
+      "Web, riempiScheda in app.js: la frase mercato.dati_fino_al (dal campo avanzate.dati_fino_al, #862) esce dalla riga del rendimento e da sotto il titolo «Statistiche avanzate» e sta una volta, ultima riga del blocco delle statistiche avanzate, dopo le stagioni precedenti. Il blocco del rendimento c'è solo con avanzate.minuti, come quello delle statistiche avanzate: la riga c'è ogni volta che c'è uno dei due. Non in cima a «Tutti i numeri»: stagione e voti vengono da un'altra fonte, che va avanti.",
+      "iPhone, TuttiINumeri: stessa posizione e stesso testo. Demo, foto giocatore-fondo: la scheda parte scorsa in fondo (demoInFondo), dove sta la riga; tolti lo scorrimento al blocco «Statistiche avanzate» del #862 (demoScorriA) e TuttiINumeri.idAvanzate. Test del browser tests/browser/test_scheda_dati_fino_al.py: una volta sola, ultima riga di «Tutti i numeri».",
+      "Nessuna rotta né campo dell'API cambiato; catalogo dei testi e calcolo non toccati."
+    ]
+  },
+  {
+    "versione": "1.573",
+    "data": "2026-11-26T08:55:41",
+    "titolo": "Privacy e Termini d'uso parlano dell'app di oggi",
+    "voci": [
+      "Privacy e Termini d'uso non parlano più degli scambi, che l'app non ha più, e chiamano le schermate con i nomi che vedi: Formazione e Giornate. La data di «Ultimo aggiornamento» è il 26 novembre 2026."
+    ],
+    "tecnico": [
+      "fanta/testi_legali.py, italiano e inglese: Termini senza «analizza scambi»; Privacy senza «formazione e scambi» (diventa «la formazione consigliata delle altre squadre») e senza «gli scambi che salvi» sul dispositivo (diventa «una copia degli ultimi dati ricevuti, per aprirsi subito», la copia delle risposte in localStorage della web); token del widget: «lo stato della giornata, il widget e i risultati in diretta» al posto dei «riquadri di Oggi»; controlli automatici: «Formazione, Giornate, widget, risultati in diretta» al posto di «Oggi, Formazione, Diario».",
+      "Data delle pagine 26/11/2026 e account.VERSIONE_TERMINI = \"2026-11-26\" (le tiene uguali test_versione_termini_come_la_data_delle_pagine_legali): chi si iscrive da ora registra la versione nuova; nessuno deve riaccettare.",
+      "Sito (sito/, italiano e inglese): panchina d'esempio nell'ordine in cui entra (Pernoli 7,9, Rinvelli 7,6, Sarvelli 6,4), «App per iPhone e iPad in arrivo», «con il link o il codice d'invito», email facoltativa e collegamento a Google nella domanda sui dati, dati strutturati senza sameAs."
+    ]
+  },
+  {
     "versione": "1.572",
     "data": "2026-11-26T06:52:44",
     "titolo": "Giornate e regolamento: due ritocchi ai testi",

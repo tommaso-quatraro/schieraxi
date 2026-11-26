@@ -6,8 +6,9 @@ import WidgetKit
 enum DatiGalleria {
     /// `-DATI`: pieni (prima della scadenza), parziali (un server senza scambio, svincolo e Diario), salvati (copia di due giorni
     /// prima), salvati_oggi (copia di oggi), in_corso, in_corso_recupero (più avanti nella giornata: la frase lunga del server su
-    /// chi aspetta il recupero, #900), finita, campionato_finito (la frase del server al posto della giornata, #727), senza_formazione (entrato a
-    /// giornata iniziata: la prossima da preparare, #687), vuoto (widget da collegare).
+    /// chi aspetta il recupero, #900, con la sua forma breve per il medio, #911), finita, campionato_finito (la frase del server al
+    /// posto della giornata, #727), senza_formazione (entrato a giornata iniziata: la prossima da preparare, #687), vuoto (widget da
+    /// collegare).
     static func voce(_ tipo: String) -> Voce {
         let adesso = Date()
         if tipo == "vuoto" {
@@ -45,12 +46,14 @@ enum DatiGalleria {
     }
 
     /// La giornata in corso della demo più avanti (#900): hanno giocato tutti tranne tre titolari della partita rinviata e mancano i
-    /// voti, quindi nessuno deve più giocare e la riga sotto i punti è la frase lunga del server (`LegaDemo.situazioneRecupero`).
+    /// voti, quindi nessuno deve più giocare e la riga sotto i punti è la frase lunga del server (`LegaDemo.situazioneRecupero`),
+    /// con la sua forma breve per il widget medio come la manda `/api/widget` (`LegaDemo.situazioneRecuperoBreve`, #911).
     private static func conRecupero(_ dati: Data) -> Data {
         guard var w = (try? JSONSerialization.jsonObject(with: dati)) as? [String: Any],
               var inCorso = w["in_corso"] as? [String: Any] else { return dati }
         inCorso["ancora_da_giocare"] = 0
         inCorso["situazione"] = LegaDemo.situazioneRecupero
+        inCorso["situazione_breve"] = LegaDemo.situazioneRecuperoBreve
         w["in_corso"] = inCorso
         return (try? JSONSerialization.data(withJSONObject: w)) ?? dati
     }

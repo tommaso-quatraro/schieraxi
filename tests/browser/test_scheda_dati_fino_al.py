@@ -2,8 +2,11 @@
 
 Con la fonte ferma (dal 12/11/2026, #756) «Gol e assist rispetto alle occasioni» e «Statistiche avanzate» mostravano i numeri
 dell'ultima partita letta senza una data. Il server manda il giorno (`avanzate.dati_fino_al`) e la web scrive «Dati fino al 9/11.»
-(`mercato.dati_fino_al`, la stessa frase dell'iPhone) nei due blocchi. Un server di prima, senza il campo, non scrive niente.
-Gli scenari registrati non hanno ancora il campo: lo aggiunge il test alla scheda registrata (`web.risposta`).
+(`mercato.dati_fino_al`, la stessa frase dell'iPhone). Dal 26/11/2026 (#911) la frase c'è una volta sola, in fondo a «Tutti i
+numeri», dopo «Statistiche avanzate»: i due blocchi vengono dalla stessa fonte e dallo stesso campo, e prima la frase si leggeva
+due volte. Non sta in cima perché «Stagione» e i voti vengono da un'altra fonte, che va avanti. Un server di prima, senza il
+campo, non scrive niente. Gli scenari registrati non hanno ancora il campo: lo aggiunge il test alla scheda registrata
+(`web.risposta`).
 """
 import re
 
@@ -36,20 +39,21 @@ def _con_i_due_blocchi(web, giorno: str | None) -> str:
 
 
 def _tutti_i_numeri(web, cognome: str) -> str:
+    """Apre la scheda del titolare e «Tutti i numeri»; torna il testo della parte aperta, dal titolo all'ultima riga."""
     web.apri("/")
     tocca(web, campo(web).filter(has_text=cognome).first)
     tocca(web, scheda(web).get_by_text("Tutti i numeri"))
-    return " ".join(scheda(web).inner_text().split())
+    parte = scheda(web).locator("details", has=web.pagina.locator("summary", has_text="Tutti i numeri"))
+    return " ".join(parte.inner_text().split())
 
 
-def test_i_due_blocchi_della_fonte_dicono_fino_a_quando_arrivano_i_dati(web):
+def test_la_data_della_fonte_compare_una_volta_sola_in_fondo_a_tutti_i_numeri(web):
     solo(web, "prima")
     testo = _tutti_i_numeri(web, _con_i_due_blocchi(web, GIORNO))
-    assert testo.count(FRASE) == 2, testo
-    occasioni, stagione, avanzate = (testo.index(t) for t in ("Gol e assist rispetto alle occasioni", "Stagione", "Statistiche avanzate"))
-    assert occasioni < testo.index(FRASE) < stagione, "nel blocco «Gol e assist rispetto alle occasioni»"
-    assert testo.index(FRASE, avanzate) == testo.index("Statistiche avanzate") + len("Statistiche avanzate") + 1, \
-        "subito sotto il titolo «Statistiche avanzate», prima dei numeri"
+    assert "Gol e assist rispetto alle occasioni" in testo and "Statistiche avanzate" in testo, testo
+    assert testo.count(FRASE) == 1, testo
+    assert testo.index(FRASE) > testo.index("Statistiche avanzate"), "dopo «Statistiche avanzate», non nella riga delle occasioni"
+    assert testo.endswith(FRASE), f"l'ultima riga di «Tutti i numeri»: {testo[-200:]}"
     assert not web.errori_console, web.errori_console
 
 

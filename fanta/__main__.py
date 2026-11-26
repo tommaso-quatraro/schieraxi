@@ -223,7 +223,7 @@ def cmd_giocatore(a) -> None:
         alternative = ", ".join(f"{c.nome} ({c.squadra})" for c in esito.alternative)
         sys.exit(f"Giocatore non trovato: {a.nome}" + (f". Forse: {alternative}" if alternative else ""))
     r = regole.carica(FILE_REGOLE)
-    s = scheda.scheda(db, esito.calciatore.id, Stagione.di(date.today()).codice, r.fonte_voto)
+    s = scheda.scheda(db, esito.calciatore.id, Stagione.di(date.today()).codice, r)
     _stampa_scheda(s)
 
 

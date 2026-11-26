@@ -604,6 +604,24 @@
     "it": "Hanno giocato tutti tranne {nomi}, che aspettano il recupero; mancano anche i voti ufficiali.",
     "en": "Everyone has played except {nomi}, who are waiting for the make-up game; the official grades are missing too."
   },
+  "frase.in_corso.recupero_breve.one": {
+    "it": "{n} giocatore aspetta il recupero.",
+    "en": "{n} player is waiting for the make-up game.",
+    "nota": "widget medio (#911): in_corso.recupero con il numero al posto dei nomi, al massimo circa 60 caratteri"
+  },
+  "frase.in_corso.recupero_breve.other": {
+    "it": "{n} giocatori aspettano il recupero.",
+    "en": "{n} players are waiting for the make-up game."
+  },
+  "frase.in_corso.voti_e_recupero_breve.one": {
+    "it": "{n} giocatore aspetta il recupero; mancano i voti ufficiali.",
+    "en": "{n} player is waiting for the make-up game; the official grades are missing.",
+    "nota": "widget medio (#911): in_corso.voti_e_recupero con il numero al posto dei nomi, al massimo circa 60 caratteri"
+  },
+  "frase.in_corso.voti_e_recupero_breve.other": {
+    "it": "{n} giocatori aspettano il recupero; mancano i voti ufficiali.",
+    "en": "{n} players are waiting for the make-up game; the official grades are missing."
+  },
   "frase.in_corso.finiti": {
     "it": "I voti dei tuoi giocatori sono tutti usciti.",
     "en": "The grades of all your players are out."

@@ -50,7 +50,7 @@ TESTI: dict[str, dict] = {
         "titolo_termini": "Termini d'uso di SchieraXI",
         "titolo_crediti": "Crediti e fonti",
         "titolo_elimina": "Elimina il tuo account",
-        "aggiornato": "Ultimo aggiornamento: 2 novembre 2026",
+        "aggiornato": "Ultimo aggiornamento: 26 novembre 2026",
         "fonti_tue": "Le rose, le regole della lega, gli stemmi e le maglie che inserisci tu.",
         "sorgente_con": "Il codice sorgente di SchieraXI è pubblicato con licenza AGPL-3.0:",
         "sorgente_senza": "Il codice sorgente di SchieraXI è disponibile con licenza AGPL-3.0 dove indicato da chi gestisce questa copia dell'app.",
@@ -73,7 +73,7 @@ TESTI: dict[str, dict] = {
                 "La tua lega: regole, rose, la squadra che hai scelto, le tue scelte di formazione, i giocatori che osservi, gli stemmi e le maglie che carichi e, "
                 "se li importi, le formazioni e i punti delle giornate passate e il calendario della lega.",
                 "Dati degli altri partecipanti della tua lega: quello che carichi contiene i nomi delle loro squadre (a volte con un nome o un soprannome), "
-                "le loro rose e, se li importi, formazioni e punti. Servono solo ai calcoli della tua lega (per esempio formazione e scambi) e li vedi solo tu: "
+                "le loro rose e, se li importi, formazioni e punti. Servono solo ai calcoli della tua lega (per esempio la formazione consigliata delle altre squadre) e li vedi solo tu: "
                 "gli altri partecipanti non ricevono niente e non vengono contattati. Quando l'app legge le rose da un testo, scarta le righe con il nome "
                 "dell'allenatore (per esempio «Allenatore: Marco»).",
                 "Se prendi le rose da una foto dello schermo (per esempio con il riconoscimento del testo del telefono), la lettura dell'immagine avviene sul tuo telefono: "
@@ -84,7 +84,7 @@ TESTI: dict[str, dict] = {
                 "Se attivi le notifiche: l'iscrizione del tuo dispositivo o browser (l'indirizzo a cui il servizio di notifiche consegna gli avvisi e le chiavi per cifrarli) "
                 "e le impostazioni degli avvisi, per esempio quali avvisi vuoi, le ore tranquille e la lingua in cui riceverli.",
                 "Se usi il widget dell'iPhone: un codice solo per il widget, conservato come hash, con la data dell'ultimo uso. Vale 90 giorni e permette solo di leggere "
-                "i riquadri di Oggi, del widget e dei risultati in diretta. Si annulla quando cambi la password o usi «Esci da tutti i dispositivi».",
+                "lo stato della giornata, il widget e i risultati in diretta. Si annulla quando cambi la password o usi «Esci da tutti i dispositivi».",
                 "Le sessioni aperte (un codice casuale conservato come hash, il tipo di dispositivo, quando le hai usate l'ultima volta) e quindi la data dell'ultimo accesso.",
                 "Un registro di sicurezza con accessi falliti, blocchi e simili: contiene il nome utente e l'indirizzo di rete accorciato (senza la parte che indica il singolo apparecchio), mai password né codici. "
                 "Per riconoscere i tuoi dispositivi (così chi prova password sul tuo nome non ti chiude fuori) il server tiene, per 60 giorni dall'ultimo accesso, solo un'impronta degli indirizzi di rete e di un segreto casuale salvato sul dispositivo, calcolata con una chiave segreta del server: senza quella chiave non si risale all'indirizzo. "
@@ -94,7 +94,7 @@ TESTI: dict[str, dict] = {
                 "Statistiche d'uso aggregate e anonime: ogni giorno si conta quante volte è stata usata ciascuna schermata o funzione dell'app. "
                 "Sono solo numeri complessivi per tutti gli utenti insieme: non contengono nome utente, indirizzo di rete né altro che riguardi te, "
                 "e si cancellano dopo 28 giorni. Non sono dati personali e non servono a pubblicità.",
-                "Controlli automatici: ogni ora il server rifà da solo, senza cambiare niente, i calcoli che vedi nell'app (Oggi, Formazione, Diario, widget, risultati in diretta) "
+                "Controlli automatici: ogni ora il server rifà da solo, senza cambiare niente, i calcoli che vedi nell'app (Formazione, Giornate, widget, risultati in diretta) "
                 "per trovare gli errori prima di te. L'esito non contiene nomi di persone, squadre o giocatori: solo un numero interno dell'account, la giornata e dei numeri.",
             ]),
             ("h", "Perché li usiamo e su quale base"),
@@ -130,7 +130,7 @@ TESTI: dict[str, dict] = {
                 "(né caratteri, né script, né immagini). L'unico conteggio sono le statistiche d'uso anonime descritte sopra, che non possono risalire a te.",
                 "Nessun cookie di marketing. Usiamo solo due cookie tecnici: quello della sessione, che ti tiene dentro l'app (al massimo 180 giorni), e quello del dispositivo "
                 "riconosciuto (60 giorni), che evita di chiuderti fuori se qualcuno prova password sul tuo nome. Sul dispositivo l'app tiene anche alcune preferenze "
-                "(per esempio l'ultima schermata aperta) e gli scambi che salvi: restano lì e nessun altro sito li legge.",
+                "(per esempio l'ultima schermata aperta) e una copia degli ultimi dati ricevuti, per aprirsi subito: restano lì e nessun altro sito li legge.",
             ]),
             ("h", "Cancellazione e copia dei dati"),
             ("p", "Da Impostazioni › Il tuo account, con «Scarica i tuoi dati», ricevi subito un file (JSON, leggibile anche da altri programmi) con i tuoi dati: "
@@ -151,7 +151,7 @@ TESTI: dict[str, dict] = {
         "termini": [
             ("p", "Usando SchieraXI accetti queste regole. Sono poche e semplici."),
             ("h", "Cos'è SchieraXI"),
-            ("p", "Un aiuto per il fantacalcio: propone formazioni, mostra statistiche e analizza scambi. "
+            ("p", "Un aiuto per il fantacalcio: propone formazioni e mostra statistiche. "
                   "Non è collegato a Leghe Fantacalcio, a Fantacalcio.it, alla Lega Serie A né a nessuna squadra o lega di calcio, che non lo approvano né lo sostengono. "
                   "Se in futuro ci saranno pubblicità o pagamenti lo diremo prima e aggiorneremo questi termini."),
             ("h", "I consigli sono stime"),
@@ -249,7 +249,7 @@ TESTI: dict[str, dict] = {
         "titolo_termini": "SchieraXI terms of use",
         "titolo_crediti": "Credits and sources",
         "titolo_elimina": "Delete your account",
-        "aggiornato": "Last updated: 2 November 2026",
+        "aggiornato": "Last updated: 26 November 2026",
         "traduzione_nota": "This is an English translation provided for convenience. The Italian text is the one that applies and it is the reference in case of doubt.",
         "versione_italiana": "Read the Italian version",
         "fonti_tue": "The rosters, the league rules, the crests and the shirts that you enter yourself.",
@@ -274,7 +274,7 @@ TESTI: dict[str, dict] = {
                 "Your league: rules, rosters, the team you chose, your lineup choices, the players you watch, the crests and shirts you upload and, "
                 "if you import them, the lineups and points of past matchdays and the league calendar.",
                 "Data about the other members of your league: what you upload contains the names of their teams (sometimes with a name or nickname), "
-                "their rosters and, if you import them, lineups and points. They are used only for your league's calculations (for example lineup and trades) and only you see them: "
+                "their rosters and, if you import them, lineups and points. They are used only for your league's calculations (for example the recommended lineup of the other teams) and only you see them: "
                 "the other members receive nothing and are not contacted. When the app reads rosters from a text, it drops the lines with the manager's "
                 "name (for example «Allenatore: Marco»).",
                 "If you take the rosters from a screenshot (for example with your phone's text recognition), the image is read on your phone: "
@@ -285,7 +285,7 @@ TESTI: dict[str, dict] = {
                 "If you turn on notifications: the subscription of your device or browser (the address where the notification service delivers the alerts and the keys to encrypt them) "
                 "and the alert settings, for example which alerts you want, the quiet hours and the language you receive them in.",
                 "If you use the iPhone widget: a code only for the widget, stored as a hash, with the date it was last used. It lasts 90 days and only lets the widget read "
-                "the Today, widget and live score panels. It is cancelled when you change your password or use «Sign out of all devices».",
+                "the matchday status, the widget and the live scores. It is cancelled when you change your password or use «Sign out of all devices».",
                 "Open sessions (a random code stored as a hash, the type of device, when you last used them) and therefore the date of your last sign-in.",
                 "A security log with failed sign-ins, blocks and the like: it contains the username and the shortened network address (without the part that identifies a single device), never passwords or codes. "
                 "To recognise your devices (so that someone trying passwords on your name cannot lock you out) the server keeps, for 60 days after your last sign-in, only a fingerprint of your network addresses and of a random secret stored on the device, computed with a secret key of the server: without that key the address cannot be recovered. "
@@ -295,7 +295,7 @@ TESTI: dict[str, dict] = {
                 "Aggregated, anonymous usage statistics: every day we count how many times each screen or feature of the app was used. "
                 "They are only overall numbers for all users together: they contain no username, no network address and nothing else about you, "
                 "and are deleted after 28 days. They are not personal data and are not used for advertising.",
-                "Automatic checks: every hour the server redoes on its own, without changing anything, the calculations you see in the app (Today, Lineup, Diary, widget, live scores) "
+                "Automatic checks: every hour the server redoes on its own, without changing anything, the calculations you see in the app (Lineup, Matchdays, widget, live scores) "
                 "to find errors before you do. The result contains no names of people, teams or players: only an internal account number, the matchday and some numbers.",
             ]),
             ("h", "Why we use it and on what basis"),
@@ -331,7 +331,7 @@ TESTI: dict[str, dict] = {
                 "(no fonts, scripts or images). The only counting is the anonymous usage statistics described above, which cannot be traced back to you.",
                 "No marketing cookies. We use only two technical cookies: the session one, which keeps you inside the app (at most 180 days), and the recognised device one "
                 "(60 days), which prevents you from being locked out if someone tries passwords on your name. On your device the app also keeps a few preferences "
-                "(for example the last screen you opened) and the trades you save: they stay there and no other site reads them.",
+                "(for example the last screen you opened) and a copy of the latest data received, so that it opens right away: they stay there and no other site reads them.",
             ]),
             ("h", "Deletion and a copy of your data"),
             ("p", "From Settings › Your account, with «Download your data», you get a file right away (JSON, readable by other programs too) with your data: "
@@ -352,7 +352,7 @@ TESTI: dict[str, dict] = {
         "termini": [
             ("p", "By using SchieraXI you accept these rules. They are few and simple."),
             ("h", "What SchieraXI is"),
-            ("p", "A helper for fantasy football: it proposes lineups, shows statistics and analyses trades. "
+            ("p", "A helper for fantasy football: it proposes lineups and shows statistics. "
                   "It is not connected to Leghe Fantacalcio, Fantacalcio.it, Lega Serie A or any football team or league, which neither approve nor endorse it. "
                   "If advertising or payments come in the future we will say so beforehand and update these terms."),
             ("h", "The advice is an estimate"),
