@@ -5,12 +5,9 @@ import logging
 import sqlite3
 from datetime import datetime
 
-from .punteggio import COLONNA_VOTO, fantavoto
+from .punteggio import BONUS_E_MALUS, COLONNA_VOTO, fantavoto
 from .regole import Regole
 
-# bonus e malus della riga dei voti che entrano nel fantavoto (`punteggio.fantavoto`): un valore mancante vale zero
-BONUS_E_MALUS = ("gol", "assist", "ammonizioni", "espulsioni", "gol_subiti", "rig_segnati", "rig_sbagliati", "rig_parati", "autogol",
-                 "mvp")
 LOG = logging.getLogger(__name__)
 
 
@@ -70,8 +67,7 @@ def _voti(db: sqlite3.Connection, calciatore_id: int, stagione: str, ruolo: str 
         LOG.warning("scheda del giocatore %s: ruolo %r senza bonus nelle regole (non è P, D, C o A), fantavoti non calcolati",
                     calciatore_id, ruolo)
     voti = []
-    for r in db.execute(f"SELECT giornata, {col_v} AS voto, gol, assist, ammonizioni, espulsioni, gol_subiti, rig_segnati, "
-                        "rig_sbagliati, rig_parati, autogol, mvp, subentrato, sostituito "
+    for r in db.execute(f"SELECT giornata, {col_v} AS voto, {', '.join(BONUS_E_MALUS)}, subentrato, sostituito "
                         "FROM voti WHERE stagione = ? AND calciatore_id = ? ORDER BY giornata", (stagione, calciatore_id)):
         v = dict(r)
         fv = fantavoto({col_v: v["voto"]} | {k: v[k] or 0 for k in BONUS_E_MALUS}, ruolo, regole) if calcolabile else None
