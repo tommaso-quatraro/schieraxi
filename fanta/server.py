@@ -2301,12 +2301,16 @@ def _buono_dell_anteprima(ctx: Contesto, impronta: str):
 def _conta_se_riesce(presi: list):
     """L'anteprima conta tra le importazioni del giorno solo se riesce (collaudo del 26/11): un file rifiutato (un calendario, una
     lega oltre i tetti, un Excel rovinato) restituisce il posto del giorno, non quello dell'ora (`limiti.conta_anteprima`).
-    Se il server era occupato a leggere un altro Excel (503) tornano tutti e due: il lavoro non è cominciato."""
+    Se il server era occupato a leggere un altro Excel (503) tornano tutti e due: il lavoro non è cominciato. Il posto del giorno
+    non torna se intanto un salvataggio dello stesso contenuto ha usato il buono di questa anteprima (`limiti.restituisci_anteprima`,
+    revisione della #939: due richieste insieme non aggirano il tetto)."""
     try:
         yield
     except BaseException as errore:
         for p in presi:
-            if isinstance(errore, ExcelOccupato) or p.cosa == "importazioni":
+            if p.cosa == "importazioni":
+                limiti.restituisci_anteprima(p)
+            elif isinstance(errore, ExcelOccupato):
                 p.annulla()
         raise
 

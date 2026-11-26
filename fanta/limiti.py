@@ -284,6 +284,21 @@ def conta_anteprima(ctx, impronta: str) -> list[Prenotazione]:
     return [p for p in presi if p is not None]
 
 
+def restituisci_anteprima(p: Prenotazione) -> bool:
+    """Il posto del giorno di un'anteprima che non è riuscita torna, ma solo se il suo buono (vedi `conta_importazione`) non è
+    stato usato nel frattempo da un salvataggio dello stesso contenuto (revisione della #939): quel salvataggio è pagato da
+    questo posto, che allora resta contato. Si controlla e si toglie il buono nello stesso lucchetto di `conta_importazione`,
+    così le due cose non si incrociano. True = il posto è tornato."""
+    with _blocco_contate:
+        visti = _gia_contate.get((p.utente_id, p.giorno, p.cosa))
+        if p.chiave is not None:
+            if visti is None or p.chiave not in visti:
+                return False
+            visti.discard(p.chiave)
+    Prenotazione(p.utente_id, p.giorno, p.cosa, None).annulla()
+    return True
+
+
 def oggi() -> str:
     """Il giorno dei contatori. Chi conta e poi restituisce lo prende una volta e lo passa: a mezzanotte non si sbaglia giorno."""
     return _adesso().date().isoformat()

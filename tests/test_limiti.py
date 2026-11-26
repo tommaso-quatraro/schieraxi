@@ -257,6 +257,27 @@ def test_conta_solo_un_controllo_riuscito_testo_e_file_allo_stesso_modo(ambiente
     assert limiti.usati_oggi(id_a, "importazioni") == 2
 
 
+def test_un_anteprima_fallita_non_restituisce_il_posto_se_il_buono_e_gia_usato(ambiente):
+    """Revisione della #939: anteprima e salvataggio dello stesso contenuto insieme. Il salvataggio usa il buono dell'anteprima
+    (non conta); se poi l'anteprima fallisce, il posto del giorno non deve tornare: sarebbe un salvataggio gratis, e due
+    richieste insieme aggirerebbero il tetto. Se il buono non è stato usato il posto torna, e il buono sparisce."""
+    from types import SimpleNamespace
+    _, uid = nuovo_utente("utentea")
+    ctx = SimpleNamespace(utente_id=uid)
+    presi = limiti.conta_anteprima(ctx, "stesso contenuto")
+    assert limiti.usati_oggi(uid, "importazioni") == 1
+    assert limiti.conta_importazione(ctx, "stesso contenuto") is True          # il salvataggio usa il buono, intanto
+    with pytest.raises(ValueError), server._conta_se_riesce(presi):
+        raise ValueError("l'anteprima fallisce dopo")
+    assert limiti.usati_oggi(uid, "importazioni") == 1
+    presi = limiti.conta_anteprima(ctx, "un altro")
+    with pytest.raises(ValueError), server._conta_se_riesce(presi):
+        raise ValueError("l'anteprima fallisce")
+    assert limiti.usati_oggi(uid, "importazioni") == 1
+    assert limiti.conta_importazione(ctx, "un altro") is False                 # nessun buono rimasto: conta
+    assert limiti.usati_oggi(uid, "importazioni") == 2
+
+
 def test_i_file_rifiutati_hanno_un_tetto_all_ora(ambiente):
     """Un file rifiutato non conta tra le importazioni, ma lo si legge lo stesso: controlli e salvataggi senza controllo prima
     hanno un tetto all'ora (niente file sbagliati mandati all'infinito)."""
