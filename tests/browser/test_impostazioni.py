@@ -247,6 +247,7 @@ def test_chi_non_gestisce_il_server_non_apre_gestione_neanche_con_l_indirizzo(we
     assert titolo(web) == "Impostazioni"
     assert web.pagina.url.endswith("/?vista=impostazioni")
     assert "Nuovo invito" not in web.testo_principale() and voce(web, "Gestione").count() == 0
+    assert not [r for r in web.richieste if r.startswith("/api/admin/")], web.richieste     # né inviti né utenti (#894)
     assert not web.errori_mostrati()
 
 
@@ -751,6 +752,62 @@ def test_le_righe_da_controllare_a_mano_dicono_la_regola_e_seguono_il_testo(web)
     assert not web.errori_mostrati()
 
 
+RIGA_PANCHINA = "Panchina di 12 giocatori, massimo 5 sostituzioni."
+POSTI_FISSI = {"P": 2, "D": 3, "C": 3, "A": 3}
+
+
+def test_nell_anteprima_del_regolamento_i_valori_hanno_nomi_in_parole(web):
+    """L'ordine dei cambi si leggeva «per_ruolo» (il nome interno) e i posti per ruolo come un oggetto: ora con le parole della
+    pagina (#881), anche in inglese."""
+    solo(web, "prima")
+    web.risposta("/api/regole/riconosci", {**RICONOSCIUTE, "modifiche": [
+        {"chiave": "panchina.tipo", "etichetta": "Ordine dei cambi", "valore": "per_ruolo", "riga": "Le riserve entrano per ruolo."},
+        {"chiave": "panchina.posti", "etichetta": "Posti in panchina per ruolo", "valore": {"P": 1, "D": 3, "C": 3, "A": 3},
+         "riga": "Panchina: 1 portiere, 3 difensori, 3 centrocampisti, 3 attaccanti"}]})
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Incolla qui il testo del regolamento").fill("Regolamento di prova")
+    tocca(web, principale(web).get_by_role("button", name="Riconosci le regole"))
+    testo = web.testo_principale()
+    assert "Ordine dei cambi: Per ruolo" in testo and "per_ruolo" not in testo, testo
+    assert "Posti in panchina per ruolo: 1 portiere, 3 difensori, 3 centrocampisti, 3 attaccanti" in testo, testo
+    assert "object" not in testo
+    web.memoria({"lingua": "en"})
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Paste the rules text here").fill("Rules for testing")
+    tocca(web, principale(web).get_by_role("button", name="Recognise the rules"))
+    testo = web.testo_principale()
+    assert "Order of substitutions: By position" in testo and "1 goalkeeper, 3 defenders" in testo, testo
+    assert not web.errori_mostrati()
+
+
+def test_un_valore_che_non_si_puo_salvare_non_sta_fra_i_riconosciuti(web):
+    """«Panchina di 12 giocatori» con i posti fissi per ruolo (11): l'anteprima mostrava 12 e si salvava 11 con «Regole salvate».
+    Ora il server lo manda fra i non applicabili: la pagina lo mostra sotto «Non applicato» con il perché, e «Salva queste regole»
+    salva gli altri valori lasciando la panchina com'era (#881)."""
+    solo(web, "prima")
+    regole = web.registrata("/api/regole")
+    regole["panchina"] |= {"posti": POSTI_FISSI, "numero": 11}
+    web.risposta("/api/regole", regole)
+    motivo = "La tua panchina ha posti fissi per ruolo, 11 in tutto: cambia a mano i posti di ogni ruolo nei valori delle regole."
+    web.risposta("/api/regole/riconosci", {**RICONOSCIUTE, "modifiche": [
+        {"chiave": "panchina.max_sostituzioni", "etichetta": "Sostituzioni massime", "valore": 5, "riga": RIGA_PANCHINA}],
+        "non_applicabili": [{"chiave": "panchina.numero", "etichetta": "Giocatori in panchina", "valore": 12, "riga": RIGA_PANCHINA,
+                             "motivo": motivo, "motivo_frase": {"chiave": "regole.panchina_posti_fissi", "param": {"n": 11}}}]})
+    salvate = _scritture(web, "/api/regole")
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Incolla qui il testo del regolamento").fill(RIGA_PANCHINA)
+    tocca(web, principale(web).get_by_role("button", name="Riconosci le regole"))
+    assert principale(web).get_by_text("Non applicato", exact=True).is_visible()
+    assert principale(web).get_by_text(motivo, exact=True).is_visible()
+    testo = web.testo_principale()
+    assert testo.index("Sostituzioni massime: 5") < testo.index("Non applicato") < testo.index("Giocatori in panchina: 12"), testo
+    tocca(web, principale(web).get_by_role("button", name="Salva queste regole"))
+    assert salvate, "le regole riconosciute non sono state salvate"
+    assert salvate[-1]["panchina"]["max_sostituzioni"] == 5
+    assert salvate[-1]["panchina"]["numero"] == 11 and salvate[-1]["panchina"]["posti"] == POSTI_FISSI
+    assert not web.errori_mostrati()
+
+
 def test_i_singoli_valori_stanno_dietro_modifica_i_valori(web):
     solo(web, "prima")
     web.apri("/?vista=impostazioni&gruppo=regole")
@@ -796,6 +853,18 @@ def test_in_inglese_le_giornate_della_prima_giornata_senza_ordinali(web):
     assert len(voci) == 38
     assert not [v for v in voci if re.search(r"\d(st|nd|rd|th)\b", v)], voci
     assert voci[1] == "From Serie A matchday 2" and voci[20] == "From Serie A matchday 21", voci[:3]
+
+
+def test_le_giornate_della_prima_giornata_con_l_apostrofo(web):
+    """Il menu della prima giornata scriveva «Dalla 8ª» e «Dalla 11ª» (#842): davanti all'8ª (ottava) e all'11ª (undicesima)
+    l'articolo si apostrofa, «Dall'8ª», come nelle altre frasi con le giornate. «Dalla 1ª» e «Dalla 18ª» restano."""
+    solo(web, "prima")
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    voci = principale(web).get_by_label("Da quale giornata di Serie A è partita la lega?").locator("option").all_inner_texts()
+    assert len(voci) == 38
+    assert voci[7] == "Dall'8ª" and voci[10] == "Dall'11ª", voci[6:12]
+    assert voci[0] == "Dalla 1ª, con il campionato" and voci[1] == "Dalla 2ª" and voci[17] == "Dalla 18ª", voci[:3]
+    assert [v for v in voci if v.startswith("Dall'")] == ["Dall'8ª", "Dall'11ª"], voci
 
 
 def test_in_inglese_il_voto_d_ufficio_ha_un_nome_solo_in_regole(web):
@@ -1068,18 +1137,31 @@ def test_le_ore_tranquille_rifiutate_dal_server_tornano_come_erano(web):
 # NOTIFICHE_FINTE, ma l'iscrizione sta in localStorage (la web non tocca quella chiave), così resta dopo una ricarica, e c'è già
 # alla prima pagina della scheda (scritta una volta sola: dopo resta ciò che fa l'app). `__DI__`: il numero dell'account che l'ha
 # fatta, come lo ricorda la web (`avvisi-di`, #804); `__INIZIALE__` vuoto: nessuna iscrizione all'inizio.
+# Come nel browser vero, `subscribe` con un'iscrizione già presente dà quella (stesso indirizzo); dopo `unsubscribe` ne nasce una
+# nuova, con un indirizzo nuovo (ENDPOINT la prima, poi ENDPOINT-2, ENDPOINT-3...). `__RIFIUTI__`: quante volte di fila
+# `unsubscribe` non riesce (dà false e l'iscrizione resta), come un browser che non riesce a toglierla.
 ENDPOINT = "https://push.example/prova"
 ISCRIZIONE_GIA_QUI = """(() => {
-  const CHIAVE = '__iscrizione-di-prova', ep = () => localStorage.getItem(CHIAVE);
+  const CHIAVE = '__iscrizione-di-prova', FATTE = '__iscrizioni-fatte', RIFIUTI = '__disiscrizioni-rifiutate';
+  const ep = () => localStorage.getItem(CHIAVE);
   if (!localStorage.getItem('__iscrizione-iniziata')) {
     localStorage.setItem('__iscrizione-iniziata', '1');
-    if (__INIZIALE__) localStorage.setItem(CHIAVE, __INIZIALE__);
+    if (__INIZIALE__) { localStorage.setItem(CHIAVE, __INIZIALE__); localStorage.setItem(FATTE, '1'); }
     if (__DI__) localStorage.setItem('avvisi-di', __DI__);
+    localStorage.setItem(RIFIUTI, String(__RIFIUTI__));
   }
   const sub = () => ep() ? { endpoint: ep(), toJSON: () => ({ endpoint: ep(), keys: { p256dh: 'a', auth: 'b' } }),
-    unsubscribe: async () => { localStorage.removeItem(CHIAVE); return true; } } : null;
+    unsubscribe: async () => {
+      const no = Number(localStorage.getItem(RIFIUTI) || '0');
+      if (no > 0) { localStorage.setItem(RIFIUTI, String(no - 1)); return false; }
+      localStorage.removeItem(CHIAVE); return true; } } : null;
+  const nuova = () => {
+    const n = Number(localStorage.getItem(FATTE) || '0') + 1;
+    localStorage.setItem(FATTE, String(n));
+    localStorage.setItem(CHIAVE, n === 1 ? ENDPOINT : ENDPOINT + '-' + n);
+  };
   const reg = { active: {}, pushManager: { getSubscription: async () => sub(),
-    subscribe: async () => { localStorage.setItem(CHIAVE, ENDPOINT); return sub(); } } };
+    subscribe: async () => { if (!ep()) nuova(); return sub(); } } };
   ServiceWorkerContainer.prototype.getRegistration = async () => reg;
   Object.defineProperty(ServiceWorkerContainer.prototype, 'ready', { get: () => Promise.resolve(reg) });
   Notification.requestPermission = async () => 'granted';
@@ -1087,11 +1169,11 @@ ISCRIZIONE_GIA_QUI = """(() => {
 SENZA_SESSIONE = {"detail": "Accesso richiesto", "multiutente": True, "registrazione": "invito", "social": [], "email_attiva": True}
 
 
-def iscrizione_gia_qui(web, di: str = "7", iniziale: bool = True) -> None:
+def iscrizione_gia_qui(web, di: str = "7", iniziale: bool = True, rifiuti: int = 0) -> None:
     """Prima di `apri`: il browser ha già un'iscrizione agli avvisi, fatta dall'account numero `di` (7 è UTENTE); con
-    `iniziale=False` le notifiche finte ci sono ma l'iscrizione no."""
+    `iniziale=False` le notifiche finte ci sono ma l'iscrizione no. `rifiuti`: le prime volte che il browser non riesce a toglierla."""
     web.pagina.add_init_script(ISCRIZIONE_GIA_QUI.replace("__INIZIALE__", json.dumps(ENDPOINT if iniziale else ""))
-                               .replace("__DI__", json.dumps(di)))
+                               .replace("__DI__", json.dumps(di)).replace("__RIFIUTI__", str(int(rifiuti))))
 
 
 def iscrizione_nel_browser(web) -> str | None:
@@ -1227,6 +1309,112 @@ def test_l_iscrizione_di_un_altro_account_non_si_rimanda(web):
     assert interruttore_qui(web).is_checked() and len(iscritte) == 1
 
 
+PRIMO = {"multiutente": True, "utente": {**UTENTE["utente"], "id": 12, "nome_utente": "primo", "nome_visualizzato": "Primo di prova"}}
+
+
+def server_con_due_account(web) -> tuple[list, dict]:
+    """Prima di `apri`: il server con gli account, per finta. Chi è dentro con la sessione di questo browser (`dentro[0]`: "primo",
+    l'account 12; None, sessione scaduta; "secondo", l'account 7 di UTENTE) e le iscrizioni agli avvisi che il server tiene per
+    ogni account (indirizzi): gli avvisi di un account arrivano a un browser se la sua iscrizione è fra quelle dell'account.
+    «Accedi» fa entrare il secondo."""
+    dentro = ["primo"]
+    iscrizioni = {12: set(), 7: set()}
+    chi = {"primo": PRIMO, "secondo": UTENTE}
+
+    def me(route):
+        json_200(route, chi[dentro[0]]) if dentro[0] else json_200(route, SENZA_SESSIONE, 401)
+
+    def iscrizione(route, aggiungi: bool) -> None:
+        if not dentro[0]:
+            json_200(route, SENZA_SESSIONE, 401)
+            return
+        mie = iscrizioni[chi[dentro[0]]["utente"]["id"]]
+        endpoint = json.loads(route.request.post_data)["endpoint"]
+        mie.add(endpoint) if aggiungi else mie.discard(endpoint)
+        json_200(route, {"dispositivi": len(mie)})
+
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/me", me)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/accedi",
+                     lambda route: dentro.__setitem__(0, "secondo") or json_200(route, UTENTE))
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/push/iscrivi", lambda route: iscrizione(route, True))
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/push/disiscrivi", lambda route: iscrizione(route, False))
+    web.risposta("/api/push/chiave", {"chiave": "BElxQ2VaZ2pqT3Z6"})
+    web.risposta("/api/avvisi/prova", {"inviato": True})
+    return dentro, iscrizioni
+
+
+def test_dopo_la_sessione_scaduta_di_un_altro_account_arrivano_solo_gli_avvisi_di_chi_entra(web):
+    """#874: il primo account accende gli avvisi su questo browser, la sua sessione scade senza «Esci» ed entra un secondo account.
+    Gli avvisi del primo non devono più arrivare qui: l'iscrizione del browser non è più fra le sue sul server, l'interruttore
+    del secondo è spento e, se lo accende, l'iscrizione nuova è solo sua. Prima il browser teneva l'iscrizione del primo (il
+    server continuava a mandargli i suoi avvisi) e, acceso dal secondo, la stessa iscrizione finiva anche fra le sue."""
+    solo(web, "prima")
+    iscrizione_gia_qui(web, di="", iniziale=False)
+    dentro, iscrizioni = server_con_due_account(web)
+    web.apri("/?vista=impostazioni")
+    accendi_qui(web)
+    web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
+    assert iscrizioni[12] == {ENDPOINT} and iscrizione_nel_browser(web) == ENDPOINT
+    dentro[0] = None                                                 # la sessione del primo scade: nessuno ha toccato «Esci»
+    web.pagina.goto(web.server.indirizzo + "/", wait_until="load")
+    web.pagina.locator("#accesso-form").wait_for(timeout=10000)
+    web.pagina.locator("#ac-nome").fill("amico")
+    web.pagina.locator("#ac-pw").fill("Password-Finta-1")
+    with web.pagina.expect_navigation(wait_until="load"):
+        web.pagina.locator("#accesso-invia").click()
+    web.aspetta()
+    web.apri("/?vista=impostazioni")
+    assert iscrizione_nel_browser(web) not in iscrizioni[12], "gli avvisi del primo account arrivano ancora al browser del secondo"
+    assert not interruttore_qui(web).is_checked()
+    accendi_qui(web)
+    web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
+    qui = iscrizione_nel_browser(web)
+    assert qui in iscrizioni[7] and qui not in iscrizioni[12], f"iscrizione del browser {qui}, server: {iscrizioni}"
+
+
+@pytest.mark.parametrize("rifiuti", [1, 2], ids=["al-secondo-tentativo", "mai"])
+def test_accendere_con_l_iscrizione_di_un_altro_account_rimasta_qui_ne_fa_una_nuova(web, rifiuti):
+    """#874: all'apertura il browser non riesce a togliere l'iscrizione dell'account 12 ed è dentro l'account 7. Quando lui accende
+    gli avvisi la web riprova a toglierla prima di iscriversi: il browser darebbe la stessa iscrizione. Tolta, al server va
+    un'iscrizione nuova. Se non si toglie nemmeno ora, al server va quella che c'è: il server la toglie all'altro account (l'ultimo
+    che la manda la tiene), e gli avvisi si accendono lo stesso."""
+    solo(web, "prima")
+    da_utente(web)
+    web.memoria({"account": json.dumps(UTENTE["utente"])})          # già dentro da prima
+    iscrizione_gia_qui(web, di="12", rifiuti=rifiuti)
+    web.risposta("/api/push/chiave", {"chiave": "BElxQ2VaZ2pqT3Z6"})
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    web.risposta("/api/avvisi/prova", {"inviato": True})
+    iscritte = _scritture(web, "/api/push/iscrivi")
+    web.apri("/?vista=impostazioni")
+    assert not interruttore_qui(web).is_checked()
+    accendi_qui(web)
+    web.pagina.locator("#avviso").filter(has_text="ti ho mandato un avviso di prova").wait_for(timeout=10000)
+    atteso = ENDPOINT + "-2" if rifiuti == 1 else ENDPOINT
+    assert [c["endpoint"] for c in iscritte] == [atteso], iscritte
+    assert interruttore_qui(web).is_checked()
+    web.apri("/?vista=impostazioni")
+    assert interruttore_qui(web).is_checked(), "riaperta, l'iscrizione non risulta di chi l'ha accesa"
+
+
+def test_gli_avvisi_accesi_dal_primo_avvio_non_usano_l_iscrizione_di_un_altro_account(web):
+    """#874: come l'interruttore, «Attiva gli avvisi» in fondo al primo avvio non manda al server l'iscrizione di un altro account
+    rimasta nel browser: la toglie e ne fa una nuova."""
+    solo(web, "prima")
+    da_utente(web)
+    web.memoria({"account": json.dumps(UTENTE["utente"])})
+    iscrizione_gia_qui(web, di="12", rifiuti=1)
+    web.risposta("/api/push/chiave", {"chiave": "BElxQ2VaZ2pqT3Z6"})
+    web.risposta("/api/push/iscrivi", {"dispositivi": 1})
+    web.risposta("/api/primo-avvio", {"primo_avvio": {"fatti": ["server", "accesso"], "saltati": [], "chiuso": False}})
+    iscritte = _scritture(web, "/api/push/iscrivi")
+    web.apri("/")
+    web.pagina.evaluate("apriPrimoAvvio().then(() => paFine())")       # l'ultima pagina della guida
+    web.pagina.get_by_role("dialog").get_by_role("button", name="Attiva gli avvisi").click(timeout=10000)
+    web.pagina.get_by_role("dialog").get_by_text("Avvisi attivi su questo dispositivo").wait_for(timeout=10000)
+    assert [c["endpoint"] for c in iscritte] == [ENDPOINT + "-2"], f"mandata l'iscrizione dell'altro account: {iscritte}"
+
+
 def test_un_iscrizione_senza_numero_dopo_un_nuovo_accesso_non_diventa_del_nuovo_account(web):
     """Un'iscrizione fatta con la versione di prima (nessun numero d'account accanto) ed entra un account dopo un'uscita: non si sa
     di chi è, quindi non si rimanda e l'interruttore è spento. Anche alla seconda apertura e al prossimo accesso (#804, revisione):
@@ -1335,7 +1523,7 @@ def test_stato_dei_dati_usa_le_etichette_del_server(web):
 
 # ---------------------------------------------------------------- Gestione: gli errori recenti in parole (#779)
 REGISTRO = {"contatori": {"da": "2026-11-20T08:00:00+00:00", "richieste": 1, "riuscite": 0, "rifiutate": 1, "errori": 0,
-                          "tempo_medio_ms": 7.3, "tempo_p95_ms": 7.3, "tempo_max_ms": 1234.5,
+                          "senza_accesso": 29, "tempo_medio_ms": 7.3, "tempo_p95_ms": 7.3, "tempo_max_ms": 1234.5,
                           "piu_lente": [{"rotta": "/api/rotta-mai-vista", "richieste": 2, "medio_ms": 1234.5, "max_ms": 1234.5},
                                         {"rotta": "/api/stato", "richieste": 1, "medio_ms": 7.3, "max_ms": 7.3}]},
             "errori": [{"quando": "2026-11-20T09:10:00+00:00", "tipo": "errore", "metodo": "GET", "rotta": "/api/oggi", "stato": "500",
@@ -1355,6 +1543,7 @@ def test_gli_errori_recenti_sono_scritti_in_parole(web):
     da_utente(web, AMMINISTRATORE)
     web.risposta("/api/admin/utenti", {"utenti": [{"nome_utente": "amico", "nome_visualizzato": "Amico di prova", "ruolo": "amministratore"}],
                                        "massimo": 10})
+    web.risposta("/api/admin/inviti", {"inviti": []})
     web.risposta("/api/admin/registro", REGISTRO)
     web.apri("/?vista=impostazioni&gruppo=gestione")
     carta = principale(web).locator(".carta", has=web.pagina.get_by_role("heading", name="Errori recenti"))
@@ -1365,6 +1554,10 @@ def test_gli_errori_recenti_sono_scritti_in_parole(web):
     # tempi in parole (#827): «7,3 millisecondi», sopra il secondo «1,2 secondi»; mai «ms» né la sigla «5xx»
     assert "Tempo medio 7,3 millisecondi" in testo and "massimo 1,2 secondi" in testo and "7.3" not in testo, testo
     assert not re.search(r"\bms\b|5xx", testo), testo
+    # #894: niente percentili; le richieste senza nessun accesso dette a parte, con parole neutre
+    assert "5%" not in testo and "più lento" not in testo, testo
+    assert "29 richieste senza accesso, di solito dalla pagina prima dell'ingresso." in testo, testo
+    assert "normale" not in testo, testo
     # il percorso resta per chi gestisce, accanto al nome della parte dell'app; una rotta che l'app non conosce solo con il percorso
     assert "Apertura dell'app (/api/stato) · 1 richiesta, in media 7,3 millisecondi" in testo, testo
     assert "/api/rotta-mai-vista · 2 richieste, in media 1,2 secondi" in testo, testo
@@ -1377,6 +1570,230 @@ def test_gli_errori_recenti_sono_scritti_in_parole(web):
     utenti.get_by_text("Amico di prova", exact=False).wait_for(timeout=10000)
     assert "Amico di prova (amministratore)" in utenti.inner_text() and "admin)" not in utenti.inner_text(), utenti.inner_text()
     assert not web.errori_console and not web.richieste_fallite
+
+
+# ---------------------------------------------------------------- Gestione per il titolare (#894)
+POSTI_PIENI = ("Posti pieni: 4 utenti su 4. Chi riceve un invito adesso trova le registrazioni chiuse, finché non alzi il numero "
+               "massimo di utenti del server.")
+FRASE_POSTI_PIENI = {"chiave": "admin.posti_pieni", "param": {"n": 4, "massimo": 4}}
+
+
+def server_che_cambia(web, rotta: str, letture: list, altre: dict | None = None, arrivate: list | None = None) -> list[str]:
+    """Da qui `rotta` (e i percorsi sotto, «/api/admin/inviti/12») risponde come il server mentre cambia: ogni GET la prossima delle
+    `letture` (l'ultima resta), gli altri metodi `altre[metodo]`. Restituisce (o allunga) l'elenco delle richieste arrivate, in
+    ordine: «GET /api/admin/inviti», «DELETE /api/admin/inviti/12»."""
+    arrivate = [] if arrivate is None else arrivate
+    coda = list(letture)
+
+    def rispondi(route):
+        metodo, percorso = route.request.method, urlsplit(route.request.url).path
+        arrivate.append(f"{metodo} {percorso}")
+        corpo = (coda.pop(0) if len(coda) > 1 else coda[0]) if metodo == "GET" else (altre or {})[metodo]
+        route.fulfill(status=200, content_type="application/json; charset=utf-8", body=json.dumps(corpo, ensure_ascii=False))
+
+    web.pagina.route(lambda u: urlsplit(u).path == rotta or urlsplit(u).path.startswith(rotta + "/"), rispondi)
+    return arrivate
+
+
+def gestione_del_titolare(web, utenti: dict | list, larghezza: int = 390, inviti: tuple = ([],), creato: dict | None = None,
+                          tema: str = "chiaro") -> list[str]:
+    """Gestione di chi gestisce il server. `utenti`: la risposta di /api/admin/utenti, o le risposte una dopo l'altra (un elenco);
+    `inviti`: gli elenchi di GET /api/admin/inviti, uno dopo l'altro; `creato`: la risposta di POST /api/admin/inviti. Restituisce
+    le richieste arrivate a queste due rotte."""
+    da_utente(web, AMMINISTRATORE)
+    arrivate = server_che_cambia(web, "/api/admin/utenti", utenti if isinstance(utenti, list) else [utenti])
+    server_che_cambia(web, "/api/admin/inviti", [{"inviti": elenco} for elenco in inviti],
+                      {"POST": creato, "DELETE": {"ok": True}}, arrivate)
+    web.risposta("/api/admin/registro", REGISTRO)
+    web.apri("/?vista=impostazioni&gruppo=gestione", larghezza=larghezza, tema=tema)
+    return arrivate
+
+
+def carta_con(web, titolo: str):
+    return principale(web).locator(".carta", has=web.pagina.get_by_role("heading", name=titolo, exact=True))
+
+
+def giorno(sigla: str, n: int, mese: str) -> dict:
+    return {"chiave": "data.giorno_mese", "param": {"giorno": {"chiave": f"giorno.{sigla}", "param": {}}, "n": n,
+                                                    "mese": {"chiave": f"mese.{mese}", "param": {}}}}
+
+
+# gli inviti come li dà GET /api/admin/inviti (#894): `dettaglio` solo per quelli aperti
+SARA = {"id": 12, "etichetta": "Sara", "ruolo": "utente", "creato": "2026-11-25T09:00:00+00:00", "scade": "2026-12-02T09:00:00+00:00",
+        "usi": 0, "usi_max": 1, "stato": "attivo", "dettaglio": "Creato mer 25 nov, scade mer 2 dic.",
+        "dettaglio_frase": {"chiave": "admin.invito_aperto", "param": {"creato": giorno("mer", 25, "nov"), "scade": giorno("mer", 2, "dic")}}}
+CALCETTO = {"id": 11, "etichetta": "Amici del calcetto", "ruolo": "utente", "creato": "2026-11-24T18:00:00+00:00",
+            "scade": "2026-12-01T18:00:00+00:00", "usi": 1, "usi_max": 3, "stato": "attivo",
+            "dettaglio": "Creato mar 24 nov, scade mar 1 dic. 2 posti liberi su 3.",
+            "dettaglio_frase": {"chiave": "admin.invito_aperto_posti", "param": {"creato": giorno("mar", 24, "nov"),
+                                                                                 "scade": giorno("mar", 1, "dic"), "n": 2, "posti": 3}}}
+CHIUSI = [{**SARA, "id": i, "etichetta": nome, "stato": stato, "dettaglio": None, "dettaglio_frase": None}
+          for i, nome, stato in ((10, "Piero", "revocato"), (9, "Anna", "scaduto"), (8, "Luca", "finito"))]
+ANNULLATO = {"stato": "revocato", "dettaglio": None, "dettaglio_frase": None}
+
+
+def test_con_i_posti_pieni_l_avviso_si_legge_prima_di_creare_l_invito(web):
+    """Con «4 utenti su 4» chi gestisce lo legge sopra «Crea l'invito», prima di crearlo: la frase è del server. L'invito si crea
+    lo stesso (il tetto si può alzare dopo) e la frase resta una sola, anche dopo. L'invito nuovo compare fra gli inviti aperti."""
+    solo(web, "prima")
+    amici = [{"nome_utente": f"amico{i}", "nome_visualizzato": f"Amico {i}", "ruolo": "utente"} for i in range(4)]
+    gestione_del_titolare(web, {"utenti": amici, "massimo": 4, "avviso": POSTI_PIENI, "avviso_frase": FRASE_POSTI_PIENI},
+                          inviti=([], [SARA]), creato={"codice": "PROVA-PROVA-PROVA-PROVA", "etichetta": "Sara", "valido_giorni": 7,
+                                                       "usi_max": 1, "avviso": POSTI_PIENI, "avviso_frase": FRASE_POSTI_PIENI})
+    carta = carta_con(web, "Amministrazione")
+    avviso = carta.get_by_role("status").filter(has_text="Posti pieni: 4 utenti su 4.")
+    avviso.wait_for(timeout=10000)
+    crea = carta.get_by_role("button", name="Crea l'invito")
+    assert avviso.bounding_box()["y"] < crea.bounding_box()["y"], "l'avviso va letto prima del pulsante"
+    assert POSTI_PIENI in " ".join(avviso.inner_text().split())
+    carta.get_by_label("Etichetta").fill("Sara")
+    tocca(web, crea)
+    carta.get_by_text("PROVA-PROVA-PROVA-PROVA", exact=False).first.wait_for(timeout=10000)
+    assert " ".join(carta.inner_text().split()).count("Posti pieni") == 1, carta.inner_text()
+    aperti = carta.get_by_role("list", name="Inviti aperti")
+    aperti.get_by_text("Creato mer 25 nov, scade mer 2 dic.").wait_for(timeout=10000)
+    assert aperti.get_by_role("listitem").count() == 1
+    assert not web.errori_console and not web.richieste_fallite
+
+
+def righe_di(elenco) -> list[str]:
+    return [" ".join(r.split()) for r in elenco.get_by_role("listitem").all_inner_texts()]
+
+
+@pytest.mark.parametrize("larghezza, tema", [(390, "chiaro"), (PC, "scuro")])
+def test_gli_inviti_aperti_si_annullano_dopo_una_domanda(web, larghezza, tema):
+    """Gestione › Amministrazione, sotto «Crea l'invito» (#894): solo gli inviti aperti, ognuno con il suo nome, la frase del server
+    (creato, scade, posti liberi) e «Annulla». Prima di annullare una domanda in parole semplici: con «Annulla» della domanda non
+    parte niente. Annullato, l'elenco si rilegge, e con lui l'avviso dei posti; annullato l'ultimo, lo dice."""
+    solo(web, "prima")
+    promessi = {"utenti": [{"nome_utente": "capo", "ruolo": "amministratore"}], "massimo": 4,
+                "avviso": "Posti quasi pieni: 1 su 4 presi, e 3 posti sono già in inviti aperti. Chi riceve un invito in più può trovare "
+                          "le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
+                "avviso_frase": {"chiave": "admin.posti_promessi", "param": {"n": 3, "utenti": 1, "massimo": 4}}}
+    liberi = {**promessi, "avviso": None, "avviso_frase": None}
+    richieste = gestione_del_titolare(web, [promessi, liberi], larghezza=larghezza, tema=tema, inviti=(
+        [SARA, CALCETTO, *CHIUSI], [{**SARA, **ANNULLATO}, CALCETTO, *CHIUSI], [{**SARA, **ANNULLATO}, {**CALCETTO, **ANNULLATO}, *CHIUSI]))
+    carta = carta_con(web, "Amministrazione")
+    aperti = carta.get_by_role("list", name="Inviti aperti")
+    aperti.get_by_text("Sara", exact=True).wait_for(timeout=10000)
+    assert righe_di(aperti) == ["Sara Creato mer 25 nov, scade mer 2 dic. Annulla",
+                                "Amici del calcetto Creato mar 24 nov, scade mar 1 dic. 2 posti liberi su 3. Annulla"], righe_di(aperti)
+    # sotto «Crea l'invito», prima di «Password dimenticata»
+    y = aperti.bounding_box()["y"]
+    assert carta.get_by_role("button", name="Crea l'invito").bounding_box()["y"] < y
+    assert y < carta.get_by_role("heading", name="Password dimenticata").bounding_box()["y"]
+    annulla_sara = aperti.get_by_role("button", name="Annulla l'invito per Sara")
+    assert annulla_sara.inner_text().strip() == "Annulla"
+    b = annulla_sara.bounding_box()
+    assert b["height"] >= 44 and b["width"] >= 44, b
+    assert not web.scorre_di_lato()
+    assert not web.violazioni_gravi()
+
+    domande = []
+    web.pagina.once("dialog", lambda d: (domande.append(d.message), d.dismiss()))
+    tocca(web, annulla_sara)
+    assert domande == ["L'invito per «Sara» non varrà più: chi ha il link non potrà registrarsi. Confermi?"], domande
+    assert not [r for r in richieste if r.startswith("DELETE")] and aperti.get_by_role("listitem").count() == 2, richieste
+
+    web.pagina.once("dialog", lambda d: (domande.append(d.message), d.accept()))
+    tocca(web, annulla_sara)
+    web.pagina.get_by_role("status").filter(has_text="Invito annullato").first.wait_for(timeout=5000)
+    assert "DELETE /api/admin/inviti/12" in richieste, richieste
+    assert righe_di(aperti) == ["Amici del calcetto Creato mar 24 nov, scade mar 1 dic. 2 posti liberi su 3. Annulla"], righe_di(aperti)
+    assert "Posti quasi pieni" not in carta.inner_text()                       # l'avviso dei posti si rilegge anche lui
+    assert richieste.count("GET /api/admin/utenti") >= 2, richieste
+
+    # un invito già usato da qualcuno: la domanda dice che chi è entrato resta
+    web.pagina.once("dialog", lambda d: (domande.append(d.message), d.accept()))
+    tocca(web, aperti.get_by_role("button", name="Annulla l'invito per Amici del calcetto"))
+    assert domande[-1] == ("L'invito per «Amici del calcetto» non varrà più: chi ha il link non potrà registrarsi. Chi è già entrato "
+                           "tiene il suo account. Confermi?"), domande
+    carta.get_by_text("Nessun invito aperto.").wait_for(timeout=5000)
+    assert "DELETE /api/admin/inviti/11" in richieste, richieste
+    assert not web.errori_console and not web.richieste_fallite and not web.errori_mostrati()
+
+
+def test_annullato_l_invito_appena_creato_il_suo_link_sparisce(web):
+    """Il titolare crea un invito e lo annulla subito: il link, «Copia il messaggio» e il codice di quell'invito non restano in
+    pagina (non vale più). Annullare un altro invito invece non li tocca: il codice non si rilegge, e il link serve ancora."""
+    solo(web, "prima")
+    liberi = {"utenti": [{"nome_utente": "capo", "ruolo": "amministratore"}], "massimo": 10, "avviso": None, "avviso_frase": None}
+    gestione_del_titolare(web, liberi, inviti=(
+        [CALCETTO], [SARA, CALCETTO], [SARA, {**CALCETTO, **ANNULLATO}], [{**SARA, **ANNULLATO}, {**CALCETTO, **ANNULLATO}]),
+        creato={"codice": "PROVA-PROVA-PROVA-PROVA", "etichetta": "Sara", "valido_giorni": 7, "usi_max": 1, "id": SARA["id"],
+                "avviso": None, "avviso_frase": None})
+    carta = carta_con(web, "Amministrazione")
+    carta.get_by_label("Etichetta").fill("Sara")
+    tocca(web, carta.get_by_role("button", name="Crea l'invito"))
+    link = carta.get_by_text("PROVA-PROVA-PROVA-PROVA", exact=False)
+    link.first.wait_for(timeout=10000)
+    aperti = carta.get_by_role("list", name="Inviti aperti")
+    web.pagina.on("dialog", lambda d: d.accept())
+    tocca(web, aperti.get_by_role("button", name="Annulla l'invito per Amici del calcetto"))
+    assert righe_di(aperti) == ["Sara Creato mer 25 nov, scade mer 2 dic. Annulla"], righe_di(aperti)
+    assert link.count() > 0 and carta.get_by_role("button", name="Copia il messaggio").is_visible()      # un altro invito: resta
+    tocca(web, aperti.get_by_role("button", name="Annulla l'invito per Sara"))
+    carta.get_by_text("Nessun invito aperto.").wait_for(timeout=5000)
+    assert link.count() == 0, carta.inner_text()
+    assert carta.get_by_role("button", name="Copia il messaggio").count() == 0
+    assert carta.get_by_role("button", name="Condividi l'invito").count() == 0
+    assert "Invito per «Sara»" not in carta.inner_text()
+    assert not web.errori_console and not web.richieste_fallite
+
+
+def test_gli_inviti_aperti_in_inglese(web):
+    """In inglese la frase del server si traduce dalla sua chiave, con i giorni e i posti."""
+    solo(web, "prima")
+    web.memoria({"lingua": "en"})
+    gestione_del_titolare(web, {"utenti": [{"nome_utente": "capo", "ruolo": "amministratore"}], "massimo": 4, "avviso": None,
+                                "avviso_frase": None}, larghezza=PC, inviti=([SARA, CALCETTO, *CHIUSI],))
+    aperti = principale(web).get_by_role("list", name="Open invitations")
+    aperti.get_by_text("Sara", exact=True).wait_for(timeout=10000)
+    assert righe_di(aperti) == ["Sara Created Wed 25 Nov, expires Wed 2 Dec. Cancel",
+                                "Amici del calcetto Created Tue 24 Nov, expires Tue 1 Dec. 2 places left out of 3. Cancel"], righe_di(aperti)
+    assert aperti.get_by_role("button", name="Cancel the invitation for Sara").is_visible()
+    assert not web.errori_console and not web.richieste_fallite
+
+
+@pytest.mark.parametrize("larghezza", [390, PC])
+def test_gestione_usa_la_larghezza_della_pagina(web, larghezza):
+    """A 1440 px Gestione non è una colonna stretta a sinistra (#894): «Errori recenti» sta accanto agli strumenti e la pagina
+    prende la larghezza delle altre; al telefono una colonna sola. Con un posto libero nessun avviso sui posti."""
+    solo(web, "prima")
+    gestione_del_titolare(web, {"utenti": [{"nome_utente": "amico", "ruolo": "amministratore"}], "massimo": 4, "avviso": None,
+                                "avviso_frase": None}, larghezza=larghezza)
+    aggiorna, admin, errori = (carta_con(web, t) for t in ("Aggiorna i dati", "Amministrazione", "Errori recenti"))
+    errori.get_by_text("Ruolo cambiato").wait_for(timeout=10000)
+    a, e, g = admin.bounding_box(), errori.bounding_box(), aggiorna.bounding_box()
+    if larghezza == PC:
+        assert e["x"] >= a["x"] + a["width"], (a, e)                                       # una accanto all'altra
+        assert e["y"] < a["y"] + a["height"], (a, e)
+        assert e["x"] + e["width"] - g["x"] > 1000, (g, e)                                 # la pagina, non 720 px
+    else:
+        assert abs(e["x"] - a["x"]) < 2 and e["y"] > a["y"], (a, e)
+    assert "Posti pieni" not in admin.inner_text()
+    assert not web.scorre_di_lato()
+    assert not web.violazioni_gravi()
+
+
+def test_stato_dei_dati_dice_una_volta_sola_la_frase_delle_fonti_spente(web):
+    """«Fonti dei dati» con le fonti spente (#894): sotto ogni fonte solo cosa non arriva (frase del server); dati già salvati e
+    condizioni d'uso una volta sola, sotto l'elenco."""
+    solo(web, "prima")
+    s = web.registrata("/api/stato-dati")
+    s["fonti"] = [{"id": "fantacalcio", "nome": "Fantacalcio.it", "serve": "listone", "acceso": False, "scelta_da": "predefinito",
+                   "messaggio": "Non scarico listone, quotazioni, calendario, voti e probabili formazioni."},
+                  {"id": "understat", "nome": "Understat", "serve": "statistiche", "acceso": False, "scelta_da": "predefinito",
+                   "messaggio": "Non scarico statistiche avanzate (gol e assist attesi, rigori)."},
+                  {"id": "foto", "nome": "Foto dei giocatori", "serve": "foto", "acceso": False, "scelta_da": "predefinito",
+                   "messaggio": "L'app usa i volti illustrati."}]
+    web.risposta("/api/stato-dati", s)
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    tocca(web, principale(web).get_by_role("button", name="Apri lo stato dei dati"))
+    fonti = web.pagina.get_by_role("dialog").locator(".carta", has=web.pagina.get_by_role("heading", name="Fonti dei dati"))
+    fonti.get_by_text("Non scarico statistiche avanzate", exact=False).wait_for(timeout=10000)
+    testo = " ".join(fonti.inner_text().split())
+    assert testo.count("condizioni d'uso") == 1 and testo.count("dati già salvati") == 1, testo
 
 
 # ---------------------------------------------------------------- accesso: gli avvisi non sono errori
@@ -1411,7 +1828,9 @@ def server_giu(web, modo="rete") -> list:
 
 
 def riga_di_stato(web) -> str:
-    return principale(web).locator(".stato-pagina").first.inner_text()
+    """Il testo della riga di stato come si vede: vuoto se la riga è nascosta (`inner_text` darebbe anche il testo nascosto)."""
+    riga = principale(web).locator(".stato-pagina").first
+    return riga.inner_text() if riga.is_visible() else ""
 
 
 def test_lo_stato_d_avvio_si_rilegge_quando_torna_la_rete(web):
@@ -1429,13 +1848,18 @@ def test_lo_stato_d_avvio_si_rilegge_quando_torna_la_rete(web):
 
 
 def test_lo_stato_d_avvio_si_rilegge_al_primo_dato_fresco(web):
-    """Aperta mentre il server riparte (502 del proxy: per il browser la rete c'è, e non dice niente), la riga di stato dice «Server
-    non raggiungibile». Alla prima risposta buona del server (qui «Riprova» di Giornate, a server tornato) lo stato si rilegge: la
-    riga torna quella di sempre e Impostazioni ha «La mia squadra» (#801). Prima restava «Server non raggiungibile» fino a ricaricare."""
+    """Aperta mentre il server riparte (502 del proxy: per il browser la rete c'è, e non dice niente), lo stato d'avvio non si legge.
+    Giornate è l'errore con «Riprova», che dice già che il server non risponde: la riga di stato «Server non raggiungibile» c'è ma non
+    si vede, per non dirlo due volte (#864). Alla prima risposta buona del server (qui «Riprova», a server tornato) lo stato si
+    rilegge: la riga torna quella di sempre e Impostazioni ha «La mia squadra» (#801). Prima restava «Server non raggiungibile» fino a
+    ricaricare."""
     solo(web, "prima")
     giu = server_giu(web, "502")
     web.apri("/?vista=giornate")
-    assert "Server non raggiungibile" in riga_di_stato(web)
+    assert web.errori_mostrati() == ["Il server non risponde: riprova fra poco"], web.errori_mostrati()
+    offline = principale(web).get_by_text("Server non raggiungibile")
+    assert offline.count() == 1, "la prova vuole l'avvio senza lo stato"
+    assert not offline.is_visible() and riga_di_stato(web) == "", "sopra l'errore con «Riprova» la riga non ripete il guasto"
     giu.clear()
     tocca(web, principale(web).get_by_role("button", name="Riprova"))
     web.pagina.wait_for_function(

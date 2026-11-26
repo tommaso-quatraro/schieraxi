@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from fanta import server
-from fanta.regole import Regole
+from fanta.regole import Regole, da_dict as regole_da_dict
 
 
 @pytest.fixture
@@ -402,6 +402,47 @@ def test_riconosci_regole_segnala_le_righe_dubbie_senza_numeri(client):
          "regole": [{"chiave": "panchina.cambio_modulo", "etichetta": "Cambio modulo nelle sostituzioni"}]},
         {"riga": "Media 6-6,5: +1", "regole": []}]
     assert r["non_riconosciute"] == ["Media 6-6,5: +1"] and "dubbie" not in r
+
+
+POSTI_FISSI = {"P": 2, "D": 3, "C": 3, "A": 3}
+
+
+def _con_posti_fissi(client) -> dict:
+    regole = client.get("/api/regole").json()
+    regole["panchina"] |= {"posti": POSTI_FISSI, "numero": 11}
+    assert client.put("/api/regole", json=regole).status_code == 200
+    return regole
+
+
+def test_riconosci_regole_non_propone_la_panchina_che_non_si_puo_salvare(client):
+    """Con i posti fissi per ruolo il numero della panchina è la somma dei posti: «Panchina di 12 giocatori» non si può salvare.
+    Non sta fra i valori riconosciuti (l'anteprima mostra solo ciò che si salva): torna fra i non applicabili con il perché, una
+    volta sola (la riga non va anche fra quelle da controllare) (#881)."""
+    from fanta import onboarding
+    regole = _con_posti_fissi(client)
+    riga = "Panchina di 12 giocatori, massimo 5 sostituzioni."
+    r = client.post("/api/regole/riconosci", json={"testo": riga}).json()
+    assert {m["chiave"]: m["valore"] for m in r["modifiche"]} == {"panchina.max_sostituzioni": 5}
+    onboarding.applica_modifiche(regole_da_dict(regole), r["modifiche"])      # ogni proposta, applicata, dà regole valide
+    [na] = r["non_applicabili"]
+    assert (na["chiave"], na["etichetta"], na["valore"], na["riga"]) == ("panchina.numero", "Giocatori in panchina", 12, riga)
+    assert "posti fissi" in na["motivo"] and "11" in na["motivo"]
+    # una frase valida per la web e per l'iPhone: niente «Modifica i valori», che c'è solo sulla web (#889)
+    assert na["motivo"] == "La tua panchina ha posti fissi per ruolo, 11 in tutto: cambia a mano i posti di ogni ruolo nei valori delle regole."
+    assert na["motivo_frase"] == {"chiave": "regole.panchina_posti_fissi", "param": {"n": 11}}
+    assert r["da_controllare"] == [] and r["non_riconosciute"] == []
+
+
+@pytest.mark.parametrize("testo, posti_fissi", [
+    ("Panchina di 12 giocatori", False),                                          # senza posti fissi il numero si salva
+    ("Panchina di 11 giocatori", True),                                           # uguale alla somma dei posti: si salva com'è
+    ("Panchina: 2 portieri, 4 difensori, 3 centrocampisti, 3 attaccanti", True),  # i posti nuovi portano il loro totale
+])
+def test_riconosci_regole_propone_la_panchina_che_si_salva(client, testo, posti_fissi):
+    if posti_fissi:
+        _con_posti_fissi(client)
+    r = client.post("/api/regole/riconosci", json={"testo": testo}).json()
+    assert "panchina.numero" in {m["chiave"] for m in r["modifiche"]} and r["non_applicabili"] == []
 
 
 def test_regole_salvate_oltre_i_tetti_rispondono_422(client):

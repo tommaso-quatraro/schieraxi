@@ -21,7 +21,7 @@ from typing import Iterable
 import pandas as pd
 
 from . import turno
-from .frasi import F, Frase, di
+from .frasi import F, Frase, di, giorno_mese
 from .regole import MODI_RINVIO, Regole, da_dict, serie_a_a_lega
 
 # colonne che con il voto d'ufficio non hanno senso (niente bonus né malus): a zero, così nessuna schermata mostra gol attesi
@@ -160,17 +160,13 @@ def voti_lega(gioca: dict[int, bool], fv: dict[int, float], voto: dict[int, floa
             gioca[i], fv[i], voto[i] = True, v, v
 
 
-_GIORNI = ("lun", "mar", "mer", "gio", "ven", "sab", "dom")              # datetime.weekday(): 0 = lunedì
-_MESI = ("gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic")
-
-
 def _quando(data) -> Frase | None:
-    """Il giorno del recupero come lo scrive l'app, «mer 18 nov» (docs/COERENZA-WEB-IPHONE.md, «Date e ore»; mai «18/11»). Sempre con
-    il mese e senza «oggi» o «domani»: la frase sta nelle previsioni in cache e non deve invecchiare. È una frase: si traduce."""
+    """Il giorno del recupero come lo scrive l'app, «mer 18 nov» (`frasi.giorno_mese`): la frase sta nelle previsioni in cache e non
+    deve invecchiare. È una frase: si traduce."""
     d = _data(data)
     if d is None:
         return None
-    return F("data.giorno_mese", giorno=F("giorno." + _GIORNI[d.weekday()]), n=d.day, mese=F("mese." + _MESI[d.month - 1]))
+    return giorno_mese(d)
 
 
 def frase(modo: str, valore: float | None, data_recupero=None) -> Frase:

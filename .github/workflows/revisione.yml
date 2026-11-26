@@ -9,7 +9,8 @@ name: Revisione IA
 #   esclude i fork, e senza segreto il job passa senza revisione (lo scrive nel riepilogo).
 # - Claude ha solo strumenti di lettura e i commenti sulle righe: niente Write, Edit, Bash; la sintesi la pubblica il job. Permessi: contents read, pull-requests write.
 # - Claude legge il codice della PR e basta: il diff lo prepara il job in .revisione-ia/ (niente gh, quindi niente conversazione
-#   della PR), le letture restano nella cartella del checkout, e la sintesi passa da un filtro che toglie ciò che somiglia a un segreto.
+#   della PR), le letture restano nella cartella del checkout (--permission-mode default: ciò che non è permesso è negato,
+#   non deciso dalla «modalità auto» dell'azione), e la sintesi passa da un filtro che toglie ciò che somiglia a un segreto.
 on:
   workflow_call:
     secrets:
@@ -62,11 +63,11 @@ jobs:
           git diff --name-status --no-color HEAD^1 HEAD > .revisione-ia/file.txt
           echo "Diff: $(wc -l < .revisione-ia/diff.patch) righe, $(wc -l < .revisione-ia/file.txt) file"
 
-      # Versione fissata per commit (del 06/11/2026): fissa anche Claude Code (2.1.319, scritto nell'azione) e Bun (1.4.4).
+      # Versione fissata per commit (del 13/11/2026): fissa anche Claude Code (2.1.325, scritto nell'azione) e Bun (1.4.4).
       - name: Revisione con Claude Code
         id: claude
         if: steps.segreto.outputs.presente == 'true'
-        uses: anthropics/claude-code-action@61a9c274fa7110a66dfafc1bbbced03833eb25fe  # v1.0.269
+        uses: anthropics/claude-code-action@f3b070c88125d33dbae5653df5f143101d4ea9dc  # v1.0.276
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}   # token del job, permessi qui sopra: niente app di Claude, niente id-token
@@ -77,8 +78,10 @@ jobs:
             Il diff della pull request è in .revisione-ia/diff.patch, l'elenco dei file cambiati in .revisione-ia/file.txt.
             Segui la skill revisione-pr (.claude/skills/revisione-pr/SKILL.md) e rispondi con lo schema JSON richiesto.
           # Letture solo nel checkout (Read(./**) vale anche per Grep e Glob); i divieti valgono anche se un permesso li coprisse.
+          # --permission-mode default: senza, dalla v1.0.273 uno strumento fuori dall'elenco lo decide una revisione automatica.
           claude_args: |
             --max-turns 30
+            --permission-mode default
             --allowedTools "Skill,Read(./**),mcp__github_inline_comment__create_inline_comment"
             --disallowedTools "Bash,Write,Edit,MultiEdit,NotebookEdit,WebFetch,WebSearch,Task,Read(//proc/**),Read(//sys/**),Read(//etc/**),Read(//tmp/**),Read(//run/**),Read(//var/**),Read(//root/**),Read(//opt/**),Read(//home/runner/work/_temp/**),Read(//home/runner/work/_actions/**),Read(~/.claude/**),Read(~/.config/**),Read(~/.ssh/**),Read(~/.gitconfig),Read(./.git/**)"
             --json-schema '{"type":"object","properties":{"bloccanti":{"type":"integer","minimum":0},"sintesi":{"type":"string"}},"required":["bloccanti","sintesi"],"additionalProperties":false}'

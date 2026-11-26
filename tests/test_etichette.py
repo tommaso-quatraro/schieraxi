@@ -30,6 +30,7 @@ ATTESI = {
     "voto_in_arrivo": ("Voto in arrivo", "Grade coming", "neutro"),
     "voto": ("Ha giocato", "Played", "positivo"),
     "senza_voto": ("Senza voto", "No grade", "attenzione"),
+    "voto_ufficio": ("Voto d'ufficio", "Default grade", "positivo"),
     "diffidato": ("Diffidato", "One yellow from a ban", "attenzione"),
 }
 
@@ -57,7 +58,7 @@ def test_stesse_parole_della_web():
     catalogo: dal 12/11/2026 (#616) la web non mostra le etichette di titolarità e l'iPhone ha quella parola nel suo codice."""
     web = {"ballottaggio": "tit.ballottaggio", "panchina": "tit.panchina", "improbabile": "tit.improbabile",
            "fuori": "tit.fuori", "voto": "tit.st_fatto", "senza_voto": "tit.st_senza_voto", "voto_in_arrivo": "tit.st_attesa_voti",
-           "in_corso": "tit.st_in_corso", "da_giocare": "tit.st_da_giocare", "rinviata": "tit.st_rinviata",
+           "in_corso": "tit.st_in_corso", "da_giocare": "tit.st_da_giocare", "rinviata": "tit.st_rinviata", "voto_ufficio": "regole.rv_ufficio",
            "infortunato": "oggi.infortunato", "squalificato": "oggi.squalificato", "diffidato": "oggi.diffidato_tipo"}
     for codice, chiave in web.items():
         assert _testo_web(chiave) == etichette.CODICI[codice][:2], codice
@@ -148,6 +149,16 @@ def test_traduzione_della_risposta_in_inglese():
     assert json.loads(gzip.decompress(server._riscrivi_note(gzip.compress(chiaro), True))) == nuovo
     strano = {"etichetta": {"codice": "nuovo_di_domani", "testo": "Qualcosa"}}            # un codice sconosciuto resta com'è
     assert json.loads(server._riscrivi_note(json.dumps(strano).encode(), False)) == strano
+
+
+def test_rinviata_e_senza_voto_della_rosa_in_inglese():
+    """#842: nella web in inglese si erano viste «Rinviata» e «Senza voto» nella rosa a giornata in corso. Venivano dal server finto
+    dei test del browser, che risponde con registrazioni in italiano e non traduce: il server vero le riscrive anche dentro la
+    `previsione` di ogni giocatore di /api/rosa."""
+    corpo = {"giocatori": [{"id": 1, "previsione": {"etichetta": etichette.crea("rinviata"), "stato_partita": "rinviata"}},
+                           {"id": 2, "previsione": {"etichetta": etichette.crea("senza_voto"), "stato_partita": "senza_voto"}}]}
+    nuovo = json.loads(server._riscrivi_note(json.dumps(corpo).encode(), False))
+    assert [g["previsione"]["etichetta"]["testo"] for g in nuovo["giocatori"]] == ["Postponed", "No grade"]
 
 
 def test_la_rotta_risponde_nella_lingua_chiesta(tmp_path, monkeypatch):

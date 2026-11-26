@@ -1,16 +1,14 @@
 import SwiftUI
 import PhotosUI
 
-/// Squadre della lega e loro rose; da qui si indica quale è la propria. Le parole sono quelle della web (`ParoleSquadre`).
+/// «Le altre squadre» (Impostazioni › La mia lega), come `vistaAltreSquadre` della web (#863): il titolo e l'elenco delle squadre
+/// della lega senza la mia (tutte finché non è scelta, #788); un tocco apre la rosa. La mia squadra sta nella sua riga, «La mia
+/// squadra», dove si cambia con «Non è la tua squadra?» (`RosaView`) o si sceglie la prima volta (`SceltaSquadraView`), come la web.
+/// Senza altre squadre la frase della web (`ParoleSquadre.senzaAltre`).
 struct SquadreView: View {
     @StateObject private var vm: SquadreViewModel
-    private let server: any ServerClient
-    @Environment(\.funzioni) private var funzioni
-    /// Il foglio «Stemma e maglia» della mia squadra.
-    @State private var apriImmagini = false
 
     init(server: any ServerClient) {
-        self.server = server
         _vm = StateObject(wrappedValue: SquadreViewModel(server: server))
     }
 
@@ -19,30 +17,16 @@ struct SquadreView: View {
             Sfondo()
             List {
                 TitoloNellaPagina()
-                if let errore = vm.errore {
-                    Text(errore).font(.footnote).foregroundStyle(Color.attenzione)
-                }
                 if let s = vm.caricatore.dato {
-                    if s.isEmpty {
-                        Text(ParoleSquadre.importaPrima).foregroundStyle(Color.testoSecondario)
+                    let altre = VociImpostazioni.altreSquadre(s)
+                    if altre.isEmpty {
+                        Text(ParoleSquadre.senzaAltre(s)).foregroundStyle(Color.testoSecondario)
                     } else {
-                        Section(titolo: ParoleSquadre.miaSquadra) { miaSquadra(s) }
-                        // senza le rose degli altri c'è solo la carta «La mia squadra», con «Vedi la rosa» (come la web);
-                        // l'elenco ha le altre squadre, senza la mia (tutte finché non è scelta), come la web (#788)
-                        let altre = VociImpostazioni.altreSquadre(s)
-                        if funzioni.acceso(Funzione.squadreAltrui), !altre.isEmpty {
-                            Section {
-                                ForEach(altre) { sq in
-                                    NavigationLink(value: PaginaImpostazioni.rosa(sq.nome)) {
-                                        RigaSquadra(squadra: sq)
-                                    }
-                                    .swipeActions {
-                                        Button("È la mia") { Task { await vm.impostaMia(sq.nome) } }.tint(Color.verde)
-                                    }
-                                    .accessibilityAction(named: "È la mia squadra") { Task { await vm.impostaMia(sq.nome) } }
+                        Section {
+                            ForEach(altre) { sq in
+                                NavigationLink(value: PaginaImpostazioni.rosa(sq.nome)) {
+                                    RigaSquadra(squadra: sq)
                                 }
-                            } footer: {
-                                Text(ParoleSquadre.toccaUnaSquadra).foregroundStyle(Color.testoSecondario)
                             }
                         }
                     }
@@ -55,52 +39,8 @@ struct SquadreView: View {
             .scrollContentBackground(.hidden)
             .avvisoDatiSalvati(vm.caricatore)
         }
-        .titoloPagina(ParoleSquadre.titolo(squadreAltrui: funzioni.acceso(Funzione.squadreAltrui)))
+        .titoloPagina(ParoleSquadre.altreSquadre)
         .task { await vm.carica() }
-        .sheet(isPresented: $apriImmagini) {
-            NavigationStack {
-                RosaView(nome: vm.mia, server: server, soloImmagini: true)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) { Button(ParoleSquadre.chiudi) { apriImmagini = false } }
-                    }
-            }
-        }
-    }
-
-    /// La carta «La mia squadra» (come la web): stemma e maglia, nome, giocatori e crediti, «Stemma e maglia», «Vedi la rosa»
-    /// e, dietro «Non è la tua squadra?», la scelta di un'altra. Senza una squadra scelta solo l'invito a sceglierla.
-    @ViewBuilder
-    private func miaSquadra(_ squadre: [SquadraLega]) -> some View {
-        if let mia = squadre.first(where: { $0.mia == true }) {
-            HStack(spacing: 12) {
-                StemmaSquadra(nome: mia.nome, dimensione: 44)
-                StemmaSquadra(nome: mia.nome, tipo: "maglia", dimensione: 44, nascondiSeMancante: true)
-                VStack(alignment: .leading, spacing: 2) {
-                    NomeConPillola(nome: mia.nome) { EmptyView() }
-                    Text(ParoleSquadre.riepilogo(giocatori: mia.giocatori, crediti: mia.creditiResidui))
-                        .font(.caption).foregroundStyle(Color.testoSecondario)
-                }
-            }
-            .frame(minHeight: 44)
-            .accessibilityElement(children: .combine)
-            Button { apriImmagini = true } label: {
-                Label(ParoleSquadre.stemmaEMaglia, systemImage: "photo").frame(minHeight: 44)
-            }
-            NavigationLink(value: PaginaImpostazioni.rosa(mia.nome)) {
-                Label(ParoleSquadre.vediLaRosa, systemImage: "person.3").frame(minHeight: 44)
-            }
-            DisclosureGroup(ParoleSquadre.nonLaTua) { sceltaMia(squadre) }
-        } else {
-            Text(ParoleSquadre.scegliLaTua).foregroundStyle(Color.testoSecondario)
-            sceltaMia(squadre)
-        }
-    }
-
-    private func sceltaMia(_ squadre: [SquadraLega]) -> some View {
-        Picker(ParoleSquadre.tuaSquadra, selection: Binding(get: { vm.mia }, set: { nuova in Task { await vm.impostaMia(nuova) } })) {
-            ForEach(squadre) { Text($0.nome).tag($0.nome) }
-        }
-        .frame(minHeight: 44)
     }
 }
 
@@ -224,6 +164,16 @@ final class RosaViewModel: ViewModelBase {
         }
     }
 
+    /// «Non è la tua squadra?» (#863): salva la squadra scelta con `scegli` (`LegaViewModel.scegliMiaSquadra`). Se non riesce la
+    /// rosa si rilegge dal server e i campi ripartono dai suoi valori, come dopo il 412 di «Cambia il nome» e dei crediti: dopo un 412
+    /// l'ETag è già quello nuovo, e un «Salva» con i dati vecchi in pagina riscriverebbe quelli salvati altrove (revisione della
+    /// #868). Riuscita, al posto di questa pagina si apre la rosa della squadra scelta. Nil se è andata bene, se no il motivo.
+    func scegliMia(_ nome: String, con scegli: @MainActor (String) async -> String?) async -> String? {
+        let errore = await scegli(nome)
+        if errore != nil { await carica(forza: true) }
+        return errore
+    }
+
     /// Lo stemma o la maglia da un indirizzo web: lo scarica il server.
     func inviaDaIndirizzo(_ indirizzo: String, tipo: String) async {
         inCorso = true
@@ -254,9 +204,11 @@ final class RosaViewModel: ViewModelBase {
 }
 
 struct RosaView: View {
-    /// Nel foglio «Stemma e maglia» di Squadre: solo le immagini della squadra, senza i giocatori.
-    let soloImmagini: Bool
     @StateObject private var vm: RosaViewModel
+    /// Le squadre della lega, per «Non è la tua squadra?» nella rosa della mia squadra (`LegaViewModel.squadre`).
+    @ObservedObject private var squadre: Caricatore<[SquadraLega]>
+    /// Salva la squadra scelta come mia (`LegaViewModel.scegliMiaSquadra`): nil se è andata bene, se no il motivo.
+    private let scegliMia: @MainActor (String) async -> String?
     @Environment(\.vediFormazioneDi) private var vediFormazione
     @Environment(\.funzioni) private var funzioni
     @Environment(\.dynamicTypeSize) private var dimensioneTesto
@@ -268,21 +220,27 @@ struct RosaView: View {
     @State private var chiediIndirizzo = false
     @State private var indirizzoScritto = ""
 
-    init(nome: String, server: any ServerClient, soloImmagini: Bool = false) {
-        self.soloImmagini = soloImmagini
+    init(nome: String, server: any ServerClient, squadre: Caricatore<[SquadraLega]>,
+         scegliMia: @escaping @MainActor (String) async -> String?) {
         _vm = StateObject(wrappedValue: RosaViewModel(nome: nome, server: server, immagini: Immagini.condivise))
+        self.squadre = squadre
+        self.scegliMia = scegliMia
     }
 
     private let reparti = [("P", "Portieri"), ("D", "Difensori"), ("C", "Centrocampisti"), ("A", "Attaccanti")]
 
     var body: some View {
-        conTitolo(
-            ZStack {
-                Sfondo()
-                if soloImmagini { soloLeImmagini } else { rosaCompleta }
-            }
-        )
-        .task { if !soloImmagini { await vm.carica() } }
+        ZStack {
+            Sfondo()
+            rosaCompleta
+        }
+        // il nome della squadra intero, a capo: nella barra si taglierebbe (#276)
+        .titoloPagina(vm.nome, piccoloInBarra: true)
+        .task {
+            await vm.carica()
+            // la mia rosa aperta dalla Formazione prima delle Impostazioni: servono le squadre per «Non è la tua squadra?»
+            if vm.caricatore.dato?.mia == true, squadre.dato == nil { await squadre.ricarica() }
+        }
         .fileImporter(isPresented: $sceglieFile, allowedContentTypes: [.image], allowsMultipleSelection: false) { risultato in
             Task { await caricaDaFile(risultato, tipo: tipoFile) }
         }
@@ -303,26 +261,6 @@ struct RosaView: View {
             guard let nuovo else { return }
             Task { await carica(nuovo, tipo: "maglia"); sceltaMaglia = nil }
         }
-    }
-
-    /// Il titolo: nella pagina il nome della squadra (intero, a capo: nella barra si taglierebbe, #276); nel foglio «Stemma e maglia».
-    @ViewBuilder
-    private func conTitolo<Contenuto: View>(_ contenuto: Contenuto) -> some View {
-        if soloImmagini {
-            contenuto.navigationTitle(ParoleSquadre.stemmaEMaglia).navigationBarTitleDisplayMode(.inline)
-        } else {
-            contenuto.titoloPagina(vm.nome, piccoloInBarra: true)
-        }
-    }
-
-    private var soloLeImmagini: some View {
-        List {
-            Section {
-                righeImmagini
-                if let m = vm.messaggio { Text(m).font(.footnote).foregroundStyle(Color.testoSecondario) }
-            }
-        }
-        .scrollContentBackground(.hidden)
     }
 
     private var rosaCompleta: some View {
@@ -385,10 +323,18 @@ struct RosaView: View {
         await vm.inviaImmagine(pronti, tipo: tipo)
     }
 
-    /// In testa alla rosa, nell'ordine della web: «Cambia il nome», i crediti residui, stemma e maglia, la formazione consigliata.
+    /// In testa alla rosa, nell'ordine della web: «Non è la tua squadra?» (solo nella mia, con più squadre), «Cambia il nome», i
+    /// crediti residui, stemma e maglia, la formazione consigliata.
     @ViewBuilder
     private func intestazione(_ r: Rosa) -> some View {
         Section {
+            if r.mia == true, let elenco = squadre.dato, elenco.count > 1 {
+                // dove la web cambia la propria squadra (#863): prima stava in «Squadre e rose», con «È la mia» sulle righe
+                DisclosureGroup(ParoleSquadre.nonLaTua) {
+                    // se la scelta non riesce si rilegge anche questa rosa (`RosaViewModel.scegliMia`)
+                    SelettoreMiaSquadra(squadre: elenco) { nome in await vm.scegliMia(nome, con: scegliMia) }
+                }
+            }
             cambiaIlNome
             creditiResidui
             righeImmagini
@@ -673,8 +619,9 @@ struct StatoDatiView: View {
                 // la copia salvata sul telefono non sembra nuova: la striscia «dati salvati», come nelle altre pagine (#808)
                 .avvisoDatiSalvati(striscia?.data, motivo: striscia?.motivo)
                 // fotografie `lega-stato-fondo` (#425: la lista scorsa fino in fondo, agli indicatori del consiglio) e `lega-stato-nostri`
-                // (#430: ferma sul riquadro dei gol attesi nostri, che col consiglio non entra in una foto sola). Lo stato arriva per
-                // primo, la prova delle previsioni (a metà pagina) subito dopo: si scorre a entrambi arrivati.
+                // (#430: ferma sul riquadro dei gol attesi nostri, che col consiglio non entra in una foto sola); `lega-stato-taratura`
+                // e `lega-stato-prova` (#527, #842) si fermano più in alto (`FondoDemo.arrivo`). Lo stato arriva per primo, la prova
+                // delle previsioni (a metà pagina) subito dopo: si scorre a entrambi arrivati.
                 .demoInFondo()
                 .demoScorriA(FondoDemo.arrivoDiStato.id, proxy: proxy, schermate: ["lega-stato"], inFondo: true,
                              ancora: FondoDemo.arrivoDiStato.ancora,
@@ -698,8 +645,10 @@ struct StatoDatiView: View {
     @ViewBuilder
     private var affidabilitaContenuto: some View {
         if let a = affidabilita.dato, let s = a.sintesi, (s.giornate ?? 0) > 0 {
-            Text("Prova sulle ultime \(s.giornate ?? 0) giornate giocate, usando per ognuna solo i dati che c'erano prima. «Da fantamedia» è la scelta più semplice: chi ha la media più alta.")
+            // la frase della web (`avv.prova_su`, #839): cosa vuol dire «da fantamedia», non più «chi ha la media più alta» (#840)
+            Text(Catalogo.Avv.provaSu(s.giornate ?? 0))
                 .font(.footnote).foregroundStyle(Color.testoSecondario)
+                .id(FondoDemo.idProva)   // dove si ferma la foto `lega-stato-prova` (solo demo, #842)
             FilaTessere {
                 TesseraDato(valore: s.erroreModello.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: "errore sui fantavoti (SchieraXI)")
                 TesseraDato(valore: s.erroreFantamedia.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: "errore (da fantamedia)")

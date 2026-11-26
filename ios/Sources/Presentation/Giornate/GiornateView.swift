@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// La pagina Giornate (#673, passo 2), seconda nella barra come sulla web (#671): in cima una riga sola sulla precisione con
-/// «Dettagli», poi una riga per giornata finita, dalla più recente, con i punti fatti e attesi della formazione che conta. Sul telefono
-/// gli 11 si aprono sotto la riga (anche più giornate insieme); sull'iPad l'elenco sta a sinistra e la giornata scelta a destra, con la
-/// più recente già aperta. Testi dal catalogo comune, numeri e frasi da `GET /api/diario` (`PaginaGiornate`).
+/// La pagina Giornate (#673, passo 2), seconda nella barra come sulla web (#671): sotto il titolo la riga della web con giornata,
+/// mia squadra e data dei dati (#863), una riga sola sulla precisione con «Dettagli», poi una riga per giornata finita, dalla più
+/// recente, con i punti fatti e attesi della formazione che conta. Sul telefono gli 11 si aprono sotto la riga (anche più giornate
+/// insieme); sull'iPad l'elenco sta a sinistra e la giornata scelta a destra, con la più recente già aperta. Testi dal catalogo
+/// comune, numeri e frasi da `GET /api/diario` (`PaginaGiornate`) e `GET /api/stato` (`RigaStato`).
 struct GiornateView: View {
     @ObservedObject var vm: GiornateViewModel
     @EnvironmentObject private var nav: Navigazione
@@ -30,38 +31,41 @@ struct GiornateView: View {
 
     private var pila: some View {
         NavigationStack {
-            List {
-                TitoloNellaPagina()
-                if let p = vm.pagina {
-                    testa(p)
-                    if p.righe.isEmpty {
-                        vuoto(p)
-                    } else {
-                        Section {
-                            ForEach(p.righe) { r in
-                                DisclosureGroup(isExpanded: aperta(r.id)) {
-                                    if let d = p.dettaglio(r.id) {
-                                        DettaglioGiornataView(dettaglio: d, esito: vm.esito(per: r.id)) { daCorreggere = p.voce(r.id) }
+            ScrollViewReader { proxy in
+                List {
+                    capo
+                    if let p = vm.pagina {
+                        testa(p)
+                        if p.righe.isEmpty {
+                            vuoto(p)
+                        } else {
+                            Section {
+                                ForEach(p.righe) { r in
+                                    DisclosureGroup(isExpanded: aperta(r.id)) {
+                                        if let d = p.dettaglio(r.id) {
+                                            DettaglioGiornataView(dettaglio: d, esito: vm.esito(per: r.id)) { daCorreggere = p.voce(r.id) }
+                                        }
+                                    } label: {
+                                        RigaGiornataView(riga: r)
+                                            .accessibilityFocused($fuoco, equals: r.id)
                                     }
-                                } label: {
-                                    RigaGiornataView(riga: r)
-                                        .accessibilityFocused($fuoco, equals: r.id)
+                                    .tint(Color.testoSecondario)
                                 }
-                                .tint(Color.testoSecondario)
                             }
                         }
+                    } else if let e = vm.caricatore.errore {
+                        ErroreVista(messaggio: e) { Task { await vm.carica() } }
+                    } else {
+                        ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                     }
-                } else if let e = vm.caricatore.errore {
-                    ErroreVista(messaggio: e) { Task { await vm.carica() } }
-                } else {
-                    ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                 }
+                .scrollContentBackground(.hidden)
+                .background(Sfondo())
+                .avvisoDatiSalvati(vm.caricatore)
+                .titoloPagina(Catalogo.Nav.giornate)
+                .refreshable { await vm.carica() }
+                .demoScorriAlConfronto(proxy: proxy, pronto: vm.pagina?.dettagli != nil)   // foto `giornate-confronto` (#842)
             }
-            .scrollContentBackground(.hidden)
-            .background(Sfondo())
-            .avvisoDatiSalvati(vm.caricatore)
-            .titoloPagina(Catalogo.Nav.giornate)
-            .refreshable { await vm.carica() }
         }
     }
 
@@ -77,31 +81,34 @@ struct GiornateView: View {
     /// Elenco a sinistra, la giornata scelta a destra (una alla volta, la più recente già aperta).
     private var colonne: some View {
         NavigationSplitView {
-            List(selection: sceltaIPad) {
-                TitoloNellaPagina()
-                if let p = vm.pagina {
-                    testa(p)
-                    if p.righe.isEmpty {
-                        vuoto(p)
-                    } else {
-                        Section {
-                            ForEach(p.righe) { r in
-                                RigaGiornataView(riga: r)
-                                    .accessibilityFocused($fuoco, equals: r.id)
+            ScrollViewReader { proxy in
+                List(selection: sceltaIPad) {
+                    capo
+                    if let p = vm.pagina {
+                        testa(p)
+                        if p.righe.isEmpty {
+                            vuoto(p)
+                        } else {
+                            Section {
+                                ForEach(p.righe) { r in
+                                    RigaGiornataView(riga: r)
+                                        .accessibilityFocused($fuoco, equals: r.id)
+                                }
                             }
                         }
+                    } else if let e = vm.caricatore.errore {
+                        ErroreVista(messaggio: e) { Task { await vm.carica() } }
+                    } else {
+                        ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                     }
-                } else if let e = vm.caricatore.errore {
-                    ErroreVista(messaggio: e) { Task { await vm.carica() } }
-                } else {
-                    ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                 }
+                .scrollContentBackground(.hidden)
+                .background(Sfondo())
+                .avvisoDatiSalvati(vm.caricatore)
+                .titoloPagina(Catalogo.Nav.giornate)
+                .refreshable { await vm.carica() }
+                .demoScorriAlConfronto(proxy: proxy, pronto: vm.pagina?.dettagli != nil)   // foto `giornate-confronto` (#842)
             }
-            .scrollContentBackground(.hidden)
-            .background(Sfondo())
-            .avvisoDatiSalvati(vm.caricatore)
-            .titoloPagina(Catalogo.Nav.giornate)
-            .refreshable { await vm.carica() }
         } detail: {
             NavigationStack {
                 dettaglioIPad
@@ -149,6 +156,7 @@ struct GiornateView: View {
                 if let titolo = p.titoloDettagli, let t = p.dettagli {
                     DisclosureGroup(isExpanded: $vm.dettagliAperti) {
                         PrecisioneView(testo: t)
+                            .id(ConfrontoDemo.idDettagli)   // dove arriva la foto `giornate-confronto` (solo demo, #842)
                     } label: {
                         Text(titolo)
                             .font(.subheadline.weight(.semibold))
@@ -167,6 +175,14 @@ struct GiornateView: View {
                 .font(.subheadline).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    /// In cima alla lista il titolo intero (solo con il testo grande) e sotto la riga della web: giornata, mia squadra e data dei
+    /// dati (#863).
+    @ViewBuilder
+    private var capo: some View {
+        TitoloNellaPagina()
+        if let riga = vm.rigaStato { RigaStatoView(riga: riga) }
     }
 
     /// «Com'è andata» della Formazione: la giornata chiesta passa alla pagina, che la apre appena c'è.

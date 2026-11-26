@@ -32,14 +32,14 @@ def test_predefinito_aspetta_e_regole_vecchie_si_leggono(tmp_path):
 
 
 @pytest.mark.parametrize("cambio, frase", [
-    ({"partite_rinviate": "boh"}, "partite_rinviate"),
-    ({"partite_rinviate": 3}, "partite_rinviate deve essere un testo"),
+    ({"partite_rinviate": "boh"}, "le partite rinviate devono aspettare il recupero"),
+    ({"partite_rinviate": 3}, "«Partite rinviate» deve essere un testo"),
     ({"voto_ufficio_rinviate": 11}, "tra 0 e 10"),
-    ({"voto_ufficio_rinviate": "sei"}, "voto_ufficio_rinviate deve essere un numero"),
+    ({"voto_ufficio_rinviate": "sei"}, "«Voto d.ufficio delle partite rinviate» deve essere un numero"),
     ({"rinvii_giornate": {"2026-27/39": "aspetta"}}, "non è del tipo"),
     ({"rinvii_giornate": {"giornata 12": "aspetta"}}, "non è del tipo"),
     ({"rinvii_giornate": {"2026-27/12": "rinvia"}}, "deve essere una di"),
-    ({"rinvii_giornate": ["2026-27/12"]}, "rinvii_giornate deve essere"),
+    ({"rinvii_giornate": ["2026-27/12"]}, "ogni eccezione delle partite rinviate deve dire la giornata"),
     ({"rinvii_giornate": {f"2026-27/{g}": "aspetta" for g in range(1, 39)} | {f"2025-26/{g}": "aspetta" for g in range(1, 39)}
       | {"2024-25/1": "aspetta"}}, "al massimo"),
 ])
@@ -153,6 +153,29 @@ PARTITE = [{"casa": "inter", "trasferta": "milan", "stato": "finita"}, {"casa": 
 VOTI = {i: {"voto_red": 6.0} for i in list(range(1, 10)) + [11, 12]}
 
 
+def test_partita_solo_ritardata_non_fa_scattare_il_voto_d_ufficio():
+    """#901: la diretta dà Roma-Lazio «ritardata» (calcio d'inizio rimandato di poco, stessa sera). Con la regola «voto d'ufficio»
+    il giocatore della Roma non è «rinviata» e non prende il 6 d'ufficio: deve ancora giocare. Prima «ritardata» diventava «sospesa»
+    e Oggi la trattava come rinviata: voto d'ufficio tra i punti fatti (o «aspetta il recupero»)."""
+    from datetime import datetime
+    from fanta import live
+    corpo = {"events": [{"date": "2026-11-08T19:45Z", "competitions": [{
+        "status": {"type": {"name": "STATUS_DELAYED", "state": "pre"}, "displayClock": "0'", "period": 0},
+        "competitors": [{"homeAway": "home", "score": "0", "team": {"id": "1", "displayName": "Roma"}},
+                        {"homeAway": "away", "score": "0", "team": {"id": "2", "displayName": "Lazio"}}], "details": []}]}]}
+    diretta = {(p["casa"], p["trasferta"]): p | {"visto": "2026-11-08T20:49:30"}               # letta da poco (Raccoglitore.stati)
+               for p in live.leggi_espn(corpo, {"roma", "lazio"})}
+    roma = {"data": "2026-11-08 20:45", "casa": "roma", "trasferta": "lazio", "giocata": False}
+    stato = fasi.stato_partita(roma, datetime(2026, 11, 8, 20, 50), diretta)       # cinque minuti dopo l'orario previsto
+    assert stato != "rinviata"
+    regole = replace(Regole(), partite_rinviate="voto_ufficio")
+    a = fasi.andamento(TIT, PANC, [PARTITE[0], roma | {"stato": stato}], VOTI, {"inter", "milan"}, {10: 6.0}, set(), regole,
+                       {10: (0.8, 7.5, 6.3)}, rinvii.regola(regole, ST, 10))
+    g10 = next(g for g in a["giocatori"] if g["id"] == 10)
+    assert g10["stato"] == "da_giocare" and g10["fantavoto"] is None and g10["a_punteggio"]
+    assert a["punti_fatti"] == 61.0 and a["ancora_da_giocare"] == 1             # senza il 6 d'ufficio (67 con la partita rinviata)
+
+
 @pytest.mark.parametrize("modo, fatti, stato_cambio, entra", [("aspetta", 61.0, None, None),        # portiere 7 + 9 da 6
                                                                ("senza_voto", 67.0, True, 12),       # + la riserva
                                                                ("voto_ufficio", 67.0, None, None)])  # + il 6 d'ufficio
@@ -174,6 +197,16 @@ def test_andamento_con_la_partita_rinviata(modo, fatti, stato_cambio, entra):
         assert a["punti_attesi_restanti"] == pytest.approx(0.8 * 7.5 + 0.2 * 6.0, abs=0.6)    # se poi non gioca entra la riserva
     else:
         assert a["punti_attesi_restanti"] == 0.0
+
+
+def test_andamento_con_tutti_i_giocatori_nella_partita_rinviata_nessuno_ha_giocato():
+    """#895, revisione: se tutti quelli che vanno a punteggio aspettano il recupero, nessuno ha giocato: niente «Hanno giocato tutti
+    tranne A, B… e K», ma la frase sua."""
+    tutti_roma = [g | {"squadra": "roma"} for g in TIT]
+    a = fasi.andamento(tutti_roma, [], PARTITE, {}, {"inter", "milan"}, {}, set(), Regole(), None, rinvii.regola(Regole(), ST, 10))
+    assert a["ancora_da_giocare"] == 0
+    assert (a["situazione"], a["situazione_frase"]) == ("I tuoi giocatori aspettano tutti il recupero.",
+                                                        {"chiave": "in_corso.tutti_recupero", "param": {}})
 
 
 # ---------------------------------------------------------------- giornata finita con un recupero da giocare

@@ -2,6 +2,7 @@
 import random
 import re
 import time
+from pathlib import Path
 
 import pytest
 
@@ -86,7 +87,7 @@ def test_imbattuto_non_e_gol_subito_e_assist_da_gol_non_e_gol():
 
 
 def test_panchina_libera_e_crediti_non_confusi():
-    v = _per_chiave(regole_testo.interpreta("Panchina libera, senza vincoli di ruolo\nCrediti iniziali: 500 per 8 squadre\nCrediti residui alla giornata 3"))
+    v = _per_chiave(regole_testo.interpreta("Panchina libera, senza vincoli di ruolo\nCrediti iniziali: 500\nCrediti residui alla giornata 3"))
     assert v["panchina.tipo"] == "libera" and v["crediti_iniziali"] == 500
 
 
@@ -275,7 +276,8 @@ CONDIZIONI = {
     "Il modificatore della difesa, se non diversamente stabilito, non si applica": False,
     "In caso di cambio modulo non sono consentite più di 3 sostituzioni": None,
     "Se il titolare non gioca il cambio modulo non è consentito": None,
-    "Modificatore della difesa attivo quando non si usa la difesa a 3": True,
+    # il «3» non lo legge nessuna regola: la riga non propone niente e si controlla (regola dei numeri non spiegati, #884)
+    "Modificatore della difesa attivo quando non si usa la difesa a 3": None,
     "Il modificatore difesa si applica se il portiere non prende voto? No": None,
 }
 
@@ -514,6 +516,8 @@ CATTIVI = {
     "condizioni ripetute": "cambio modulo consentito " + "quando se non " * (N // 14),
     "parola nessun ripetuta": "cambio modulo consentito se " + "nessun " * (N // 7),
     "nessun e limite ripetuti": "nessun cambio modulo " + "nessun limite " * (N // 14),
+    "negazioni del punteggio ripetute": "assist " + "non e il nessun " * (N // 16),
+    "squadra composta ripetuta": "3 portieri, squadra " + "e la squadra " * (N // 13) + "composta",
 }
 
 
@@ -575,3 +579,343 @@ def test_stessi_numeri_di_prima_su_testi_brevi_a_caso():
             continue
         m_nuovo, m_vecchio = re.search(regole_testo.RUOLO_ROSA, s), re.search(VECCHIO_RUOLO, s)
         assert (m_nuovo and m_nuovo.groups()) == (m_vecchio and m_vecchio.groups()), repr(s)
+
+
+# ---------------------------------------------------------------- regolamento incollato: gol, rosa, titoli, righe lette in parte (#881)
+# Il testo di un regolamento inventato (tests/dati), scritto come quelli veri: titoli con il numero dell'articolo, una riga di rosa
+# con tutti i ruoli, il gol con l'eccezione del portiere fra parentesi.
+REGOLAMENTO_INVENTATO = (Path(__file__).parent / "dati" / "regolamento_inventato.txt").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("riga", [
+    "Gol segnato: +3 punti (il gol del portiere vale +5)",
+    "Gol: +3 (portiere +5)",
+    "Gol: 3 punti; portiere: 5 punti",
+])
+def test_gol_con_l_eccezione_di_un_ruolo_vale_per_tutti_gli_altri(riga):
+    """Il primo numero è il gol di tutti i ruoli, quello dopo il ruolo citato vale solo per quel ruolo."""
+    v = _per_chiave(regole_testo.interpreta(riga))
+    assert (v["bonus.gol.P"], v["bonus.gol.D"], v["bonus.gol.C"], v["bonus.gol.A"]) == (5, 3, 3, 3)
+
+
+def test_gol_con_due_numeri_prima_del_ruolo_non_si_indovina():
+    """«3 punti, 5 per il portiere»: non si sa quale numero vada al portiere, la riga resta da controllare senza proposte."""
+    riga = "Gol: 3 punti, 5 per il portiere"
+    r = regole_testo.interpreta(riga)
+    assert not any(k.startswith("bonus.gol.") for k in _per_chiave(r))
+    assert [x["riga"] for x in r["da_controllare"]] == [riga]
+
+
+@pytest.mark.parametrize("riga, attesa", [
+    ("Rosa: portieri 3, difensori 9, centrocampisti 9, attaccanti 5", (3, 9, 9, 5)),
+    ("Portieri 3 difensori 8 centrocampisti 8 attaccanti 6", (3, 8, 8, 6)),
+    ("Ogni squadra è composta da 3 portieri, 8 difensori, 8 centrocampisti e 6 attaccanti.", (3, 8, 8, 6)),
+])
+def test_la_rosa_su_una_riga_si_legge_tutta(riga, attesa):
+    r = regole_testo.interpreta(riga)
+    v = _per_chiave(r)
+    assert (v["rosa.P"], v["rosa.D"], v["rosa.C"], v["rosa.A"]) == attesa
+    assert r["da_controllare"] == [] and r["non_riconosciute"] == []
+
+
+@pytest.mark.parametrize("riga", [
+    "Assist: +1 (assist da fermo +0,5)",
+    "Rosa: portieri 3, difensori 9 (10 nelle leghe a 12 squadre)",
+    "Modificatore difesa attivo con almeno 4 difensori",
+])
+def test_riga_letta_solo_in_parte_non_propone_niente_e_va_controllata(riga):
+    """Una riga propone valori solo se ogni suo numero è letto da una proposta: con un numero rimasto fuori non si propone niente
+    e la riga va fra quelle da controllare (decisione del coordinatore sulla #884)."""
+    r = regole_testo.interpreta(riga)
+    assert _per_chiave(r) == {}
+    assert r["da_controllare"] == [{"riga": riga, "regole": []}] and r["non_riconosciute"] == [riga]
+
+
+@pytest.mark.parametrize("riga", [
+    "ART. 2 - PUNTEGGI", "Art. 4 – Formazione e panchina", "Articolo 3: modificatore", "Capitolo 1", "2) Rosa", "3. Panchina",
+    "REGOLAMENTO LEGA DEGLI ESEMPI INVENTATI 2026/27", "Stagione 2026-2027",
+])
+def test_i_titoli_non_sono_righe_da_controllare(riga):
+    """Il numero dell'articolo o la stagione non sono valori di regola: un titolo senza altri numeri non si controlla a mano."""
+    r = regole_testo.interpreta(riga)
+    assert r["da_controllare"] == [] and r["non_riconosciute"] == []
+
+
+@pytest.mark.parametrize("riga, letto", [
+    ("1. Assist: +1", {"bonus.assist": 1}),
+    ("2. Crediti iniziali: 500", {"crediti_iniziali": 500}),
+    ("Art. 5 - Sostituzioni massime: 3", {"panchina.max_sostituzioni": 3}),
+])
+def test_il_numero_del_titolo_non_si_legge_come_valore(riga, letto):
+    r = regole_testo.interpreta(riga)
+    assert _per_chiave(r) == letto and r["da_controllare"] == []
+
+
+def test_regolamento_inventato_con_titoli_rosa_e_gol():
+    r = regole_testo.interpreta(REGOLAMENTO_INVENTATO)
+    v = _per_chiave(r)
+    assert (v["rosa.P"], v["rosa.D"], v["rosa.C"], v["rosa.A"]) == (3, 9, 9, 5)
+    assert (v["bonus.gol.P"], v["bonus.gol.D"], v["bonus.gol.C"], v["bonus.gol.A"]) == (5, 3, 3, 3)
+    assert [x["riga"] for x in r["da_controllare"]] == ["Assist: +1 (assist da fermo +0,5)"]
+
+
+# Revisione della #884: righe che si leggevano male. Meglio una riga da controllare a mano che un valore sbagliato.
+def _solo_da_controllare(riga, chiavi=None):
+    r = regole_testo.interpreta(riga)
+    proposte = _per_chiave(r)
+    assert (not proposte) if chiavi is None else not any(k.startswith(chiavi) for k in proposte), proposte
+    assert [x["riga"] for x in r["da_controllare"]] == [riga]
+
+
+@pytest.mark.parametrize("riga", ["(+3) Gol segnato", "(-1) Espulsione", "(+1) Assist"])
+def test_il_valore_fra_parentesi_in_testa_non_e_il_numero_di_un_elenco(riga):
+    """«(+3)» in testa alla riga è il valore, non il numero dell'elenco come «3)»: la riga non si svuota e resta da controllare."""
+    _solo_da_controllare(riga)
+
+
+@pytest.mark.parametrize("riga", [
+    "La formazione titolare è composta da 1 portiere, 4 difensori, 4 centrocampisti e 2 attaccanti",
+    "Il modulo base è composto da 4 difensori, 4 centrocampisti e 2 attaccanti",
+    "Moduli: difensori 3-5, centrocampisti 3-5, attaccanti 1-3",
+])
+def test_formazione_e_moduli_non_sono_la_rosa(riga):
+    _solo_da_controllare(riga, "rosa.")
+
+
+def test_la_squadra_composta_da_e_la_rosa():
+    v = _per_chiave(regole_testo.interpreta("La squadra è composta da 3 portieri, 8 difensori, 8 centrocampisti e 6 attaccanti"))
+    assert (v["rosa.P"], v["rosa.D"], v["rosa.C"], v["rosa.A"]) == (3, 8, 8, 6)
+
+
+@pytest.mark.parametrize("riga", [
+    "Gol: +3 (anche per il portiere)",
+    "Gol segnato: +3 (doppio per il portiere)",
+    "Gol segnato: +3 punti, compreso il portiere",
+])
+def test_gol_con_un_numero_prima_del_ruolo_e_nessuno_dopo_non_si_indovina(riga):
+    """Il portiere citato dopo l'unico numero può essere un'eccezione, un'aggiunta o un multiplo: la riga si controlla a mano."""
+    _solo_da_controllare(riga, "bonus.gol.")
+
+
+@pytest.mark.parametrize("riga, chiave", [
+    ("L'assist non dà bonus, il gol vale 3", "bonus.assist"),
+    ("Nessun malus per l'autogol, ammonizione -0,5", "bonus.autogol"),
+    ("Nessun bonus per il gol del portiere, gli altri +3", "bonus.gol."),
+])
+def test_una_regola_negata_non_prende_il_numero_di_un_altra(riga, chiave):
+    _solo_da_controllare(riga, chiave)
+
+
+def test_i_crediti_si_leggono_subito_prima_o_dopo_la_parola():
+    assert _per_chiave(regole_testo.interpreta("Crediti iniziali: 500"))["crediti_iniziali"] == 500
+    assert _per_chiave(regole_testo.interpreta("Si parte con 500 crediti"))["crediti_iniziali"] == 500
+
+
+# ---------------------------------------------------------------- corpus delle revisioni (#881, PR #884)
+# Tutte le righe viste dai revisori, con il risultato atteso: le proposte (vuoto = nessuna) e se la riga va fra quelle da
+# controllare a mano. La regola: una proposta solo quando la riga è inequivocabile; nel dubbio nessuna proposta e la riga si
+# controlla. Una riga che dà un valore sicuro ma ha anche numeri non letti propone quel valore e va controllata.
+def _gol(p, d, c, a):
+    return {"bonus.gol.P": p, "bonus.gol.D": d, "bonus.gol.C": c, "bonus.gol.A": a}
+
+
+def _rosa(p, d, c, a):
+    return {"rosa.P": p, "rosa.D": d, "rosa.C": c, "rosa.A": a}
+
+
+CORPUS = {
+    # titoli e numeri d'elenco
+    "2. Crediti iniziali: 500": ({"crediti_iniziali": 500}, False),
+    "2.1 Crediti iniziali: 500": ({}, True),
+    "2.1. Crediti iniziali: 500": ({"crediti_iniziali": 500}, False),
+    "- 2. Crediti iniziali: 500": ({"crediti_iniziali": 500}, False),
+    "Art. 3: il gol vale 3 punti": ({}, True),
+    "Art. 3 - Gol: +3": (_gol(3, 3, 3, 3), False),
+    "Art.4 Assist +1": ({"bonus.assist": 1}, False),
+    "3) Panchina: 7 giocatori": ({"panchina.numero": 7}, False),
+    "3) Gol: +3": (_gol(3, 3, 3, 3), False),
+    "(+3) Gol segnato": ({}, True),
+    "(-1) Espulsione": ({}, True),
+    "(+1) Assist": ({}, True),
+    "(3) Gol segnato": ({}, True),
+    "+3 Gol segnato": ({}, True),
+    "1) +1 assist": ({}, True),
+    "[2] Rosa": ({}, False),
+    "Cap. 2 - Ammonizione -0,5": ({"bonus.ammonizione": -0.5}, False),
+    "Stagione 2026/27: crediti iniziali 1000": ({"crediti_iniziali": 1000}, False),
+    # crediti: il numero subito prima di «crediti», altrimenti il primo dopo
+    "Ogni squadra ha a disposizione 500 crediti per acquistare 25 giocatori": ({}, True),
+    "Si parte con 1000 crediti, piu' 50 per ogni giornata vinta": ({}, True),
+    "Budget iniziale: 500 crediti (minimo 1 per giocatore)": ({}, True),
+    "Ogni allenatore parte con 300 crediti": ({"crediti_iniziali": 300}, False),
+    # gol
+    "Gol segnato: +3 (doppio per il portiere)": ({}, True),
+    "Gol segnato: +3 punti, compreso il portiere": ({}, True),
+    "Gol: +3 (anche per il portiere)": ({}, True),
+    "Gol: +3 (il portiere non ha bonus in piu')": ({}, True),
+    "Gol del portiere: +5": ({"bonus.gol.P": 5}, False),
+    "Gol: 3 punti (difensore 4,5)": (_gol(3, 4.5, 3, 3), False),
+    "Gol segnato: +3; se segna il portiere +5": (_gol(5, 3, 3, 3), False),
+    "Gol: +3 (+5 se segna il portiere)": ({}, True),
+    "Gol: +3, portiere +5, difensore +4": ({}, True),
+    "Gol: attaccante 3, centrocampista 3,5, difensore 4, portiere 5": (_gol(5, 4, 3.5, 3), False),
+    "Gol segnato: +3, senza distinzione di ruolo": (_gol(3, 3, 3, 3), False),
+    "Gol segnato, senza contare i rigori: +3": ({}, True),
+    "Non e' previsto il bonus per il gol del portiere": ({}, True),
+    "Nessun bonus per il gol del portiere, gli altri +3": ({}, True),
+    # rosa: il numero prima del ruolo solo con «rosa» o «squadra … composta»; un totale diverso dalla somma è un dubbio
+    "Rosa di 25 giocatori: 3 portieri, 8 difensori, 8 centrocampisti, 6 attaccanti": (_rosa(3, 8, 8, 6), False),
+    "La rosa e' composta da 25 giocatori: 3 portieri, 8 difensori, 8 centrocampisti e 6 attaccanti": (_rosa(3, 8, 8, 6), False),
+    "Rosa di 26 giocatori: 3 portieri, 8 difensori, 8 centrocampisti, 6 attaccanti": ({}, True),
+    "La formazione titolare e' composta da 1 portiere, 4 difensori, 4 centrocampisti e 2 attaccanti": ({}, True),
+    "Ogni formazione e' composta da 11 giocatori: 1 portiere, 4 difensori, 4 centrocampisti, 2 attaccanti": ({}, True),
+    "Il modulo base e' composto da 4 difensori, 4 centrocampisti e 2 attaccanti": ({}, True),
+    "Moduli: difensori 3-5, centrocampisti 3-5, attaccanti 1-3": ({}, True),
+    "Ogni squadra deve avere almeno 1 portiere in panchina": ({}, True),
+    "Ogni squadra puo' sostituire 1 portiere infortunato durante l'anno": ({}, True),
+    "Ogni squadra scende in campo con 1 portiere, 4 difensori, 3 centrocampisti e 3 attaccanti": ({}, True),
+    "Squadre da 25: 3 portieri, 8 difensori, 8 centrocampisti, 6 attaccanti": ({}, True),
+    # panchina e cambi
+    "Panchina di 12 giocatori: 2 portieri, 3 difensori, 3 centrocampisti, 3 attaccanti": ({}, True),
+    "Panchina di 11 giocatori: 2 portieri, 3 difensori, 3 centrocampisti, 3 attaccanti":
+        ({"panchina.posti": {"P": 2, "D": 3, "C": 3, "A": 3}, "panchina.numero": 11}, False),
+    "Mercato di riparazione: ogni squadra puo' cambiare al massimo 2 difensori": ({}, True),
+    # bonus e malus, con i «non» e i «senza» che negano davvero e quelli che fanno parte del nome della regola
+    "Portiere imbattuto: +1 (se gioca 90 minuti)": ({}, True),
+    "Ammonizione: -0,5 (doppia ammonizione: espulsione -1)": ({}, True),
+    "Nessun bonus per l'assist": ({}, True),
+    "Assist: nessun bonus": ({}, True),
+    "L'assist non da' bonus, il gol vale 3": ({}, True),
+    "Nessun malus per l'autogol, ammonizione -0,5": ({"bonus.ammonizione": -0.5}, True),
+    "Rigore non realizzato, -3": ({"bonus.rigore_sbagliato": -3}, False),
+    "Rigore sbagliato o non segnato, -3": ({"bonus.rigore_sbagliato": -3}, False),
+    "Clean sheet (portiere senza gol subiti), +1": ({"bonus.portiere_imbattuto": 1}, False),
+    "Portiere imbattuto, senza subire gol: +1": ({"bonus.portiere_imbattuto": 1}, False),
+    "Autogol: -2, nessun bonus per l'assist": ({"bonus.autogol": -2}, True),
+    "Assist: +1, nessun bonus per l'assist da fermo": ({"bonus.assist": 1}, False),
+    "Nessun bonus per l'assist, gol +3": ({}, True),
+    "Ammonizione, anche senza giocare: -0,5": ({"bonus.ammonizione": -0.5}, False),
+    "Espulsione (non cumulabile), -1": ({"bonus.espulsione": -1}, False),
+    "Assist, non da calcio piazzato: +1": ({"bonus.assist": 1}, False),
+    "Migliore in campo, se non espulso: +1": ({"bonus.mvp": 1}, False),
+    # quarto giro: ogni numero della riga deve essere letto da una proposta (anche ripetuto, anche col segno), altrimenti la
+    # riga non propone niente; la forma «ruolo numero» solo su righe di rosa; altre negazioni del punteggio
+    "Crediti iniziali: 500 per 8 squadre": ({}, True),
+    "Crediti iniziali: 500 (rilancio minimo 1 credito)": ({}, True),
+    "Crediti iniziali: 500 (600 crediti con 8 squadre)": ({}, True),
+    "Budget: 500; chi entra a meta' stagione parte con 300 crediti": ({}, True),
+    "L'autogol non viene penalizzato, ammonizione -0,5": ({"bonus.ammonizione": -0.5}, True),
+    "Autogol: nessuna penalita'; espulsione -1": ({"bonus.espulsione": -1}, True),
+    "Autogol: non penalizza, ammonizione -0,5": ({"bonus.ammonizione": -0.5}, True),
+    "Autogol senza malus, espulsione -1": ({"bonus.espulsione": -1}, True),
+    "In campo: portiere 1, difensori 4, centrocampisti 3, attaccanti 3": ({}, True),
+    "Gol decisivo per la vittoria: +1, gol segnato: +3": ({}, True),
+    "Assist da fermo: +0,5; assist su azione: +1": ({}, True),
+    "Gol segnato dal portiere: +5, dagli altri ruoli +3": ({}, True),
+    "Gol: +3 punti (+1 se su punizione)": ({}, True),
+    "Gol: +3 (+3 su punizione)": ({}, True),
+    "Riserve: 7 (massimo 5 cambi)": ({"panchina.numero": 7, "panchina.max_sostituzioni": 5}, False),
+    "Rosa: 25 giocatori (3 portieri, 8 difensori, 8 centrocampisti, 6 attaccanti)": (_rosa(3, 8, 8, 6), False),
+    "Rosa: 3 portieri, 8 difensori, 8 centrocampisti, 6 attaccanti; massimo 3 giocatori della stessa squadra": ({}, True),
+    "Rosa: portieri 3, difensori 8, centrocampisti 8, attaccanti 6, extracomunitari 2": ({}, True),
+    "Ammonizione: nessun malus se seguita da espulsione, altrimenti -0,5": ({}, True),
+    "Assist: 0 punti (nessun bonus)": ({"bonus.assist": 0}, False),
+    "Zero punti per l'assist, +3 per il gol": ({}, True),
+    "Gol: +3; nessun punto in piu' per il portiere": ({}, True),
+    "Panchina: 7 giocatori, almeno 1 portiere": ({}, True),
+    "Sostituzioni: al massimo 3, anche fuori ruolo": ({"panchina.max_sostituzioni": 3}, False),
+    "Cambio modulo non consentito; massimo 3 cambi": ({"panchina.max_sostituzioni": 3, "panchina.cambio_modulo": False}, False),
+    "La squadra e' composta da 25 calciatori: 3 portieri, 8 difensori, 8 centrocampisti e 6 attaccanti": (_rosa(3, 8, 8, 6), False),
+    "Porta inviolata: +1 (gol subito: -1)": ({}, True),
+    "Migliore in campo: +1; peggiore in campo: -1": ({}, True),
+    # quinto giro (#888): la soglia del primo gol non è un bonus, il punto delle migliaia, una riga più generale non cancella
+    # un'eccezione già letta, un caso particolare della regola («in trasferta», «da fermo») non è la regola. Con più righe il
+    # secondo valore è l'elenco delle righe da controllare.
+    "Soglia gol: 66 punti": ({}, True),
+    "Gol: 66 punti": ({}, True),
+    "Punti per il primo gol: 66": ({}, True),
+    "Ampiezza fascia gol: 6 punti": ({}, True),
+    "Assist: 66": ({}, True),
+    "Crediti iniziali: 1.000": ({"crediti_iniziali": 1000}, False),
+    "Crediti iniziali: 2.500": ({"crediti_iniziali": 2500}, False),
+    "Si parte con 1.000 crediti": ({"crediti_iniziali": 1000}, False),
+    "Crediti iniziali: 1,000": ({}, True),
+    "Crediti iniziali: 500,5": ({}, True),
+    "Gol del portiere: +5\nGol segnato: +3": (_gol(5, 3, 3, 3), []),
+    "Gol segnato: +3\nGol del portiere: +5": (_gol(5, 3, 3, 3), []),
+    "Gol: 3 punti (difensore 4,5)\nGol segnato: +3": (_gol(3, 4.5, 3, 3), []),
+    "Assist: +1\nAssist da fermo: +0,5": ({"bonus.assist": 1}, ["Assist da fermo: +0,5"]),
+    "Assist da fermo: +0,5\nAssist: +1": ({"bonus.assist": 1}, ["Assist da fermo: +0,5"]),
+    "Assist da fermo: +0,5": ({}, True),
+    "Assist su calcio piazzato: +0,5": ({}, True),
+    "Doppia ammonizione: -1": ({}, True),
+    "Modificatore difesa\nMedia 6: +1\nMedia 6,5: +2\nPanchina: 7, massimo 5 cambi":
+        ({"modificatore_difesa.attivo": True, "modificatore_difesa.soglie": [[6, 1], [6.5, 2]], "panchina.numero": 7,
+          "panchina.max_sostituzioni": 5}, []),
+    "Modificatore difesa\nMedia 6: +1\nSostituzioni: 5 su 7 riserve":
+        ({"modificatore_difesa.attivo": True, "modificatore_difesa.soglie": [[6, 1]]}, ["Sostituzioni: 5 su 7 riserve"]),
+    "Gol segnato in trasferta: +0,5": ({}, True),
+    "Gol segnato: +0,5 in trasferta": ({}, True),
+    "Gol in trasferta: +0,5": ({}, True),
+    "Assist, non da calcio piazzato: +1\nAssist da fermo: +0,5": ({"bonus.assist": 1}, ["Assist da fermo: +0,5"]),
+    # prudenti apposta: «anche» non toglie il dubbio (può essere un'aggiunta), la riga si controlla
+    "Gol: +3 (anche in trasferta)": ({}, True),
+    "Espulsione (anche per doppia ammonizione): -1": ({}, True),
+    # revisione della #891: le fasce del modificatore si leggono tutte o nessuna. Una riga della sezione che sembra una fascia
+    # («media N: +M», un intervallo) e non si legge: nessuna fascia, e tutte le righe delle fasce si controllano
+    "Modificatore difesa\nMedia 6: +1\nMedia 6,5: +3 (vale come mezzo gol)\nMedia 7: +5":
+        ({"modificatore_difesa.attivo": True}, ["Media 6: +1", "Media 6,5: +3 (vale come mezzo gol)", "Media 7: +5"]),
+    "Modificatore difesa\nMedia 6: +1\nDa 6,5 a 6,99: +2\nMedia 7: +3":
+        ({"modificatore_difesa.attivo": True}, ["Media 6: +1", "Da 6,5 a 6,99: +2", "Media 7: +3"]),
+    "Modificatore difesa\nMedia 6: +1 (con almeno 4 difensori)\nMedia 6,5: +3":
+        ({"modificatore_difesa.attivo": True}, ["Media 6: +1 (con almeno 4 difensori)", "Media 6,5: +3"]),
+    "Modificatore difesa\n6: +1\n6,5: +3 (mezzo gol)\n7: +5":
+        ({"modificatore_difesa.attivo": True}, ["6: +1", "6,5: +3 (mezzo gol)", "7: +5"]),
+    "Modificatore difesa\nIl modificatore si calcola sulla media del portiere e dei 3 difensori migliori\nMedia 6: +1\nMedia 7: +3":
+        ({"modificatore_difesa.attivo": True, "modificatore_difesa.soglie": [[6, 1], [7, 3]]},
+         ["Il modificatore si calcola sulla media del portiere e dei 3 difensori migliori"]),
+}
+
+
+@pytest.mark.parametrize("testo", list(CORPUS))
+def test_corpus_delle_revisioni(testo):
+    proposte, da_controllare = CORPUS[testo]
+    r = regole_testo.interpreta(testo)
+    assert _per_chiave(r) == proposte
+    # una riga: True se va controllata; più righe: l'elenco di quelle da controllare, nell'ordine del testo
+    attese = ([testo] if da_controllare else []) if isinstance(da_controllare, bool) else da_controllare
+    assert [x["riga"] for x in r["da_controllare"]] == attese
+
+
+@pytest.mark.parametrize("riga, regola", [
+    ("Nessun bonus per l'assist", "bonus.assist"), ("Assist: nessun bonus", "bonus.assist"),
+    ("Autogol: -2, nessun bonus per l'assist", "bonus.assist"), ("Nessun malus per l'autogol, ammonizione -0,5", "bonus.autogol"),
+    ("Non e' previsto il bonus per il gol del portiere", "bonus.gol.P"),
+])
+def test_una_regola_negata_senza_valore_si_imposta_a_mano(riga, regola):
+    """«Nessun bonus per l'assist» dice un valore che la riga non scrive: va controllata con la regola da impostare."""
+    r = regole_testo.interpreta(riga)
+    assert regola in [g["chiave"] for x in r["da_controllare"] for g in x["regole"]]
+
+
+def test_le_fasce_non_lette_tutte_si_impostano_a_mano():
+    """Una fascia che non si legge lascia le fasce da impostare a mano, sotto ogni riga delle fasce (revisione della #891)."""
+    r = regole_testo.interpreta("Modificatore difesa\nMedia 6: +1\nDa 6,5 a 6,99: +2\nMedia 7: +3")
+    assert all([g["chiave"] for g in x["regole"]] == ["modificatore_difesa.soglie"] for x in r["da_controllare"])
+
+
+@pytest.mark.parametrize("posti_salvati", [None, {"P": 2, "D": 3, "C": 3, "A": 3}])
+def test_la_panchina_diversa_dalla_somma_dei_posti_letti_non_si_applica(posti_salvati):
+    """I posti per ruolo letti nel testo fissano la panchina alla loro somma (11): «La panchina è di 12» non si salverebbe."""
+    from fanta.regole import Regole
+    attuali = Regole()
+    attuali.panchina.posti, attuali.panchina.numero = posti_salvati, 11 if posti_salvati else 7
+    r = regole_testo.interpreta("Riserve: 2 portieri, 3 difensori, 3 centrocampisti, 3 attaccanti\nLa panchina è di 12 giocatori",
+                                attuali)
+    assert _per_chiave(r) == {"panchina.posti": {"P": 2, "D": 3, "C": 3, "A": 3}}
+    [na] = r["non_applicabili"]
+    assert (na["chiave"], na["valore"], na["motivo_frase"]["chiave"]) == ("panchina.numero", 12, "regole.panchina_somma_posti")
+    assert "11" in na["motivo"]
+    # una frase valida per la web e per l'iPhone: niente «Modifica i valori», che c'è solo sulla web (#889)
+    assert na["motivo"] == ("I posti per ruolo letti nel regolamento sono 11 in tutto e la panchina è la loro somma: controlla a mano i "
+                            "posti di ogni ruolo nei valori delle regole.")

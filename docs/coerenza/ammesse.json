@@ -48,7 +48,7 @@
     {
       "titolo": "Pedina sul campo",
       "precisazione": "(Formazione)",
-      "testo": "sulla web la pedina è il numero nel disco, senza volto: un disco bianco da 44 px con il fantavoto atteso e sotto il cognome; «gioca N%» solo sotto l'80%, arancio fra 50 e 79 e rosso sotto 50, con l'anello dello stesso colore attorno al disco (#616); a formazione chiusa, finché il numero è l'atteso (partita cominciata senza voto, rinviata o da giocare), il disco è vuoto, solo il bordo. Sull'iPhone la pedina ha il volto, con il fantavoto nella pillola scura, vuota (solo il bordo) negli stessi casi della web; sotto il cognome le stesse cose della web (#673, passo 1b): «gioca N%» solo sotto l'80% nella pillola arancio con ⚠ e sotto il 50% in quella rossa, lo stato a parole, a partita cominciata il suo stato, a formazione chiusa quando gioca. Niente avversario su tutti e due: sta nella scheda. Il contenuto è uguale, e la frase per i lettori di schermo anche.",
+      "testo": "sulla web la pedina è il numero nel disco, senza volto: un disco bianco da 44 px con il fantavoto atteso e sotto il cognome; «gioca N%» solo sotto l'80%, arancio fra 50 e 79 e rosso sotto 50, con l'anello dello stesso colore attorno al disco (#616); a formazione chiusa, finché il numero è l'atteso (partita cominciata senza voto, rinviata o da giocare), il disco è vuoto, solo il bordo. Sull'iPhone la pedina ha il volto, con il fantavoto nella pillola scura, vuota (solo il bordo) negli stessi casi della web; sotto il cognome le stesse cose della web (#673, passo 1b): «gioca N%» solo sotto l'80% nella pillola arancio con ⚠ e sotto il 50% in quella rossa, lo stato a parole, a partita cominciata il suo stato, a formazione chiusa quando gioca. Niente avversario su tutti e due: sta nella scheda. Il contenuto è uguale, e la frase per i lettori di schermo anche, con il ruolo dopo il nome (#882: sul campo il ruolo lo dice solo la fila).",
       "motivo": "decisione 2 del proprietario (12/11/2026, #677): sull'iPhone resta il volto; sulla web il numero è la pedina e i volti stanno negli elenchi e nella scheda (scelta 2 della spec della grafica B, 5/11/2026, §8.10)."
     },
     {
@@ -60,7 +60,7 @@
     {
       "titolo": "Scheda del giocatore sul PC",
       "precisazione": "(web da 1200 px)",
-      "testo": "scheda, confronto, scelta per il confronto, sostituzione di un titolare, «Perché questo numero» e risultati della ricerca si aprono in un pannello a destra, accanto alla pagina che resta attiva (un clic su un altro giocatore cambia il pannello); la ricerca si scrive nel campo della testata. Sull'iPhone e sull'iPad la scheda è un foglio di sistema, e sulla web più stretta il foglio di sempre. Nella scheda il fantavoto atteso è il numero grande con accanto «gioca N%», separati da un filo, e nel «Perché questo numero» l'effetto di ogni motivo sta a destra, in colonna (sull'iPhone a sinistra: «+1,1 · Segna più della media del ruolo»).",
+      "testo": "scheda, confronto, scelta per il confronto, sostituzione di un titolare, «Perché questo numero» e risultati della ricerca si aprono in un pannello a destra, accanto alla pagina che resta attiva (un clic su un altro giocatore cambia il pannello); la ricerca si scrive nel campo della testata. Sull'iPhone e sull'iPad la scheda è un foglio di sistema, e sulla web più stretta il foglio di sempre. Nella scheda il fantavoto atteso è il numero grande con accanto «gioca N%», separati da un filo, e nel «Perché questo numero» l'effetto di ogni motivo sta a destra, in colonna (sull'iPhone a sinistra: «+1,1 · segna più della media del ruolo»).",
       "motivo": "grafica B della web (spec del 5/11/2026, §5 C5, §8.11 e §9), comodità con il mouse. Testi e numeri sono gli stessi."
     },
     {
@@ -104,9 +104,9 @@
     },
     {
       "titolo": "Widget con il testo grande, forme corte",
-      "precisazione": "(riga della schermata di blocco di «Prossima giornata» e di «Formazione consigliata», medio di «Prossima giornata», rettangolo di «Da controllare»)",
-      "testo": "dove la forma intera non entra il widget perde parole intere, mai il modulo e mai con «…»: la riga «3-4-3 · 72,7 punti», la stessa nei due widget (#819), diventa «3-4-3 · 72,7»; nel medio, accanto al modulo, «72,7 punti» diventa «72,7»; nel rettangolo di «Da controllare» i giocatori passano tutti insieme dal nome intero al solo cognome, poi allo stato corto («Marténi · gioca 62%»). VoiceOver legge sempre la forma intera.",
-      "motivo": "il widget ha misure fisse e con il testo grande la forma intera non entra: prima uscivano «SchieraXI 3-4-3, 72,7…», «3-4…» e un nome intero accanto a un cognome (#787)."
+      "precisazione": "(riga della schermata di blocco di «Prossima giornata» e di «Formazione consigliata», medio di «Prossima giornata» e di «Formazione consigliata», rettangolo di «Da controllare»)",
+      "testo": "dove la forma intera non entra il widget perde parole intere, mai il modulo e mai con «…»: la riga «3-4-3 · 72,7 punti», la stessa nei due widget (#819), diventa «3-4-3 · 72,7»; nel medio, accanto al modulo, «72,7 punti» diventa «72,7»; nel rettangolo di «Da controllare» i giocatori passano tutti insieme dal nome intero al solo cognome, poi allo stato corto («Marténi · gioca 62%»); «2 da controllare» diventa «2 da vedere» (`oggi.da_vedere`, solo dei widget) e solo dove non entra nemmeno quello «2» con il triangolo. VoiceOver legge sempre la forma intera.",
+      "motivo": "il widget ha misure fisse e con il testo grande la forma intera non entra: prima uscivano «SchieraXI 3-4-3, 72,7…», «3-4…» e un nome intero accanto a un cognome (#787); nel medio di «Formazione consigliata» restava solo «⚠ 2», che da solo non si capisce (#848)."
     },
     {
       "titolo": "Accesso, «troppi tentativi»",

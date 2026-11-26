@@ -101,7 +101,7 @@ struct BarraPercentuale: View {
     }
 }
 
-/// La riga delle prossime partite di una squadra, colorate per difficoltà (come la tabella del calendario).
+/// La riga delle prossime partite di una squadra, colorate per difficoltà e con la difficoltà scritta sotto (come la web).
 struct ProssimePartite: View {
     let partite: [PartitaCalendario]
 
@@ -110,17 +110,25 @@ struct ProssimePartite: View {
         (p.inCasa == true ? "vs " : "@ ") + ColoriSquadra.sigla(p.avversario)
     }
 
+    /// La difficoltà a parole sotto «vs MIL», le parole della pillola della partita e della web (`diff.1`…`diff.5`): il colore
+    /// non è l'unico segno (#882).
+    static func parola(_ p: PartitaCalendario) -> String { Formato.nomeDifficolta(p.difficolta) }
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(partite) { p in
-                    Text(Self.cella(p)).font(.caption.bold()).lineLimit(1)
-                        .padding(.horizontal, 6)
-                        .foregroundStyle(Color.black)
-                        .frame(minWidth: 52, minHeight: 44)
-                        .background(Color.difficolta(p.difficolta).opacity(0.85), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel("\(TempiLega.serieA(p.giornata)): contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(Formato.difficolta(p.difficolta))")
+                    VStack(spacing: 0) {
+                        Text(Self.cella(p)).font(.caption.bold())
+                        Text(Self.parola(p)).font(.caption2.weight(.medium))
+                    }
+                    .lineLimit(1)
+                    .padding(.horizontal, 6).padding(.vertical, 4)
+                    .foregroundStyle(Color.black)
+                    .frame(minWidth: 52, minHeight: 44)
+                    .background(Color.difficolta(p.difficolta).opacity(0.85), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("\(TempiLega.serieA(p.giornata)): contro \(p.avversario), \(p.inCasa == true ? "in casa" : "in trasferta"), \(Formato.difficolta(p.difficolta))")
                 }
             }
         }

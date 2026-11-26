@@ -26,7 +26,8 @@ struct SquadraAltroDalCatalogoTests {
         "Lega/RegoleEditor.swift", "Lega/ImportaRoseView.swift", "Giornate/GiornateView.swift", "Giornate/GiornateViewModel.swift",
         "Giornate/DettaglioGiornataView.swift", "Giornate/RigaGiornataView.swift", "Giornate/FormazioneManualeDiarioView.swift",
         "Lega/EsitoRoseSalvate.swift", "Lega/AvvisiDispositivoSezione.swift", "Lega/LegaPagine.swift",
-        "Lega/LegaExtra.swift", "Lega/VociImpostazioni.swift",
+        "Lega/LegaExtra.swift", "Lega/VociImpostazioni.swift", "Lega/SceltaSquadraView.swift", "Lega/SelettoreMiaSquadra.swift",
+        "Giornate/RigaStatoView.swift",
         "Lega/LegaViewModels.swift", "Lega/LegaViewModels2.swift", "Lega/RigaRosa.swift",
         "Mercato/RigaRicerca.swift", "Mercato/DatiRigaRicerca.swift", "Mercato/RicercaGiocatoreView.swift",
     ]

@@ -67,6 +67,12 @@ extension FinteServer {
             server.risposte["/api/oggi"] = DatiDemo.oggiCampionatoFinito()
             server.fallimenti["/api/formazione"] = .codificato(codice: "campionato_finito", messaggio: DatiDemo.testoCampionatoFinito)
             server.indirizzoFinto = "https://finto-campionato-finito.invalid"
+        case "giornate-confronto":
+            // la foto del plurale «1,0 punti» in Giornate › Dettagli (#842): il diario con il confronto a 1,0 punti
+            if let diario = server.risposte["/api/diario"] {
+                server.risposte["/api/diario"] = DatiDemo.diarioConfrontoAUnPunto(diario)
+            }
+            server.indirizzoFinto = "https://finto-confronto-un-punto.invalid"
         default:
             return nil
         }
@@ -275,7 +281,9 @@ private extension LegaDemo {
         d["avanzate"] = ["minuti": 560 + p.id % 200, "xg": 3.4 + Double(p.id % 5) * 0.7, "xa": 1.2 + Double(p.id % 3) * 0.4, "tiri": 22 + p.id % 9,
                          "passaggi_chiave": 9 + p.id % 7, "rigori_calciati": p.id % 4 == 0 ? 2 : 0, "punizioni": p.id % 5 == 0 ? 3 : 0,
                          "per_90": ["xg": 0.52, "xa": 0.18, "tiri": 3.1],
-                         "stagioni_precedenti": [["stagione": "2025-26", "minuti": 2400, "gol": 11, "xg": 10.2, "assist": 4, "xa": 3.6]]] as [String: Any]
+                         "stagioni_precedenti": [["stagione": "2025-26", "minuti": 2400, "gol": 11, "xg": 10.2, "assist": 4, "xa": 3.6]],
+                         // come il server (#862): il giorno dell'ultima partita letta dalla fonte, qualche giorno prima di adesso
+                         "dati_fino_al": formatta(adesso.addingTimeInterval(-3 * 86_400), "yyyy-MM-dd")] as [String: Any]
         d["rendimento"] = ["sovra_rendimento": p.id % 2 == 0 ? 0.42 : -0.38, "gol_meno_xg": p.id % 2 == 0 ? 0.9 : -1.1, "assist_meno_xa": 0.2] as [String: Any]
         if let o = fantasquadra(di: p.id) { d["proprietario"] = o }
         return d
@@ -735,8 +743,8 @@ private extension LegaDemo {
     }
 
     static func stato(adesso: Date) -> String {
-        json(["stagione": "2026-27", "prossima_giornata": giornata, "mia_squadra": nomeMia, "rose_importate": true, "versione": "1.9",
-              "ultimo_aggiornamento": ultimoAggiornamento(adesso: adesso)])
+        json(["stagione": "2026-27", "prossima_giornata": giornata, "prossima_giornata_lega": giornataLega, "mia_squadra": nomeMia,
+              "rose_importate": true, "versione": "1.9", "ultimo_aggiornamento": ultimoAggiornamento(adesso: adesso)])
     }
 
     static func statoDati(adesso: Date) -> String {
@@ -869,13 +877,23 @@ private extension LegaDemo {
         ])
     }
 
+    /// Le righe di `regolamentoIncollato` (DemoRegolamento.swift) lette come le legge il server, con le regole della demo (posti fissi
+    /// in panchina, 2 + 3 + 3 + 3).
     static func riconosci() -> String {
         json(["modifiche": [
             ["chiave": "bonus.assist", "etichetta": "Assist", "valore": 1.0, "riga": "Assist: +1 punto"],
             ["chiave": "bonus.ammonizione", "etichetta": "Ammonizione", "valore": -0.5, "riga": "Ammonizione: -0.5"],
-            ["chiave": "panchina.numero", "etichetta": "Giocatori in panchina", "valore": 7, "riga": "Panchina: 7 giocatori"],
+            ["chiave": "panchina.tipo", "etichetta": "Ordine dei cambi", "valore": "per_ruolo", "riga": "Sostituzioni per ruolo"],
+            ["chiave": "panchina.posti", "etichetta": "Posti in panchina per ruolo", "valore": ["P": 2, "D": 3, "C": 3, "A": 3] as [String: Any],
+             "riga": "Panchina: 2 portieri, 3 difensori, 3 centrocampisti, 3 attaccanti"],
             ["chiave": "moduli", "etichetta": "Moduli ammessi", "valore": ["3-4-3", "4-3-3", "4-4-2"], "riga": "Moduli: 3-4-3, 4-3-3, 4-4-2"],
         ] as [[String: Any]], "non_riconosciute": ["Il bonus per il rigore parato vale 3 punti, tranne in coppa"],
+        // come il server dal 25/11/2026 (#881): la panchina diversa dalla somma dei posti letti nello stesso testo non si applica
+        "non_applicabili": [
+            ["chiave": "panchina.numero", "etichetta": "Giocatori in panchina", "valore": 12, "riga": "In panchina vanno 12 giocatori",
+             "motivo": "I posti per ruolo letti nel regolamento sono 11 in tutto e la panchina è la loro somma: controlla a mano i posti di ogni ruolo nei valori delle regole.",
+             "motivo_frase": ["chiave": "regole.panchina_somma_posti", "param": ["n": 11] as [String: Any]] as [String: Any]],
+        ] as [[String: Any]],
         // come il server dal 19/11/2026 (#733): le righe con numeri non lette e quelle dubbie, con la regola da impostare a mano
         "da_controllare": [
             ["riga": "Il bonus per il rigore parato vale 3 punti, tranne in coppa", "regole": [[String: Any]]()],
@@ -1049,6 +1067,24 @@ private extension LegaDemo {
                                 "punti_tua": 59.5, "punti_consigliata": 64.0, "differenza": -4.5, "esito": "consigliata"],
                            ]],
         ])
+    }
+
+    /// La foto `giornate-confronto` (#842): il diario della demo con la consigliata a 1,0 punti in più della tua (nella demo di sempre
+    /// 12,0, legati alle giornate, a «Le tue scelte» e ai widget: lì non cambiano), per fotografare il plurale scelto sul numero
+    /// scritto, «1,0 punti». Nei Dettagli sotto il confronto resta solo la voce dei punti della squadra, senza i suoi numeri («–»,
+    /// corta anche con il testo grande): niente grafico, andamento, riga su tutta la Serie A e note, così la fine del confronto resta
+    /// a video in ogni dimensione del testo (`ConfrontoDemo`). Un diario illeggibile resta com'è.
+    static func diarioConfrontoAUnPunto(_ diario: String) -> String {
+        guard var tutto = (try? JSONSerialization.jsonObject(with: Data(diario.utf8))) as? [String: Any],
+              var precisione = tutto["precisione"] as? [String: Any] else { return diario }
+        precisione["confronto"] = ["giornate": 2, "meglio_consigliata": 2, "meglio_tua": 0, "pari": 0, "punti": 1.0,
+                                   "media_consigliata": 67.5, "media_tua": 67.0] as [String: Any]
+        precisione["per_giornata"] = [[String: Any]]()
+        precisione["fonti"] = ["mostrati": 4, "ricostruiti": 0]
+        precisione["squadra"] = NSNull()
+        precisione.removeValue(forKey: "serie_a")
+        tutto["precisione"] = precisione
+        return json(tutto)
     }
 
     /// Un backup piccolo ma valido, per provare «Scarica il backup» in demo.

@@ -9,7 +9,7 @@ import pytest
 
 from fanta import archivio, consigli, da_fare, fasi, gestione, lega
 from fanta.punteggio import fantavoto
-from fanta.regole import Regole
+from fanta.regole import Regole, serie_a_a_lega
 
 ST = "2026-27"
 REGOLE = Regole()
@@ -94,6 +94,32 @@ def test_stato_partita_calendario_diretta_orario():
     assert fasi.stato_partita(p, datetime(2026, 11, 8, 21, 30), {("roma", "lazio"): {"stato": "finita"}}) == "finita"
     assert fasi.stato_partita(p, datetime(2026, 11, 8, 21, 30), {("roma", "lazio"): {"stato": "rinviata"}}) == "rinviata"
     assert fasi.stato_partita(p | {"giocata": True}, datetime(2026, 11, 8, 18, 0)) == "finita"
+
+
+def test_partita_ritardata_resta_da_giocare_come_dice_la_diretta():
+    """#901: la fonte conferma «da giocare» DOPO l'orario previsto e da poco (`visto`, al più 15 minuti fa): calcio d'inizio in
+    ritardo, Oggi dice lo stesso invece di dedurre «in corso» e poi «finita» dall'orario. Il calendario «giocata» vince sempre."""
+    p = {"data": "2026-11-08 20:45", "casa": "roma", "trasferta": "lazio", "giocata": False}
+    def diretta(visto):
+        return {("roma", "lazio"): {"stato": "da_giocare", "visto": visto}}
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 21, 30), diretta("2026-11-08T21:29:10")) == "da_giocare"
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 23, 30), diretta("2026-11-08T23:25:00")) == "da_giocare"
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 21, 30), diretta("2026-11-08T21:14:00")) == "in_corso"   # 16 minuti fa
+    assert fasi.stato_partita(p | {"giocata": True}, datetime(2026, 11, 8, 21, 30), diretta("2026-11-08T21:29:10")) == "finita"
+
+
+def test_da_giocare_letto_prima_del_calcio_d_inizio_non_ferma_l_orario():
+    """#901, revisione: la diretta legge già 10 minuti prima dell'inizio («da giocare», 20:38), poi la fonte smette di rispondere.
+    Quel valore vecchio non è la conferma di un ritardo: dalle 20:45 vale l'orario («in corso», poi «finita»). Lo stesso senza `visto`
+    (il ripiego che scrive «da giocare» non lo lascia: non sa distinguere una partita da giocare da una in corso)."""
+    p = {"data": "2026-11-08 20:45", "casa": "roma", "trasferta": "lazio", "giocata": False}
+    vecchia = {("roma", "lazio"): {"stato": "da_giocare", "visto": "2026-11-08T20:38:00"}}
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 20, 40), vecchia) == "da_giocare"
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 20, 50), vecchia) == "in_corso"             # prima: «da_giocare»
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 21, 0), vecchia) == "in_corso"
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 23, 30), vecchia) == "finita"
+    senza = {("roma", "lazio"): {"stato": "da_giocare", "visto": None}}
+    assert fasi.stato_partita(p, datetime(2026, 11, 8, 21, 0), senza) == "in_corso"
 
 
 def test_partita_spostata_dal_calendario_e_rinviata():
@@ -390,9 +416,21 @@ def test_giornata_finita_con_i_voti_a_meta_niente_totale(ambiente, monkeypatch):
     scelte.salva(ST, 10, TITOLARI, "4-4-2", ambiente.tmp / "scelte.json", panchina=PANCHINA)
     o = _oggi(ambiente, datetime(2026, 11, 9, 23, 0))                  # lunedì, 25 minuti dopo la fine stimata della partita
     assert o["fase"] == "finita" and o["riepilogo"] is None
+    # #895: la testa diceva solo la giornata dopo; ora il server dice che la giornata è finita e i voti arrivano
+    assert o["voti_in_arrivo"] == {"giornata": 10, "giornata_lega": serie_a_a_lega(10, REGOLE), "testo": "I punti arrivano quando escono i voti.",
+                                   "frase": {"chiave": "riepilogo.voti_in_arrivo", "param": {}}}
     _voti(ambiente, VOTI_LUNEDI)                                        # i voti del lunedì arrivano col giro di mezzanotte
-    r = _oggi(ambiente, datetime(2026, 11, 10, 0, 50))["riepilogo"]
+    o = _oggi(ambiente, datetime(2026, 11, 10, 0, 50))
+    r = o["riepilogo"]
     assert r["punti_fatti"] == pytest.approx(round(sum(_fv(i) for i in (1, 2, 4, 5, 6, 7, 8, 10, 11, 12, 13)), 1))
+    assert "voti_in_arrivo" not in o
+
+
+def test_giornata_finita_senza_formazione_niente_voti_in_arrivo(ambiente):
+    """Chi non ha una formazione per la giornata finita non ha punti da aspettare: niente «i punti arrivano»."""
+    _giornata_finita(ambiente, voti=(VOTI_DOMENICA,))
+    o = _oggi(ambiente, datetime(2026, 11, 9, 23, 0))
+    assert o["riepilogo"] is None and "voti_in_arrivo" not in o
 
 
 def test_oggi_non_si_rompe_se_le_fasi_falliscono(ambiente, monkeypatch):
@@ -511,3 +549,69 @@ def test_formazione_sulla_prossima_per_chi_entra_dopo(ambiente, monkeypatch):
     assert server._giornata_saltata(ambiente.db, REGOLE, ctx, None) is None
     nato(None)                                                   # data non nota (o senza account)
     assert server._giornata_saltata(ambiente.db, REGOLE, ctx, None) is None
+
+
+# ---------------------------------------------------------------- #895: partita rinviata a giornata in corso
+def _napoli_juve_rinviata(a) -> None:
+    """La partita del lunedì (napoli-juve: Dif5, Cen8, Cen9, Cen13) spostata a dicembre, fuori dal turno: rinviata."""
+    a.db.execute("UPDATE partite SET data = '2026-12-09 20:45' WHERE giornata = 10 AND casa = 'napoli'")
+    a.db.commit()
+
+
+def _oggi_in_corso(a, monkeypatch, regole=REGOLE, titolari=TITOLARI, adesso=datetime(2026, 11, 8, 22, 40), panchina=PANCHINA):
+    """Oggi a giornata in corso con la formazione salvata (gli 11 di `titolari`, la panchina di sempre) e roma-lazio finita."""
+    from fanta import scelte
+    monkeypatch.setattr(consigli, "valuta", lambda *a, **k: {"modulo": "4-4-2", "punteggio_atteso": 70.0})
+    scelte.salva(ST, 10, titolari, "4-4-2", a.tmp / "scelte.json", panchina=[i for i in panchina if i not in titolari])
+    return gestione.oggi(a.db, regole, a.rose, adesso=adesso, file_scelte=a.tmp / "scelte.json", file_diario=a.tmp / "diario.json",
+                         live_partite={("roma", "lazio"): {"stato": "finita"}})
+
+
+def test_in_corso_il_voto_d_ufficio_della_partita_rinviata_ha_la_sua_etichetta(ambiente, monkeypatch):
+    """#895: con il voto d'ufficio il server conta il 6 tra i punti fatti; l'etichetta del giocatore lo dice («Voto d'ufficio»),
+    così web e iPhone mostrano il voto contato e non «Rinviata» con il fantavoto atteso."""
+    from dataclasses import replace
+    _napoli_juve_rinviata(ambiente)
+    o = _oggi_in_corso(ambiente, monkeypatch, replace(REGOLE, partite_rinviate="voto_ufficio"))
+    g = {x["id"]: x for x in o["in_corso"]["giocatori"]}
+    assert (g[5]["stato"], g[5]["fantavoto"], g[5]["a_punteggio"]) == ("rinviata", 6.0, True)
+    assert g[5]["etichetta"] == {"codice": "voto_ufficio", "testo": "Voto d'ufficio", "tono": "positivo"}
+    # con «aspetta» resta «Rinviata», senza voto
+    g = {x["id"]: x for x in _oggi_in_corso(ambiente, monkeypatch)["in_corso"]["giocatori"]}
+    assert (g[5]["fantavoto"], g[5]["etichetta"]["codice"]) == (None, "rinviata")
+
+
+def _situazione(o) -> tuple[str, dict]:
+    c = o["in_corso"]
+    return c["situazione"], c["situazione_frase"]
+
+
+def test_in_corso_la_frase_sotto_i_punti_la_sceglie_il_server(ambiente, monkeypatch):
+    """#895: «Hanno giocato tutti: mancano solo i voti ufficiali.» la diceva la web a ogni `ancora_da_giocare` zero, anche con i
+    voti già usciti e un recupero da giocare. Ora la frase la sceglie il server, giusta per il caso, con la sua chiave."""
+    from dataclasses import replace
+    # domenica sera: roma-lazio finita senza voti, napoli-juve lunedì
+    assert _situazione(_oggi_in_corso(ambiente, monkeypatch)) == (
+        "3 giocatori devono ancora giocare", {"chiave": "in_corso.da_giocare", "param": {"n": 3}})
+    # lunedì notte: tutte finite, voti di domenica e lunedì non ancora usciti
+    tardi = datetime(2026, 11, 9, 23, 30)
+    o = _oggi_in_corso(ambiente, monkeypatch, adesso=tardi)
+    assert o["in_corso"]["ancora_da_giocare"] == 0
+    assert _situazione(o)[0] == "Hanno giocato tutti: mancano solo i voti ufficiali."
+    # napoli-juve rinviata (la lega aspetta il recupero) e voti di domenica usciti: niente «voti ufficiali», il recupero
+    _napoli_juve_rinviata(ambiente)
+    _voti(ambiente, VOTI_DOMENICA)
+    testo, frase = _situazione(_oggi_in_corso(ambiente, monkeypatch))
+    assert testo == "Hanno giocato tutti tranne Dif5, Cen8 e Cen13, che aspettano il recupero."
+    assert frase["chiave"] == "in_corso.recupero" and frase["param"]["n"] == 3
+    # con il voto d'ufficio la partita rinviata è già contata: i voti ci sono tutti
+    assert _situazione(_oggi_in_corso(ambiente, monkeypatch, replace(REGOLE, partite_rinviate="voto_ufficio")))[0] == \
+        "I voti dei tuoi giocatori sono tutti usciti."
+
+
+def test_in_corso_recupero_e_voti_che_mancano_insieme(ambiente, monkeypatch):
+    _napoli_juve_rinviata(ambiente)                          # roma-lazio finita, voti non ancora usciti
+    titolari = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12]          # 5-3-2 con il solo portiere in panchina: del recupero va a punteggio Dif5
+    testo, frase = _situazione(_oggi_in_corso(ambiente, monkeypatch, titolari=titolari, panchina=[14]))
+    assert (frase["chiave"], frase["param"]["n"]) == ("in_corso.voti_e_recupero", 1)
+    assert testo == "Hanno giocato tutti tranne Dif5, che aspetta il recupero; mancano anche i voti ufficiali."

@@ -56,9 +56,9 @@ struct RestiDalCatalogoTests {
                    "Catalogo.Mercato.rendimentoRiga(", "Catalogo.Mercato.stagionePrec(", "Catalogo.Mercato.golRig("]),
         Caso(file: "Sources/Domain/LetturaScheda.swift",
              frasi: [Catalogo.Formazione.partitaCasa(avv: "§", quando: "§"), Catalogo.Formazione.partitaFuori(avv: "§", quando: "§"),
-                     Catalogo.Mercato.golAttesi(a: "§", b: "§")],
+                     Catalogo.Mercato.golAttesi(a: "§", b: "§"), Catalogo.Mercato.datiFinoAl(data: "§")],
              usa: ["Catalogo.Formazione.partitaCasa(", "Catalogo.Formazione.partitaFuori(", "Catalogo.Mercato.golAttesi(",
-                   "Catalogo.Ruolo.a1", "Catalogo.Ruolo.p1"]),
+                   "Catalogo.Mercato.datiFinoAl(", "Catalogo.Ruolo.a1", "Catalogo.Ruolo.p1"]),
         Caso(file: "Sources/Domain/ParolaStato.swift",
              testi: [Catalogo.Tit.inDubbio, Catalogo.Tit.fuori, Catalogo.Tit.stRinviata, Catalogo.Oggi.infortunato,
                      Catalogo.Oggi.squalificato],
@@ -70,6 +70,11 @@ struct RestiDalCatalogoTests {
              testi: [Catalogo.Perche.titolo],
              frasi: [Catalogo.Perche.rispetto(n: "§"), Catalogo.Perche.nessuno(n: "§")],
              usa: ["Catalogo.Perche.titolo", "Catalogo.Perche.rispetto(", "Catalogo.Perche.nessuno("]),
+        // la riga sotto il titolo di Giornate, come la riga di stato della web (#863)
+        Caso(file: "Sources/Domain/RigaStato.swift",
+             testi: [Catalogo.Testata.offline, Catalogo.Testata.mai],
+             frasi: [Catalogo.Testata.datiDel(data: "§", ora: "§")],
+             usa: ["Catalogo.Testata.offline", "Catalogo.Testata.mai", "Catalogo.Testata.datiDel("]),
         Caso(file: "Sources/Domain/FasiGiornata.swift",
              testi: [
                 Catalogo.Oggi.puntiFinora, Catalogo.Oggi.aFineGiornata, Catalogo.Oggi.dallaPanchina, Catalogo.Oggi.cambiPanchina,
@@ -130,6 +135,10 @@ struct RestiDalCatalogoTests {
                      Catalogo.Comune.riprova],
              frasi: [Catalogo.Imp.oreTranquilleAiuto(a: "§", da: "§")],
              usa: ["Catalogo.Avv.aveviSceltoOre", "Catalogo.Avv.oreTranq", "Catalogo.Imp.avvisiQui", "Catalogo.Imp.sezAvvisi"]),
+        // la riga sotto «Ore tranquille», accese e spente (#873): la scrive il ViewModel
+        Caso(file: "Sources/Presentation/Lega/AvvisiDispositivoViewModel.swift",
+             frasi: [Catalogo.Imp.oreTranquilleAiuto(a: "§", da: "§"), Catalogo.Imp.oreTranquilleSpente(a: "§", da: "§")],
+             usa: ["Catalogo.Imp.oreTranquilleAiuto(", "Catalogo.Imp.oreTranquilleSpente("]),
         Caso(file: "Sources/Presentation/Lega/LegaPagine.swift",
              testi: [Catalogo.Asp.tema, Catalogo.Asp.temaAuto, Catalogo.Asp.temaChiaro, Catalogo.Asp.temaScuro, Catalogo.Imp.aspetto],
              frasi: [Catalogo.Asp.autoSpiega],
@@ -144,8 +153,16 @@ struct RestiDalCatalogoTests {
                 Catalogo.Bonus.golSubitoPortiere, Catalogo.Regole.legheApriRegolamento,
                 Catalogo.Regole.controllaValoriQui, Catalogo.Regole.valoriApplicatiControlla,
              ],
-             usa: ["Catalogo.Bonus.assist", "Catalogo.Bonus.golSubitoPortiere", "Catalogo.Regole.legheApriRegolamento",
-                   "Catalogo.Regole.controllaValoriQui", "Catalogo.Regole.valoriApplicatiControlla"]),
+             usa: ["Catalogo.Regole.legheApriRegolamento", "Catalogo.Regole.controllaValoriQui",
+                   "Catalogo.Regole.valoriApplicatiControlla"]),
+        // i nomi dei bonus e dei malus delle righe con − e + stanno con gli altri campi in CampiRegole (#889)
+        Caso(file: "Sources/Presentation/Lega/CampiRegole.swift",
+             testi: [
+                Catalogo.Bonus.assist, Catalogo.Bonus.rigoreSegnato, Catalogo.Bonus.portiereImbattuto, Catalogo.Bonus.mvp,
+                Catalogo.Bonus.ammonizione, Catalogo.Bonus.espulsione, Catalogo.Bonus.autogol, Catalogo.Bonus.rigoreSbagliato,
+                Catalogo.Bonus.golSubitoPortiere, Catalogo.Ruolo.pPl, Catalogo.Ruolo.dPl, Catalogo.Ruolo.cPl, Catalogo.Ruolo.aPl,
+             ],
+             usa: ["Catalogo.Bonus.assist", "Catalogo.Bonus.golSubitoPortiere", "Catalogo.Ruolo.pPl", "Catalogo.Ruolo.aPl"]),
         // il pulsante del file con le parole del primo avvio della web (#594)
         Caso(file: "Sources/Presentation/Lega/ImportaRoseView.swift",
              testi: [Catalogo.Lega.esportaRoseExcel, Catalogo.Pav.scegliFile],
@@ -153,6 +170,11 @@ struct RestiDalCatalogoTests {
         Caso(file: "Sources/Support/RigaGiocatore.swift", testi: [Catalogo.Mercato.fantavoto, Catalogo.Perche.apriScheda],
              usa: ["Catalogo.Mercato.fantavoto", "Catalogo.Perche.apriScheda"]),
         Caso(file: "Sources/Presentation/Lega/RigaRosa.swift", testi: [Catalogo.Mercato.fantavoto], usa: ["Catalogo.Mercato.fantavoto"]),
+        // Stato dei dati, la prova delle previsioni: la frase su «da fantamedia» è quella della web dopo #839, non più
+        // «chi ha la media più alta» (#840)
+        Caso(file: "Sources/Presentation/Lega/LegaExtra.swift",
+             frasi: [Catalogo.Avv.provaSu(1), Catalogo.Avv.provaSu(7)],
+             usa: ["Catalogo.Avv.provaSu("]),
         // il widget «Prossima giornata» a giornata in corso con le frasi della testa della Formazione (#774)
         Caso(file: "Sources/Support/Condiviso.swift",
              testi: [Catalogo.Oggi.tuttiGiocato, Catalogo.Formazione.puntiFinora, Catalogo.Oggi.puntiFatti],

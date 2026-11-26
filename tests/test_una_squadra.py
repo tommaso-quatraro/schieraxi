@@ -25,7 +25,9 @@ def test_i_controlli_del_primo_avvio_accettano_una_squadra():
     c = _per_id(onboarding.controlli(Regole(), _sola(_rose()), True))
     assert c["rose"]["ok"] and c["rose"]["obbligatorio"]
     assert c["altre_squadre"]["ok"] is False and c["altre_squadre"]["obbligatorio"] is False      # solo un avviso
-    assert c["altre_squadre"]["dettaglio"] == lega.UNA_SQUADRA and "scambi" in lega.UNA_SQUADRA
+    assert c["altre_squadre"]["dettaglio"] == lega.UNA_SQUADRA
+    # gli scambi non ci sono più (#615): la frase non li promette, dice a cosa servono le altre rose (#873)
+    assert "scambi" not in lega.UNA_SQUADRA and "guardare le altre squadre" in lega.UNA_SQUADRA
     assert all(v["ok"] for v in c.values() if v["obbligatorio"])                                  # si va avanti
     due = _per_id(onboarding.controlli(Regole(), _rose(), True))
     assert due["rose"]["ok"] and due["altre_squadre"]["ok"] and due["altre_squadre"]["dettaglio"] == ""

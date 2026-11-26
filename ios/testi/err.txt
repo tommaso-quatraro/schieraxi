@@ -1,3 +1,16 @@
 # Messaggi d'errore comuni con la web. Poi: python script/testi.py --scrivi
 # 412, dati cambiati da un altro dispositivo: la frase della web (ErroreApi.conflitto in Data/ServerClient.swift), #771
 err.conflitto
+
+# Il nome del campo nei controlli prima di salvare le regole, dove due righe hanno lo stesso titolo («Difensori» nella rosa e nei
+# posti fissi in panchina, «Voto d'ufficio» due volte): i nomi dei campi del server (CampiRegole, #889)
+err.p_regola_rosa_p
+err.p_regola_rosa_d
+err.p_regola_rosa_c
+err.p_regola_rosa_a
+err.p_regola_panchina_posti_p
+err.p_regola_panchina_posti_d
+err.p_regola_panchina_posti_c
+err.p_regola_panchina_posti_a
+err.p_regola_voto_senza_sostituto
+err.p_regola_voto_ufficio_rinviate

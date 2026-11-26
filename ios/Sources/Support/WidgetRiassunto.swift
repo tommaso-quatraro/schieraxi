@@ -132,8 +132,9 @@ struct FormazioneWidget: Codable, Equatable {
         tuaScelta = try? c.decodeIfPresent(Bool.self, forKey: .tuaScelta)
     }
 
-    /// La riga del widget sulla schermata di blocco (`accessoryInline`), dalla forma più lunga: la stessa di Prossima giornata,
-    /// «3-4-3 · 72,7 punti» e, dove non entra, «3-4-3 · 72,7» (`ParoleWidget.moduloEPunti`). Prima «SchieraXI 3-4-3 · 72,7» (#819).
+    /// La riga del widget sulla schermata di blocco (`accessoryInline`), dalla forma più lunga: «3-4-3 · 72,7 punti» e, dove non
+    /// entra, «3-4-3 · 72,7» (`ParoleWidget.moduloEPunti`). Prima «SchieraXI 3-4-3 · 72,7» (#819). Prossima giornata, che aveva la
+    /// stessa riga, mostra il conto alla rovescia (`RiassuntoOggi.formeRigaInLineaConto`, #871).
     var formeInLinea: [String] { ParoleWidget.moduloEPunti(modulo, punti: puntiAttesi, fascia: nil) }
 }
 
@@ -895,6 +896,10 @@ enum DisposizioneWidget {
     /// del normale (con due righe i nomi si sovrapponevano). Gli altri restano in «e altri N».
     static func righeDubbi(_ testo: DynamicTypeSize) -> Int { testo >= .xLarge ? 1 : 2 }
 
+    /// La larghezza massima della colonna di sinistra (modulo, punti attesi, righe in basso) del widget medio della Formazione:
+    /// il resto è del campo. Con il testo grande «2 da controllare» non ci sta e resta la forma corta (#848).
+    static let colonnaMedioFormazione: CGFloat = 120
+
     /// Le file del campo nei widget Formazione, dall'alto: attaccanti, centrocampisti, difensori, portiere in basso. È il verso del
     /// campo dell'app (`CampoFormazione.file`, che il widget non compila: li confronta un test) e della web (#787).
     static let fileCampo = ["A", "C", "D", "P"]
@@ -1033,13 +1038,85 @@ enum DisposizioneWidget {
         }
         return prove
     }
+
+    /// Dove sta la giornata nel rettangolo della Formazione sulla schermata di blocco (#871).
+    enum PostoGiornataRettangolo: Equatable {
+        /// Sulla prima riga, sopra «Formazione 3-4-3», come la giornata del rettangolo di Prossima giornata.
+        case sopra
+        /// Accanto al modulo, a destra: il titolo perde «Formazione» (si perde il titolo, mai la giornata).
+        case accanto
+    }
+
+    /// Una prova del rettangolo della Formazione: dove sta la giornata (nil se il server non la dice) e se c'è «2 da controllare».
+    struct ProvaRettangoloFormazione: Equatable {
+        var giornata: PostoGiornataRettangolo?
+        var daControllare: Bool
+    }
+
+    /// Le prove del rettangolo della Formazione sulla schermata di blocco, dalla più alta: la vista tiene la prima che entra in
+    /// altezza. Righe: la giornata, «Formazione 3-4-3» (o «3-4-3»), i punti attesi con la fascia e «2 da controllare». Prima, con
+    /// giocatori da controllare, la giornata spariva (#871). Dove quattro righe non entrano (testo grande, iPhone piccoli) la
+    /// giornata sale accanto al modulo, che resta senza «Formazione». Né la giornata né «da controllare» cedono.
+    static func proveRettangoloFormazione(conGiornata: Bool, daControllare: Int) -> [ProvaRettangoloFormazione] {
+        let dubbi = daControllare > 0
+        guard conGiornata else { return [ProvaRettangoloFormazione(giornata: nil, daControllare: dubbi)] }
+        return [ProvaRettangoloFormazione(giornata: .sopra, daControllare: dubbi),
+                ProvaRettangoloFormazione(giornata: .accanto, daControllare: dubbi)]
+    }
+
+    /// Come sta il conto alla rovescia sotto «Prepara la prossima» nel piccolo di chi è entrato a giornata iniziata.
+    enum ContoColonna: Equatable {
+        /// «Prossima: 4 giorni 1 h», un testo solo che con il testo grande va a capo con il conto intero (`ProssimaConto`).
+        case conProssima
+        /// Il solo conto, «4 giorni 1 h», su una riga: sotto «Prepara la prossima» si capisce lo stesso a cosa si riferisce.
+        case solo
+    }
+
+    /// Una prova della colonna di sinistra di `SenzaFormazioneWidget` (piccolo, e metà sinistra del medio): se c'è la riga
+    /// «Questa giornata è già iniziata» e come sta il conto alla rovescia (nil: niente conto).
+    struct ProvaColonnaSenzaFormazione: Equatable {
+        var giaIniziata: Bool
+        var conto: ContoColonna?
+    }
+
+    /// Le prove della colonna di chi è entrato a giornata iniziata, dalla più alta: la vista tiene la prima che entra in altezza.
+    /// «Questa giornata è già iniziata» spiega perché non c'è una formazione e cede per ultima: con il testo grande prima va via la
+    /// parola «Prossima:» (resta il conto, su una riga), solo poi quella riga (#871, foto della corsa 45518745600: con «Prossima:
+    /// 4 giorni 1 h» che andava a capo il piccolo dell'iPhone perdeva la riga, che su main c'era). `conConto`: c'è il conto sotto
+    /// l'invito (il piccolo, con la scadenza della prossima); nel medio il conto sta a destra.
+    static func proveColonnaSenzaFormazione(conConto: Bool) -> [ProvaColonnaSenzaFormazione] {
+        guard conConto else {
+            return [ProvaColonnaSenzaFormazione(giaIniziata: true, conto: nil), ProvaColonnaSenzaFormazione(giaIniziata: false, conto: nil)]
+        }
+        return [true, false].flatMap { riga in
+            [ContoColonna.conProssima, .solo].map { ProvaColonnaSenzaFormazione(giaIniziata: riga, conto: $0) }
+        }
+    }
+
+    /// Una prova della colonna di sinistra del widget Formazione extra large: quanto è grande il volto sul campo e se sotto c'è
+    /// il cognome.
+    struct ProvaCampoExtraLarge: Equatable {
+        let lato: CGFloat
+        let conNomi: Bool
+    }
+
+    /// Le prove della colonna di sinistra del Formazione extra large, dalla più alta (#871). In ogni prova la testata con i punti
+    /// attesi, la fascia e la giornata, il campo e sotto «2 da controllare» e «7 in panchina», come il grande: prima giornata e
+    /// righe in fondo mancavano. L'extra large è alto quanto il grande (circa 345 punti sull'iPad Pro 11", 305 sull'iPad mini) e il
+    /// campo con i volti da 48 punti lo riempiva già: per far posto i volti rimpiccioliscono (48, 40, 32 punti) e per ultimi
+    /// spariscono i cognomi sotto i volti, che l'elenco dei titolari accanto dice già.
+    static let proveCampoExtraLarge = [
+        ProvaCampoExtraLarge(lato: 48, conNomi: true), ProvaCampoExtraLarge(lato: 40, conNomi: true),
+        ProvaCampoExtraLarge(lato: 32, conNomi: true), ProvaCampoExtraLarge(lato: 32, conNomi: false),
+    ]
 }
 
 // MARK: Testi che si accorciano (mai una parola tagliata a metà)
 
 /// Le parole dei widget e le forme dei testi, dalla più lunga alla più corta. La vista mostra la prima che entra (`TestoCheEntra`,
-/// `PrimaCheEntra` in WidgetSources): dove non c'è spazio il testo perde parole intere («4 da controllare» → «4»), mai
-/// «4 da contr…»; VoiceOver legge sempre la prima. Stanno qui, e non nelle viste, perché le viste dei widget non entrano nei test.
+/// `PrimaCheEntra` in WidgetSources): dove non c'è spazio il testo cambia forma, per parole intere («4 da controllare» →
+/// «4 da vedere» → «4»), mai «4 da contr…»; VoiceOver legge sempre la prima. Stanno qui, e non nelle viste, perché le viste
+/// dei widget non entrano nei test.
 enum ParoleWidget {
     /// Il conto alla rovescia dopo la scadenza, come la web (`oggi.chiusa`): per la giornata mai «In corso».
     static let chiusa = "Chiusa"
@@ -1056,6 +1133,36 @@ enum ParoleWidget {
     static func conto(fino scadenza: Date?, adesso: Date) -> String {
         guard let scadenza else { return "—" }
         return Quando.contoAllaRovescia(fino: scadenza, adesso: adesso) ?? chiusa
+    }
+
+    /// Il conto alla rovescia a parole intere, per VoiceOver: «6 ore e 44 minuti»; dopo la scadenza «Chiusa», senza scadenza «—».
+    static func contoParlato(fino scadenza: Date?, adesso: Date) -> String {
+        scadenza.flatMap { Quando.contoAllaRovesciaParlato(fino: $0, adesso: adesso) } ?? conto(fino: scadenza, adesso: adesso)
+    }
+
+    /// Lo spazio che non va a capo (U+00A0): tiene insieme i pezzi di una data con l'ora («lun 23 20:35») e del conto alla
+    /// rovescia («4 giorni 1 h»), così una riga che non entra va a capo prima, mai a metà (#871: «alla scadenza, lun / 23 20:35»).
+    static let spazioUnito = "\u{00A0}"
+
+    /// Il testo con gli spazi che non vanno a capo.
+    static func unito(_ testo: String) -> String { testo.replacingOccurrences(of: " ", with: spazioUnito) }
+
+    /// «alla scadenza, lun 23 20:35», la data come `quando` della web contata da `adesso` (nei widget l'istante della voce).
+    /// Giorno, numero e ora restano uniti: dove la riga non entra si va a capo dopo la virgola (#871).
+    static func allaScadenza(_ scadenza: Date, adesso: Date) -> String {
+        "alla scadenza, \(unito(Quando.relativa(scadenza, adesso: adesso)))"
+    }
+
+    /// «Prossima: 4 giorni 1 h», il conto alla rovescia alla prossima scadenza in un testo solo. Erano due testi che si
+    /// rimpicciolivano ciascuno per conto suo, e con il testo molto grande il conto usciva più piccolo di «Prossima:» (#871). Il
+    /// conto resta unito: dove non entra va a capo intero, sotto «Prossima:».
+    static func prossima(fino scadenza: Date?, adesso: Date) -> String {
+        "Prossima: \(unito(conto(fino: scadenza, adesso: adesso)))"
+    }
+
+    /// «Prossima: 4 giorni e 1 ora», per VoiceOver.
+    static func voceProssima(fino scadenza: Date?, adesso: Date) -> String {
+        "Prossima: \(contoParlato(fino: scadenza, adesso: adesso))"
     }
 
     /// Sotto il conto alla rovescia del Cruscotto: «alla scadenza, oggi 20:45», dopo la scadenza «si è chiusa oggi 20:45».
@@ -1078,9 +1185,13 @@ enum ParoleWidget {
         return prima.isEmpty ? [intera] : [intera, prima]
     }
 
-    /// «4 da controllare» → «4»; senza niente da controllare «titolari a posto» → «a posto».
+    /// «4 da controllare» → «4 da vedere» → «4»; senza niente da controllare «titolari a posto» → «a posto». «4 da vedere»
+    /// (`oggi.da_vedere` del catalogo) dice ancora che c'è qualcosa da guardare dove la frase intera non entra: con il testo
+    /// grande il medio della Formazione mostrava solo «⚠ 2» (#848). Niente parole che dicono uno stato («dubbi») o i giocatori:
+    /// il numero conta gli avvisi dei titolari (in dubbio, diffidato, infortunato, squalificato), e un titolare in dubbio e
+    /// diffidato conta due volte. Il solo numero resta per ultimo, per il cerchio della schermata di blocco.
     static func daControllare(_ n: Int) -> [String] {
-        n > 0 ? ["\(n) da controllare", "\(n)"] : ["titolari a posto", "a posto"]
+        n > 0 ? ["\(n) da controllare", Catalogo.Oggi.daVedere(n: String(n)), "\(n)"] : ["titolari a posto", "a posto"]
     }
 
     /// Lo stato di un giocatore: «In dubbio · gioca 70%» → «gioca 70%», come la pillola del campo; uno stato di un pezzo solo resta.
@@ -1359,10 +1470,10 @@ extension RiassuntoOggi {
     /// chiusa («Giornata 8»); se il server non la dice, «Giornata».
     private var giornataFaseCorta: String { (inCorso ? nomeGiornata : nomeGiornataChiusa)?.corto ?? "Giornata" }
 
-    /// La prima riga del rettangolo della schermata di blocco: «Giornata 8 · Chiusa» dopo la scadenza, «Giornata 8 finita» a
-    /// giornata finita. Mai «G8» (#299).
+    /// La prima riga del rettangolo della schermata di blocco: «Giornata 8 · Chiusa» dopo la scadenza, «Giornata 8: finita» a
+    /// giornata finita, la forma corta della testata di Da controllare (prima «Giornata 8 finita», #871). Mai «G8» (#299).
     var testaRettangoloFase: String {
-        inCorso ? "\(giornataFaseCorta) · \(ParoleWidget.chiusa)" : "\(giornataFaseCorta) finita"
+        inCorso ? "\(giornataFaseCorta) · \(ParoleWidget.chiusa)" : (formeTitoloFase?.last ?? "Giornata finita")
     }
 
     /// La riga in linea, la forma intera: «Giornata 8: 41,5 punti finora» dopo la scadenza (come la testa della Formazione,
@@ -1383,6 +1494,24 @@ extension RiassuntoOggi {
 
     /// Il sottotitolo per VoiceOver, con i due numeri.
     var voceSottotitoloRettangolo: String { finita ? "Prossima: \(voceGiornata)" : voceGiornata }
+
+    /// La riga in linea di Prossima giornata sulla schermata di blocco, dalla più lunga: la giornata con il conto alla rovescia
+    /// («Giornata 8: 17 h 50 min», dopo la scadenza «Giornata 8: Chiusa»), poi il solo conto, che è il motivo del widget. Prima
+    /// era «3-4-3 · 72,7 punti», la stessa riga della Formazione consigliata (#871). Senza scadenza non c'è un conto: resta la
+    /// formazione, come prima.
+    func formeRigaInLineaConto(adesso: Date) -> [String] {
+        guard let scadenza = scadenzaDelConto else { return ParoleWidget.moduloEPunti(modulo, punti: punti, fascia: nil) }
+        let conto = ParoleWidget.conto(fino: scadenza, adesso: adesso)
+        return nomeGiornata.map { ["\($0.corto): \(conto)", conto] } ?? [conto]
+    }
+
+    /// La stessa riga per VoiceOver, con i due numeri della giornata e il conto a parole: «Giornata 8, 11ª di Serie A: 17 ore e
+    /// 50 minuti».
+    func voceRigaInLineaConto(adesso: Date) -> String {
+        guard let scadenza = scadenzaDelConto else { return formeRigaInLineaConto(adesso: adesso).first ?? "" }
+        let conto = ParoleWidget.contoParlato(fino: scadenza, adesso: adesso)
+        return nomeGiornata.map { "\($0.voce): \(conto)" } ?? conto
+    }
 }
 
 // MARK: Testata e corpo del widget «Da controllare» (medio e grande)
@@ -1624,4 +1753,12 @@ extension FormazioneWidget {
 
     /// La riga del titolare per VoiceOver, sempre con il nome del numero: «Leonel Marténi, fantavoto atteso 7,6».
     func voceTitolare(_ g: GiocatoreWidget) -> String { "\(g.nome), \(nomeNumero.lowercased()) \(numeroTitolare(g))" }
+
+    /// La testata del widget Formazione in una frase sola per VoiceOver: «3-4-3, 72,7 punti attesi, tra 65 e 81, Giornata 8, 11ª
+    /// di Serie A». Sullo schermo la testata si accorcia («73,7 attesi», «Giornata 8») e il cerchio della schermata di blocco
+    /// mostra solo modulo e numero: VoiceOver legge sempre questa (#882: il cerchio diceva «3-4-3, 72,7» senza «punti attesi»).
+    func testataParlata(giornata: NomeGiornata?) -> String {
+        [modulo ?? "—", ParoleWidget.puntiAttesi(puntiAttesi, tuaScelta: tuaScelta == true)[0], intervallo?.testo, giornata?.voce]
+            .compactMap { $0 }.joined(separator: ", ")
+    }
 }
