@@ -8,11 +8,12 @@
 - Una riga nel registro di sicurezza per ogni blocco, sblocco ed eliminazione, con chi l'ha fatto.
 Dati inventati, cartelle temporanee."""
 import contextlib
+import json
 from datetime import datetime
 
 import pytest
 
-from fanta import account, contesto, frasi, fuso, percorsi, registro
+from fanta import account, contesto, frasi, fuso, percorsi, push, registro
 from fanta.__main__ import main
 
 from test_account_http import PASSWORD, cliente, registra
@@ -146,6 +147,16 @@ def test_bloccato_perde_le_sessioni_e_il_widget_e_non_entra(titolare):
     sbagliata = accedi("luca", "password-sbagliata-1")
     assert sbagliata.status_code == 401 and sbagliata.json()["detail"] == account.ACCESSO_SBAGLIATO   # non dice niente del blocco
     assert eventi("accesso_negato_bloccato")[0]["nome"] == "luca"
+
+
+def test_bloccato_non_riceve_piu_le_notifiche(titolare):
+    """Le iscrizioni alle notifiche web dei suoi dispositivi si tolgono: il giro degli avvisi non gli manda più niente."""
+    _, uid = amico("luca")
+    file = contesto.Contesto.per_utente(uid).iscrizioni_push
+    push.scrivi_sicuro(file, json.dumps([{"endpoint": "https://web.push.example/luca", "keys": {"p256dh": "P" * 40, "auth": "A" * 20}}]))
+    assert push.iscrizioni(file)
+    assert titolare.post(f"/api/admin/utenti/{uid}/blocca").status_code == 200
+    assert push.iscrizioni(file) == []
 
 
 def test_sbloccato_rientra(titolare):
