@@ -93,9 +93,9 @@ struct GiocatoreCorpo: View {
                     .animation(Tema.morbida, value: vm.caricatore.dato != nil)
                 }
                 .demoInFondo()
-                // foto `giocatore-fondo`: si ferma su «Statistiche avanzate», così anche col testo grande si vede «Dati fino al …»
-                // (#862); col testo normale il blocco sta già nell'ultima schermata e la foto resta quella di prima
-                .demoScorriA(TuttiINumeri.idAvanzate, proxy: proxy, schermate: ["giocatore"], inFondo: true,
+                // foto `giocatore-fondo`: si ferma sul fondo di «Statistiche avanzate», così anche col testo grande si vede «Dati
+                // fino al …», l'ultima riga (#862, #911); col testo normale il blocco sta già nell'ultima schermata
+                .demoScorriA(TuttiINumeri.idAvanzate, proxy: proxy, schermate: ["giocatore"], inFondo: true, ancora: .bottom,
                              pronto: vm.caricatore.dato != nil)
                 .refreshable { await vm.carica() }
                 .avvisoDatiSalvati(vm.caricatore)
