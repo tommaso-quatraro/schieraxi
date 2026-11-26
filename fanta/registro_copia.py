@@ -68,11 +68,11 @@ def esporta(file_archivio: Path, file: Path) -> dict[str, int]:
     return {t: len(v["righe"]) for t, v in tabelle.items()}
 
 
-def importa(file: Path, file_archivio: Path = archivio.FILE) -> dict[str, tuple[int, int]]:
+def importa(file: Path, file_archivio: Path | None = None) -> dict[str, tuple[int, int]]:
     """Rimette in `file_archivio` (lo crea se manca) il registro salvato in `file`: {tabella: (righe nuove, righe che c'erano già)}.
     Le righe già presenti restano com'erano. Un file non valido non scrive niente (ValueError)."""
     dati = _leggi(Path(file))
-    with contextlib.closing(archivio.apri(Path(file_archivio))) as db:
+    with contextlib.closing(archivio.apri(Path(file_archivio or archivio.FILE))) as db:
         lavoro = []
         for tabella in TABELLE:
             if tabella in dati:
@@ -151,8 +151,9 @@ def main(argv: list[str] | None = None) -> int:
                                 description="Copia del registro delle giornate: esporta in un file JSON o lo rimette nell'archivio")
     p.add_argument("azione", choices=("esporta", "importa"))
     p.add_argument("file", type=Path, help="file della copia (per esempio dati/registro-giornate.json)")
-    p.add_argument("--archivio", type=Path, default=archivio.FILE, help="archivio (di norma dati/fanta.sqlite)")
+    p.add_argument("--archivio", type=Path, default=None, help="archivio (di norma dati/fanta.sqlite)")
     a = p.parse_args(argv)
+    a.archivio = a.archivio or archivio.FILE
     try:
         if a.azione == "esporta":
             n = esporta(a.archivio, a.file)

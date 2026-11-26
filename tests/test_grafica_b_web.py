@@ -137,7 +137,8 @@ def test_ogni_schermata_ha_il_suo_titolo_h1_e_la_riga_di_stato():
     corpo = _funzione(APP, "pagina")
     assert 'class="capo-pagina' in corpo and '<h1 id="titolo-pagina"' in corpo and 'class="stato-pagina"' in corpo
     assert 't("nav." + ' in corpo and "opz.titolo" in corpo
-    assert "nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata)" in _funzione(APP, "caricaInfo")   # giornata della lega (#306)
+    # giornata della lega (#306); i pezzi della riga li prepara pezziRigaStato, per /api/stato e per la sua copia (collaudo del 26/11)
+    assert "nomeGiornata(i.prossima_giornata_lega, i.prossima_giornata)" in _funzione(APP, "pezziRigaStato")
     assert "titolo:" in _funzione(APP, "vistaRosa")              # la rosa di una squadra: il suo titolo, non quello della scheda
 
 

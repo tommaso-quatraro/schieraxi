@@ -840,7 +840,7 @@ def test_una_regola_con_due_decimali_resta_uguale_nel_campo_e_nel_salvataggio(we
     salvate = _scritture(web, "/api/regole")
     web.apri("/?vista=impostazioni&gruppo=regole")
     tocca(web, principale(web).get_by_text("Modifica i valori", exact=True))
-    assert principale(web).get_by_label("Ammonizione", exact=True).input_value() == "-0,25"
+    assert principale(web).get_by_label("Ammonizione", exact=True).input_value() == "−0,25"      # col meno vero (collaudo del 26/11)
     principale(web).get_by_label("Assist", exact=True).fill("1,5")
     tocca(web, principale(web).get_by_role("button", name="Salva le regole"))
     assert salvate, "le regole non sono state salvate"
@@ -870,7 +870,7 @@ def test_meno_e_piu_da_un_valore_fuori_dai_passi_vanno_al_passo_vicino(web):
             for nome, partenza in (("Assist", "1,25"), ("Ammonizione", "-1,25"), ("Rigore segnato", "3,0"))
             for pulsante in ("Aumenta", "Diminuisci")}
     assert dopo == {("Assist", "1,25", "Aumenta"): "1,5", ("Assist", "1,25", "Diminuisci"): "1,0",
-                    ("Ammonizione", "-1,25", "Aumenta"): "-1,0", ("Ammonizione", "-1,25", "Diminuisci"): "-1,5",
+                    ("Ammonizione", "-1,25", "Aumenta"): "−1,0", ("Ammonizione", "-1,25", "Diminuisci"): "−1,5",   # meno vero
                     ("Rigore segnato", "3,0", "Aumenta"): "3,5", ("Rigore segnato", "3,0", "Diminuisci"): "2,5"}, dopo
     assert not web.errori_mostrati()
 
