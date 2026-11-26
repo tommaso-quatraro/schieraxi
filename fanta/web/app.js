@@ -1542,12 +1542,22 @@ function mostraFormazione(b, squadra, opz = {}) {
   } };
 }
 
-async function datiCalendario() {
+// Il calendario, per le prossime partite nella scheda di un giocatore: quello letto in questa sessione, se c'è; se no lo si chiede.
+// La copia salvata (di una sessione di prima, di qualunque età) vale solo se la lettura non riesce, oppure intanto, se la risposta
+// tarda più di ATTESA_CALENDARIO_MS: allora `poi(c)` riceve il calendario nuovo quando arriva, per ridisegnare le prossime partite
+// (collaudo del 26/11: la prima scheda della sessione mostrava le partite della copia, senza dire di quando erano).
+const ATTESA_CALENDARIO_MS = 1500;
+async function datiCalendario(poi = null) {
   if (stato.calendario) return stato.calendario;
-  const salvata = leggiCache("calendario");
   const fresco = api("/api/calendario").then(c => { stato.calendario = c; salvaCache("calendario", c); return c; });
-  if (salvata) { fresco.catch(() => {}); return salvata.dati; }
-  return fresco;
+  const salvata = leggiCache("calendario");
+  if (!salvata) return fresco;
+  const tardi = {};
+  const primo = await Promise.race([fresco, new Promise(ok => setTimeout(() => ok(tardi), ATTESA_CALENDARIO_MS))]).catch(() => null);
+  if (primo === null) return salvata.dati;                                // la lettura non è riuscita: meglio la copia che niente
+  if (primo !== tardi) return primo;
+  fresco.then(c => { if (poi) poi(c); }, () => { /* non arriva: resta la copia */ });
+  return salvata.dati;
 }
 
 // Ricerca dei giocatori: l'elenco (circa 600 righe) si scarica una volta e si filtra sul dispositivo, così ogni tasto risponde subito
@@ -1738,11 +1748,14 @@ async function apriGiocatore(id) {
   if (locale) apriFoglio(htmlScheda({ id, nome: locale.nome, ruolo: locale.ruolo, squadra: nomeClub(locale.squadra), squadra_slug: locale.squadra }, locale, fz), { affianco: true });
   else apriFoglio(`<div class="caricamento">${t("mercato.carico_scheda")}</div>`, { affianco: true });
   const ancoraLei = () => numero === ultimaScheda && !$("#foglio").hidden;
+  let letta = null;                                       // la scheda arrivata: il calendario nuovo arrivato tardi ridisegna i suoi numeri
   try {
-    const [s, cal] = await Promise.all([api(`/api/giocatore/${id}`), datiCalendario().catch(() => null)]);
+    const [s, cal] = await Promise.all([api(`/api/giocatore/${id}`),
+      datiCalendario(c => { if (letta && ancoraLei()) riempiScheda(letta, c); }).catch(() => null)]);
     if (!ancoraLei()) return;
+    letta = s;
     if (!locale) apriFoglio(htmlScheda(s.calciatore, s.previsione, fz), { affianco: true });
-    riempiScheda(s, cal);
+    riempiScheda(s, stato.calendario || cal);             // il calendario nuovo, se è arrivato mentre si aspettava la scheda
   } catch (e) {
     if (!ancoraLei()) return;
     if (!locale) { apriFoglio(errore(e), { affianco: true }); return; }

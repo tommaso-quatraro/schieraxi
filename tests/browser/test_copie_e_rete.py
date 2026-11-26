@@ -242,7 +242,7 @@ def test_la_prima_scheda_mostra_le_prossime_partite_del_calendario_nuovo(web):
     _, attese = _apri_tutti_i_numeri(web)
     rete.lascia("/api/calendario")
     try:
-        web.pagina.wait_for_function(f"() => JSON.stringify(({AVVERSARI})()) === {json.dumps(json.dumps(attese))}", timeout=8000)
+        web.pagina.wait_for_function(f"(attese) => JSON.stringify(({AVVERSARI})()) === JSON.stringify(attese)", arg=attese, timeout=8000)
     except Exception:                        # noqa: BLE001 - si dice cosa si vede
         pytest.fail(f"le prossime partite non sono quelle del calendario nuovo: {web.pagina.evaluate(AVVERSARI)} invece di {attese}")
 
