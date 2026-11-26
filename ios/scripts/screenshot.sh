@@ -31,7 +31,7 @@ source "$(dirname "$0")/avvisi.sh"
 
 # Tutte le schermate. Il suffisso -fondo = la schermata parte scorsa in fondo (si vede la parte sotto la piega).
 TUTTE=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-rinvio formazione-chiusa formazione-cambiata formazione-sostituisci formazione-metti-in-campo
-       formazione-campionato-finito
+       formazione-campionato-finito formazione-finita-recupero
        giocatore giocatore-fondo ricerca
        guida marchio giornate giornate-aperta giornate-dettagli giornate-confronto
        lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-regole-anteprima lega-regole-non-applicato lega-stato lega-stato-fondo lega-stato-nostri lega-stato-taratura lega-stato-prova impostazioni-novita
@@ -43,10 +43,10 @@ CONOSCIUTE=("${TUTTE[@]}")
 PER_CHIARO=(formazione formazione-in-corso formazione-finita giornate-aperta
             impostazioni lega lega-regole lega-stato impostazioni-aspetto lega-rosa giocatore giocatore-fondo ricerca)
 PRINCIPALI=(formazione giornate impostazioni giocatore)
-PER_TESTO_GRANDE=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-cambiata formazione-sostituisci formazione-metti-in-campo giornate-aperta
+PER_TESTO_GRANDE=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-finita-recupero formazione-cambiata formazione-sostituisci formazione-metti-in-campo giornate-aperta
                   lega lega-squadre lega-regole lega-stato
                   impostazioni impostazioni-fondo impostazioni-aspetto giocatore giocatore-fondo ricerca)
-PER_IPAD=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-cambiata
+PER_IPAD=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-finita-recupero formazione-cambiata
           giocatore giocatore-fondo
           impostazioni lega lega-squadre lega-rosa lega-regole giornate giornate-dettagli impostazioni-aspetto ricerca)
 

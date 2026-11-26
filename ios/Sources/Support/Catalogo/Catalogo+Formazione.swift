@@ -198,6 +198,9 @@ extension Catalogo {
             "in trasferta contro \(avv)"
         }
 
+        /// `formazione.atteso_breve`
+        static let attesoBreve = "atteso"
+
         /// `formazione.sostituisci`
         static let sostituisci = "Sostituisci"
 

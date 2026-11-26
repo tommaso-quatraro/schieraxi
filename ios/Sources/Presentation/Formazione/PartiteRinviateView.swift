@@ -2,14 +2,19 @@ import SwiftUI
 
 /// Formazione, riquadro «Partita rinviata» (campo `rinvio` di `GET /api/oggi`, `cardRinvio` della web): quali partite, la data del
 /// recupero, i miei giocatori coinvolti e il menu «Per questa giornata i loro giocatori…», che vale solo per questa giornata.
+/// A giornata finita (`riepilogo.rinvio`, #895) lo stesso riquadro sta sotto i punti, con `titolo` («Giornata 7 · 10ª di Serie A:
+/// partita rinviata») e `nota` («Manca il recupero: i punti possono ancora cambiare.») sotto le partite.
 struct CartaPartitaRinviata: View {
     let scelta: SceltaRinvio
     var inCorso = false
     var errore: String? = nil
+    /// Al posto di «Partita rinviata» (la giornata finita, già pronto).
+    var titolo: String? = nil
+    var nota: String? = nil
     let cambia: @MainActor (String) async -> Void
 
     var body: some View {
-        Carta(TestiRinvio.titolo(scelta.partite.count), simbolo: "calendar.badge.exclamationmark") {
+        Carta(titolo ?? TestiRinvio.titolo(scelta.partite.count), simbolo: "calendar.badge.exclamationmark") {
             ForEach(scelta.partite) { p in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(TestiRinvio.partita(p)).font(.subheadline.bold())
@@ -19,6 +24,9 @@ struct CartaPartitaRinviata: View {
                 // le sigle si vedono; VoiceOver legge i nomi interi, come le partite del turno
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(TestiRinvio.partitaAVoce(p)), \(TestiRinvio.recupero(p))")
+            }
+            if let nota {
+                Text(nota).font(.subheadline).fixedSize(horizontal: false, vertical: true)
             }
             if let m = TestiRinvio.miei(scelta) {
                 Text(m).font(.subheadline).fixedSize(horizontal: false, vertical: true)
@@ -30,7 +38,8 @@ struct CartaPartitaRinviata: View {
 }
 
 /// Il menu «Per questa giornata i loro giocatori…» con la riga sotto (regola della lega o scelta solo per questa giornata).
-/// Uguale nel riquadro della partita rinviata e, a giornata finita con un recupero che manca, sotto la testa della Formazione.
+/// Uguale nel riquadro della partita rinviata della giornata e in quello della giornata finita con un recupero che manca (nella testa
+/// della Formazione, #895).
 struct MenuRinvio: View {
     let scelta: SceltaRinvio
     var inCorso = false
