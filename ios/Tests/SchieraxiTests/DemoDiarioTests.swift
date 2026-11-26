@@ -124,6 +124,24 @@ struct DemoDiarioTests {
         }
     }
 
+    @Test("Dove la demo spiega i punti i conti tornano: i fantavoti della tabella, più chi è entrato dalla panchina, più il modificatore se c'è, fanno i punti della giornata (#900)")
+    func puntiSpiegatiTornano() async throws {
+        let voci = try await diario().giornate ?? []
+        let spiegate = voci.filter { !($0.spiegazionePunti?.righe ?? []).isEmpty }
+        try #require(!spiegate.isEmpty, "nel diario della demo nessuna giornata spiega i punti: il test non prova niente")
+        for v in spiegate {
+            let g = v.giornata ?? 0
+            let f = try #require(v.cheConta.formazione, "giornata \(g): manca la formazione che conta")
+            let punti = try #require(f.reale, "giornata \(g): mancano i punti")
+            let voti = Self.voti(v)
+            let tabella = (f.titolari ?? []).compactMap { $0.id.flatMap { voti[$0] } }.reduce(0, +)
+            let riserve = Self.entrati(v).map { $0.fv }.reduce(0, +)
+            let modificatore = (v.spiegazionePunti?.righe ?? []).compactMap(Self.modificatore).reduce(0, +)
+            #expect(abs(tabella + riserve + modificatore - punti) < 0.001,
+                    "giornata \(g): tabella \(tabella) + riserve \(riserve) + modificatore \(modificatore) non fanno \(punti)")
+        }
+    }
+
     @Test("Il Diario della demo scrive i giocatori della rosa per cognome, mai con il nome di battesimo (#819: «Leonel» per Marténi)")
     func giocatoriPerCognome() async throws {
         // i nomi di battesimo dei giocatori della demo con nome e cognome («Leonel» di «Leonel Marténi»)
@@ -158,23 +176,44 @@ struct DemoDiarioTests {
 
     private static func unaCifra(_ x: Double) -> Double { (x * 10).rounded() / 10 }
 
-    /// Le frasi delle riserve entrate come le scrive `spiegazione_punti` di fanta/diario.py (`diario.punti_entrato`), con la panchina
-    /// per ruolo delle regole della demo: per ogni titolare della formazione che conta rimasto senza voto, nell'ordine della
-    /// formazione, la prima riserva del suo ruolo con il voto, dalla panchina mostrata prima della scadenza (`istantanea`). Le
-    /// giornate della demo con le frasi hanno un sostituto per ognuno: chi resta senza non c'è.
-    private static func frasiEntrati(_ v: VoceDiario) -> [String] {
+    /// I fantavoti presi della giornata, per giocatore (chi è senza voto non c'è).
+    private static func voti(_ v: VoceDiario) -> [Int: Double] {
         var voti: [Int: Double] = [:]
         for n in v.giocatori ?? [] { if let id = n.id, let fv = n.fv { voti[id] = fv } }
+        return voti
+    }
+
+    /// Le riserve entrate come le sceglie il server con la panchina per ruolo delle regole della demo: per ogni titolare della
+    /// formazione che conta rimasto senza voto, nell'ordine della formazione, la prima riserva del suo ruolo con il voto, dalla
+    /// panchina mostrata prima della scadenza (`istantanea`). Le giornate della demo con le frasi hanno un sostituto per ognuno: chi
+    /// resta senza non c'è.
+    private static func entrati(_ v: VoceDiario) -> [(entra: String, fv: Double, esce: String)] {
+        let voti = Self.voti(v)
         let senzaVoto = Set((v.giocatori ?? []).filter { $0.fv == nil }.compactMap(\.id))
         var usati = Set<Int>()
-        return (v.cheConta.formazione?.titolari ?? []).compactMap { t -> String? in
+        return (v.cheConta.formazione?.titolari ?? []).compactMap { t -> (entra: String, fv: Double, esce: String)? in
             guard let id = t.id, senzaVoto.contains(id) else { return nil }
             guard let r = (v.istantanea?.panchina ?? []).first(where: { p in
                 p.ruolo == t.ruolo && !usati.contains(p.id ?? -1) && p.id.flatMap { voti[$0] } != nil
             }), let rid = r.id, let fv = voti[rid] else { return nil }
             usati.insert(rid)
-            return "\(r.nome ?? "") (\(Formato.punti(fv))) è entrato dalla panchina al posto di \(t.nome ?? "")."
+            return (r.nome ?? "", fv, t.nome ?? "")
         }
+    }
+
+    /// Le frasi delle riserve entrate come le scrive `spiegazione_punti` di fanta/diario.py (`diario.punti_entrato`).
+    private static func frasiEntrati(_ v: VoceDiario) -> [String] {
+        entrati(v).map { "\($0.entra) (\(Formato.punti($0.fv))) è entrato dalla panchina al posto di \($0.esce)." }
+    }
+
+    /// Il modificatore difesa scritto in una frase del server («Modificatore difesa: +1,5.», `diario.punti_modificatore`); nil per
+    /// le altre frasi.
+    private static func modificatore(_ frase: String) -> Double? {
+        let testa = "Modificatore difesa: "
+        guard frase.hasPrefix(testa) else { return nil }
+        let numero = String(frase.dropFirst(testa.count)).trimmingCharacters(in: CharacterSet(charactersIn: ". "))
+            .replacingOccurrences(of: "\u{2212}", with: "-").replacingOccurrences(of: ",", with: ".")
+        return Double(numero)
     }
 
     /// La frase come la scrive `fatti_e_attesi` di fanta/diario.py: i titolari con almeno un punto in più (o in meno) del loro
