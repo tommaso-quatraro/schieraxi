@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 from . import memoria_file
-from .frasi import F
+from .frasi import F, elenco, nome_club, nome_ruolo
 from .percorsi import scrivi_sicuro, utente_della_cartella
 from .regole import RUOLI, Regole
 from .rose import SquadraLetta
@@ -31,8 +31,11 @@ class GiocatoreRosa:
     ruolo: str | None
     squadra: str | None     # squadra di Serie A (sigla)
     costo: int | None = None
-    riconosciuto: str = "esatto"   # come è stato abbinato al listone: esatto, abbreviato, simile, ambiguo, non trovato
+    riconosciuto: str = "esatto"   # come è stato abbinato al listone: esatto, abbreviato, simile, ambiguo, non trovato, manuale
     avviso: str = ""
+    # il nome com'era scritto nel file, se diverso da `nome` («Pellegrini» per «Pellegrini Lu.»): alla prossima importazione
+    # dello stesso file la scelta fatta su quel nome torna già risolta (anteprima_rose.riusa_scelte)
+    testo: str | None = None
 
 
 @dataclass
@@ -89,15 +92,17 @@ def da_import(lette: list[SquadraLetta], precedenti: Rose | None = None, sostitu
             c = r.esito.calciatore
             avviso = r.esito.avviso
             if r.esito.metodo == "ambiguo":
-                avviso = F("rose.potrebbe_essere", elenco=", ".join(f"{a.nome} ({a.ruolo}, {a.squadra})" for a in r.esito.alternative))
+                avviso = potrebbe_essere(r.esito.alternative)
+            nome = c.nome if c else r.testo
             giocatori.append(GiocatoreRosa(
                 id=c.id if c else None,
-                nome=c.nome if c else r.testo,
+                nome=nome,
                 ruolo=r.ruolo or (c.ruolo if c else None),
                 squadra=c.squadra if c else r.squadra,
                 costo=r.costo,
                 riconosciuto=r.esito.metodo,
                 avviso=avviso,
+                testo=r.testo if r.testo != nome else None,
             ))
         # se il file non ha i crediti, restano quelli già inseriti a mano
         vecchia = next((x for x in precedenti.squadre if x.nome == s.nome), None) if precedenti else None
@@ -114,15 +119,53 @@ def da_import(lette: list[SquadraLetta], precedenti: Rose | None = None, sostitu
     return Rose(squadre, mia, datetime.now().isoformat(timespec="seconds"))
 
 
-def controlla(rose: Rose, regole: Regole) -> list[str]:
-    """Avvisi: rose incomplete, giocatori non riconosciuti o riconosciuti solo per somiglianza, doppioni."""
+def potrebbe_essere(alternative) -> str:
+    """«potrebbe essere uno fra Rossi (difensore, Genoa) e Rossi (attaccante, Lecce)»: i candidati di un dubbio, con ruolo e
+    squadra per esteso (niente sigle, collaudo del 26/11)."""
+    candidati = [F("rose.candidato", nome=a.nome, ruolo=nome_ruolo(a.ruolo), squadra=nome_club(a.squadra, a.squadra_slug))
+                 for a in alternative]
+    return F("rose.potrebbe_essere_uno_fra" if len(candidati) > 1 else "rose.potrebbe_essere", elenco=elenco(candidati, con_e=True))
+
+
+POSTI_DEL_RUOLO = {"P": "rose.portieri", "D": "rose.difensori", "C": "rose.centrocampisti", "A": "rose.attaccanti"}   # «2 portieri»
+
+
+def problemi_rosa(s: Squadra, regole: Regole) -> list[str]:
+    """Cosa non torna nella rosa con le regole, in parole come l'anteprima: «Mia: mancano 1 portiere e 4 difensori.»,
+    «Mia: 1 attaccante in più.», «Mia: 2 giocatori senza ruolo.». Vuoto se la rosa è giusta. Fra i giocatori senza ruolo non
+    si contano quelli non riconosciuti: hanno già la loro frase (`rose.non_riconosciuto`), un fatto si dice una volta."""
+    conta = Counter(g.ruolo for g in s.giocatori)
+    mancano = [(r, regole.rosa[r] - conta.get(r, 0)) for r in RUOLI if conta.get(r, 0) < regole.rosa[r]]
+    in_piu = [(r, conta.get(r, 0) - regole.rosa[r]) for r in RUOLI if conta.get(r, 0) > regole.rosa[r]]
+    senza_ruolo = sum(1 for g in s.giocatori if g.ruolo not in RUOLI and g.id is not None)
+    avvisi = []
+    if mancano:
+        avvisi.append(F("rose.mancano_in_squadra", squadra=s.nome, n=sum(n for _, n in mancano),
+                        elenco=elenco([F(POSTI_DEL_RUOLO[r], n=n) for r, n in mancano], con_e=True)))
+    if in_piu:
+        avvisi.append(F("rose.in_piu_in_squadra", squadra=s.nome, elenco=elenco([F(POSTI_DEL_RUOLO[r], n=n) for r, n in in_piu], con_e=True)))
+    if senza_ruolo:
+        avvisi.append(F("rose.senza_ruolo_in_squadra", squadra=s.nome, n=senza_ruolo))
+    return avvisi
+
+
+# le chiavi degli avvisi di `problemi_rosa`: chi deve sapere se una rosa non torna con le regole (onboarding.controlli)
+CHIAVI_ROSA_DIVERSA = ("rose.mancano_in_squadra", "rose.in_piu_in_squadra", "rose.senza_ruolo_in_squadra")
+
+
+def controlla(rose: Rose, regole: Regole, squadre: set[str] | None = None) -> list[str]:
+    """Avvisi: rose incomplete, giocatori non riconosciuti o riconosciuti solo per somiglianza, doppioni. `squadre`: solo
+    quelle (per l'esito di un'importazione, le squadre del file: collaudo del 26/11); un giocatore in più squadre si dice se
+    una di loro è fra queste."""
     avvisi = []
     proprietari: dict[int, list[str]] = {}
     for s in rose.squadre:
-        conta = Counter(g.ruolo for g in s.giocatori)
-        diversi = [f"{r} {conta.get(r, 0)}/{regole.rosa[r]}" for r in RUOLI if conta.get(r, 0) != regole.rosa[r]]
-        if diversi:
-            avvisi.append(F("rose.diversa", squadra=s.nome, dettaglio=", ".join(diversi)))
+        for g in s.giocatori:
+            if g.id is not None and s.nome not in proprietari.setdefault(g.id, []):
+                proprietari[g.id].append(s.nome)
+        if squadre is not None and s.nome not in squadre:
+            continue
+        avvisi += problemi_rosa(s, regole)
         ripetuti = Counter(g.id for g in s.giocatori if g.id is not None)
         for gid, volte in ripetuti.items():
             if volte > 1:
@@ -133,16 +176,14 @@ def controlla(rose: Rose, regole: Regole) -> list[str]:
                 motivo = g.avviso or F("rose.motivo_ceduto")
                 avvisi.append(F("rose.non_riconosciuto", squadra=s.nome, nome=g.nome, motivo=motivo))
                 continue
-            if s.nome not in proprietari.setdefault(g.id, []):
-                proprietari[g.id].append(s.nome)
             if g.riconosciuto in ("abbreviato", "simile"):
                 avvisi.append(F("rose.somiglianza", squadra=s.nome, nome=g.nome, come=F("rose.come_" + g.riconosciuto)))
             if g.avviso:
                 avvisi.append(F("rose.avviso_giocatore", squadra=s.nome, nome=g.nome, avviso=g.avviso))
-    for gid, squadre in proprietari.items():
-        if len(squadre) > 1:
+    for gid, dove in proprietari.items():
+        if len(dove) > 1 and (squadre is None or set(dove) & squadre):
             nome = next(g.nome for s in rose.squadre for g in s.giocatori if g.id == gid)
-            avvisi.append(F("rose.in_piu_squadre", nome=nome, squadre=", ".join(squadre)))
+            avvisi.append(F("rose.in_piu_squadre", nome=nome, squadre=", ".join(dove)))
     return avvisi
 
 
@@ -189,7 +230,8 @@ def _codice(v: object) -> bool:
 
 # il tipo di ogni campo di un giocatore, come lo scrive l'app (i campi che mancano prendono il valore di base)
 _TIPI_GIOCATORE = {"id": _codice, "nome": lambda v: isinstance(v, str), "ruolo": _testo_o_niente, "squadra": _testo_o_niente,
-                   "costo": _numero_o_niente, "riconosciuto": lambda v: isinstance(v, str), "avviso": lambda v: isinstance(v, str)}
+                   "costo": _numero_o_niente, "riconosciuto": lambda v: isinstance(v, str), "avviso": lambda v: isinstance(v, str),
+                   "testo": _testo_o_niente}
 
 
 def _giocatore(g: dict) -> GiocatoreRosa:

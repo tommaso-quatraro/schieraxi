@@ -821,16 +821,20 @@
     "en": "Invalid list of steps"
   },
   "err.potrebbe_essere": {
-    "it": "potrebbe essere: {1}",
-    "en": "could be: {1}"
+    "it": "potrebbe essere {1}",
+    "en": "it could be {1}"
+  },
+  "err.potrebbe_essere_uno_fra": {
+    "it": "potrebbe essere uno fra {1}",
+    "en": "it could be one of {1}"
   },
   "err.nomi_ruolo_diverso": {
-    "it": "ruolo diverso: indicato {1}, nel listone {2}",
-    "en": "different role: given {1}, in the player list {2}"
+    "it": "ruolo diverso: nel file {1}, nel listone {2}",
+    "en": "different role: {1} in the file, {2} in the player list"
   },
   "err.nomi_squadra_diversa": {
-    "it": "squadra diversa: indicata {1}, nel listone {2}",
-    "en": "different team: given {1}, in the player list {2}"
+    "it": "squadra diversa: nel file {1}, nel listone {2}",
+    "en": "different team: {1} in the file, {2} in the player list"
   },
   "err.google_non_attivo": {
     "it": "L'accesso con Google non è attivo",
