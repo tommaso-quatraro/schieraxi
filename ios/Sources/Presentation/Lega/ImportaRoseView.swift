@@ -128,13 +128,15 @@ struct ImportaExcelView: View {
         .scrollContentBackground(.hidden)
     }
 
-    /// I giocatori rimasti senza codice nelle rose salvate (lasciati così nell'anteprima, o da importazioni vecchie).
+    /// I giocatori rimasti senza codice nelle rose salvate (lasciati così nell'anteprima, o da importazioni vecchie), con le parole
+    /// del passo «La tua squadra» della web (`paNonRiconosciuti`, #931); sulla web la sezione sta nel primo avvio (differenza ammessa).
     @ViewBuilder
     private var daSistemare: some View {
         if !dubbi.dubbi.isEmpty {
             Section {
-                Text("Non li ho trovati nel listone (magari ceduti o con un altro nome). Tocca un nome e cerca quello giusto; se non c'è, lascia stare.")
+                Text(Catalogo.Onb.nonTrovatiNel)
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
+                    .fixedSize(horizontal: false, vertical: true)
                 ForEach(dubbi.dubbi) { d in
                     Button { dubbi.scelto = d } label: {
                         HStack {
@@ -148,11 +150,12 @@ struct ImportaExcelView: View {
                         .frame(minHeight: Tema.areaTocco)
                     }
                     .accessibilityLabel("\(d.nome), \(d.squadra), non riconosciuto")
-                    .accessibilityHint("Cerca il giocatore giusto")
+                    .accessibilityHint(Catalogo.Onb.cercaGiocatoreGiusto)
                 }
-            } header: { Text("Giocatori da sistemare (\(dubbi.dubbi.count))").foregroundStyle(Color.testoSecondario) }
+            } header: { Text(Catalogo.Pav.daSistemare(n: String(dubbi.dubbi.count))).foregroundStyle(Color.testoSecondario) }
         } else if dubbi.sistemati > 0 {
-            Section { Label("Tutti i giocatori sono riconosciuti.", systemImage: "checkmark.circle").font(.footnote).foregroundStyle(Color.testoSecondario) }
+            // il messaggio della web porta già il segno di spunta («✓ Tutti i giocatori sono riconosciuti.»)
+            Section { Text(Catalogo.Onb.tuttiGiocatoriSono).font(.footnote).foregroundStyle(Color.testoSecondario) }
         }
     }
 }
@@ -224,7 +227,7 @@ struct AnteprimaRoseVista: View {
 
     /// «Qual è la tua squadra?» come la web (`ar-mia` di `anteprima.js`): le squadre una accanto all'altra, a capo quando la riga è
     /// piena; scelta solo quella suggerita dal server, altrimenti nessuna, finché non la tocchi (#880: prima «Scegli dopo» era
-    /// già scelto). Anche la squadra suggerita che non è nel file, per prima (#808).
+    /// già scelto). Anche la squadra suggerita che non è nel file, per prima (#808). Niente frase sotto, come la web (#931).
     private var miaSquadra: some View {
         Carta(Catalogo.Ar.qualETua, simbolo: "star") {
             FilaPillole(spazio: 8) {
@@ -232,7 +235,6 @@ struct AnteprimaRoseVista: View {
                     PillolaSquadraMia(nome: nome, scelta: vm.mia == nome) { vm.mia = nome }
                 }
             }
-            Text("La formazione consigliata è per lei.").font(.caption).foregroundStyle(Color.testoSecondario)
         }
     }
 
@@ -401,7 +403,7 @@ struct RigaDubbioAnteprima: View {
             .accessibilityHint("Apre le scelte per questo giocatore")
             if nonTrovato && scelta == .lascia {
                 Button(action: cerca) {
-                    Label("Cerca il giocatore giusto", systemImage: "magnifyingglass").font(.subheadline).frame(minHeight: Tema.areaTocco)
+                    Label(Catalogo.Onb.cercaGiocatoreGiusto, systemImage: "magnifyingglass").font(.subheadline).frame(minHeight: Tema.areaTocco)
                 }
                 .buttonStyle(.borderless)
                 .tint(Color.verde)

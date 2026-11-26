@@ -13,8 +13,8 @@ extension FinteServer {
         switch schermata {
         case "guida-pronta":
             finto.risposte["/api/primo-avvio"] = #"""
-            {"primo_avvio": {"fatti": ["rose", "squadra", "stemma", "widget", "avvisi"], "saltati": [], "chiuso": false},
-             "passi": ["server", "accesso", "rose", "squadra", "stemma", "pwa", "widget", "avvisi"]}
+            {"primo_avvio": {"fatti": ["rose", "squadra", "tempi", "widget", "avvisi"], "saltati": [], "chiuso": false},
+             "passi": ["server", "accesso", "rose", "stemma", "squadra", "tempi", "pwa", "widget", "avvisi"]}
             """#
             finto.indirizzoFinto = "https://finto-guida-pronta.invalid"
         case "lega-importa-prima":
