@@ -71,6 +71,15 @@
       "forma": "web",
       "chi": "**fatto** (#845): `DatiVecchi.frase(salvatiIl:motivo:)` prende la data della copia (`Date`); prove `DatiVecchiTests` (stesso istante e stessa frase della web) e `tests/browser/test_copia_salvata.py`",
       "stato": "fatto"
+    },
+    {
+      "id": 112,
+      "schermata": "Un calcolo del server che dura, risposta 202 (#931)",
+      "web": "mentre si aspetta, sopra la barra il marchio che si muove e «Un attimo, mister: ci sto lavorando.» (`mostraCalcolo`, `comune.calcolo_attesa`); finiti i tentativi «Il calcolo sta durando più del previsto: riprova tra poco.» (`comune.calcolo_lungo`)",
+      "iphone": "prima: nessuna frase mentre si aspettava (solo il caricamento della schermata) e alla fine «Il calcolo sta durando più del solito. Riprova tra poco.» scritto a mano. Ora come la web: sopra la barra il marchio e la frase d'attesa, letta da VoiceOver (`AttesaCalcolo`, `AvvisoCalcolo`), e alla fine la frase del catalogo (`ServerHTTP.richiesta`)",
+      "forma": "web",
+      "chi": "**fatto** (#931): prove `CalcoloLungoTests`, `AttesaCalcoloContaTests`, `ServerHTTPOstileTests`",
+      "stato": "fatto"
     }
   ]
 }
