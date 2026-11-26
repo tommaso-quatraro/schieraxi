@@ -27,6 +27,12 @@ extension Oggi {
     var riepilogoGiornata: RiepilogoGiornata? { faseGiornata == .finita ? riepilogo?.valore : nil }
     /// La prossima giornata da preparare: nella fase `finita` e per chi è entrato a giornata iniziata (`senza_formazione`).
     var prossimaGiornata: ProssimaGiornata? { faseGiornata == .finita || senzaFormazioneInCorso ? prossima?.valore : nil }
+    /// La giornata appena finita senza i voti (`voti_in_arrivo`, #895): solo nella fase `finita`, senza riepilogo e con il testo del
+    /// server. Un server di prima non lo manda.
+    var votiInArrivoGiornata: VotiInArrivo? {
+        guard faseGiornata == .finita, riepilogoGiornata == nil, let v = votiInArrivo?.valore, v.testoPronto != nil else { return nil }
+        return v
+    }
 }
 
 /// I testi delle fasi della giornata, con le parole della web (`cardInCorso`, `valoreLive`, `cardSenzaFormazione` e `cardRiepilogo`
@@ -83,12 +89,22 @@ enum TestiFase {
         }
     }
 
-    /// Sotto le cifre, come la web: «2 giocatori devono ancora giocare» (`oggi.ancora_da_giocare`) o, a zero, «Hanno giocato
-    /// tutti: mancano solo i voti ufficiali.» (`oggi.tutti_giocato`). `ancora_da_giocare` del server conta chi va a punteggio e
-    /// deve ancora giocare o sta giocando (`docs/API.md`): non i voti che mancano. Nil se il numero non c'è (server vecchio).
+    /// Le parole di prima sotto le cifre, per un server senza `situazione`: «2 giocatori devono ancora giocare»
+    /// (`oggi.ancora_da_giocare`) o, a zero, «Hanno giocato tutti: mancano solo i voti ufficiali.» (`oggi.tutti_giocato`).
+    /// `ancora_da_giocare` del server conta chi va a punteggio e deve ancora giocare o sta giocando (`docs/API.md`): non i voti che
+    /// mancano. Nil se il numero non c'è (server vecchio).
     static func ancora(_ n: Int?) -> String? {
         guard let n, n >= 0 else { return nil }
         return n == 0 ? tuttiGiocato : Catalogo.Oggi.ancoraDaGiocare(n)
+    }
+
+    /// La riga sotto i punti della giornata in corso, come `testaGiornata` della web dopo la #899: la frase del server
+    /// (`in_corso.situazione`: chi deve ancora giocare, i voti o il recupero che mancano, i voti tutti usciti). Con un server di
+    /// prima, senza il campo, le parole di sempre; senza nemmeno il numero, «Hanno giocato tutti…» come la web.
+    static func situazione(_ c: GiornataInCorso) -> String {
+        if let frase = c.testoSituazione { return frase }
+        let n = c.ancoraDaGiocare ?? 0
+        return n > 0 ? Catalogo.Oggi.ancoraDaGiocare(n) : tuttiGiocato
     }
 
     /// Un cambio dalla panchina come la web: «Rossi → Bianchi» o «Rossi → nessun sostituto». Nil senza chi esce (la web lo salta).

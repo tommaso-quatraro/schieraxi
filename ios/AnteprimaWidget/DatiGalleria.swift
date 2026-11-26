@@ -5,7 +5,8 @@ import WidgetKit
 /// dell'app (`LegaDemo`, la stessa fonte): nelle foto widget e app dicono le stesse cose (nomi, «gioca 62%», scadenza, Diario).
 enum DatiGalleria {
     /// `-DATI`: pieni (prima della scadenza), parziali (un server senza scambio, svincolo e Diario), salvati (copia di due giorni
-    /// prima), salvati_oggi (copia di oggi), in_corso, finita, campionato_finito (la frase del server al posto della giornata, #727), senza_formazione (entrato a
+    /// prima), salvati_oggi (copia di oggi), in_corso, in_corso_recupero (più avanti nella giornata: la frase lunga del server su
+    /// chi aspetta il recupero, #900), finita, campionato_finito (la frase del server al posto della giornata, #727), senza_formazione (entrato a
     /// giornata iniziata: la prossima da preparare, #687), vuoto (widget da collegare).
     static func voce(_ tipo: String) -> Voce {
         let adesso = Date()
@@ -19,6 +20,11 @@ enum DatiGalleria {
         if tipo == "senza_formazione" {
             let quando = LegaDemo.momento(adesso: adesso, fase: .inCorso)
             let w = RiassuntoWidget.leggi(senzaFormazione(LegaDemo.widget(adesso: quando, fase: .inCorso), adesso: quando))
+            return Voce(date: quando, riassunto: w?.comeRiassuntoOggi(scaricatoIl: quando), datiSalvati: false, widget: w)
+        }
+        if tipo == "in_corso_recupero" {
+            let quando = LegaDemo.momento(adesso: adesso, fase: .inCorso)
+            let w = RiassuntoWidget.leggi(conRecupero(LegaDemo.widget(adesso: quando, fase: .inCorso)))
             return Voce(date: quando, riassunto: w?.comeRiassuntoOggi(scaricatoIl: quando), datiSalvati: false, widget: w)
         }
         let fase: LegaDemo.Fase
@@ -36,6 +42,17 @@ enum DatiGalleria {
         let scaricatoIl = tipo == "salvati" ? quando.addingTimeInterval(-2 * 86_400) : quando
         let salvati = tipo == "salvati" || tipo == "salvati_oggi"
         return Voce(date: quando, riassunto: w?.comeRiassuntoOggi(scaricatoIl: scaricatoIl), datiSalvati: salvati, widget: w)
+    }
+
+    /// La giornata in corso della demo più avanti (#900): hanno giocato tutti tranne tre titolari della partita rinviata e mancano i
+    /// voti, quindi nessuno deve più giocare e la riga sotto i punti è la frase lunga del server (`LegaDemo.situazioneRecupero`).
+    private static func conRecupero(_ dati: Data) -> Data {
+        guard var w = (try? JSONSerialization.jsonObject(with: dati)) as? [String: Any],
+              var inCorso = w["in_corso"] as? [String: Any] else { return dati }
+        inCorso["ancora_da_giocare"] = 0
+        inCorso["situazione"] = LegaDemo.situazioneRecupero
+        w["in_corso"] = inCorso
+        return (try? JSONSerialization.data(withJSONObject: w)) ?? dati
     }
 
     /// La giornata in corso della demo come la vede chi è entrato dopo la scadenza senza una formazione (`fanta/fasi.py`, #651):

@@ -62,6 +62,11 @@ oggi.rinvio_salvato
 oggi.rinvio_regola_lega
 oggi.recupero_manca
 
+# Giornata finita con una partita da recuperare: il riquadro in testa, con il titolo della giornata e la nota (#900, TestaFormazione)
+oggi.rinvio_titolo_giornata_1
+oggi.rinvio_titolo_giornata_n
+oggi.recupero_punti
+
 # Scheda del giocatore: lo stato a parole (Domain/ParolaStato) e «Diffidato» accanto al ruolo (SchedaGiocatoreView)
 oggi.infortunato
 oggi.squalificato
