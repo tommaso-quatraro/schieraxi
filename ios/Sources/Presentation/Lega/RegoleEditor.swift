@@ -326,11 +326,17 @@ struct RigaStepper: View {
                     }
                 }
                 Spacer(minLength: 8)
-                Text(Formato.decimali(valore, cifre: cifre)).monospacedDigit().foregroundStyle(Color.testoSecondario)
+                Text(Self.testo(valore, cifre: cifre)).monospacedDigit().foregroundStyle(Color.testoSecondario)
             }
         }
         .frame(minHeight: 44)
-        .accessibilityValue(Formato.decimali(valore, cifre: cifre))
+        .accessibilityValue(Self.testo(valore, cifre: cifre))
+    }
+
+    /// Il numero della riga: i negativi con il meno tipografico «−0,5», come l'anteprima del regolamento, gli avvisi sui limiti e i
+    /// campi della web (collaudo del 26/11: qui era «-0,5» con il trattino); arrotondato a zero, senza segno.
+    static func testo(_ valore: Double, cifre: Int) -> String {
+        RegoleLogica.conMeno(valore, cifre: cifre)
     }
 }
 
