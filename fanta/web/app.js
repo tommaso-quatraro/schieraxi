@@ -800,8 +800,13 @@ async function rileggiAvvio() {
   rileggoAvvio = true; avvioDaRileggere = false;
   try { await caricaInfo(); await caricaSquadre(true); }                   // un errore rimette avvioDaRileggere
   finally { rileggoAvvio = false; }
+  if (!avvioDaRileggere) ridisegnaImpostazioniAvvio();
+}
+// Impostazioni in vista mentre lo stato d'avvio arriva (aperta prima che arrivasse, all'apertura con la rete lenta, o senza rete): le
+// pagine che mostrano le squadre («La mia squadra», «Le altre squadre») si ridisegnano con i dati arrivati. Non sotto l'accesso.
+function ridisegnaImpostazioniAvvio() {
   const gruppo = new URLSearchParams(location.search).get("gruppo");
-  if (!avvioDaRileggere && stato.vista === "impostazioni" && [null, "squadra", "squadre"].includes(gruppo)) vaiQui();
+  if (!accessoAperto && stato.vista === "impostazioni" && [null, "squadra", "squadre"].includes(gruppo)) vaiQui();
 }
 window.addEventListener("online", () => rileggiAvvio());
 const miaSquadra = () => (stato.squadre || []).find(s => s.mia);
@@ -4554,8 +4559,8 @@ function ricordaAccount(dati) {
 // sua lingua. Un guasto (rete, 5xx): resta l'account salvato.
 function chiSonoInRitardo({ r, dati }) {
   if (!r || r.status >= 500 || !dati || accessoAperto) return;
+  ricordaDatiAccesso(dati);                     // prima dell'accesso: «Continua con Google» e il modo di registrarsi vengono da qui
   if (r.status === 401 && dati.multiutente) { sessioneScaduta(); return; }
-  ricordaDatiAccesso(dati);
   if (!r.ok || !dati.multiutente || !dati.utente) return;
   const stesso = !!stato.account && String(stato.account.id) === String(dati.utente.id);
   ricordaAccount(dati);
@@ -4620,7 +4625,7 @@ controllaAccesso().then(async entrato => {
   // lenta la prima schermata restava vuota): mostrano subito la copia salvata e chiedono i loro dati quando lo stato d'avvio è
   // arrivato (avvioLetto). La riga di stato parte dalla copia dell'ultima lettura. I volti si ridisegnano al loro posto quando arrivano
   // i tratti (caricaTratti); le funzioni contano da quando arrivano (queste due schermate non ne dipendono). Le pagine di Impostazioni,
-  // che mostrano le squadre e le funzioni, li aspettano come prima.
+  // che mostrano le squadre e le funzioni, li aspettano come prima; aperte dalla barra prima che arrivassero, si ridisegnano dopo.
   const copiaStato = leggiCache("stato", true);
   if (copiaStato && !stato.rigaStato) stato.rigaStato = pezziRigaStato(copiaStato.dati);
   avvioLetto = caricaInfo().then(() => caricaSquadre(true));
@@ -4631,6 +4636,7 @@ controllaAccesso().then(async entrato => {
   if (subito) disegna();
   Promise.all([avvioLetto, funzioni]).then(() => {
     if (!subito) disegna();
+    else ridisegnaImpostazioniAvvio();                   // aperta dalla barra prima che arrivassero: ora con le squadre
     // dal menu Condividi si apre il foglio di stemma e maglia: la guida non gli prende il posto
     if (typeof primoAvvioSeServe === "function" && !condivisa) primoAvvioSeServe();
     if (condivisa === "1") apriStemmaMaglia(null, true);

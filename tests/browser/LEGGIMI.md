@@ -278,9 +278,12 @@ Gira solo prima della scadenza. Le `/api/` le governa il test (`Rete`: trattenut
 - prima apertura con volti e funzioni che non arrivano: la Formazione si disegna lo stesso; arrivati i tratti, il volto cambia al
   suo posto senza ridisegnare il campo;
 - con gli account, «chi sono» lento: dopo circa 4 secondi la Formazione salvata dell'account; la risposta arrivata dopo che dice
-  «sessione finita» apre la schermata di accesso;
-- la prima scheda di un giocatore, con una copia vecchia del calendario e il calendario che arriva tardi, mostra le prossime
-  partite del calendario nuovo; se il calendario non arriva, quelle della copia;
+  «sessione finita» apre la schermata di accesso con «Continua con Google» e la registrazione che il server ha detto; quella con
+  un altro account fa ricaricare la pagina, che riparte con lui;
+- con stato e squadre lenti, Impostazioni aperta dalla barra prima che arrivino mostra «La mia squadra» e «Le altre squadre»
+  quando arrivano;
+- la prima scheda di un giocatore, con una copia vecchia del calendario e il calendario che arriva tardi, mostra prima le partite
+  della copia e poi, arrivato il calendario, quelle nuove; se il calendario non arriva, quelle della copia;
 - un'altra scheda dello stesso sito che esce, o entra con un altro account, fa ricaricare questa; lo stesso account riscritto no.
 
 `test_copia_e_lingua.py`, la copia dei dati tenuta nel browser e la lingua (#854). Gira solo prima della scadenza. Le `/api/`

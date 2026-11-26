@@ -14,6 +14,7 @@ Qui la rete la governa il test (`Rete`): le /api/ si fermano finché il test non
 (senza rete) o rispondono con un errore. Si guarda ciò che vede chi usa l'app.
 """
 import json
+import re
 from urllib.parse import urlsplit
 
 import pytest
@@ -22,7 +23,8 @@ import pytest
 UTENTE = {"multiutente": True, "utente": {"id": 7, "nome_utente": "amico", "nome_visualizzato": "Amico di prova", "ruolo": "utente",
                                            "creato": "2026-10-01T10:00:00"}}
 ALTRO = {"id": 8, "nome_utente": "altro", "nome_visualizzato": "Altro di prova", "ruolo": "utente", "creato": "2026-10-02T10:00:00"}
-SCADUTA = {"detail": "Accesso richiesto.", "multiutente": True}
+# il 401 del server con gli account (rotte_account.py): dice anche come ci si registra e con quali servizi si entra
+SCADUTA = {"detail": "Accesso richiesto", "multiutente": True, "registrazione": "email", "social": ["google"], "email_attiva": True}
 TITOLARI = "() => [...document.querySelectorAll('main #campo-formazione [data-giocatore]')].map(e => Number(e.dataset.giocatore))"
 CAMPO_PIENO = "() => document.querySelectorAll('main #campo-formazione [data-giocatore]').length === 11"
 
@@ -180,11 +182,9 @@ def test_volti_e_funzioni_lenti_non_fermano_la_prima_schermata(web):
     assert not web.errori_console, web.errori_console
 
 
-def test_chi_sono_lento_si_parte_dall_account_salvato_e_la_risposta_dopo_vale(web):
-    """Con gli account e la rete ferma (anche «chi sono»): dopo circa 4 secondi la Formazione salvata di quell'account compare (la
-    copia sta sotto il suo account: senza l'account salvato non si troverebbe); quando la risposta di «chi sono» arriva e dice che
-    la sessione è finita, compare la schermata di accesso (nessun dato resta in vista)."""
-    solo_prima(web)
+def _chi_sono_lento(web) -> Rete:
+    """Con gli account e la rete ferma (anche «chi sono»): dopo circa 4 secondi la Formazione salvata dell'account 7 compare. La
+    copia sta sotto il suo account: senza l'account salvato non si troverebbe."""
     rete = Rete(web.pagina)
     rete.risposte["/api/account/me"] = (200, UTENTE)
     web.apri("/")
@@ -193,11 +193,58 @@ def test_chi_sono_lento_si_parte_dall_account_salvato_e_la_risposta_dopo_vale(we
     web.pagina.reload(wait_until="load")
     _aspetta_il_campo(web, 7, "con «chi sono» lento la Formazione salvata dell'account non compare")
     assert _titolari(web) == salvati
+    return rete
 
+
+def test_chi_sono_lento_e_poi_sessione_finita_apre_l_accesso_completo(web):
+    """La risposta di «chi sono» arriva dopo e dice che la sessione è finita: compare la schermata di accesso, senza dati in vista,
+    con ciò che il server ha detto nella stessa risposta: «Continua con Google» e la registrazione con l'email (revisione #948)."""
+    solo_prima(web)
+    rete = _chi_sono_lento(web)
     rete.risposte["/api/account/me"] = (401, SCADUTA)
     rete.lascia("/api/account/me")
-    web.pagina.get_by_role("dialog", name="Accesso a SchieraXI").wait_for(timeout=10000)
+    accesso = web.pagina.get_by_role("dialog", name="Accesso a SchieraXI")
+    accesso.wait_for(timeout=10000)
     assert web.pagina.evaluate(TITOLARI) == [], "con la sessione finita la Formazione resta in vista"
+    assert accesso.get_by_role("button", name="Continua con Google").is_visible(), "l'accesso non ha «Continua con Google»"
+    accesso.get_by_role("button", name="Registrati").click(timeout=10000)
+    assert accesso.get_by_text("Serve un codice d'invito e un indirizzo email").is_visible(), \
+        f"la registrazione non è quella del server (con l'email): {accesso.inner_text()[:300]!r}"
+
+
+def test_chi_sono_lento_e_poi_un_altro_account_ricarica_con_quello(web):
+    """La risposta di «chi sono» arriva dopo con un altro account (entrato da un'altra scheda): la pagina, che mostrava la copia
+    dell'account di prima, si ricarica e riparte con quello nuovo."""
+    solo_prima(web)
+    rete = _chi_sono_lento(web)
+    rete.risposte["/api/account/me"] = (200, {"multiutente": True, "utente": ALTRO})
+    try:
+        with web.pagina.expect_navigation(timeout=10000):
+            rete.lascia("/api/account/me")
+    except Exception:                        # noqa: BLE001 - si dice cosa non è successo
+        pytest.fail("«chi sono» arrivato dopo con un altro account, e la pagina resta con la copia di quello di prima")
+    salvato = web.pagina.evaluate("() => JSON.parse(localStorage.getItem('account') || 'null')")
+    assert salvato and salvato["id"] == ALTRO["id"], f"dopo la ricarica l'account salvato è {salvato}"
+
+
+def test_impostazioni_aperta_prima_dello_stato_d_avvio_si_completa_quando_arriva(web):
+    """Con lo stato d'avvio e le squadre lenti, si passa dalla Formazione a Impostazioni prima che arrivino: quando arrivano, la
+    pagina mostra «La mia squadra» e «Le altre squadre» (revisione #948: restavano assenti fino a un'altra apertura)."""
+    solo_prima(web)
+    rete = Rete(web.pagina)
+    rete.ferme.update({"/api/stato", "/api/squadre"})
+    web.pagina.goto(web.server.indirizzo + "/", wait_until="load")
+    web.pagina.get_by_role("navigation", name="Sezioni").get_by_role("link", name="Impostazioni").click(timeout=10000)
+    principale = web.pagina.locator("main")
+    principale.get_by_role("heading", level=1, name="Impostazioni").wait_for(timeout=10000)
+    rete.lascia("/api/stato")
+    rete.lascia("/api/squadre")
+    for nome in ("La mia squadra", "Le altre squadre"):
+        riga = principale.get_by_role("button", name=re.compile(rf"^\s*{re.escape(nome)}"))
+        try:
+            riga.first.wait_for(timeout=8000)
+        except Exception:                    # noqa: BLE001 - si dice cosa manca
+            pytest.fail(f"arrivati stato e squadre, Impostazioni non ha «{nome}»: {_testo(web)[:300]!r}")
 
 
 # ---------------------------------------------------------------- 3. le prossime partite nella scheda
@@ -242,6 +289,9 @@ def test_la_prima_scheda_mostra_le_prossime_partite_del_calendario_nuovo(web):
     _con_la_copia_del_calendario(web)
     rete.ferme.add("/api/calendario")
     _, attese = _apri_tutti_i_numeri(web)
+    # intanto, passata la breve attesa, le partite della copia (revisione #948: così si prova il ridisegno)
+    web.pagina.wait_for_function(f"() => {{ const v = ({AVVERSARI})(); return v.length > 0 && v.every(x => x.endsWith('SPE')); }}",
+                                 timeout=8000)
     rete.lascia("/api/calendario")
     try:
         web.pagina.wait_for_function(f"(attese) => JSON.stringify(({AVVERSARI})()) === JSON.stringify(attese)", arg=attese, timeout=8000)
