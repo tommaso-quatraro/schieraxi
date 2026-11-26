@@ -205,8 +205,8 @@
     "en": "The lineup closes in {tempo} and the one you saved is no longer valid: save another one."
   },
   "frase.dafare.rose_mercato": {
-    "it": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della {giornata}.",
-    "en": "It's time for auctions and trades in the league: if the rosters have changed, update them before {giornata}."
+    "it": "È il momento di aste e scambi: se le rose sono cambiate, aggiornale.",
+    "en": "It's time for auctions and trades: if the rosters have changed, update them."
   },
   "frase.dafare.cert_scaduto": {
     "it": "L'app sul telefono è scaduta: va reinstallata.",

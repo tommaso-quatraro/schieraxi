@@ -39,10 +39,10 @@
     {
       "id": 100,
       "schermata": "Scheda giocatore: «Ultimi voti» e «Perché questo numero» (#863)",
-      "web": "«Ultimi voti»: cinque pallini neutri, tutti dello stesso grigio con il numero nel colore del testo (`.pallini i` in `stile.css`), mai verdi, arancio o rossi per valore; «Perché questo numero»: le frasi del server come arrivano, «gioca il 78%: dubbio» (`bloccoPerche` in `app.js`)",
+      "web": "«Ultimi voti»: cinque pallini neutri, tutti dello stesso grigio con il numero nel colore del testo (`.pallini i` in `stile.css`), mai verdi, arancio o rossi per valore; «Perché questo numero»: le frasi del server come arrivano (`bloccoPerche` in `app.js`), senza il motivo «gioca» («gioca il 78%: dubbio»): dal 26/11/2026 (#923) la scheda lo toglie, perché «gioca N%» sta già accanto al numero, con la parola dello stato sotto (prima il 62% si leggeva tre volte)",
       "iphone": "prima: pallini verdi da 7, arancio da 6 e rossi sotto 6 (`pallino` di `SchedaGiocatoreView`) e frasi con la maiuscola davanti, «Gioca il 62%: dubbio» (`PercheNumero`). Ora come la web: pallini neutri (che vanno a capo se non ci stanno, come sulla web) e le frasi come arrivano, anche per VoiceOver",
       "forma": "web; il vocabolario: un voto non si colora in base al valore",
-      "chi": "**fatto** (#863): `SchedaGiocatoreView.pallino`, `PercheNumero` in `Domain/FantavotoAtteso.swift`; prova `FantavotoAttesoTests` (le frasi), foto `giocatore` (i pallini)",
+      "chi": "**fatto** (#863, #923): `SchedaGiocatoreView.pallino`, `PercheNumero` in `Domain/FantavotoAtteso.swift`, senza il motivo «gioca» in `LetturaScheda.perche`; prova `FantavotoAttesoTests` (le frasi), `SchedaGiocatoreComeLaWebTests` (niente «gioca»), web `tests/browser/test_scheda_gioca.py`, foto `giocatore`",
       "stato": "fatto"
     }
   ]

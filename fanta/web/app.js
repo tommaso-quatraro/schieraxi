@@ -1034,6 +1034,17 @@ function menuRinvio(rv) {
       <select class="rinvio-modo" data-giornata="${Number(rv.giornata)}" data-stagione="${esc(rv.stagione || "")}">${modi.map(m => `<option value="${esc(m)}" ${m === scelto ? "selected" : ""}>${esc(nomeModoRinvio(m, voto))}</option>`).join("")}</select></span></label>
     <p class="debole piccolo">${rv.eccezione ? t("oggi.rinvio_eccezione", { regola: esc(nomeModoRinvio(rv.predefinito, voto)) }) : t("oggi.rinvio_regola_lega")}</p>`;
 }
+// Un menu dentro un campo con la domanda sopra (`label.accesso-campo`), con la scelta intera come il menu del rinvio: i tempi della lega
+// in Regole e scadenza e nella guida del primo avvio. Con lo zoom al 200% il <select> si leggeva «10 minuti prima dell…» (#923).
+// `select`: l'HTML del <select>, senza classe; `scelta`: il testo della voce scelta (testo semplice). I cambi a mano li segue
+// `seguiScelta`; dopo un valore messo dal codice va chiamata `mostraScelta`.
+const menuIntero = (select, scelta) =>
+  `<span class="menu-scelta"><span class="menu-scelta-testo" aria-hidden="true">${esc(scelta)}</span>${select}</span>`;
+function mostraScelta(sel) {
+  const testo = sel && sel.closest(".menu-scelta")?.querySelector(".menu-scelta-testo");
+  if (testo) testo.textContent = sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : "";
+}
+const seguiScelta = sel => { if (sel) sel.addEventListener("change", () => mostraScelta(sel)); };
 // «UDI vs MIL»: le sigle, prima la squadra di casa. La usano il riquadro del rinvio e la riga dei recuperi che mancano (#310).
 const partitaVs = p => `${sigla(p.casa)} vs ${sigla(p.trasferta)}`;
 // `titolo` (la giornata finita, #895): il titolo con la giornata a cui si riferisce, già pronto, al posto di «Partita rinviata»;
@@ -1662,7 +1673,8 @@ function graficoVoti(voti, giornate) {
 }
 
 // «Perché questo numero»: i motivi principali del fantavoto atteso, come li manda il server (fanta/perche.py). L'effetto è in fantavoti
-// rispetto a un giocatore medio del suo ruolo; «gioca N%» non ha effetto (il numero è «se gioca») e si vede con un punto esclamativo.
+// rispetto a un giocatore medio del suo ruolo; un motivo senza effetto si vede con un punto esclamativo. Il motivo «gioca N%» la
+// scheda lo toglie (htmlScheda): non cambia il numero, che è «se gioca», e accanto al numero c'è già.
 function bloccoPerche(x) {
   if (!Array.isArray(x.perche_numero)) return "";                  // server più vecchio: niente riquadro
   const medio = x.fv_atteso_medio_ruolo;
@@ -1686,8 +1698,13 @@ function htmlScheda(c, pr, fz) {
   const preso = !!esito && esito.fv != null;
   const q = pr ? giocaLetto(pr) : 0;
   const perche = fz && pr ? fz.perche(Number(c.id)) : "";
-  // a partita cominciata «gioca N%» non serve più: fuori anche dai motivi
-  const prSenzaGioca = pr && esito && Array.isArray(pr.perche_numero) ? { ...pr, perche_numero: pr.perche_numero.filter(m => m.chiave !== "gioca") } : pr;
+  // il motivo «gioca N%» mai fra i motivi del numero (#923): prima della partita «gioca N%» sta accanto al numero, con la parola
+  // dello stato sotto, e la riga lo diceva una seconda volta («gioca il 62%: dubbio»); a partita cominciata non serve più
+  const prSenzaGioca = pr && Array.isArray(pr.perche_numero) ? { ...pr, perche_numero: pr.perche_numero.filter(m => m.chiave !== "gioca") } : pr;
+  // un infortunato o uno squalificato ha dal server il solo motivo «gioca» («infortunato: non gioca», fanta/perche.py): tolto quello,
+  // il riquadro direbbe «Nessun motivo spicca…», falso. Non c'è: lo stato si legge accanto al numero (revisione della #945)
+  const nonGioca = !!pr && [pr.stato, codiceStato(pr)].some(s => s === "infortunato" || s === "squalificato");
+  const senzaPerche = nonGioca && Array.isArray(prSenzaGioca.perche_numero) && !prSenzaGioca.perche_numero.length;
   const nota = pr ? notaStato(pr, stato) : "";
   const partita = pr && pr.avversario ? t(pr.in_casa ? "formazione.partita_casa" : "formazione.partita_fuori", { avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) }) : "";
   const cifre = !pr ? `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`
@@ -1709,7 +1726,7 @@ function htmlScheda(c, pr, fz) {
     ${cifre}
     ${nota ? `<p class="scheda-nota">${esc(nota)}</p>` : ""}
     ${perche ? `<div class="scheda-pezzo" id="perche-titolare"><h3>${t("formazione.perche_titolare")}</h3><p>${perche}</p></div>` : ""}
-    ${pr && !finitaP ? bloccoPerche(prSenzaGioca) : ""}
+    ${pr && !finitaP && !senzaPerche ? bloccoPerche(prSenzaGioca) : ""}
     <div class="scheda-pezzo" id="scheda-voti" aria-busy="true"><h3>${t("formazione.ultimi_voti")}</h3><div class="debole piccolo">${t("comune.carico")}</div></div>
     ${fz && fz.sostituibile(Number(c.id)) ? `<div class="pulsanti"><button class="bottone" type="button" data-sostituisci="${Number(c.id)}"${fz.pronta() ? "" : " disabled"}>${t("formazione.sostituisci")}</button></div>`
       : fz && fz.entrabile(Number(c.id)) ? `<div class="pulsanti"><button class="bottone" type="button" data-metti-in-campo="${Number(c.id)}"${fz.pronta() ? "" : " disabled"}>${t("formazione.metti_in_campo")}</button></div>`
@@ -2117,25 +2134,37 @@ function htmlDifferenze(d) {
 // è la mia («Non è la tua squadra?»); un nome: un'altra squadra (?gruppo=squadre&rosa=…), sotto «Le altre squadre», con la sua
 // formazione consigliata. Nome e crediti si cambiano qui; stemma e maglia nel loro foglio (apriStemmaMaglia), con «Rimuovi» e l'indirizzo
 // web. L'indirizzo lo scrive vai().
-const sceltaMiaSquadra = (squadre = stato.squadre || []) => `<select class="campo-testo" id="mia-squadra" aria-label="${t("lega.tua_squadra")}">${squadre.map(x =>
+// `vuoto`: il menu parte senza squadra («Scegli una squadra», che non si può riscegliere), per il menu che salva al cambio quando la
+// mia non è ancora scelta: se mostrasse già la prima squadra dell'elenco, sceglierla non sarebbe un cambio e non si salverebbe (#923).
+// Come il selettore dell'iPhone (SelettoreMiaSquadra), che parte vuoto.
+const sceltaMiaSquadra = (squadre = stato.squadre || [], vuoto = false) => `<select class="campo-testo" id="mia-squadra" aria-label="${t("lega.tua_squadra")}">${
+  vuoto ? `<option value="" disabled selected>${t("lega.scegli_squadra")}</option>` : ""}${squadre.map(x =>
   `<option value="${esc(x.nome)}" ${x.mia ? "selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>`;
 function collegaSceltaMia() {
   const ms = $("#mia-squadra");
-  if (ms) ms.addEventListener("change", async () => {
+  if (!ms) return;
+  let salvata = ms.value;                  // ciò che vale sul server: "" («Scegli una squadra») finché la mia non è scelta
+  ms.addEventListener("change", async () => {
+    if (!ms.value) return;
+    let scritta = false;
     try {
       await api("/api/mia-squadra", { method: "PUT", body: JSON.stringify({ nome: ms.value }) });
+      scritta = true; salvata = ms.value;
       svuotaCache(); stato.squadraVista = null;
       avviso(t("lega.squadra_salvata"));
       await Promise.all([caricaInfo(), caricaSquadre()]);
       if (stato.vista === "impostazioni") vaiQui();
-    } catch (e) { avviso(e.message); }
+    } catch (e) {
+      if (!scritta) ms.value = salvata;    // non salvata: il menu torna a ciò che vale e la stessa squadra si riprova (revisione della #945)
+      avviso(e.message);
+    }
   });
 }
 async function vistaRosa(nome) {
   const mia = nuovaRichiesta(), miaS = miaSquadra(), squadre = stato.squadre || [];
   const indietro = nome ? { testo: esc(t("imp.altre_squadre")), gruppo: "squadre" } : { testo: t("shell.impostazioni"), gruppo: "" };
   if (!nome && !miaS) {                                                    // la mia squadra non è ancora scelta (o mancano le rose)
-    pagina(`<div class="carta">${squadre.length ? `<p class="debole">${t("lega.scegli_quale_delle")}</p>${sceltaMiaSquadra(squadre)}`
+    pagina(`<div class="carta">${squadre.length ? `<p class="debole">${t("lega.scegli_quale_delle")}</p>${sceltaMiaSquadra(squadre, true)}`
       : `<p class="debole">${t("lega.importa_prima_rose")}</p><div class="pulsanti"><button class="bottone" type="button" data-imp-gruppo="rose">${t("lega.voce_importa")}</button></div>`}</div>`,
     { titolo: t("lega.mia_squadra"), stato: false, indietro });
     collegaSceltaMia();
@@ -3353,13 +3382,13 @@ async function vistaRegole() {
   const malusRighe = [["ammonizione", t("bonus.ammonizione")], ["espulsione", t("bonus.espulsione")], ["autogol", t("bonus.autogol")], ["rigore_sbagliato", t("bonus.rigore_sbagliato")], ["gol_subito_portiere", t("bonus.gol_subito_portiere"), t("regole.per_ogni_gol")]];
   const opzioniScadenza = valore => [...new Set([...PA_SCADENZE, valore])].sort((a, b) => a - b)
     .map(m => `<option value="${m}" ${m === valore ? "selected" : ""}>${esc(paScadenzaNome(m))}</option>`).join("");
-  const prima = Number(r.prima_giornata_lega ?? 1);
+  const prima = Number(r.prima_giornata_lega ?? 1), scadenza = Number(r.scadenza_minuti ?? 0);
   pagina(`<div class="regole-colonne"><div class="regole-testa">
     <div class="carta" id="tempi-lega"><h2>${t("regole.tempi_della_lega")}</h2>
       <label class="accesso-campo"><span>${t("pav.scad_domanda")}</span>
-        <select class="campo-testo" id="tempi-scadenza">${opzioniScadenza(Number(r.scadenza_minuti ?? 0))}</select></label>
+        ${menuIntero(`<select id="tempi-scadenza">${opzioniScadenza(scadenza)}</select>`, paScadenzaNome(scadenza))}</label>
       <label class="accesso-campo"><span>${t("pav.prima_domanda")}</span>
-        <select class="campo-testo" id="tempi-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === prima ? "selected" : ""}>${esc(vocePrimaGiornata(g))}</option>`).join("")}</select></label>
+        ${menuIntero(`<select id="tempi-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === prima ? "selected" : ""}>${esc(vocePrimaGiornata(g))}</option>`).join("")}</select>`, vocePrimaGiornata(prima))}</label>
       <div class="debole piccolo">${t("regole.prima_giornata_conta")}</div>
     </div>
 
@@ -3476,11 +3505,15 @@ async function vistaRegole() {
       avviso(t("regole.tempi_salvati"));
     } catch (e) {                      // resta scritto ciò che vale sul server
       sc.value = String(r.scadenza_minuti ?? 0); pg.value = String(r.prima_giornata_lega ?? 1);
+      mostraScelta(sc); mostraScelta(pg);
       avviso(e.message, 8000);
     }
   };
-  $("#tempi-scadenza").addEventListener("change", salvaTempi);
-  $("#tempi-prima").addEventListener("change", salvaTempi);
+  for (const sel of [$("#tempi-scadenza"), $("#tempi-prima")]) {
+    mostraScelta(sel);                 // la voce che il menu mostra davvero (una giornata fuori elenco: la prima)
+    seguiScelta(sel);
+    sel.addEventListener("change", salvaTempi);
+  }
   $("#md_attivo").addEventListener("change", ev => { $("#md-corpo").hidden = !ev.target.checked; mostraSalva(); });
   $("#vu_attivo").addEventListener("change", ev => { $("#vu-corpo").hidden = !ev.target.checked; mostraSalva(); });
   $("#p_cambio").addEventListener("change", mostraSalva);
@@ -3542,8 +3575,8 @@ async function vistaRegole() {
       else if (k.startsWith("bonus.")) imposta("b_" + k.slice(6), v);
       else if (k.startsWith("rosa.")) imposta("rosa_" + k.slice(5), v, 0);
       else if (k === "crediti_iniziali") imposta("crediti", v, 0);
-      else if (k === "scadenza_minuti") { const sc = $("#tempi-scadenza"); sc.innerHTML = opzioniScadenza(Number(v)); }
-      else if (k === "prima_giornata_lega") $("#tempi-prima").value = String(v);
+      else if (k === "scadenza_minuti") { const sc = $("#tempi-scadenza"); sc.innerHTML = opzioniScadenza(Number(v)); mostraScelta(sc); }
+      else if (k === "prima_giornata_lega") { const pg = $("#tempi-prima"); pg.value = String(v); mostraScelta(pg); }
       else if (k === "panchina.numero") imposta("p_numero", v, 0);
       else if (k === "panchina.posti") { $("#posti_fissi").checked = true; $("#posti-corpo").hidden = false; $("#numero-corpo").hidden = true; for (const x of ["P", "D", "C", "A"]) imposta("posti_" + x, v[x], 0); aggiornaPosti(); }
       else if (k === "panchina.max_sostituzioni") imposta("p_max", v, 0);

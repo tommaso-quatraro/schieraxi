@@ -13,6 +13,7 @@ lega.stemma_maglia
 lega.vedi_rosa
 lega.non_tua_squadra
 lega.scegli_quale_delle
+lega.scegli_squadra
 lega.tua_squadra
 lega.importa_prima_rose
 lega.solo_la_tua

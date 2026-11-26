@@ -22,6 +22,8 @@ struct SelettoreMiaSquadra: View {
 
     var body: some View {
         Picker(ParoleSquadre.tuaSquadra, selection: $scelta) {
+            // finché la mia non è scelta il selettore parte da «Scegli una squadra», come la web (#923): prima era una riga vuota
+            if let segnaposto = Self.segnaposto(mia: mia) { Text(segnaposto).tag("") }
             ForEach(squadre) { Text($0.nome).tag($0.nome) }
         }
         .frame(minHeight: Tema.areaTocco)
@@ -41,7 +43,13 @@ struct SelettoreMiaSquadra: View {
         }
     }
 
-    /// La squadra segnata come mia («» finché non è scelta: il selettore non ne mostra nessuna, come prima).
+    /// La voce vuota del selettore: «Scegli una squadra» (`lega.scegli_squadra`) finché la mia non è scelta, come `sceltaMiaSquadra`
+    /// della web; nil quando è scelta. Toccarla non salva niente (`scelta` vuota).
+    static func segnaposto(mia: String) -> String? {
+        mia.isEmpty ? ParoleSquadre.scegliUnaSquadra : nil
+    }
+
+    /// La squadra segnata come mia («» finché non è scelta: il selettore mostra «Scegli una squadra»).
     private static func segnata(_ squadre: [SquadraLega]) -> String {
         squadre.first { $0.mia == true }?.nome ?? ""
     }
