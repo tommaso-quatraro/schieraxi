@@ -160,6 +160,8 @@ formazione registrata (finché non li si registra di nuovo, la web la chiama sol
 - la riga dice di quanto i punti sono sopra o sotto gli attesi con il numero del server (`fatti_e_attesi.differenza`, #672:
   «+9,2 sul previsto», «come previsto» a zero, niente senza il campo); nel dettaglio, a 390 e 1440 px, la frase del server su
   chi ha fatto meglio o peggio del previsto, e nessuna frase se sono tutti come previsto;
+- nel dettaglio, sotto la tabella, le righe del server su da dove vengono i punti (`spiegazione_punti`, #900: riserve entrate,
+  modificatore difesa), a 390 e 1440 px e in inglese da `righe_frasi`; con `null` o senza il campo nessuna riga;
 - un solo pulsante di correzione, che fa scegliere gli 11 e li manda con la stagione; non c'è per una stagione passata;
 - errore con «Riprova», pagina vuota che dice perché; chiaro e scuro a 390 e 1440 px senza violazioni gravi; elenco a
   sinistra e giornata a destra a 768 e 1440 px, gli 11 sotto la riga al telefono.

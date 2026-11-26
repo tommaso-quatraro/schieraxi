@@ -426,6 +426,50 @@ def test_il_dettaglio_dice_chi_ha_fatto_meglio_o_peggio_del_previsto(web, larghe
     assert not web.errori_console and not web.scorre_di_lato()
 
 
+# ---------------------------------------------------------------- perché i punti non sono la somma dei voti degli 11 (#900)
+def spiegazione_punti(g: dict) -> tuple[dict, list[str], list[str]]:
+    """Il campo `spiegazione_punti` di una giornata come lo scrive il server (`diario.spiegazione_punti`): il primo titolare della
+    formazione che conta senza voto, sostituito da una riserva (un nome degli scenari registrati), e il modificatore difesa. Torna
+    (campo, righe in italiano, righe in inglese)."""
+    esce, entra = undici(g)["titolari"][0]["nome"], "Zè Rosso"
+    it =[f"{entra} (7,5) è entrato dalla panchina al posto di {esce}.", "Modificatore difesa: +2,0."]
+    en = [f"{entra} (7.5) came on from the bench for {esce}.", "Defence modifier: +2.0."]
+    formazione = "schierata" if g.get("schierata") else "automatica" if g.get("automatica") else "consigliata"
+    campo = {"formazione": formazione, "righe": it,
+             "righe_frasi": [{"chiave": "diario.punti_entrato", "param": {"entra": entra, "fv": "7.5", "esce": esce}},
+                             {"chiave": "diario.punti_modificatore", "param": {"d": "+2.0"}}]}
+    return campo, it, en
+
+
+@pytest.mark.parametrize("larghezza, lingua", [(390, "it"), (PC, "it"), (390, "en")])
+def test_sotto_la_tabella_le_righe_del_server_spiegano_i_punti(web, larghezza, lingua):
+    """I punti della giornata non sono la somma dei fantavoti degli 11 quando entra una riserva o c'è il modificatore difesa: il
+    server scrive perché (`spiegazione_punti`) e la pagina lo mostra così com'è, sotto la tabella. Senza il campo (server di
+    prima) o con `null` non c'è niente."""
+    solo(web, "prima")
+    d = web.registrata("/api/diario")
+    g, altra, vecchia = d["giornate"][:3]
+    g["spiegazione_punti"], it, en = spiegazione_punti(g)
+    altra["spiegazione_punti"] = None
+    vecchia.pop("spiegazione_punti", None)
+    web.risposta("/api/diario", d)
+    if lingua == "en":
+        web.memoria({"lingua": "en"})
+    web.apri(GIORNATE, larghezza=larghezza)
+    nome = (lambda x: nome_di(x).replace("Giornata", "Matchday")) if lingua == "en" else nome_di
+    if riga(web, nome(g)).get_attribute("aria-expanded") != "true":
+        tocca(web, riga(web, nome(g)))
+    zona = dettaglio(web, nome(g))
+    righe = [" ".join(x.split()) for x in zona.get_by_role("listitem").all_inner_texts()]
+    assert righe == (en if lingua == "en" else it), righe
+    tabella, elenco = zona.get_by_role("table").bounding_box(), zona.get_by_role("listitem").first.bounding_box()
+    assert elenco["y"] >= tabella["y"] + tabella["height"] - 1, (tabella, elenco)          # sotto la tabella
+    for altro in (altra, vecchia):
+        tocca(web, riga(web, nome(altro)))
+        assert dettaglio(web, nome(altro)).get_by_role("listitem").count() == 0
+    assert not web.errori_console and not web.scorre_di_lato()
+
+
 # ---------------------------------------------------------------- un solo pulsante di correzione
 CORREGGI = "Non è quello che ho schierato"
 
