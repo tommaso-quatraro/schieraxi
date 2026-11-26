@@ -692,6 +692,7 @@ const TESTI = {
     "err.p_regola_aggiornamenti_vicino_scadenza": "Aggiornamenti vicino alla scadenza",
     "err.p_regola_nome_lega": "Nome della lega",
     "err.p_regola_fonte_voto": "Voto di partenza",
+    "err.interruttori_file_rovinato": "Non cambio l'interruttore: il file {1} sul server è scritto male e lo perderei. Correggilo o toglilo, poi riprova.",
 
     "errori.titolo": "Errori recenti",
     "errori.spiega": "Gli errori del server e gli ultimi eventi di sicurezza. Nessuna password, nessun dato delle richieste: solo quando, dove e che tipo di errore.",
@@ -703,9 +704,6 @@ const TESTI = {
     "errori.millisecondi": "{n} millisecondi",
     "errori.secondi": "{n} secondi",
     "errori.dove": "{nome} ({rotta})",
-    "errori.area_avvio": "Apertura dell'app",
-    "errori.area_widget": "Widget dell'iPhone",
-    "errori.area_controllo": "Controllo del server",
     "errori.riga_errore": "{quando} · {dove} · errore {stato}",
     "errori.riga_errore_tipo": "{quando} · {dove} · errore {stato}, {tipo}",
     "errori.n_richieste.one": "<b>{n}</b> richiesta",
@@ -1194,6 +1192,19 @@ const TESTI = {
     "frase.fonte.spenta_footballdata": "Non scarico risultati e statistiche di squadra delle partite giocate.",
     "frase.fonte.spenta_espn": "Non scarico risultati in diretta.",
     "frase.fonte.spenta_foto": "L'app usa i volti illustrati.",
+    "frase.uso.parte_formazione": "Formazione",
+    "frase.uso.parte_giornate": "Giornate",
+    "frase.uso.parte_lega": "La mia lega",
+    "frase.uso.parte_account": "Il tuo account",
+    "frase.uso.parte_avvisi": "Avvisi",
+    "frase.uso.parte_aspetto": "Aspetto",
+    "frase.uso.parte_gestione": "Gestione",
+    "frase.uso.parte_informazioni": "Informazioni",
+    "frase.uso.parte_scrivici": "Scrivici",
+    "frase.uso.parte_avvio": "Apertura dell'app",
+    "frase.uso.parte_widget": "Widget dell'iPhone",
+    "frase.uso.parte_controllo": "Controllo del server",
+    "frase.uso.parte_altro": "Altre richieste",
 
     "giocatore.gioca": "gioca {p}",
 
@@ -1924,6 +1935,7 @@ const TESTI = {
     "social.password_collega": "La tua password (serve per collegare Google)",
 
     "srv.aggiorna_nessuna_fonte": "Nessuna fonte di dati è accesa, quindi non c'è niente da aggiornare: accendine una in Impostazioni › Gestione › Stato dei dati.",
+    "srv.aggiorna_pausa": "I dati sono stati aggiornati da poco: riprova fra {1}.",
     "srv.una_sola_squadra": "Con una sola squadra funzionano formazione e consigli; le rose degli altri servono a guardare le altre squadre: puoi aggiungerle quando vuoi.",
 
     "tempo.oggi": "oggi",
@@ -2635,6 +2647,7 @@ const TESTI = {
     "err.p_regola_aggiornamenti_vicino_scadenza": "Updates close to the deadline",
     "err.p_regola_nome_lega": "League name",
     "err.p_regola_fonte_voto": "Starting grade",
+    "err.interruttori_file_rovinato": "I am not changing the switch: the file {1} on the server is malformed and I would lose it. Fix it or remove it, then try again.",
 
     "errori.titolo": "Recent errors",
     "errori.spiega": "Server errors and the latest security events. No passwords, no request data: only when, where and what kind of error.",
@@ -2646,9 +2659,6 @@ const TESTI = {
     "errori.millisecondi": "{n} milliseconds",
     "errori.secondi": "{n} seconds",
     "errori.dove": "{nome} ({rotta})",
-    "errori.area_avvio": "App start",
-    "errori.area_widget": "iPhone widget",
-    "errori.area_controllo": "Server check",
     "errori.riga_errore": "{quando} · {dove} · error {stato}",
     "errori.riga_errore_tipo": "{quando} · {dove} · error {stato}, {tipo}",
     "errori.n_richieste.one": "<b>{n}</b> request",
@@ -3137,6 +3147,19 @@ const TESTI = {
     "frase.fonte.spenta_footballdata": "I don't download results and team statistics of the matches played.",
     "frase.fonte.spenta_espn": "I don't download live results.",
     "frase.fonte.spenta_foto": "The app uses the illustrated faces.",
+    "frase.uso.parte_formazione": "Lineup",
+    "frase.uso.parte_giornate": "Matchdays",
+    "frase.uso.parte_lega": "My league",
+    "frase.uso.parte_account": "Your account",
+    "frase.uso.parte_avvisi": "Alerts",
+    "frase.uso.parte_aspetto": "Appearance",
+    "frase.uso.parte_gestione": "Management",
+    "frase.uso.parte_informazioni": "About",
+    "frase.uso.parte_scrivici": "Write to us",
+    "frase.uso.parte_avvio": "App start",
+    "frase.uso.parte_widget": "iPhone widget",
+    "frase.uso.parte_controllo": "Server check",
+    "frase.uso.parte_altro": "Other requests",
 
     "giocatore.gioca": "plays {p}",
 
@@ -3867,6 +3890,7 @@ const TESTI = {
     "social.password_collega": "Your password (needed to link Google)",
 
     "srv.aggiorna_nessuna_fonte": "No data source is on, so there is nothing to refresh: turn one on in Settings › Management › Data status.",
+    "srv.aggiorna_pausa": "The data was refreshed recently: try again in {1}.",
     "srv.una_sola_squadra": "With just one team, the lineup and the advice work; the other teams' rosters let you look at the other teams: you can add them whenever you like.",
 
     "tempo.oggi": "today",

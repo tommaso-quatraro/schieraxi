@@ -390,6 +390,73 @@ def test_un_guasto_del_raccoglitore_lascia_una_riga_senza_dettagli(caplog):
     assert len(righe) == 1 and "RuntimeError" in righe[0] and "dettaglio-riservato" not in righe[0]
 
 
+class _Copione:
+    """Il `fermo` di `sorveglia` per i test: prima di ogni giro mette gli interruttori come dice il copione, finito il copione
+    ferma il thread."""
+
+    def __init__(self, copione):
+        self.copione, self.giro = copione, 0
+        self._metti()
+
+    def _metti(self):
+        from fanta import funzioni
+        if self.giro < len(self.copione):
+            live_acceso, espn_accesa = self.copione[self.giro]
+            funzioni.imposta("live", live_acceso)
+            fonti_attive.imposta("espn", espn_accesa)
+
+    def is_set(self):
+        return self.giro >= len(self.copione)
+
+    def wait(self, pausa):
+        self.giro += 1
+        self._metti()
+
+
+def test_la_diretta_segue_l_interruttore_a_ogni_giro_senza_riavvio():
+    """Prima il thread della diretta partiva solo se all'avvio del servizio la funzione «live» e la fonte ESPN erano accese, e
+    `sorveglia` non ricontrollava più: spenta dopo, continuava a chiedere; accesa dopo, serviva un riavvio. Ora a ogni giro salta
+    il passo se una delle due è spenta e riparte da solo quando si riaccendono."""
+    giri = []
+    fermo = _Copione([(True, True), (False, True), (True, False), (False, False), (True, True)])
+
+    class Raccoglitore:
+        def passo(self):
+            giri.append(fermo.giro)
+            return "ferma"
+
+    live.sorveglia(Raccoglitore(), fermo, pausa=0)
+    assert giri == [0, 4]
+
+
+def test_il_servizio_avvia_la_diretta_anche_con_l_interruttore_spento(monkeypatch):
+    """Il raccoglitore e il suo thread partono sempre con il servizio: è `sorveglia` a decidere a ogni giro se chiedere."""
+    from fanta import funzioni
+    monkeypatch.setattr(live, "unico", None)
+    funzioni.imposta("live", False)
+    with TestClient(server.app):
+        assert isinstance(live.unico, live.Raccoglitore)
+        assert any(t.name == "live" and t.is_alive() for t in threading.enumerate())
+
+
+def test_con_la_diretta_spenta_la_cache_non_si_usa(monkeypatch):
+    """Con il raccoglitore sempre acceso, la sua cache (riletta da dati/live.json) non deve arrivare a Oggi e a /api/live mentre la
+    funzione «live» o la fonte ESPN sono spente: come prima, quando a interruttore spento il raccoglitore non c'era."""
+    from fanta import funzioni
+    r = live.Raccoglitore(lambda: [], scarica=lambda url: "")
+    r._partite = {("inter", "milan"): {"casa": "inter", "trasferta": "milan", "data": "2026-10-31 15:00", "stato": "in_corso",
+                                       "minuto": 30, "gol_casa": 1, "gol_trasferta": 0, "eventi": []}}
+    monkeypatch.setattr(live, "unico", r)
+    assert live.in_servizio() is r and server._stati_live()
+    funzioni.imposta("live", False)
+    assert live.in_servizio() is None and server._stati_live() == {}
+    funzioni.imposta("live", True)
+    fonti_attive.imposta("espn", False)
+    assert live.in_servizio() is None and server._stati_live() == {}
+    fonti_attive.imposta("espn", True)
+    assert live.in_servizio() is r
+
+
 def test_cache_su_file_non_salvata_lascia_una_riga(tmp_path, monkeypatch, caplog):
     o = Orologio("2026-10-31 14:50")
     f = FonteFinta(o, {"json": _corpo()})
