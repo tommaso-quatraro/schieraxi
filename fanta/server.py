@@ -44,7 +44,7 @@ from . import avvisi as avvisi_pronta
 from . import avvisi_utenti
 from . import fasi, live
 from . import scambi_multi
-from . import copia_scadenza, pianificatore, rotte_account, riscaldamento, social
+from . import copia_scadenza, pianificatore, rotte_account, rotte_feedback, riscaldamento, social
 from . import blocco, percorsi, registro, scarica_immagine, testi_legali
 from .contesto import Contesto
 from . import stagione as cambio_stagione
@@ -108,11 +108,14 @@ SICUREZZA = {
 }
 LIMITE_ACCOUNT = 8 * 1024                  # byte: le richieste di accesso, registrazione e amministrazione sono piccolissime
 LIMITE_ROSE_AMICO = 600 * 1024             # byte: le rose incollate dal proprietario per un amico (il testo vale al massimo 200 mila caratteri)
+LIMITE_FEEDBACK = 16 * 1024                # byte: un commento di «Scrivici» (2000 caratteri anche tutti di 4 byte, con il resto del corpo)
 
 
 def _tetto_corpo(percorso: str) -> int:
     if percorso.startswith("/api/admin/utenti/") and percorso.endswith("/rose"):
         return LIMITE_ROSE_AMICO
+    if percorso == "/api/feedback":
+        return LIMITE_FEEDBACK
     return LIMITE_ACCOUNT if percorso.startswith(("/api/account/", "/api/admin/")) else LIMITE_RICHIESTA
 
 
@@ -564,6 +567,7 @@ app.add_exception_handler(account.ErroreAccount, rotte_account.errore_account)
 app.add_exception_handler(RequestValidationError, _dati_non_validi)
 app.add_exception_handler(Exception, _errore_imprevisto)
 app.include_router(rotte_account.router)          # /api/account/... e /api/admin/... (attivi solo con FANTA_MULTIUTENTE=1; "me" risponde sempre)
+app.include_router(rotte_feedback.router)         # «Scrivici»: /api/feedback e /api/admin/feedback (solo con gli account)
 try:                                              # le foto dei calciatori esistono solo nelle copie private e sono spente di norma; il repository pubblico non ha questo modulo
     from . import rotte_foto
     app.include_router(rotte_foto.router)

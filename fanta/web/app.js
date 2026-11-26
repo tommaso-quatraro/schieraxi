@@ -665,15 +665,16 @@ const DISEGNO_VISTE = new Map([["formazione", () => vistaFormazione()], ["giorna
 // ---------------------------------------------------------------- dove porta un indirizzo (anche di una versione di prima)
 // Impostazioni (#618) ha una pagina con le sezioni (Avvisi, La mia lega, Aspetto...) e alcune pagine sue, ognuna con il suo indirizzo
 // (?vista=impostazioni&gruppo=…). Le sezioni sono punti della pagina: il loro nome porta lì.
-const PAGINE_IMP = ["rose", "squadra", "squadre", "regole", "account", "informazioni", "gestione"];
+const PAGINE_IMP = ["rose", "squadra", "squadre", "regole", "account", "informazioni", "scrivici", "gestione"];
 const SEZIONI_IMP = ["avvisi", "lega", "aspetto"];
 // Nomi di prima: i gruppi delle Impostazioni (#449), le voci di Squadra, Altro e Lega (fino al 12/11/2026), le viste tolte.
 const GRUPPI_DI_PRIMA = { avanzate: "gestione", notifiche: "avvisi", importa: "rose", miasquadra: "squadra", novita: "informazioni" };
 const VOCI_DI_PRIMA = { importa: "rose", squadre: "squadre", miasquadra: "squadra", regole: "regole", novita: "informazioni" };
 const SCHEDE_DI_PRIMA = ["squadra", "altro", "lega", "mercato", "scambi", "regole", "rosa"];
 const daNome = (nomi, x) => typeof x === "string" && Object.hasOwn(nomi, x) ? nomi[x] : x;
-// Una pagina che chi usa l'app non ha (l'account sul server senza account, Gestione per chi non gestisce) porta alla pagina di Impostazioni.
-const paginaImpVisibile = g => g === "account" ? !!stato.account : g === "gestione" ? soloAmministratore() : PAGINE_IMP.includes(g);
+// Una pagina che chi usa l'app non ha (l'account e Scrivici sul server senza account, Gestione per chi non gestisce) porta alla pagina di
+// Impostazioni.
+const paginaImpVisibile = g => g === "account" || g === "scrivici" ? !!stato.account : g === "gestione" ? soloAmministratore() : PAGINE_IMP.includes(g);
 // La rosa di una squadra: la mia (nome vuoto o il mio) è «La mia squadra»; quella di un'altra sta sotto «Le altre squadre», se si vedono.
 function rosaImp(nome) {
   const mia = miaSquadra();
@@ -4223,6 +4224,7 @@ const AREE_DELLE_ROTTE = {
   "imp.aspetto": ["icona"],
   "imp.gestione": ["admin", "aggiorna", "backup", "stato-dati"],
   "imp.informazioni": ["novita", "sotto-il-cofano"],
+  "scrivici.voce": ["feedback"],
   "errori.area_avvio": ["stato", "funzioni"],
   "errori.area_widget": ["widget"],
   "errori.area_controllo": ["salute"],
