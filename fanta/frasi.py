@@ -195,6 +195,11 @@ CATALOGO: dict[str, str] = {
     "in_corso.recupero.other": "Hanno giocato tutti tranne {nomi}, che aspettano il recupero.",
     "in_corso.voti_e_recupero.one": "Hanno giocato tutti tranne {nomi}, che aspetta il recupero; mancano anche i voti ufficiali.",
     "in_corso.voti_e_recupero.other": "Hanno giocato tutti tranne {nomi}, che aspettano il recupero; mancano anche i voti ufficiali.",
+    # le stesse due righe in breve per il widget medio (#911, `in_corso.situazione_breve` di /api/widget): il numero al posto dei nomi
+    "in_corso.recupero_breve.one": "{n} giocatore aspetta il recupero.",
+    "in_corso.recupero_breve.other": "{n} giocatori aspettano il recupero.",
+    "in_corso.voti_e_recupero_breve.one": "{n} giocatore aspetta il recupero; mancano i voti ufficiali.",
+    "in_corso.voti_e_recupero_breve.other": "{n} giocatori aspettano il recupero; mancano i voti ufficiali.",
     "in_corso.finiti": "I voti dei tuoi giocatori sono tutti usciti.",
     "in_corso.tutti_recupero": "I tuoi giocatori aspettano tutti il recupero.",
     # giornata finita con i voti non ancora usciti (#895, `voti_in_arrivo` di Oggi): sotto «Giornata 5 · 8ª di Serie A: finita»
