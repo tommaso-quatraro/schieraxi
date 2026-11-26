@@ -200,6 +200,8 @@ def _percorso_aperto(evento: str, args: tuple) -> str | None:
         return None
     if not file or file == ":memory:":
         return None
+    if evento == "open" and len(args) > 1 and args[1] is None and not os.path.isabs(file):
+        return None      # os.open con un nome relativo, forse a una cartella (dir_fd): su Linux shutil.rmtree apre così le sottocartelle
     return os.path.normcase(os.path.abspath(file))
 
 
