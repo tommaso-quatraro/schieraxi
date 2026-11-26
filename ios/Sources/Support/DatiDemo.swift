@@ -1008,9 +1008,14 @@ private extension LegaDemo {
                 return d
             }
         }
+        // dove la pagina spiega i punti (`spiegazione_punti`, #900) i conti devono tornare: nella giornata 10 di Serie A i 72,5 punti
+        // sono i 65,5 della tabella più il voto di Orsetti, entrato al posto di Lemão (`DemoDiarioTests` fa la somma)
+        let votiFissati: [Int: [String: Double]] = [10: ["Orsetti": 7.0]]
         func numeriGiocatori(_ g: Int, _ c: EsitoGiornata) -> [[String: Any]] {
-            anagrafe.indices.map { i in
-                ["id": 9000 + i, "p_voto": 0.9, "fv_atteso": fvAtteso(i, g, c.atteso), "fv": fvPreso(i, g, c.fatti)] as [String: Any]
+            anagrafe.indices.map { i -> [String: Any] in
+                let fissato: Double? = votiFissati[g]?[anagrafe[i]]
+                let fv: Any = fissato.map { $0 as Any } ?? fvPreso(i, g, c.fatti)
+                return ["id": 9000 + i, "p_voto": 0.9, "fv_atteso": fvAtteso(i, g, c.atteso), "fv": fv]
             }
         }
         func istantanea(_ g: Int, _ modulo: String, _ nomi: [String], atteso: Double, ora: String) -> [String: Any] {
@@ -1067,6 +1072,11 @@ private extension LegaDemo {
             8: "Meglio del previsto: Pulinski (+2,3) e Sorvani (+1,2). Peggio: Lemão (\u{2212}1,8) e Orsetti (\u{2212}1,5).",
             7: "Meglio del previsto: Lemão (+2,0). Peggio: Kloosmeijer (\u{2212}2,1) e Pulinski (\u{2212}1,5).",
         ]
+        // da dove vengono i punti (`spiegazione_punti`, #900): nella giornata 10 di Serie A Lemão è senza voto ed entra Orsetti, la prima
+        // riserva del suo ruolo con il voto (7,0, `votiFissati` qui sopra; `DemoDiarioTests` controlla i numeri e la somma)
+        let frasiPunti: [Int: [String]] = [
+            10: ["Orsetti (7,0) è entrato dalla panchina al posto di Lemão."],
+        ]
         func esito(_ e: EsitoGiornata, _ nomi: [String]) -> [String: Any] {
             ["modulo": e.modulo, "atteso": e.atteso, "reale": e.fatti, "intervallo": fascia(e.atteso), "titolari": titolari(nomi)]
         }
@@ -1102,6 +1112,11 @@ private extension LegaDemo {
                                         "differenza": differenza, "testo": NSNull()]
             if let frase = frasiScarti[g.serieA] { fatti["testo"] = frase }
             voce["fatti_e_attesi"] = fatti
+            // da dove vengono i punti della formazione che conta (`spiegazione_punti` di fanta/diario.py, #900): le frasi le scrive il
+            // server, qui il loro testo per la giornata più recente, quella aperta nella foto `giornate-aperta`
+            if let righe = frasiPunti[g.serieA] {
+                voce["spiegazione_punti"] = ["formazione": formazione, "righe": righe] as [String: Any]
+            }
             return voce
         }
         return json([

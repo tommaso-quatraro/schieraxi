@@ -67,10 +67,10 @@
       "id": 106,
       "schermata": "Giornate, da dove vengono i punti (riserve entrate, modificatore difesa, partita rinviata)",
       "web": "nella giornata aperta, sotto la tabella degli 11, una riga per frase: «Rossi (10,0) è entrato dalla panchina al posto di Bianchi.», «Modificatore difesa: +1,5.», «Al posto di Verdi non è entrato nessuno dalla panchina.», «Partita rinviata: Neri prende il voto d'ufficio (6,0).»; per una giornata calcolata prima, solo se i conti non tornano, «Per questa giornata manca il dettaglio dei punti …»; niente se non c'è niente da spiegare",
-      "iphone": "manca: la tabella degli 11 senza le righe sotto",
-      "forma": "web; le frasi dal server (`spiegazione_punti.righe` di ogni voce di `GET /api/diario`, così com'è; `null` o assente: niente)",
-      "chi": "**da fare** sull'iPhone (#900); server e web **fatto** con #905",
-      "stato": "da-fare"
+      "iphone": "prima: la tabella degli 11 senza le righe sotto. Ora uguale alla web: sotto la tabella (prima di «Al posto di … hai messo …») una riga per frase del server, così com'è e nel suo ordine, in testo piccolo nel colore del testo; VoiceOver trova l'elenco come «Da dove vengono i punti» (`giornate.perche_punti`, il nome che la web dà all'elenco); sull'iPad nella giornata a destra",
+      "forma": "server (`spiegazione_punti.righe` di ogni voce di `GET /api/diario`, così com'è; `null` o assente: niente)",
+      "chi": "**fatto** (#900): server e web con #905; iPhone con #900: `SpiegazionePuntiDiario` (`Domain/Diario.swift`), `DettaglioGiornata.perche`, `Giornate/PerchePuntiView`; prova `SpiegazionePuntiGiornateTests` e `DemoDiarioTests`, foto `giornate-aperta`",
+      "stato": "fatto"
     },
     {
       "id": 119,
