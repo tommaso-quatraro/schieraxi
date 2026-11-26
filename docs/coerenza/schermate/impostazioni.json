@@ -143,6 +143,15 @@
       "forma": "web",
       "chi": "**fatto** (#863): `SquadreView`, `SceltaSquadraView`, `SelettoreMiaSquadra`, `LegaViewModel.scegliMiaSquadra`, `VociImpostazioni.lega`; prove `SceltaMiaSquadraTests`, `ImpostazioniComeLaWebTests`, `SquadreComeLaWebTests`, `TitoloUnaVoltaUITests`",
       "stato": "fatto"
+    },
+    {
+      "id": 108,
+      "schermata": "Gestione › Utenti: Blocca, Sblocca, Elimina (26/11/2026)",
+      "web": "per chi gestisce il server, sotto «Utenti» «4 utenti su 30 al massimo.» (`admin.utenti_conteggio`) e l'elenco degli account: il nome (con «(amministratore)»), se è bloccato la frase del server «Bloccato mer 25 nov: non può entrare.» (`blocco`) e sotto, piccola, «Iscrizione gio 1 ott, ultimo accesso mar 24 nov.» (`dettaglio`, «nessun accesso recente» senza sessioni); a destra «Blocca» (o «Sblocca») ed «Elimina» in rosso, ognuno dopo la conferma del browser con il nome (`admin.blocca_conferma`, `admin.sblocca_conferma`, `admin.elimina_conferma`); sulla propria riga «Sei tu» e nessun pulsante. Fatto: avviso, elenco riletto e focus sul titolo «Utenti» (`caricaUtenti`, `azioneUtente`, `AZIONI_UTENTE` in `app.js`). Un account bloccato che entra con la password giusta legge l'errore del server «Questo account è bloccato: chiedi a chi gestisce SchieraXI.» (`err.account_bloccato`)",
+      "iphone": "l'elenco «Utenti» con i pulsanti non c'è: la Gestione dell'iPhone non ha gli strumenti degli account (inviti, utenti, errori), che sono della web. All'accesso l'iPhone mostra il `detail` del server come per gli altri errori: un bloccato legge la stessa frase",
+      "forma": "web",
+      "chi": "**fatto** (26/11/2026): server e web; prove `tests/test_gestione_utenti.py`, `tests/browser/test_gestione_utenti.py`. Sul server anche `python -m fanta utente-blocca`, `utente-sblocca`, `utente-elimina`",
+      "stato": "fatto"
     }
   ]
 }

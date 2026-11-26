@@ -1,0 +1,15 @@
+{
+  "titolo": "Gestione: chi gestisce il server può bloccare o eliminare un account",
+  "voci": [
+    "Impostazioni › Gestione › Utenti, per chi gestisce il server: ogni account con la data d'iscrizione e l'ultimo accesso, e per gli altri account «Blocca» (o «Sblocca») ed «Elimina», dopo una conferma con il nome. Un account bloccato non entra più e le sue sessioni si chiudono subito, ma i suoi dati restano; eliminato, sparisce con tutti i suoi dati, come quando lo elimina chi lo usa.",
+    "Chi è bloccato e prova a entrare con la sua password legge «Questo account è bloccato: chiedi a chi gestisce SchieraXI.»."
+  ],
+  "tecnico": [
+    "Rotte nuove, solo amministratore (docs/API.md): POST /api/admin/utenti/{id}/blocca → {ok, sessioni_chiuse}, POST /api/admin/utenti/{id}/sblocca → {ok}, DELETE /api/admin/utenti/{id} → {ok}. 400 sul proprio account e sull'ultimo amministratore, 404 se non esiste. GET /api/admin/utenti: campi nuovi per utente ultimo_accesso, bloccato, bloccato_il, dettaglio/dettaglio_frase (admin.utente_dettaglio, admin.utente_dettaglio_senza_accesso) e blocco/blocco_frase (admin.utente_bloccato).",
+    "account.sqlite: migrazione nuova in fondo a MIGRAZIONI, utenti.bloccato (TEXT, quando; NULL = no). account.blocca chiude sessioni, token del widget, dispositivi fidati e notifiche web (esci_da_tutti); _apri_sessione rifiuta un bloccato (403, codice account_bloccato, solo dopo la password giusta o Google) e utente_da_token / utente_da_token_widget non lo fanno passare.",
+    "Eliminazione: rotte_account.elimina_account_e_dati, la stessa di POST /api/account/elimina (account.elimina con le cascate, contesto.elimina_cartella, consigliate già mostrate).",
+    "Registro di sicurezza: account_bloccato, account_sbloccato e account_eliminato con nome e da (chi gestisce) o via=comando; accesso_negato_bloccato.",
+    "Comandi: python -m fanta utente-blocca <nome>, utente-sblocca <nome>, utente-elimina <nome>, con la conferma del nome.",
+    "iPhone: nessun cambio (la Gestione dell'iPhone non ha gli strumenti degli account); all'accesso mostra il detail del server."
+  ]
+}

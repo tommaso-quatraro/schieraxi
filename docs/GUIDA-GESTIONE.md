@@ -32,7 +32,20 @@ Chi è già entrato con quell'invito tiene il suo account. Gli inviti usati, sca
 
 - **Password dimenticata**: se qualcuno ha perso password e codice di recupero, **Genera il codice** crea un codice che vale
   24 ore, una volta sola. Si dà di persona: con quel codice l'amico sceglie una nuova password.
-- **Utenti**: chi ha un account; chi gestisce ha accanto «amministratore».
+- **Utenti**: chi ha un account, con quando si è iscritto e l'ultimo accesso (per esempio «Iscrizione gio 1 ott, ultimo accesso
+  mar 24 nov.»); chi gestisce ha accanto «amministratore», e sulla propria riga c'è «Sei tu». Sugli altri account due pulsanti,
+  ognuno dopo una conferma che dice il nome (solo sulla web: la Gestione dell'iPhone non ha gli strumenti degli account):
+  - **Blocca**: l'account non entra più, né con la password né con Google, e le sue sessioni (web, iPhone, widget) e le sue
+    notifiche si chiudono subito. I suoi dati restano. Sulla riga compare «Bloccato mer 25 nov: non può entrare.» e al posto di
+    **Blocca** c'è **Sblocca**, che lo fa rientrare con la sua password. Chi è bloccato, se prova a entrare con la password
+    giusta, legge «Questo account è bloccato: chiedi a chi gestisce SchieraXI.».
+  - **Elimina**: l'account e tutti i suoi dati spariscono, come quando lo elimina lui da **Il tuo account**. Non si può
+    annullare.
+
+  Il proprio account non si blocca e da qui non si elimina (si elimina da **Il tuo account**, con la password); l'ultimo
+  amministratore non si blocca né si elimina. Ogni blocco, sblocco ed eliminazione lascia una riga negli eventi di sicurezza di
+  **Errori recenti**, con chi l'ha fatto. Sul server, via ssh, dalla cartella dell'app, gli stessi passi con la conferma del nome:
+  `.venv/bin/python -m fanta utente-blocca <nome>`, `utente-sblocca <nome>` e `utente-elimina <nome>`.
 - **Errori recenti**: le richieste dall'ultimo riavvio con le rifiutate e gli errori del server, tempo medio e massimo, gli
   eventi di sicurezza con il loro nome in parole, le richieste più lente con accanto al percorso tecnico il nome della parte
   (per esempio «Formazione (/api/oggi)»). Ore nell'ora italiana. Le richieste senza nessun accesso verso le parti dell'app (di
