@@ -105,7 +105,9 @@ enum LetturaScheda {
     static func perche(_ g: Giocatore) -> PercheNumero? {
         guard !statiFinita.contains(g.statoPartita ?? ""), g.assente != true else { return nil }
         let motivi = g.motiviNumero?.filter { $0.chiave != "gioca" }
-        let nonGioca = [g.stato, ParolaStato(g)?.codice].contains { $0 == "infortunato" || $0 == "squalificato" }
+        let nonGiocano: Set<String> = ["infortunato", "squalificato"]
+        let stati: [String] = [g.stato, ParolaStato(g)?.codice].compactMap { $0 }
+        let nonGioca = stati.contains { nonGiocano.contains($0) }
         if nonGioca, motivi?.isEmpty == true { return nil }
         return PercheNumero(motivi: motivi, mediaRuolo: g.mediaRuolo)
     }
