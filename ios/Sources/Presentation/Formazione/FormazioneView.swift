@@ -30,9 +30,14 @@ struct FormazioneView: View {
     /// Quanto restano a video gli avvisi brevi (un salvataggio non riuscito, la formazione copiata).
     private static let durataAvviso: Duration = .seconds(8)
 
-    /// Il titolo della barra è quello piccolo: con l'altezza compatta (iPhone in orizzontale), dove iOS non mostra quello grande.
-    static func titoloPiccolo(verticale: UserInterfaceSizeClass?) -> Bool {
-        verticale == .compact
+    /// iPhone in orizzontale (altezza compatta): lo spazio in più sopra la pagina che scorre, perché parta sotto il titolo della
+    /// barra. Lì la pagina partiva ~20 punti dall'alto mentre il titolo arriva a ~55, e «Giornata 8» e «Si chiude …» restavano
+    /// sfocate dietro il titolo (foto `iphone_scuro_orizz_formazione` del 26/11, uguale anche con il titolo piccolo e con la
+    /// pagina rifatta dopo la rotazione). Giornate, Impostazioni e Cerca non lo fanno perché sono elenchi, che hanno già il loro
+    /// margine in alto. 60 punti, misurati sulle foto: la testa parte dove prima partiva la prima decisione, che era nitida. In
+    /// verticale e sull'iPad niente.
+    static func spazioSottoIlTitolo(verticale: UserInterfaceSizeClass?) -> CGFloat {
+        verticale == .compact ? 60 : 0
     }
 
     var body: some View {
@@ -59,17 +64,12 @@ struct FormazioneView: View {
                 .refreshable { await ricarica() }
                 // la striscia vale per la Formazione e per la giornata (`/api/oggi`): anche una sola delle due può essere vecchia
                 .avvisoDatiSalvati(vm.striscia?.data, motivo: vm.striscia?.motivo)
+                // iPhone in orizzontale: la pagina (e la striscia dei dati salvati) parte sotto il titolo della barra, non dietro;
+                // scorrendo passa sotto come sempre
+                .safeAreaPadding(.top, Self.spazioSottoIlTitolo(verticale: classeVerticale))
                 .bordiMorbidi()
-                // Girando l'iPhone la pagina che scorre si rifà e riparte dall'alto, sotto la barra. Quella aperta in verticale
-                // teneva in orizzontale lo scorrimento del titolo grande, e «Giornata 8» e «Si chiude …» restavano sfocate dietro
-                // il titolo (foto `iphone_scuro_orizz_formazione` del 26/11: le foto aprono l'app in verticale e la girano; Giornate
-                // e Impostazioni, che sono elenchi, non lo fanno). Sull'iPad l'altezza resta regolare: lì non cambia niente.
-                .id(classeVerticale)
             }
             .navigationTitle(Catalogo.Nav.formazione)
-            // iPhone in orizzontale: il titolo piccolo e fermo nella barra, come Cerca e la scheda del giocatore, che lì partono
-            // sotto la barra. In verticale e sull'iPad il titolo grande di sempre.
-            .toolbarTitleDisplayMode(Self.titoloPiccolo(verticale: classeVerticale) ? .inline : .automatic)
             // «Sostituisci» nella scheda: chi può prendere il posto del titolare, con i numeri del server; un tocco chiude l'elenco
             // e fa il cambio. Finché il cambio non si può fare le righe sono spente con il perché; un cambio che non parte lo dice
             // il ViewModel sotto il campo (`messaggio`)
