@@ -1,4 +1,6 @@
 """Pagine Privacy e Termini: pubbliche (anche con gli account accesi), testi in un solo posto, contatto protetto."""
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -29,6 +31,42 @@ def test_privacy_dice_le_cose_importanti():
 def test_privacy_dice_import_per_conto_di_e_copie_delle_rose():
     t = tl.pagina("privacy").lower()
     assert "importare le tue rose al posto tuo" in t and "5 copie" in t and "cancellano insieme al tuo account" in t
+
+
+@pytest.mark.parametrize("lingua,scambi,vecchie,nuove", [
+    ("it", r"scamb", ("Oggi", "Diario"), "(Formazione, Giornate, widget, risultati in diretta)"),
+    ("en", r"\btrades?\b", ("Today", "Diary"), "(Lineup, Matchdays, widget, live scores)"),
+])
+def test_privacy_e_termini_parlano_dell_app_di_oggi(lingua, scambi, vecchie, nuove):
+    """L'app non analizza più scambi e non ne salva sul dispositivo; le schermate sono Formazione e Giornate (Oggi e Diario
+    non ci sono più): Privacy e Termini usano i nomi che l'utente vede."""
+    for quale in ("privacy", "termini"):
+        t = tl.pagina(quale, lingua)
+        assert not re.search(scambi, t, re.I), (quale, re.search(scambi, t, re.I))
+        for nome in vecchie:
+            assert not re.search(rf"\b{nome}\b", t), (quale, nome)
+    assert nuove in tl.pagina("privacy", lingua)
+
+
+AMBIENTE_LEGALE = ("FANTA_CONTATTO", "FANTA_TITOLARE", "FANTA_SORGENTE", "FANTA_BACKUP_GIORNI", "FANTA_REGISTRO_WEB_GIORNI",
+                   "FANTA_HOSTING", "FANTA_POSTA_FORNITORE")
+# nomi di siti e di file citati nel testo (ntfy.sh, Fantacalcio.it, football-data.co.uk, THIRD-PARTY-NOTICES.md): lì il punto
+# fra due lettere è giusto
+INDIRIZZI = re.compile(r"https?://\S+|\b[\w.-]+\.(?:it|sh|uk|org|com|net|io|md)\b")
+
+
+@pytest.mark.parametrize("lingua", tl.LINGUE)
+@pytest.mark.parametrize("quale", tl.PAGINE)
+def test_niente_parole_attaccate_dopo_i_due_punti_o_il_punto(quale, lingua, monkeypatch):
+    """Le frasi lunghe stanno su più righe che Python incolla: se una riga perde lo spazio in fondo, due parole si attaccano
+    («li vedi solo tu:gli altri»). Sulla pagina generata, dopo «:» o «.» fra due lettere ci vuole uno spazio."""
+    import html
+    for v in AMBIENTE_LEGALE:
+        monkeypatch.delenv(v, raising=False)
+    corpo = tl.pagina(quale, lingua).split("<body", 1)[1]
+    testo = INDIRIZZI.sub(" ", html.unescape(re.sub(r"<[^>]+>", " ", corpo)))
+    attaccate = [testo[max(0, m.start() - 25):m.end() + 25] for m in re.finditer(r"[a-zà-ù][:.][A-Za-zÀ-ù]", testo)]
+    assert not attaccate, attaccate
 
 
 def test_termini_dicono_che_i_dati_non_sono_ufficiali():
