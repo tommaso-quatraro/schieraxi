@@ -190,7 +190,9 @@ extension Demo {
             apriLega(nav, modello, [.squadre])
         case "lega-rosa":
             apriLega(nav, modello, [.squadre, .rosa(ScenarioVero.attuale?.rosaAltra ?? "Gli Amici del Bar Sport Centrale")])
-        case "lega-regole":
+        // `lega-regole-anteprima` e `lega-regole-non-applicato`: il regolamento della demo incollato e riconosciuto, scorso a
+        // «Riconosci le regole» o a «Non applicato» (lo fa la pagina, RegoleEditorView, #889)
+        case "lega-regole", "lega-regole-anteprima", "lega-regole-non-applicato":
             apriLega(nav, modello, [.regole])
         case "lega-stato":
             apriLega(nav, modello, [.gestione, .stato])

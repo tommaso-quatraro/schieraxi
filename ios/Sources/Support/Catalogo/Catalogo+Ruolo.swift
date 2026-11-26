@@ -14,5 +14,17 @@ extension Catalogo {
 
         /// `ruolo.A_1`
         static let a1 = "Attaccante"
+
+        /// `ruolo.P_pl`
+        static let pPl = "Portieri"
+
+        /// `ruolo.D_pl`
+        static let dPl = "Difensori"
+
+        /// `ruolo.C_pl`
+        static let cPl = "Centrocampisti"
+
+        /// `ruolo.A_pl`
+        static let aPl = "Attaccanti"
     }
 }
