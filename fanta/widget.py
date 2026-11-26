@@ -52,10 +52,12 @@ def _g(scheda: dict, tratti: dict, *campi: str) -> dict:
 
 
 def _opzionale(mancano: list[str], nome: str, funzione):
-    """Esegue una parte facoltativa senza mai far partire calcoli: se il risultato non è in cache, `nome` finisce in `mancano`."""
+    """Esegue una parte facoltativa senza mai far partire calcoli: se il risultato non è in cache, `nome` finisce in `mancano`.
+    Senza aspettare nemmeno un calcolo già in corso (#907): una parte facoltativa non rallenta Oggi né il widget."""
     gettone = calcolo.solo_cache.set(True)
     try:
-        return funzione()
+        with calcolo.senza_attesa():
+            return funzione()
     except calcolo.InCalcolo:
         mancano.append(nome)
         return None

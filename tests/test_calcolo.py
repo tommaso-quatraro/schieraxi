@@ -281,12 +281,14 @@ def prepara(c):
     assert c.put("/api/mia-squadra", json={"nome": "Mia"}).status_code == 200
 
 
-def test_la_formazione_risponde_sto_calcolando_poi_il_risultato(formazione_lenta):
+def test_la_formazione_risponde_sto_calcolando_poi_il_risultato(formazione_lenta, monkeypatch):
+    monkeypatch.setattr(calcolo, "ATTESA_MAX", 0.2)           # il calcolo è fermo: il server lo aspetta poco (#907) e poi dice 202
     a, _ = nuovo_utente("utentea")
     prepara(a)
     r = a.get("/api/formazione")
-    assert r.status_code == 202 and r.json()["calcolo"] == "in_corso" and r.json()["riprova_tra"] == calcolo.RIPROVA_TRA
-    assert r.headers["retry-after"] == str(calcolo.RIPROVA_TRA) and "calcolando" in r.json()["detail"]
+    # riprova_tra: RIPROVA_TRA meno i secondi aspettati (almeno 1); non esatto, il risveglio può tardare con il processore occupato
+    assert r.status_code == 202 and r.json()["calcolo"] == "in_corso" and 1 <= r.json()["riprova_tra"] <= calcolo.RIPROVA_TRA
+    assert r.headers["retry-after"] == str(r.json()["riprova_tra"]) and "calcolando" in r.json()["detail"]
     assert a.get("/api/formazione").status_code == 202
     formazione_lenta["via"].set()
     attendi_fine()
@@ -300,9 +302,8 @@ def test_lo_stesso_calcolo_serve_due_utenti_con_la_stessa_rosa(formazione_lenta)
     prepara(a)
     prepara(b)
     formazione_lenta["via"].set()
-    assert a.get("/api/formazione").status_code == 202
-    attendi_fine()
-    assert a.get("/api/formazione").status_code == 200 and b.get("/api/formazione").status_code == 200
+    assert a.get("/api/formazione").status_code == 200        # calcolo breve: il server lo aspetta invece del 202 (#907)
+    assert b.get("/api/formazione").status_code == 200
     assert formazione_lenta["chiamate"] == 1                  # stessa squadra, rosa, giornata e regole: stessa impronta
 
 
@@ -311,9 +312,7 @@ def test_un_errore_di_calcolo_arriva_con_il_suo_messaggio(formazione_lenta):
     prepara(a)
     formazione_lenta["errore"] = "Non si riesce a formare una squadra"
     formazione_lenta["via"].set()
-    assert a.get("/api/formazione").status_code == 202
-    attendi_fine()
-    r = a.get("/api/formazione")
+    r = a.get("/api/formazione")                              # calcolo breve: l'errore arriva alla prima richiesta (#907)
     assert r.status_code == 400 and "formare una squadra" in r.json()["detail"]
 
 

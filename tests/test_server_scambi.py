@@ -167,6 +167,7 @@ def test_gli_scambi_grandi_passano_dalla_coda_e_si_contano_a_calcolo_finito(con_
         time.sleep(0.3)
         return originale(*args, **kw)
     monkeypatch.setattr(scambi, "proponi", lenta)
+    monkeypatch.setattr(calcolo, "ATTESA_MAX", 0.1)     # il server aspetta meno del calcolo (#907): arriva il 202
     r = a.get("/api/scambi/proposte", params={"con": "Loro", "fino_a": 2})
     assert r.status_code == 202 and r.json()["calcolo"] == "in_corso"
     assert limiti.usati_oggi(id_a, "scambi") == 0                      # il 202 non consuma una ricerca

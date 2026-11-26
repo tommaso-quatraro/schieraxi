@@ -65,6 +65,7 @@ def lenta(ambiente, monkeypatch):  # noqa: F811 (fixture importata)
     """La formazione vera passa dalla coda; il calcolo, invece di durare, aspetta il «via» di adesso (`stato["via"]`)."""
     monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
     monkeypatch.setattr(limiti, "_adesso", lambda: ORA_FISSA)
+    monkeypatch.setattr(calcolo, "ATTESA_MAX", 0)       # qui si provano i tetti della coda: 202 subito, senza l'attesa (#907, in test_calcolo_attesa.py)
     stato = {"via": threading.Event()}
 
     def finta(db, s, giornata, regole, simulazioni):
