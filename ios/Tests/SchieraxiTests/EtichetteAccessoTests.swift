@@ -81,18 +81,19 @@ struct EtichetteCampiTests {
         }
     }
 
-    @Test("Registrati con l'invito: «Email (facoltativa)» sopra e «Serve a recuperare la password.» sotto")
-    func emailFacoltativa() {
-        let m = registrazione(.invito)
-        #expect(m.etichetta(.email, .invito) == "Email (facoltativa)")
-        #expect(m.aiuto(.email, .invito) == "Serve a recuperare la password.")
+    @Test("Registrati con l'invito o aperta: «Email (facoltativa)» sopra e «Serve a recuperare la password.» sotto",
+          arguments: [ModalitaRegistrazione.invito, .aperta])
+    func emailFacoltativa(modo: ModalitaRegistrazione) {
+        let m = registrazione(modo)
+        #expect(m.etichetta(.email, modo) == "Email (facoltativa)")
+        #expect(m.aiuto(.email, modo) == "Serve a recuperare la password.")
     }
 
-    @Test("Email obbligatoria per registrarsi: «Email», senza spiegazione", arguments: [ModalitaRegistrazione.email, .aperta])
-    func emailObbligatoria(modo: ModalitaRegistrazione) {
-        let m = registrazione(modo)
-        #expect(m.etichetta(.email, modo) == "Email")
-        #expect(m.aiuto(.email, modo) == nil)
+    @Test("Email obbligatoria per registrarsi (modo «email»): «Email», senza spiegazione")
+    func emailObbligatoria() {
+        let m = registrazione(.email)
+        #expect(m.etichetta(.email, .email) == "Email")
+        #expect(m.aiuto(.email, .email) == nil)
     }
 
     @Test("Password dimenticata con l'email: «Email», senza spiegazione")

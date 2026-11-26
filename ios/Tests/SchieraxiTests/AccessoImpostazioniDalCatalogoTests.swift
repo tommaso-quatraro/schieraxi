@@ -21,7 +21,7 @@ struct AccessoImpostazioniDalCatalogoTests {
         Catalogo.Accesso.emailFacoltativa, Catalogo.Accesso.emailFacoltativaAiuto, Catalogo.Accesso.invioAccedi,
         Catalogo.Accesso.invioRegistra, Catalogo.Accesso.invioVerifica, Catalogo.Accesso.invioRecupero,
         Catalogo.Accesso.invioRecuperoEmail, Catalogo.Accesso.serveInvito, Catalogo.Accesso.serveInvitoEmail,
-        Catalogo.Accesso.serveEmail, Catalogo.Accesso.recuperoSpiega, Catalogo.Accesso.recuperoEmailSpiega,
+        Catalogo.Accesso.registrazioneAperta, Catalogo.Accesso.recuperoSpiega, Catalogo.Accesso.recuperoEmailSpiega,
         Catalogo.Accesso.recuperoConEmail, Catalogo.Accesso.recuperoConCodice, Catalogo.Accesso.torna,
         Catalogo.Accesso.codiceInviato, Catalogo.Accesso.passwordCambiata, Catalogo.Accesso.passwordCambiataAccedi,
         Catalogo.Accesso.vaiAccesso, Catalogo.Accesso.rispostaIncompleta,

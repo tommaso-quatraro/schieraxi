@@ -141,6 +141,11 @@
     "it": "Serve a recuperare la password.",
     "en": "Used to recover your password."
   },
+  "accesso.sito_web": {
+    "it": "Sito web (lascia vuoto)",
+    "en": "Website (leave empty)",
+    "nota": "Registrati: il campo trappola che una persona non vede (nascosto); se arriva pieno l'ha compilato un programma"
+  },
   "accesso.codice_email": {
     "it": "Codice a 6 cifre ricevuto per email",
     "en": "6-digit code received by email"
@@ -149,9 +154,10 @@
     "it": "Serve un codice d'invito e un indirizzo email: ti mandiamo un codice per confermarlo.",
     "en": "You need an invitation code and an email address: we will send you a code to confirm it."
   },
-  "accesso.serve_email": {
-    "it": "Scrivi la tua email: ti mandiamo un codice per confermarla e creare l'account.",
-    "en": "Enter your email: we will send you a code to confirm it and create the account."
+  "accesso.registrazione_aperta": {
+    "it": "Scegli un nome utente e una password.",
+    "en": "Choose a username and a password.",
+    "nota": "Registrati, con la registrazione aperta (FANTA_REGISTRAZIONE=aperta, senza invito)"
   },
   "accesso.verifica_spiega": {
     "it": "Ti abbiamo scritto a {email}. Inserisci il codice a 6 cifre (vale 15 minuti). Se non arriva, controlla la posta indesiderata.",

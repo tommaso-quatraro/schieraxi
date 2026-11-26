@@ -1948,6 +1948,7 @@ def test_con_i_posti_pieni_l_avviso_si_legge_prima_di_creare_l_invito(web):
     avviso.wait_for(timeout=10000)
     crea = carta.get_by_role("button", name="Crea l'invito")
     assert avviso.bounding_box()["y"] < crea.bounding_box()["y"], "l'avviso va letto prima del pulsante"
+    assert carta.inner_text().count("Un codice che vale una volta sola e per 7 giorni") == 1, carta.inner_text()   # sotto «Nuovo invito», una volta
     assert POSTI_PIENI in " ".join(avviso.inner_text().split())
     carta.get_by_label("Etichetta").fill("Sara")
     tocca(web, crea)
@@ -2077,6 +2078,41 @@ def test_gestione_usa_la_larghezza_della_pagina(web, larghezza):
     assert "Posti pieni" not in admin.inner_text()
     assert not web.scorre_di_lato()
     assert not web.violazioni_gravi()
+
+
+POSTI_PIENI_APERTA = ("Posti pieni: 4 utenti su 4. Chi prova a registrarsi adesso trova le iscrizioni chiuse, finché non alzi il numero "
+                      "massimo di utenti del server.")
+
+
+@pytest.mark.parametrize("larghezza, tema", [(390, "chiaro"), (PC, "scuro")])
+def test_con_le_iscrizioni_aperte_gestione_non_ha_gli_inviti(web, larghezza, tema):
+    """Registrazione aperta (`registrazione: "aperta"` in /api/account/me, 26/11/2026): in Amministrazione al posto di «Nuovo invito»
+    e «Inviti aperti» c'è «Iscrizioni» con la sua frase, e gli inviti non si chiedono nemmeno al server. Con i posti pieni sotto la
+    frase c'è l'avviso del server, che parla di iscrizioni; «Password dimenticata» e «Utenti» restano."""
+    solo(web, "prima")
+    da_utente(web, {**AMMINISTRATORE, "registrazione": "aperta"})
+    amici = [{"nome_utente": f"amico{i}", "nome_visualizzato": f"Amico {i}", "ruolo": "utente"} for i in range(4)]
+    arrivate = server_che_cambia(web, "/api/admin/utenti", [{"utenti": amici, "massimo": 4, "avviso": POSTI_PIENI_APERTA, "avviso_frase": {
+        "chiave": "admin.posti_pieni_aperta", "param": {"n": 4, "massimo": 4}}}])
+    server_che_cambia(web, "/api/admin/inviti", [{"inviti": [SARA]}], {"POST": {}, "DELETE": {"ok": True}}, arrivate)
+    web.risposta("/api/admin/registro", REGISTRO)
+    web.apri("/?vista=impostazioni&gruppo=gestione", larghezza=larghezza, tema=tema)
+    carta = carta_con(web, "Amministrazione")
+    carta.get_by_role("heading", name="Iscrizioni", exact=True).wait_for(timeout=10000)
+    assert carta.get_by_text("Le iscrizioni sono aperte: chi vuole si registra da solo dalla schermata d'accesso, finché ci sono posti.").is_visible()
+    avviso = carta.get_by_role("status").filter(has_text="Posti pieni: 4 utenti su 4.")
+    avviso.wait_for(timeout=10000)
+    assert POSTI_PIENI_APERTA in " ".join(avviso.inner_text().split())
+    assert carta.get_by_role("button", name="Crea l'invito").count() == 0
+    assert carta.get_by_role("heading", name="Nuovo invito").count() == 0 and carta.get_by_role("heading", name="Inviti aperti").count() == 0
+    testo = carta.inner_text()                                                     # nessuna frase sugli inviti, nemmeno altrove
+    assert "invito" not in testo.lower() and "Un codice che vale una volta sola e per 7 giorni" not in testo, testo
+    assert carta.get_by_role("heading", name="Password dimenticata").is_visible()
+    carta.get_by_text("Amico 3", exact=False).wait_for(timeout=10000)
+    assert not [r for r in arrivate if "/api/admin/inviti" in r], arrivate
+    assert not web.scorre_di_lato()
+    assert not web.violazioni_gravi()
+    assert not web.errori_console and not web.richieste_fallite
 
 
 def test_stato_dei_dati_dice_una_volta_sola_la_frase_delle_fonti_spente(web):

@@ -63,8 +63,8 @@ extension Catalogo {
         /// `accesso.serve_invito_email`
         static let serveInvitoEmail = "Serve un codice d'invito e un indirizzo email: ti mandiamo un codice per confermarlo."
 
-        /// `accesso.serve_email`
-        static let serveEmail = "Scrivi la tua email: ti mandiamo un codice per confermarla e creare l'account."
+        /// `accesso.registrazione_aperta`
+        static let registrazioneAperta = "Scegli un nome utente e una password."
 
         /// `accesso.verifica_spiega`
         static func verificaSpiega(email: String) -> String {
