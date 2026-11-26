@@ -30,10 +30,10 @@
     {
       "id": 99,
       "schermata": "Scheda giocatore, «Tutti i numeri»: fin dove arrivano le statistiche avanzate (#862)",
-      "web": "«Dati fino al 9/11.» (`mercato.dati_fino_al`, il giorno come `giornoMese`) in fondo alla riga di «Gol e assist rispetto alle occasioni» e sotto il titolo «Statistiche avanzate», dal campo `avanzate.dati_fino_al` del server; niente riga senza il campo (`riempiScheda` in `app.js`)",
+      "web": "«Dati fino al 9/11.» (`mercato.dati_fino_al`, il giorno come `giornoMese`) una volta sola, ultima riga di «Tutti i numeri», in fondo al blocco «Statistiche avanzate» (dopo le stagioni precedenti): vale anche per «Gol e assist rispetto alle occasioni», stessa fonte, che c'è solo quando c'è quel blocco. Dal campo `avanzate.dati_fino_al` del server; niente riga senza il campo (`riempiScheda` in `app.js`). Fino al 26/11/2026 (#911) la frase compariva due volte, anche nella riga delle occasioni",
       "iphone": "uguale alla web",
       "forma": "web",
-      "chi": "**fatto** (#862): iPhone `LetturaScheda.datiFinoAl` (`Domain/LetturaScheda.swift`) usata da `TuttiINumeri`; prova `SchedaDatiFinoAlTests`, web `tests/browser/test_scheda_dati_fino_al.py`",
+      "chi": "**fatto** (#862, #911): iPhone `LetturaScheda.datiFinoAl` (`Domain/LetturaScheda.swift`) usata in fondo al blocco `avanzate` di `TuttiINumeri`; prova `SchedaDatiFinoAlTests`, foto `giocatore-fondo`, web `tests/browser/test_scheda_dati_fino_al.py`",
       "stato": "fatto"
     },
     {
