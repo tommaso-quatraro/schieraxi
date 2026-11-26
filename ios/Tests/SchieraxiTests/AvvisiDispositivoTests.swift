@@ -56,11 +56,14 @@ struct AvvisiDispositivoTests {
 
     /// Come il server (`_stato_avvisi` di `fanta/server.py`): `canale` è vero con il canale ntfy configurato (`ntfy`) o con almeno
     /// un dispositivo con le notifiche della web accese (`dispositivi`); `appNativa` è «Avvisi anche per l'app nativa» e non lo tocca.
-    private func server(rotto: Bool = false, dispositivi: Int = 0, appNativa: Bool = false, ntfy: Bool = false) -> ServerDiProva {
-        ServerDiProva { metodo, percorso, _ in
+    /// `promemoriaDa`: il campo `promemoria_da` (nil = server di prima, che non lo manda).
+    private func server(rotto: Bool = false, dispositivi: Int = 0, appNativa: Bool = false, ntfy: Bool = false,
+                        promemoriaDa: String? = nil) -> ServerDiProva {
+        let da = promemoriaDa.map { #","promemoria_da":"\#($0)""# } ?? ""
+        return ServerDiProva { metodo, percorso, _ in
             if metodo == "PUT", rotto { throw ErroreApi.rete("spento") }
             if percorso.hasPrefix("/api/avvisi") {
-                return Data(#"{"impostazioni":{"cambi":true,"promemoria_60":false,"promemoria_15":false,"riepilogo":true,"silenzio":true,"silenzio_da":22,"silenzio_a":8,"app_nativa":\#(appNativa)},"canale":\#(ntfy || dispositivi > 0),"dispositivi":\#(dispositivi)}"#.utf8)
+                return Data(#"{"impostazioni":{"cambi":true,"promemoria_60":false,"promemoria_15":false,"riepilogo":true,"silenzio":true,"silenzio_da":22,"silenzio_a":8,"app_nativa":\#(appNativa)},"canale":\#(ntfy || dispositivi > 0),"dispositivi":\#(dispositivi)\#(da)}"#.utf8)
             }
             return Data("{}".utf8)
         }
@@ -211,6 +214,22 @@ struct AvvisiDispositivoTests {
                                             telefono: telefono.avvisi, memoria: try memoria())
         await vm.carica()
         #expect(telefono.serverManda.last == caso.atteso)
+    }
+
+    /// Promemoria anche dalla web app (26/11/2026): `promemoria_da` serve solo a informare. Il telefono programma sempre i suoi
+    /// promemoria (nessuna regola del server sa con certezza cosa mostra questo telefono); con «web» la riga sotto l'interruttore
+    /// dice che il promemoria arriva anche dalla web app e come evitare il doppione.
+    @Test("Con qualsiasi `promemoria_da` il telefono programma i suoi promemoria; la riga d'aiuto cambia solo con «web»",
+          arguments: ["web", "ntfy", "app", nil] as [String?])
+    func promemoriaDa(da: String?) async throws {
+        let telefono = Telefono()
+        let vm = AvvisiDispositivoViewModel(server: server(dispositivi: 1, promemoriaDa: da), telefono: telefono.avvisi,
+                                            memoria: try memoria())
+        await vm.carica()
+        let tace: Bool? = telefono.serverManda.last
+        #expect(tace == false)
+        let riga: String = da == "web" ? Catalogo.Imp.avvisiQuiAiutoWeb : Catalogo.Imp.avvisiQuiAiutoApp
+        #expect(vm.aiutoQui == riga)
     }
 
     @Test("Aprendo la pagina degli avvisi, se per i promemoria è cambiato qualcosa sul server, i promemoria tornano in programma")
