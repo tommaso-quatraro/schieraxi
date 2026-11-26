@@ -28,9 +28,9 @@ canale=$(tr -d ' \r\n' < "${SCHIERAXI_CANALE:-$HOME/.config/schieraxi/canale}" 2
 
 avvisa() {   # titolo, testo
   [ -n "$canale" ] || return 0
-  curl -fsS -m 20 -H 'Content-Type: application/json' \
-    -d "{\"topic\":\"$canale\",\"title\":\"$1\",\"message\":\"$2\",\"priority\":3,\"tags\":[\"soccer\"]}" \
-    https://ntfy.sh >/dev/null
+  # il corpo (con il nome del canale) passa dallo standard input: non compare tra gli argomenti del comando, visibili a tutti con ps
+  printf '%s' "{\"topic\":\"$canale\",\"title\":\"$1\",\"message\":\"$2\",\"priority\":3,\"tags\":[\"soccer\"]}" \
+    | curl -fsS -m 20 -H 'Content-Type: application/json' --data-binary @- https://ntfy.sh >/dev/null
 }
 
 testo_rotti() {   # righe «giri nome» dei passi da segnalare in questo giro: il testo di UN avviso
