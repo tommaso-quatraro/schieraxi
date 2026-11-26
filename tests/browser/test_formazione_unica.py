@@ -61,6 +61,42 @@ def scritture(web) -> list[tuple[str, str, dict | None]]:
     return viste
 
 
+SOSTITUISCI = "/api/formazione/sostituisci"
+
+
+def sostituti_dal_server(web, f=None, differenze=None) -> list:
+    """Fa la parte del server su POST /api/formazione/sostituisci (`scelte.chi_prende_il_posto`): gli scenari registrati non hanno
+    ancora la rotta. Chi può entrare: lo stesso ruolo di `esce`, non fra i titolari mandati né fra i `bloccati` di `f` (di norma la
+    formazione registrata); per ognuno la `differenza` dei punti attesi della formazione da `differenze` ({id: numero}, di norma
+    0,0), nell'ordine del server (dalla differenza più alta, poi dai punti attesi da soli). Torna i corpi delle domande arrivate."""
+    arrivate = []
+
+    def rispondi(route):
+        g = f or web.registrata("/api/formazione")
+        corpo = json.loads(route.request.post_data)
+        arrivate.append(corpo)
+        adesso = next((m["punteggio_atteso"] for m in g.get("moduli") or [] if m["modulo"] == g.get("modulo")), g.get("punteggio_atteso"))
+        dentro, fermi = {int(i) for i in corpo["titolari"]}, {int(i) for i in g.get("bloccati") or []}
+        ruolo = g["schede"][str(corpo["esce"])]["ruolo"]
+        d = lambda x: (differenze or {}).get(x["id"], 0.0)                     # noqa: E731
+        candidati = sorted((x for x in g["schede"].values() if x["ruolo"] == ruolo and x["id"] not in dentro | fermi),
+                           key=lambda x: (-d(x), -x["punti_attesi"]))
+        risposta = {"giornata": g["giornata"], "esce": corpo["esce"], "punteggio_atteso": adesso,
+                    "entrate": [{"entra": x["id"], "punteggio_atteso": round(adesso + d(x), 1), "differenza": d(x)} for x in candidati]}
+        route.fulfill(status=200, content_type="application/json; charset=utf-8", body=json.dumps(risposta))
+
+    web.pagina.route(lambda u: urlsplit(u).path == SOSTITUISCI, rispondi)
+    return arrivate
+
+
+@pytest.fixture(autouse=True)
+def _sostituisci_risponde(request):
+    """Ogni test di questo file con la web trova la rotta di «Sostituisci» (`sostituti_dal_server`, differenze 0,0); un test che
+    vuole altri numeri la registra di nuovo (l'ultima registrata vince)."""
+    if "web" in request.fixturenames:
+        sostituti_dal_server(request.getfixturevalue("web"))
+
+
 # ---------------------------------------------------------------- gli 11 nel primo schermo
 def test_i_nomi_degli_11_stanno_nel_primo_schermo_del_telefono(web):
     """A 390×844 px, in tutte e tre le fasi: ogni titolare (numero e cognome) sta sopra la barra in basso, senza scorrere."""
@@ -344,7 +380,8 @@ def test_al_massimo_due_decisioni_e_solo_quelle_con_un_azione(web):
         {"id": f"dubbio:{esce['id']}", "tipo": "dubbio", "testo": f"{esce['nome']} è in dubbio (45% di giocare). Meglio {entra['nome']}.", "priorita": 2,
          "azione": "Sostituisci", "destinazione": {"scheda": "formazione", "sezione": None, "giocatore": esce["id"]},
          "giocatore": {"id": esce["id"], "nome": esce["nome"]},
-         "alternativa": {"id": entra["id"], "nome": entra["nome"], "ruolo": "C", "punti_attesi": esce["punti_attesi"] + 0.9}},
+         # fra i due giocatori +0,9; per la formazione +1,3 (`differenza`, il numero del server): si scrive quello della formazione
+         "alternativa": {"id": entra["id"], "nome": entra["nome"], "ruolo": "C", "punti_attesi": esce["punti_attesi"] + 0.9}, "differenza": 1.3},
         {"id": "dubbio:1", "tipo": "dubbio", "testo": "Esempio è in dubbio (55% di giocare) ma resta titolare: se non gioca entra Prova dalla panchina.",
          "priorita": 2, "azione": "Apri la formazione", "destinazione": {"scheda": "formazione", "sezione": None}},
         {"id": "formazione:9", "tipo": "formazione", "testo": "La formazione si chiude tra 3 ore e non l'hai ancora salvata.", "priorita": 2,
@@ -356,7 +393,8 @@ def test_al_massimo_due_decisioni_e_solo_quelle_con_un_azione(web):
     ])
     righe = [" ".join(r.split()) for r in _decisioni(web).all_inner_texts()]
     assert len(righe) == 2, righe
-    assert righe[0].startswith(f"{esce['nome']} è in dubbio") and "+0,9 punti attesi." in righe[0] and righe[0].endswith("Sostituisci")
+    assert righe[0].startswith(f"{esce['nome']} è in dubbio") and "+1,3 punti attesi." in righe[0] and righe[0].endswith("Sostituisci")
+    assert "0,9" not in righe[0]
     assert righe[1].endswith("Aggiorna le rose")
     testo = web.testo_principale()
     assert "resta titolare" not in testo and "non l'hai ancora salvata" not in testo and "dimmi se hai schierato" not in testo
@@ -458,6 +496,42 @@ def test_fra_i_sostituti_chi_gioca_meno_dell_80_per_cento_lo_dice(web):
     assert "gioca" not in riga(sicura), riga(sicura)
 
 
+def test_i_numeri_di_sostituisci_sono_quelli_della_formazione_dopo_il_cambio(web):
+    """Il collaudo del 26/11: toccando un titolare e poi «Sostituisci» le righe dicevano «+2,7» e «+2,6» (la differenza fra i due
+    giocatori), ma fatto il cambio i punti attesi della formazione cambiavano di −0,1 o 0,0. I numeri li dà il server
+    (POST /api/formazione/sostituisci, con gli 11 in pagina), nel suo ordine; fatto il cambio, i punti attesi accanto al modulo
+    cambiano proprio del numero della riga toccata."""
+    solo(web, "prima")
+    web.risposta("/api/scelta?giornata=9", None)
+    f = web.registrata("/api/formazione")
+    consigliato = next(m for m in f["moduli"] if m["modulo"] == f["modulo"])
+    titolari = [f["schede"][str(i)] for i in consigliato["titolari"]]
+    fermi = ("infortunato", "squalificato", "fuori")
+    liberi = lambda r: sorted((x for x in f["schede"].values() if x["ruolo"] == r and x["id"] not in consigliato["titolari"]),   # noqa: E731
+                              key=lambda x: -x["punti_attesi"])
+    esce = next(x for x in titolari if x["ruolo"] != "P" and len(liberi(x["ruolo"])) >= 2
+                and all((y.get("etichetta") or {}).get("codice") not in fermi for y in liberi(x["ruolo"])[:2]))
+    forte, debole = liberi(esce["ruolo"])[:2]            # da soli il primo vale più del secondo; per la formazione il contrario
+    arrivate = sostituti_dal_server(web, differenze={debole["id"]: 1.3, forte["id"]: -0.4})
+    adesso = consigliato["punteggio_atteso"]
+    web.risposta("/api/formazione/valuta", {**web.registrata("/api/formazione/valuta"), "punteggio_atteso": round(adesso + 1.3, 1)})
+    web.apri("/")
+    punti = lambda: principale(web).locator("#punti-attesi").inner_text()    # noqa: E731
+    assert punti() == f"{adesso:.1f}".replace(".", ",")
+    tocca(web, campo(web).filter(has_text=re.sub(r"\s+\S{1,3}\.$", "", esce["nome"])).first)
+    tocca(web, scheda(web).get_by_role("button", name="Sostituisci"))
+    assert len(arrivate) == 1 and arrivate[0]["esce"] == esce["id"] and sorted(arrivate[0]["titolari"]) == sorted(consigliato["titolari"])
+    righe = [" ".join(t.split()) for t in scheda(web).get_by_role("listitem").all_inner_texts()]
+    assert debole["nome"] in righe[0] and "+1,3" in righe[0], righe          # in cima il cambio che rende di più alla formazione
+    riga_forte = next(r for r in righe if forte["nome"] in r)
+    assert "−0,4" in riga_forte, riga_forte
+    fra_i_due = round(debole["punti_attesi"] - esce["punti_attesi"], 1)
+    assert fra_i_due != 1.3 and f"{fra_i_due:+.1f}".replace(".", ",").replace("-", "−") not in righe[0]
+    tocca(web, scheda(web).get_by_role("listitem").filter(has_text=debole["nome"]).first.get_by_role("button"))
+    assert punti() == f"{adesso + 1.3:.1f}".replace(".", ",")                 # +1,3, come diceva la riga
+    assert not web.errori_mostrati() and not web.errori_console
+
+
 def test_sul_pc_cambiando_modulo_l_elenco_dei_sostituti_aperto_si_chiude(web):
     """Con il pannello a fianco la pagina resta attiva: i candidati aperti erano quelli della formazione di prima."""
     solo(web, "prima")
@@ -484,6 +558,7 @@ def _con_due_fermi(web):
     libero = next(x for x in titolari if x["ruolo"] == riserva["ruolo"])
     titolare = next(x for x in titolari if x["id"] != libero["id"] and x["ruolo"] != "P")
     web.risposta("/api/formazione", {**f, "bloccati": [titolare["id"], riserva["id"]]})
+    sostituti_dal_server(web, {**f, "bloccati": [titolare["id"], riserva["id"]]})      # il server sa chi è fermo
     web.risposta("/api/scelta?giornata=9", None)
     return titolare, riserva, libero
 
