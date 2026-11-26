@@ -15,10 +15,10 @@ final class OggiViewModel: ViewModelBase {
     /// Partite rinviate: la scelta «per questa giornata» è in viaggio (il menu si blocca) e l'eventuale errore da mostrare.
     @Published private(set) var rinvioInCorso = false
     @Published var erroreRinvio: String?
-    /// Cosa si fa con una giornata appena letta dal server (mai con la copia sul telefono) e l'ora in cui è partita la lettura:
-    /// permesso per le notifiche la prima volta, promemoria e widget (`passaAWidgetEPromemoria`). Senza promemoria (test) niente;
-    /// `OggiPerWidgetTests` la sostituisce per vedere che la giornata arriva.
-    var dopoLetturaFresca: @MainActor (Oggi, Date) async -> Void
+    /// Cosa si fa con una giornata appena letta dal server (mai con la copia sul telefono), l'ora in cui è partita la lettura e di
+    /// chi era (server e sessione di quel momento, `ChiLegge`): permesso per le notifiche la prima volta, promemoria e widget
+    /// (`passaAWidgetEPromemoria`). Senza promemoria (test) niente; `OggiPerWidgetTests` la sostituisce per vedere che la giornata arriva.
+    var dopoLetturaFresca: @MainActor (Oggi, Date, ChiLegge) async -> Void
     /// Cosa si fa se la giornata riletta dopo un tuo salvataggio non arriva dal server (`rileggiDopoUnSalvataggio`): i promemoria
     /// tornano in programma con la copia salvata e partono, mai tacere per un dato incerto. Nei test la sostituisce chi conta.
     var dopoLetturaNonRiuscita: @MainActor () async -> Void
@@ -30,10 +30,10 @@ final class OggiViewModel: ViewModelBase {
         caricatore = Caricatore<Oggi>(OggiRepository.percorso, ascolta: false, server: server)
         squadra = SquadraDaScegliere(server: server)
         if conPromemoria {
-            dopoLetturaFresca = { oggi, chiestaIl in await OggiViewModel.passaAWidgetEPromemoria(oggi, chiestaIl: chiestaIl) }
+            dopoLetturaFresca = { oggi, chiestaIl, chi in await OggiViewModel.passaAWidgetEPromemoria(oggi, chiestaIl: chiestaIl, di: chi) }
             dopoLetturaNonRiuscita = { await Aggiornamento.riprogrammaPromemoria(lettura: .nonRiuscita) }
         } else {
-            dopoLetturaFresca = { _, _ in }
+            dopoLetturaFresca = { _, _, _ in }
             dopoLetturaNonRiuscita = {}
         }
         super.init()
@@ -87,7 +87,7 @@ final class OggiViewModel: ViewModelBase {
 
     func carica() async {
         // Con dati vecchi (server irraggiungibile, o ancora la cache) non si riprogrammano i promemoria: sarebbero su una giornata vecchia.
-        if case .fresca(let oggi, let chiestaIl) = await leggi() { await dopoLetturaFresca(oggi, chiestaIl) }
+        if case .fresca(let oggi, let chiestaIl, let chi) = await leggi() { await dopoLetturaFresca(oggi, chiestaIl, chi) }
     }
 
     /// Dopo un tuo salvataggio riuscito (o «Torna alla consigliata»): la giornata si rilegge e i promemoria del telefono li decide il
@@ -95,7 +95,7 @@ final class OggiViewModel: ViewModelBase {
     /// giornata non arriva, tornano in programma con la copia salvata e partono (`dopoLetturaNonRiuscita`).
     func rileggiDopoUnSalvataggio() async {
         switch await leggi() {
-        case .fresca(let oggi, let chiestaIl): await dopoLetturaFresca(oggi, chiestaIl)
+        case .fresca(let oggi, let chiestaIl, let chi): await dopoLetturaFresca(oggi, chiestaIl, chi)
         case .superata: break
         case .nonRiuscita: await dopoLetturaNonRiuscita()
         }
@@ -103,8 +103,9 @@ final class OggiViewModel: ViewModelBase {
 
     /// Com'è andata una lettura della giornata.
     private enum EsitoLettura {
-        /// Arrivata fresca dal server, con l'ora in cui è partita (una spunta toccata dopo quest'ora vale ancora, `ArchivioMessa`).
-        case fresca(Oggi, chiestaIl: Date)
+        /// Arrivata fresca dal server, con l'ora in cui è partita (una spunta toccata dopo quest'ora vale ancora, `ArchivioMessa`) e
+        /// di chi era la lettura (`ChiLegge`).
+        case fresca(Oggi, chiestaIl: Date, chi: ChiLegge)
         /// Nel frattempo è partita un'altra lettura: decide quella. Così una risposta vecchia arrivata per ultima non toglie i
         /// promemoria e non cancella la spunta appena toccata (#710).
         case superata
@@ -117,16 +118,18 @@ final class OggiViewModel: ViewModelBase {
         letture += 1
         let numero = letture
         let chiesta = Date()
+        let chi = ChiLegge.adesso(indirizzo: server.indirizzo)
         await caricatore.ricarica()
         guard numero == letture else { return .superata }
         guard let oggi = caricatore.dato, caricatore.datiSalvati == nil, !caricatore.dallaCache else { return .nonRiuscita }
-        return .fresca(oggi, chiestaIl: chiesta)
+        return .fresca(oggi, chiestaIl: chiesta, chi: chi)
     }
 
     /// Una giornata fresca per i promemoria e i widget: la prima volta il permesso per le notifiche, poi gli avvisi del server (ore
     /// tranquille e se il server manda già i suoi avvisi a questo telefono, #906) e `Aggiornamento.elabora` (promemoria con i testi
-    /// del server, riassunto per il widget). `chiestaIl`: quando è partita la lettura. In demo niente.
-    static func passaAWidgetEPromemoria(_ oggi: Oggi, chiestaIl: Date) async {
+    /// del server, riassunto per il widget). `chiestaIl`: quando è partita la lettura; `chi`: di chi era (se nel frattempo la
+    /// sessione è cambiata, `elabora` non scrive niente). In demo niente.
+    static func passaAWidgetEPromemoria(_ oggi: Oggi, chiestaIl: Date, di chi: ChiLegge) async {
         guard !Demo.attivo else { return }
         let memoria = UserDefaults.standard
         if !memoria.bool(forKey: "permessoChiesto") {
@@ -135,6 +138,6 @@ final class OggiViewModel: ViewModelBase {
             await Aggiornamento.riprogrammaScadenza()
         }
         await Aggiornamento.aggiornaAvvisiDelServer()
-        await Aggiornamento.elabora(oggi, chiestaIl: chiestaIl)
+        await Aggiornamento.elabora(oggi, chiestaIl: chiestaIl, di: chi)
     }
 }

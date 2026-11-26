@@ -1,4 +1,4 @@
-"""Token del widget iOS: uno per utente, solo hash, 90 giorni, vale SOLO per leggere /api/oggi e /api/widget."""
+"""Token del widget iOS: uno per dispositivo (sessione), solo hash, 90 giorni, vale SOLO per leggere /api/oggi e /api/widget."""
 import contextlib
 import re
 import sqlite3
@@ -357,21 +357,26 @@ def test_uscire_da_un_altra_sessione_dello_stesso_account_non_tocca_il_widget(du
     assert a.get("/api/account/me").status_code == 200 and a.get("/api/account/token-widget").json()["presente"]
 
 
-def test_il_token_rinnovato_da_un_altro_dispositivo_segue_quel_dispositivo(due_utenti):
-    """Un widget per account: chi lo rinnova per ultimo se lo lega. L'uscita del primo dispositivo non lo chiude, quella del secondo sì."""
+def test_il_token_di_un_altro_dispositivo_segue_quel_dispositivo(due_utenti):
+    """Un widget per dispositivo (26/11/2026): il token chiesto dal secondo dispositivo non spegne quello del primo. L'uscita del
+    primo chiude solo il suo, quella del secondo il suo."""
     a, _ = due_utenti
-    token_di(a)
+    primo = token_di(a)
     altro = _altro_dispositivo()
     t = token_di(altro)
+    c1, h1 = widget(primo)
+    assert c1.get("/api/oggi", headers=h1).status_code == 200
     assert a.post("/api/account/esci").status_code == 200
+    assert c1.get("/api/oggi", headers=h1).status_code == 401
     c, h = widget(t)
     assert c.get("/api/oggi", headers=h).status_code == 200
     assert altro.post("/api/account/esci").status_code == 200
     assert c.get("/api/oggi", headers=h).status_code == 401
 
 
-def test_un_token_senza_legame_resta_dopo_l_uscita(due_utenti):
-    """I token nati prima del legame con la sessione (sessione_id vuoto) restano validi fino al rinnovo: l'uscita non li tocca."""
+def test_un_token_senza_legame_si_toglie_con_l_uscita(due_utenti):
+    """I token nati prima del legame con la sessione (sessione_id vuoto) non si sa di chi siano: dal 26/11/2026 «Esci» li toglie,
+    se no resterebbero validi per mesi dopo l'uscita (il dispositivo che li usava ne chiede uno nuovo dopo il 401)."""
     a, _ = due_utenti
     t = token_di(a)
     with contextlib.closing(account.apri()) as db:
@@ -379,7 +384,7 @@ def test_un_token_senza_legame_resta_dopo_l_uscita(due_utenti):
         db.commit()
     assert a.post("/api/account/esci").status_code == 200
     c, h = widget(t)
-    assert c.get("/api/oggi", headers=h).status_code == 200
+    assert c.get("/api/oggi", headers=h).status_code == 401
 
 
 def test_con_l_intestazione_bearer_come_l_iphone(due_utenti):
