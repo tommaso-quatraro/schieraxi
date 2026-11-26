@@ -105,8 +105,8 @@ extension Catalogo {
         }
 
         /// `diario.qp_cf`
-        static func qpCf(k: String, n: String, pari: String, tua: String) -> String {
-            "Giornate in cui la consigliata ha fatto meglio della tua: \(k) su \(n). Meglio la tua: \(tua). Pari: \(pari)."
+        static func qpCf(pari: String, tua: String) -> String {
+            "Meglio la tua: \(tua). Pari: \(pari)."
         }
 
         /// `diario.qp_cf_piu.one`, `diario.qp_cf_piu.other`

@@ -3102,6 +3102,9 @@ async function leggiLimitiRegole() {
 }
 // Un limite scritto nella frase di un avviso: «−20» con il meno tipografico, come nei messaggi del server.
 const cifraLimite = v => (v < 0 ? "−" : "") + num(Math.abs(v), Number.isInteger(v) ? 0 : 2);
+// I decimali per scrivere un valore delle regole senza arrotondarlo, fino a due: 0 se è intero, 1 se basta, altrimenti 2 («−0,25»
+// e non «−0,3», #911). La stessa regola dell'iPhone (RegoleLogica.descrivi); la usano l'anteprima del regolamento e i campi.
+const decimaliRegola = v => (Number.isInteger(v) ? 0 : Number.isInteger(v * 10) ? 1 : 2);
 // I nomi dei campi negli avvisi prima di salvare, dove due righe della pagina hanno lo stesso titolo (#889): «Difensori» nella rosa
 // e nei posti fissi in panchina, «Voto d'ufficio» due volte. Sono i nomi dei campi del server (err.p_regola_*), gli stessi
 // dell'iPhone; la riga e il suo nome per i lettori di schermo restano quelli della pagina.
@@ -3114,7 +3117,7 @@ function stepper(id, valore, { passo = 0.5, dec = 1, lim = "", min = -50, max = 
   if (lim) ({ min, max } = limitiRegole[lim]);
   return `<div class="stepper" data-passo="${passo}" data-min="${min}" data-max="${max}" data-dec="${dec}"${nome ? ` data-nome="${esc(nome)}"` : ""}>
     <button type="button" data-step="-1" aria-label="${t("regole.diminuisci")}">−</button>
-    <input id="${id}" inputmode="decimal" autocomplete="off" value="${num(valore, dec)}">
+    <input id="${id}" inputmode="decimal" autocomplete="off" value="${num(valore, Math.max(dec, decimaliRegola(valore)))}">
     <button type="button" data-step="1" aria-label="${t("regole.aumenta")}">+</button></div>`;
 }
 const leggiN = id => { const el = $("#" + id); return el ? Number(String(el.value).replace(",", ".")) : NaN; };
@@ -3151,8 +3154,12 @@ document.addEventListener("click", ev => {
   const passo = Number(s.dataset.passo), dec = Number(s.dataset.dec);
   let v = Number(String(campo.value).replace(",", "."));
   if (!Number.isFinite(v)) v = 0;
-  v = Math.min(Number(s.dataset.max), Math.max(Number(s.dataset.min), v + Number(b.dataset.step) * passo));
-  campo.value = num(Math.round(v / passo) * passo, dec);
+  // «+» va al primo multiplo del passo sopra il valore, «−» al primo sotto, come su un righello (#911): da −0,25 con i passi
+  // da 0,5 «+» dà 0 e «−» −0,5, senza saltare valori; da un valore già sui passi ci si sposta di un passo, come prima.
+  // Il margine assorbe gli errori della divisione con la virgola mobile.
+  const q = v / passo, k = Number(b.dataset.step) > 0 ? Math.floor(q + 1e-9) + 1 : Math.ceil(q - 1e-9) - 1;
+  v = Math.min(Number(s.dataset.max), Math.max(Number(s.dataset.min), k * passo));
+  campo.value = num(v, Math.max(dec, decimaliRegola(v)));
   campo.dispatchEvent(new Event("input", { bubbles: true }));
 });
 
@@ -3342,7 +3349,7 @@ async function vistaRegole() {
         dove.innerHTML = `<div class="attenzione" style="margin-top:12px">${t("regole.non_riconosciuto_nessuna")}</div>`;
         return;
       }
-      const vediValore = v => Array.isArray(v) ? (v.length && Array.isArray(v[0]) ? v.map(s => `${num(s[0], 2)}→+${num(s[1], 0)}`).join(" · ") : v.join(", ")) : typeof v === "boolean" ? t(v ? "regole.si" : "regole.no") : typeof v === "number" ? num(v, Number.isInteger(v) ? 0 : 1) : v;
+      const vediValore = v => Array.isArray(v) ? (v.length && Array.isArray(v[0]) ? v.map(s => `${num(s[0], 2)}→+${num(s[1], 0)}`).join(" · ") : v.join(", ")) : typeof v === "boolean" ? t(v ? "regole.si" : "regole.no") : typeof v === "number" ? (v < 0 ? "−" : "") + num(Math.abs(v), decimaliRegola(v)) : v;
       // con le parole della pagina (#881): l'ordine dei cambi come nei pulsanti, i posti per ruolo per esteso
       const vedi = m => m.chiave === "panchina.tipo" && m.valore === "per_ruolo" ? t("regole.per_ruolo")
         : m.chiave === "panchina.tipo" && m.valore === "libera" ? t("regole.libera")
@@ -3361,7 +3368,7 @@ async function vistaRegole() {
       $("#salva-riconosciute")?.addEventListener("click", () => { applicaModifiche(esito.modifiche); salva(); });
     } catch (e) { dove.innerHTML = errore(e); }
   });
-  const imposta = (id, valore, dec) => { const el = $("#" + id); if (el) { el.value = num(valore, dec ?? (Number.isInteger(valore) ? 0 : 1)); el.closest(".riga-regola")?.classList.add("evidenzia"); } };
+  const imposta = (id, valore, dec) => { const el = $("#" + id); if (el) { el.value = num(valore, dec ?? decimaliRegola(valore)); el.closest(".riga-regola")?.classList.add("evidenzia"); } };
   const applicaModifiche = mods => {
     for (const m of mods) {
       const k = m.chiave, v = m.valore;

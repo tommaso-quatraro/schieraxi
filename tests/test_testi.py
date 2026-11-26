@@ -266,3 +266,15 @@ def test_ogni_messaggio_d_errore_e_tradotto_o_e_nell_elenco_di_quelli_interni():
     assert not nuovi, f"messaggi senza traduzione (aggiungi la chiave err.* in testi.js, italiano e inglese): {nuovi}"
     superati = sorted(MESSAGGI_SENZA_TRADUZIONE - set(senza))
     assert not superati, f"ora tradotti o spariti: toglili da MESSAGGI_SENZA_TRADUZIONE: {superati}"
+
+
+def test_nei_dettagli_di_giornate_la_frase_non_ripete_l_etichetta():
+    """Giornate > Dettagli, web e iPhone: ogni voce ha il numero grande, l'etichetta sotto (`diario.qp_<voce>_eti`) e una frase
+    (`diario.qp_<voce>`). La frase non ripete l'etichetta: «Giornate in cui la consigliata ha fatto meglio della tua» compariva
+    due volte, una sotto il numero e una all'inizio della frase (#911)."""
+    catalogo = json.loads((server.WEB.parent / "testi" / "diario.json").read_text(encoding="utf-8"))
+    coppie = [(k, k.removesuffix("_eti")) for k in catalogo if k.startswith("diario.qp_") and k.endswith("_eti")]
+    assert len(coppie) >= 4 and all(frase in catalogo for _, frase in coppie), coppie
+    for lingua in ("it", "en"):
+        ripetute = [frase for eti, frase in coppie if catalogo[eti][lingua].lower() in catalogo[frase][lingua].lower()]
+        assert not ripetute, f"{lingua}: la frase ripete l'etichetta: {ripetute}"

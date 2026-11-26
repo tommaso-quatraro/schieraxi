@@ -367,7 +367,7 @@ struct TestoPrecisione: Equatable {
         // 3. Consigliata contro la tua: solo con la consigliata mostrata in almeno una giornata e un verdetto, come la web
         if conConfronto, let cf = p.confronto, let g = cf.giornate, g > 0 {
             let k = String(cf.meglioConsigliata ?? 0), tot = String(g)
-            var frase = Catalogo.Diario.qpCf(k: k, n: tot, pari: String(cf.pari ?? 0), tua: String(cf.meglioTua ?? 0))
+            var frase = Catalogo.Diario.qpCf(pari: String(cf.pari ?? 0), tua: String(cf.meglioTua ?? 0))
             if let punti = cf.punti {
                 if punti == 0 {
                     frase += " " + Catalogo.Diario.qpCfPari
