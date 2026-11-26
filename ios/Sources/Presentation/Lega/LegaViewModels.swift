@@ -9,8 +9,9 @@ enum PaginaImpostazioni: Hashable {
     case importa, squadre, rosa(String), regole, stagione
     /// La mia squadra quando non è ancora scelta: la sua scelta, come `vistaRosa("")` della web (#863).
     case sceltaSquadra
-    /// Le righe che aprono una pagina loro: Il tuo account, Informazioni, Gestione (solo per chi gestisce il server).
-    case account, informazioni, gestione
+    /// Le righe che aprono una pagina loro: Il tuo account, Informazioni, Scrivici (con un account), Gestione (solo per chi gestisce
+    /// il server).
+    case account, informazioni, scrivici, gestione
     /// Pagine aperte da un'altra pagina: stato dei dati (Gestione), crediti e novità (Informazioni), cambio di server.
     case stato, crediti, novita, cambiaServer
 }

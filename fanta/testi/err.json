@@ -163,6 +163,19 @@
     "it": "La squadra scelta come tua non è tra le rose: scegline un'altra.",
     "en": "The team chosen as yours is not among the rosters: pick another one."
   },
+  "err.commento_vuoto": {
+    "it": "Il commento è vuoto: scrivi qualcosa e riprova.",
+    "en": "The comment is empty: write something and try again.",
+    "nota": "Scrivici (fanta/feedback.py): POST /api/feedback con un testo vuoto o di soli spazi"
+  },
+  "err.commento_lungo": {
+    "it": "Il commento è troppo lungo: al massimo {1} caratteri.",
+    "en": "The comment is too long: at most {1} characters."
+  },
+  "err.commento_non_trovato": {
+    "it": "Commento non trovato",
+    "en": "Comment not found"
+  },
   "err.p_lim_rose": {
     "it": "importazioni di rose",
     "en": "roster imports",
@@ -175,6 +188,10 @@
   "err.p_lim_immagini": {
     "it": "immagini scaricate da un indirizzo web",
     "en": "images downloaded from a web address"
+  },
+  "err.p_lim_commenti": {
+    "it": "commenti",
+    "en": "comments"
   },
   "err.p_fn_live": {
     "it": "Risultati in diretta",

@@ -1,7 +1,7 @@
 """Limiti per utente (solo con FANTA_MULTIUTENTE=1): un utente non deve poter riempire il disco o il processore del server.
 
-- importazioni di rose e proposte di scambi: un tetto al giorno (contatori in account.sqlite, azzerati a mezzanotte); per le rose
-  contano solo i controlli e i salvataggi riusciti, e le letture (anche rifiutate) hanno un tetto all'ora;
+- importazioni di rose, proposte di scambi e commenti di «Scrivici»: un tetto al giorno (contatori in account.sqlite, azzerati a
+  mezzanotte); per le rose contano solo i controlli e i salvataggi riusciti, e le letture (anche rifiutate) hanno un tetto all'ora;
 - spazio: i dati personali di ciascuno (regole, rose, immagini, archivio...) stanno in 5 MB;
 - dimensione della lega: al massimo 20 squadre da 40 giocatori;
 - calcoli e memorie condivise: calcoli in coda insieme, parte della memoria dei risultati (li applica calcolo.py), consigliate
@@ -52,10 +52,13 @@ MAX_SECONDI_INVIO = 20               # secondi in tutto per mandare un avviso ai
 MAX_PROVE_AVVISI_ORA = 5             # prove degli avvisi all'ora per utente: ognuna manda davvero una notifica
 MAX_ISCRIZIONI_PUSH_ORA = 10         # iscrizioni alle notifiche web all'ora per utente: ognuna controlla il nome del servizio in rete
 
+MAX_COMMENTI_AL_GIORNO = 5          # commenti di «Scrivici» (feedback.py): ognuno manda un avviso al titolare
+
 # cosa si conta al giorno: (tetto, come si dice nel messaggio)
 AL_GIORNO = {"importazioni": (MAX_IMPORTAZIONI_AL_GIORNO, "importazioni di rose"),
              "scambi": (MAX_SCAMBI_AL_GIORNO, "ricerche di scambi"),
-             "immagini_url": (MAX_IMMAGINI_URL_AL_GIORNO, "immagini scaricate da un indirizzo web")}
+             "immagini_url": (MAX_IMMAGINI_URL_AL_GIORNO, "immagini scaricate da un indirizzo web"),
+             "commenti": (MAX_COMMENTI_AL_GIORNO, "commenti")}
 
 
 def _adesso() -> datetime:
@@ -72,6 +75,8 @@ def tetto(ctx, cosa: str) -> int:
         return SENZA_LIMITE
     if cosa == "scambi":
         return _intero_da_ambiente("FANTA_MAX_SCAMBI", MAX_SCAMBI_AL_GIORNO)
+    if cosa == "commenti":
+        return valore("MAX_COMMENTI_AL_GIORNO")
     return AL_GIORNO[cosa][0]
 
 
