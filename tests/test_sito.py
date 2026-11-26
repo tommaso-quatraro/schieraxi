@@ -546,7 +546,7 @@ def test_esempio_di_campo(nome):
 
 # Per lingua: cosa dice la didascalia dell'esempio sull'ordine della panchina, e la frase di prima, che era sbagliata.
 DIDASCALIA_PANCA = {
-    "index.html": ("la panchina è nell'ordine in cui entra", "ordine di punti attesi"),
+    "index.html": ("la panchina è nell'ordine in cui entrano i giocatori", "ordine di punti attesi"),
     "en/index.html": ("the bench is in the order the players come on", "ordered by expected points"),
 }
 
