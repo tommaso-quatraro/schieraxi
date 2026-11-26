@@ -106,7 +106,7 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate 
 
   Un titolare incerto che resta titolare non è una decisione: lo vedi dal colore di «gioca N%» sul campo e, toccandolo, nella sua scheda;
 - il **modulo** e i **punti attesi**, con sotto dove cade di solito il punteggio vero («di solito fra 65 e 82»). Il modulo è un menu: accanto a ognuno ci sono i suoi punti attesi, e «consigliato» su quello proposto;
-- il **campo** con gli 11 titolari. Ogni giocatore è un disco bianco con il suo fantavoto atteso e sotto il cognome. Nient'altro, se gioca quasi di sicuro: «gioca N%» compare solo sotto l'80% (arancione fra 50 e 79, rosso sotto 50, con un anello dello stesso colore attorno al disco), e lo stato a parole solo per chi è **in dubbio**, **infortunato** o **squalificato**. L'avversario e l'ora della partita sono nella sua scheda;
+- il **campo** con gli 11 titolari. Ogni giocatore è un disco bianco con il suo fantavoto atteso e sotto il cognome (sull'iPhone c'è il suo volto, con il numero in una pillola scura). Nient'altro, se gioca quasi di sicuro: «gioca N%» compare solo sotto l'80% (arancione fra 50 e 79, rosso sotto 50, con un anello dello stesso colore attorno al disco), e lo stato a parole solo per chi è **in dubbio**, **infortunato** o **squalificato**. L'avversario e l'ora della partita sono nella sua scheda;
 - lo **stato della tua scelta**, in una riga: «È la consigliata.» oppure «L'hai cambiata tu: 1 titolare diverso dalla consigliata (−0,4 punti attesi).», con **Torna alla consigliata**. Non c'è un pulsante Salva: ogni cambio (una sostituzione, un altro modulo) si salva da solo e resta uguale anche ricaricando o su un altro dispositivo. Se un salvataggio non riesce (per esempio senza rete) un avviso lo dice. Finché non cambi niente vale la consigliata, che si aggiorna da sola fino alla scadenza;
 - **Copia per l'app della lega**: copia la formazione come testo (modulo, titolari per ruolo, panchina in ordine), da tenere sotto mano mentre la inserisci su Leghe;
 - **L'ho messa**: la spunti quando hai inserito la formazione nell'app della lega. Da quel momento quegli 11 sono la tua scelta e non cambiano da soli: se dopo la consigliata cambia, la riga dello stato lo dice e decidi tu se prenderla. Se cambi gli 11, la spunta si toglie: la rimetti quando hai aggiornato anche l'app della lega.
@@ -127,10 +127,10 @@ Altri due stati della riga sotto il campo:
 - il **fantavoto atteso, se gioca**, e accanto **gioca N%** (con lo stato a parole, se c'è, e sotto la nota che lo spiega);
 - **Perché è titolare**, quando la scelta può sembrare strana (vedi sotto);
 - **Perché questo numero**;
-- gli **ultimi voti**;
+- gli **ultimi voti**: i fantavoti con i bonus e i malus della tua lega;
 - **Sostituisci**, se è un tuo titolare e la formazione è ancora aperta: mostra i compagni dello stesso ruolo con quanti punti attesi guadagna o perde la formazione se entra lui («+0,9», «−0,4»), dal cambio che rende di più. È lo stesso numero di cui cambiano i punti attesi accanto al modulo dopo il cambio: se il titolare rischia di non giocare, entra già uno dalla panchina, e il cambio vale meno della differenza fra i due giocatori. Un tocco fa il cambio e lo salva;
 - **Metti in campo**, se è in panchina o fra i non schierati e la formazione è ancora aperta: è il contrario di **Sostituisci**. Mostra i titolari che possono lasciargli il posto, anche di un altro ruolo se il modulo che ne esce è ammesso dalla tua lega (la riga lo dice: «Si passa al 5-3-2»), con quanti punti attesi guadagna o perde la formazione. Un tocco fa il cambio e lo salva;
-- **Tutti i numeri**, chiuso finché non lo apri: la partita (difficoltà, gol attesi, probabilità di gol, assist e cartellini), le prossime partite, la forma, la stagione.
+- **Tutti i numeri**, chiuso finché non lo apri: la partita (difficoltà, gol attesi, probabilità di gol, assist e cartellini), le prossime partite, la forma, la stagione, poi gol e assist rispetto alle occasioni e le statistiche avanzate; l'ultima riga dice «Dati fino al …», cioè fin dove arrivano quei numeri.
 
 Quando la sua partita è cominciata, nella scheda spariscono **gioca N%** e le probabilità; a partita finita resta solo com'è andata: il fantavoto preso, **Senza voto** o **Voto in arrivo**.
 
@@ -156,7 +156,7 @@ Rose, squadre e regole stanno nella sezione **La mia lega** di Impostazioni (sez
 - **Aggiorna le rose**: stessa procedura del primo avvio (sezione 2), anche con testo incollato. Con **Togli le squadre che non sono nel file** le squadre mancanti vengono tolte.
 - **La mia squadra** (accanto c'è il suo nome): la rosa della tua squadra, con stemma e maglia se li hai caricati (**Stemma e maglia**) e i crediti. Ogni giocatore ha il costo d'acquisto e la quotazione, quando ci sono. Se non è la tua, **Non è la tua squadra?** la cambia. **Cambia il nome** corregge il nome della squadra (per esempio se l'importazione ha letto quello sbagliato): stemma, maglia e «la tua squadra» lo seguono.
 - **Regole e scadenza**: in cima i **Tempi della lega**, le due domande del primo avvio, che si salvano appena le cambi. Sotto, **Incolla il regolamento**: incolli il testo del regolamento di Leghe, tocchi **Riconosci le regole**, controlli cosa ha capito SchieraXI e tocchi **Salva queste regole**: si salva solo ciò che sta sotto **Riconosciuto**. Quello che non può applicare sta sotto **Non applicato**, con il perché; le righe che non ha saputo leggere con sicurezza stanno in **Righe da controllare a mano**, da impostare tu. I singoli valori (punteggi, modificatore difesa, moduli, panchina, partite rinviate, rosa e crediti, nome della lega) stanno dietro **Modifica i valori**, con **Salva le regole** in fondo. I malus si scrivono con il meno davanti, «−0,5» o «-0,5», con la virgola o con il punto; i numeri interi, come i crediti, con le sole cifre («1000», non «1.000»). Un campo vuoto, una scritta che non è un numero o un numero fuori dai limiti si segnala prima di salvare, con il nome del campo.
-- **Le altre squadre** (accanto quante sono): le squadre della lega senza la tua. Un tocco apre la rosa di una squadra e, da lì, la sua formazione consigliata. Se chi gestisce l'app ha nascosto le rose degli altri, la voce non c'è.
+- **Le altre squadre** (accanto quante sono): le squadre della lega senza la tua. Un tocco apre la rosa di una squadra e, da lì, la sua formazione consigliata. Di norma questa voce non c'è: la accende chi gestisce l'app.
 
 Nella rosa di una squadra i nomi delle colonne restano in vista in alto mentre scorri, e i **crediti** si scrivono lì. A fine campionato, quando le rose sono ancora quelle dell'anno prima, in cima a **La mia lega** compare l'avviso **Nuova stagione**: un tocco apre il pulsante che archivia le rose e riparte, senza cancellare niente.
 
@@ -195,11 +195,11 @@ Se gli avvisi smettono di arrivare: spegni e riaccendi **Avvisi su questo dispos
 
 ### Widget sull'iPhone
 
-Il widget è il riquadro sulla Home o sulla schermata di blocco. Sono tre: **Prossima giornata**, **Formazione consigliata** e **Da controllare**. Si collega **da solo** dall'app per iPhone: entra nell'app, poi tieni premuta la Home, tocca **+** e scegli SchieraXI. Se dice «Tocca per collegare» (sotto: «Si apre SchieraXI per collegarlo»), toccalo: si apre l'app su **Collega il widget**; tocca **Collega**. La stessa schermata si apre dalla riga **Widget: tocca per collegare** in **Impostazioni** dell'app (quando è collegato la riga dice «Widget collegato automaticamente»). Solo se non basta, l'app copia un codice da incollare tenendo premuto il widget: **Modifica widget › Collegamento manuale**. Su Android non ci sono widget.
+Il widget è il riquadro sulla Home o sulla schermata di blocco. Sono tre: **Prossima giornata**, **Formazione consigliata** e **Da controllare**. **Da controllare** è spento finché chi gestisce l'app non lo accende: fino ad allora dice «Widget spento». Si collega **da solo** dall'app per iPhone: entra nell'app, poi tieni premuta la Home, tocca **+** e scegli SchieraXI. Se dice «Tocca per collegare» (sotto: «Si apre SchieraXI per collegarlo»), toccalo: si apre l'app su **Collega il widget**; tocca **Collega**. La stessa schermata si apre dalla riga **Widget: tocca per collegare** in **Impostazioni** dell'app (quando è collegato la riga dice «Widget collegato automaticamente»). Solo se non basta, l'app copia un codice da incollare tenendo premuto il widget: **Modifica widget › Collegamento manuale**. Su Android non ci sono widget.
 
 ### L'app per iPhone: il rinnovo
 
-L'app per iPhone installata con SideStore scade dopo 7 giorni e va rinnovata. Se gli avvisi dell'app sono permessi, 24 ore e 6 ore prima della scadenza arriva «SchieraXI · Da rinnovare»: apri SideStore e rinnova l'app (**Refresh All Apps**, in italiano anche «Aggiorna tutte le app»), con il Wi-Fi e **LocalDevVPN** accesi. Il rinnovo si può far partire da solo ogni notte: i passi sono in [INSTALLAZIONE-IPHONE.md](INSTALLAZIONE-IPHONE.md), sezione 5. Se l'app è già scaduta non si apre più: reinstallala da SideStore (stessa guida, sezione 2). I tuoi dati sul server restano.
+L'app per iPhone installata con SideStore scade dopo 7 giorni e va rinnovata. Se gli avvisi dell'app sono permessi, 24 ore e 6 ore prima della scadenza arriva «SchieraXI · Da rinnovare» (mai nelle ore tranquille: se ci cade, arriva un minuto prima che comincino): apri SideStore e rinnova l'app (**Refresh All Apps**, in italiano anche «Aggiorna tutte le app»), con il Wi-Fi e **LocalDevVPN** accesi. Il rinnovo si può far partire da solo ogni notte: i passi sono in [INSTALLAZIONE-IPHONE.md](INSTALLAZIONE-IPHONE.md), sezione 5. Se l'app è già scaduta non si apre più: reinstallala da SideStore (stessa guida, sezione 2). I tuoi dati sul server restano.
 
 ## 5. Dopo la giornata: Giornate
 
@@ -229,7 +229,7 @@ Sotto c'è l'andamento giornata per giornata. Con meno di 8 giornate un avviso d
 ## 6. Impostazioni
 
 **Impostazioni** è la terza scheda della barra. È una pagina sola: le cose da scegliere stanno lì, e le righe con la freccia aprono una
-pagina loro, con **‹ Impostazioni** in alto per tornare. Su uno schermo più largo (tablet, computer) le sezioni stanno in due colonne.
+pagina loro, con **‹ Impostazioni** in alto per tornare. Sulla web, su uno schermo più largo (tablet, computer), le sezioni stanno in due colonne; sull'iPad, nell'app, restano in una colonna sola.
 
 | Sezione | Cosa contiene |
 |---|---|
@@ -241,7 +241,7 @@ pagina loro, con **‹ Impostazioni** in alto per tornare. Su uno schermo più l
 | Scrivici | con un account: un commento per chi gestisce l'app (un'idea, un problema, un dubbio). Scrivi nella casella (fino a 2000 caratteri, va a capo), tocca **Invia** e compare «Grazie, l'abbiamo ricevuto.». Al massimo 5 commenti al giorno; lo legge solo chi gestisce l'app, ed entra in **Scarica i tuoi dati** |
 | Gestione | solo per chi gestisce l'app: vedi [GUIDA-GESTIONE.md](GUIDA-GESTIONE.md) |
 
-- **Scarica i tuoi dati**: un file con i tuoi dati (account e lega: regole, rose, scelte, avvisi), mai la password né quelli degli altri utenti. Serve per tenerne una copia; non si ricarica nell'app. Sull'iPhone si salva da **Condividi › Salva su File**.
+- **Scarica i tuoi dati**: un file con i tuoi dati (account e lega: regole, rose, scelte, avvisi, e i commenti mandati con **Scrivici**), mai la password né quelli degli altri utenti. Serve per tenerne una copia; non si ricarica nell'app. Sull'iPhone si salva da **Condividi › Salva su File**.
 - **Esci**: chiude l'accesso su questo dispositivo e toglie da qui i tuoi dati e gli avvisi. Se non riesce (per esempio senza rete) l'app lo dice e resti dentro: riprova.
 - **Esci da tutti i dispositivi**: se non riconosci un accesso (te lo segnala anche un'email di sicurezza), chiude l'accesso su ogni telefono e computer, anche su quello che stai usando, dopo una conferma. Si chiudono anche il widget e le notifiche. Poi si rientra come sempre.
 - **Elimina l'account** cancella anche tutti i tuoi dati dal server e non si annulla. Se entri solo con Google, per aggiungere una password, cambiare l'email o eliminare l'account l'app chiede prima **Conferma con Google**.
@@ -272,7 +272,7 @@ Sulla schermata Home, a schermo intero, senza store:
 
 **Dove sono i miei dati?** Sul server di SchieraXI. Privacy e Termini dicono quali vengono tenuti.
 
-**Chi contatto?** Il recapito è nella pagina [Privacy](https://app.schieraxi.it/privacy).
+**Chi contatto?** Scrivi da **Impostazioni › Scrivici** (con un account). Altrimenti, il recapito è nella pagina [Privacy](https://app.schieraxi.it/privacy).
 
 ## 8. Se qualcosa non va
 
@@ -285,12 +285,12 @@ Sulla schermata Home, a schermo intero, senza store:
 | «Un attimo, mister: ci sto lavorando.» | Aspetta: l'app riprova da sola. |
 | «Questi dati sono stati cambiati da un altro dispositivo» | L'app ha ricaricato la versione nuova: controlla e rifai la modifica. |
 | «Troppi tentativi» | Aspetta il tempo indicato e riprova. |
-| «Accesso richiesto» | La sessione è scaduta: entra di nuovo. |
+| «La sessione è finita: accedi di nuovo.» | Entra di nuovo con nome e password. |
 | «Nessuna rosa importata» | Importa le rose (sezione 2). |
 | «Non ho trovato rose nel file» | Hai scelto un altro file (calendario, classifica): riesporta le rose da Leghe e riprova. |
 | «Non riesco a leggere la formazione che hai salvato» | Tocca **Riprova**. Finché non si legge, la Formazione non fa cambiare niente: così la tua scelta non viene sovrascritta. |
 | «Tocca per collegare» sul widget | Tocca il widget: si apre SchieraXI su **Collega il widget**; tocca **Collega** (sezione 4). |
 | «SchieraXI · Da rinnovare» sull'iPhone | Rinnova l'app da SideStore prima che scada (sezione 4, «L'app per iPhone: il rinnovo»). |
-| Dati che non sembrano aggiornati | Ricarica la pagina. Se non cambia, avvisa chi gestisce l'app. |
+| Dati che non sembrano aggiornati | Ricarica la pagina. Se non cambia, avvisa chi gestisce l'app da **Impostazioni › Scrivici**. |
 
 Se l'errore non è in lista, annota cosa stavi facendo e a che ora, e scrivilo in **Impostazioni › Scrivici** (con un account) o al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
