@@ -56,6 +56,12 @@ class VotiCalati(ValueError):
     """La pagina dei voti di una giornata ha meno righe di quelle già salvate: non si salva (Aggiornamento._salva_voti)."""
 
 
+class DateSparite(ValueError):
+    """Nessuna partita di una giornata ha più il giorno (o l'ora) già salvato: pagina cambiata, o giornata intera rinviata senza data
+    nuova (le pagine viste non hanno un segno che lo distingua). Restano le date di prima; il calendario prosegue con le altre
+    giornate e poi il passo non riesce, con il motivo (Aggiornamento._controlla_partite e calendario)."""
+
+
 class StatisticheCalate(ValueError):
     """La rilettura delle statistiche di una partita ha meno righe di quelle già salvate: restano quelle (Aggiornamento.understat)."""
 
@@ -188,7 +194,30 @@ class Aggiornamento:
              "qi": c.quotazione_iniziale, "qa": c.quotazione, "fvm": c.fvm} for c in calciatori])
         self.scrivi(f"  quotazioni {stagione.codice}: {len(calciatori)} calciatori")
 
+    def _controlla_partite(self, partite: list[dict], st: Stagione) -> None:
+        """Una pagina del calendario cambiata (classe o attributo rinominati) si legge lo stesso, ma senza squadre o senza date: prima
+        il passo riusciva e scriveva None sopra i dati buoni. Qui si ferma, con un errore che nomina il calendario, prima di scrivere.
+        Squadra mancante: sempre un guasto. Data: una partita che la perde è un rinvio (rinvii.py), ma se nessuna partita della
+        giornata ha più il giorno (o l'ora) che l'archivio aveva, è la pagina a essere cambiata."""
+        if not partite:
+            return
+        g = partite[0]["giornata"]
+        dove = f"calendario {st.codice} giornata {g}"
+        senza = sum(1 for p in partite if not p["casa"] or not p["trasferta"])
+        if senza:
+            raise ValueError(f"{dove}: {senza} partite senza squadra, la pagina forse è cambiata (tenuti i dati di prima)")
+        salvate = [r[0] for r in self.db.execute("SELECT data FROM partite WHERE stagione = ? AND giornata = ?", (st.codice, g))]
+        nuove = [p["data"] for p in partite]
+        def con_ora(d):
+            return bool(d) and len(d) > 10                          # «2026-08-22 18:30»; solo il giorno è «2026-08-22»
+        perché = "pagina cambiata o giornata rinviata senza data nuova: tenute le date di prima"
+        if any(salvate) and not any(nuove):
+            raise DateSparite(f"{dove}: nessuna partita ha più la data ({perché})")
+        if any(map(con_ora, salvate)) and not any(map(con_ora, nuove)):
+            raise DateSparite(f"{dove}: nessuna partita ha più l'ora ({perché})")
+
     def _salva_partite(self, partite: list[dict], st: Stagione) -> int:
+        self._controlla_partite(partite, st)
         for p in partite:
             p["stagione"] = st.codice
             vecchia = self.db.execute("SELECT understat_id FROM partite WHERE id = ?", (p["id"],)).fetchone()
@@ -210,17 +239,22 @@ class Aggiornamento:
             giornate = [r[0] for r in self.db.execute(
                 "SELECT DISTINCT giornata FROM partite WHERE stagione = ? AND giocata = 0 AND data <= ?",
                 (st.codice, limite))]
-        totale = 0
+        totale, ferme = 0, []
         for g in giornate:
             try:
                 totale += self._calendario_giornata(g)
             except AltraStagione as e:  # d'estate: niente da aggiornare, una richiesta sola, nessun guasto
                 self.scrivi(f"  calendario {st.codice}: {e}, niente da aggiornare")
                 return
+            except DateSparite as e:    # la giornata tiene le sue date (nulla scritto); le altre si aggiornano lo stesso
+                ferme.append(str(e))
+                continue
             self.db.commit()            # una giornata alla volta: il cron e il server non restano bloccati ad aspettare
+        self.scrivi(f"  calendario {st.codice}: {totale} partite aggiornate ({len(giornate) - len(ferme)} giornate)")
+        if ferme:                       # il passo non riesce (e non conta come calendario completo), con il motivo
+            raise DateSparite("; ".join(ferme))
         if len(giornate) == GIORNATE:
             self._segna(cosa, _ora())
-        self.scrivi(f"  calendario {st.codice}: {totale} partite aggiornate ({len(giornate)} giornate)")
 
     def voti(self, stagione: Stagione | None = None) -> None:
         st = stagione or self.st
