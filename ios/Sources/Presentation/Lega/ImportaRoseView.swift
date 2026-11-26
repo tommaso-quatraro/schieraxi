@@ -403,7 +403,7 @@ struct RigaDubbioAnteprima: View {
             .accessibilityHint("Apre le scelte per questo giocatore")
             if nonTrovato && scelta == .lascia {
                 Button(action: cerca) {
-                    Label("Cerca il giocatore giusto", systemImage: "magnifyingglass").font(.subheadline).frame(minHeight: Tema.areaTocco)
+                    Label(Catalogo.Onb.cercaGiocatoreGiusto, systemImage: "magnifyingglass").font(.subheadline).frame(minHeight: Tema.areaTocco)
                 }
                 .buttonStyle(.borderless)
                 .tint(Color.verde)
