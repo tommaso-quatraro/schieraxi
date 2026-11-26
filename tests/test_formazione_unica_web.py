@@ -180,7 +180,8 @@ def test_la_scheda_prima_della_partita():
     assert "Fantavoto atteso, se gioca 6,8" in testo                       # il numero grande, con il suo nome
     assert '<div class="grande gioca-medio">65%</div>' in html             # «gioca N%» nel colore che ha sul campo
     assert "Perché è titolare Preferito a Gallo: rigorista." in testo
-    assert "È in forma: 3 bonus nelle ultime 5." in testo and "Gioca al 65%." in testo
+    # fra i motivi del numero niente «gioca» (#923): «gioca 65%» sta già accanto al numero, e lo si legge una volta sola
+    assert "È in forma: 3 bonus nelle ultime 5." in testo and "Gioca al 65%." not in testo and testo.count("65%") == 1
     assert '<button class="bottone" type="button" data-sostituisci="7">Sostituisci</button>' in html
     assert "Probabile titolare" not in html                                # la titolarità non si scrive nemmeno qui
     # in ordine: numeri, perché è titolare, perché questo numero, ultimi voti, Sostituisci, e in fondo «Tutti i numeri» chiuso
@@ -218,6 +219,28 @@ def test_la_scheda_di_chi_non_e_fra_gli_11_ha_metti_in_campo():
     assert ">Put in the lineup<" in _scheda(_giocatore(), sostituibile=False, entrabile=True, lingua="en")
     fermo = _scheda(_giocatore(), sostituibile=False, fermo=True)
     assert "data-metti-in-campo" not in fermo and 'id="scheda-fermo"' in fermo
+
+
+@pytest.mark.parametrize("stato", ["infortunato", "squalificato"])
+def test_la_scheda_di_chi_non_gioca_non_ha_perche_questo_numero(stato):
+    """Revisione della #945: per un infortunato o uno squalificato il server manda un motivo solo, «gioca» («infortunato: non
+    gioca», fanta/perche.py). Tolto quello, il riquadro restava con «Nessun motivo spicca…», falso: non c'è e basta. Lo stato si
+    legge già accanto al numero."""
+    motivi = [{"chiave": "gioca", "testo": f"{stato}: non gioca", "effetto": None}]
+    etichetta = {"codice": stato, "testo": stato.capitalize(), "tono": "negativo"}
+    html = _scheda(_giocatore(stato=stato, p_voto=0.0, etichetta=etichetta, perche_numero=motivi, fv_atteso_medio_ruolo=6.1),
+                   sostituibile=False)
+    assert 'class="perche"' not in html and "Nessun motivo" not in _testo(html), _testo(html)
+    assert stato.capitalize() in _testo(html)                              # lo stato resta, accanto al numero
+    # con un altro motivo del numero il riquadro c'è, senza «gioca»
+    altri = motivi + [{"chiave": "voti", "testo": "voti sopra la media del ruolo", "effetto": 0.5}]
+    con_altri = _scheda(_giocatore(stato=stato, p_voto=0.0, etichetta=etichetta, perche_numero=altri, fv_atteso_medio_ruolo=6.1),
+                        sostituibile=False)
+    assert 'class="perche"' in con_altri and "voti sopra la media del ruolo" in con_altri and "non gioca" not in con_altri
+    # chi gioca, senza motivi che spiccano: la frase di riferimento resta
+    dubbio = _scheda(_giocatore(p_voto=0.65, perche_numero=[{"chiave": "gioca", "testo": "gioca il 65%: dubbio", "effetto": None}],
+                                fv_atteso_medio_ruolo=6.1))
+    assert 'class="perche"' in dubbio and "gioca il 65%" not in dubbio
 
 
 def test_la_scheda_a_partita_in_corso_e_finita():

@@ -30,6 +30,9 @@ extension Catalogo {
         /// `lega.scegli_quale_delle`
         static let scegliQualeDelle = "Scegli quale delle squadre è la tua."
 
+        /// `lega.scegli_squadra`
+        static let scegliSquadra = "Scegli una squadra"
+
         /// `lega.tua_squadra`
         static let tuaSquadra = "La tua squadra"
 
