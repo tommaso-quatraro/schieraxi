@@ -129,7 +129,7 @@ enum RegoleLogica {
         switch v {
         case .booleano(let b): return b ? "sì" : "no"
         case .intero(let n): return n < 0 ? "\u{2212}\(n.magnitude)" : String(n)
-        case .decimale(let d): return conMeno(d, cifre: d == d.rounded() ? 0 : (d * 10 == (d * 10).rounded() ? 1 : 2))
+        case .decimale(let d): return conMeno(d, cifre: decimaliRegola(d))
         case .testo(let t): return t
         case .nullo: return "—"
         case .lista(let l):
@@ -144,6 +144,24 @@ enum RegoleLogica {
         case .oggetto(let d):
             return d.keys.sorted().map { "\($0): \(descrivi(d[$0] ?? .nullo))" }.joined(separator: ", ")
         }
+    }
+
+    /// Un testo su una riga, per il nome della lega nel campo che va a capo (#923). Senza a capo resta com'è, anche con uno spazio in
+    /// fondo, perché il nome si sta scrivendo. Con un a capo («Invio», un testo incollato) ogni riga perde gli spazi ai lati e le
+    /// righe non vuote si uniscono con uno spazio solo: «Invio» dopo uno spazio non lascia «Lega  degli» (revisione della #945), e
+    /// quello in fondo si toglie.
+    static func suUnaRiga(_ testo: String) -> String {
+        guard testo.contains(where: \.isNewline) else { return testo }
+        return testo.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+    }
+
+    /// Quanti decimali scrivere per un valore delle regole: 0 per un intero, 1 per «0,5», 2 per «0,25» (oltre si arrotonda), come
+    /// `decimaliRegola` della web (app.js).
+    static func decimaliRegola(_ valore: Double) -> Int {
+        valore == valore.rounded() ? 0 : (valore * 10 == (valore * 10).rounded() ? 1 : 2)
     }
 
     /// Un decimale con `cifre` cifre e, se è negativo, il meno tipografico davanti; senza segno se arrotondato vale zero («0,00»).

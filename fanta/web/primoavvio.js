@@ -225,11 +225,12 @@ async function paTempiLeggi() {
     if (!PA_SCADENZE.includes(m) && ![...sc.options].some(o => o.value === String(m))) sc.insertAdjacentHTML("beforeend", `<option value="${m}">${esc(paScadenzaNome(m))}</option>`);
     if (!sc.dataset.scelto) sc.value = String(m);
     if (!pg.dataset.scelto) pg.value = String(g);
+    mostraScelta(sc); mostraScelta(pg);
     return true;
   } catch { return false; }                        // restano i valori più comuni: «Salva» non li scrive
 }
 function paTempiCarica() {
-  for (const id of ["#pa-scadenza", "#pa-prima"]) { const m = $(id); if (m) m.addEventListener("change", () => { m.dataset.scelto = "1"; }); }
+  for (const id of ["#pa-scadenza", "#pa-prima"]) { const m = $(id); if (m) m.addEventListener("change", () => { m.dataset.scelto = "1"; mostraScelta(m); }); }
   paTempiLettura = paTempiLeggi();
 }
 const paScadenzaNome = m => (m === 0 ? t("pav.scad_inizio") : tp("pav.scad_minuti", m));
@@ -296,9 +297,9 @@ const PA_SCHERMATE = {
     principale: t("pav.tempi_salva"),
     html: `<p class="debole">${t("pav.tempi_spiega")}</p>
       <label class="accesso-campo"><span>${t("pav.scad_domanda")}</span>
-        <select class="campo-testo" id="pa-scadenza">${PA_SCADENZE.map(m => `<option value="${m}" ${m === 0 ? "selected" : ""}>${esc(paScadenzaNome(m))}</option>`).join("")}</select></label>
+        ${menuIntero(`<select id="pa-scadenza">${PA_SCADENZE.map(m => `<option value="${m}" ${m === 0 ? "selected" : ""}>${esc(paScadenzaNome(m))}</option>`).join("")}</select>`, paScadenzaNome(0))}</label>
       <label class="accesso-campo"><span>${t("pav.prima_domanda")}</span>
-        <select class="campo-testo" id="pa-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === 1 ? "selected" : ""}>${esc(vocePrimaGiornata(g))}</option>`).join("")}</select></label>
+        ${menuIntero(`<select id="pa-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === 1 ? "selected" : ""}>${esc(vocePrimaGiornata(g))}</option>`).join("")}</select>`, vocePrimaGiornata(1))}</label>
       <p class="debole piccolo">${t("pav.tempi_dove")}</p>`,
     dopo: paTempiCarica,
     esegui: paTempiSalva,

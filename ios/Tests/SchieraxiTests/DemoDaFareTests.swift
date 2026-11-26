@@ -51,9 +51,9 @@ struct DemoDaFareTests {
                        try frasi.frase("dafare.az_formazione")),
             "svincolato": (try frasi.frase("dafare.svincolato", ["entra": "Mauro Retalli", "esce": "Darko Vlasenić", "guadagno": guadagno]),
                            try frasi.frase("dafare.az_vedi")),
-            // il periodo di aste e scambi, con la giornata da preparare (la 11 di Serie A, 8 della lega) scritta come
-            // `frasi.nome_giornata` del server (#883: «Le rose non sono aggiornate da 5 giorni…» il server non la scrive più)
-            "rose": (try frasi.frase("dafare.rose_mercato", ["giornata": "Giornata 8 · 11ª di Serie A"]),
+            // il periodo di aste e scambi (#883: «Le rose non sono aggiornate da 5 giorni…» il server non la scrive più), senza la
+            // giornata dalla #923: sta già nella testata della Formazione
+            "rose": (try frasi.frase("dafare.rose_mercato"),
                      try frasi.frase("dafare.az_aggiorna_rose")),
             "diario": (try Self.fraseDiario(frasi), try frasi.frase("dafare.az_schierato")),
         ]

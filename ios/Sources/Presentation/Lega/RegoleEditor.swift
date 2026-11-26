@@ -114,6 +114,17 @@ final class RegoleEditorViewModel: ViewModelBase {
                 set: { self.valore.imposta(percorso, .testo($0)); self.modificato = true })
     }
 
+    /// Il nome della lega, nel campo che va a capo (#923). Il campo può ricevere un a capo («Invio», un testo incollato): la vista lo
+    /// toglie subito (`RegoleLogica.suUnaRiga`), e conta come modifica solo un nome diverso su una riga, non l'«Invio» da solo.
+    var nomeLega: Binding<String> {
+        Binding(get: { self.valore.valore("nome_lega")?.testo ?? "" },
+                set: { nuovo in
+                    let prima = self.valore.valore("nome_lega")?.testo ?? ""
+                    self.valore.imposta("nome_lega", .testo(nuovo))
+                    if RegoleLogica.suUnaRiga(nuovo) != RegoleLogica.suUnaRiga(prima) { self.modificato = true }
+                })
+    }
+
     /// Tutti i moduli che si possono scegliere: quelli noti più quelli già nelle regole.
     var moduliDisponibili: [String] {
         var tutti = RegoleLogica.tuttiIModuli
@@ -334,9 +345,10 @@ struct RigaStepper: View {
     }
 
     /// Il numero della riga: i negativi con il meno tipografico «−0,5», come l'anteprima del regolamento, gli avvisi sui limiti e i
-    /// campi della web (collaudo del 26/11: qui era «-0,5» con il trattino); arrotondato a zero, senza segno.
+    /// campi della web (collaudo del 26/11: qui era «-0,5» con il trattino); arrotondato a zero, senza segno. `cifre` sono le cifre
+    /// minime del campo: il valore si scrive con i decimali che ha, come la web («−0,25», non «−0,3», #923).
     static func testo(_ valore: Double, cifre: Int) -> String {
-        RegoleLogica.conMeno(valore, cifre: cifre)
+        RegoleLogica.conMeno(valore, cifre: max(cifre, RegoleLogica.decimaliRegola(valore)))
     }
 }
 
@@ -373,6 +385,8 @@ struct RegoleEditorView: View {
     @State private var chiediIndietro = false
     /// Le pagine chieste da fuori («Vedi la rosa» dalla Formazione) che aspettano la risposta (`LegaViewModel.pagineInAttesa`).
     @State private var inAttesa: [PaginaImpostazioni]?
+    /// Il campo del nome della lega ha la tastiera: «Invio» la chiude, come in un campo di una riga.
+    @FocusState private var nomeAttivo: Bool
 
     init(server: any ServerClient, lega: LegaViewModel) {
         _vm = StateObject(wrappedValue: RegoleEditorViewModel(server: server))
@@ -529,9 +543,21 @@ struct RegoleEditorView: View {
         .accessibilityElement(children: .contain)
     }
 
+    /// Il nome della lega va a capo invece di tagliarsi (con il testo al massimo si leggeva «Lega degli a…», #923). Resta una riga
+    /// sola: un a capo arrivato con «Invio» o con un testo incollato si toglie, e «Invio» chiude la tastiera.
     private var nome: some View {
         Section(titolo: Catalogo.Regole.nomeDellaLega) {
-            TextField(Catalogo.Regole.miaLega, text: vm.testo("nome_lega")).frame(minHeight: 44)
+            TextField(Catalogo.Regole.miaLega, text: vm.nomeLega, axis: .vertical)
+                .lineLimit(1...6)
+                .submitLabel(.done)
+                .focused($nomeAttivo)
+                .frame(minHeight: 44)
+                .onChange(of: vm.nomeLega.wrappedValue) { _, nuovo in
+                    let riga = RegoleLogica.suUnaRiga(nuovo)
+                    guard riga != nuovo else { return }
+                    vm.nomeLega.wrappedValue = riga
+                    nomeAttivo = false
+                }
         }
     }
 
@@ -794,8 +820,12 @@ struct RegoleEditorView: View {
             }
             .pulsanteVetro(prominente: true)
             .disabled(vm.inCorso || !vm.modificato)
+            // la linea sotto parte dal bordo, come nelle altre righe: iOS la fa partire dal primo testo, che con il pulsante al
+            // centro sta a metà riga (#923, foto `lega-regole-fondo`)
+            .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
             Button { Task { await vm.annulla() } } label: { Text(Catalogo.Regole.annullaModifiche).frame(maxWidth: .infinity, minHeight: 44) }
                 .disabled(!vm.modificato)
+                .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
             // qui solo gli esiti riusciti: un errore sta sopra la barra «Modifiche non salvate», vicino a «Salva»
             if let esito = vm.esito, vm.esitoRiuscito { Text(esito).font(.footnote).foregroundStyle(Color.testoSecondario) }
         }
