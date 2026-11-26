@@ -1,5 +1,31 @@
 [
   {
+    "versione": "1.574",
+    "data": "2026-11-26T09:01:05",
+    "titolo": "Scheda del giocatore: la data delle statistiche avanzate una volta sola",
+    "voci": [
+      "Scheda del giocatore, «Tutti i numeri»: «Dati fino al …» compare una volta sola, in fondo, dopo le statistiche avanzate, e vale anche per «Gol e assist rispetto alle occasioni»; prima si leggeva due volte. Uguale sull'iPhone."
+    ],
+    "tecnico": [
+      "Web, riempiScheda in app.js: la frase mercato.dati_fino_al (dal campo avanzate.dati_fino_al, #862) esce dalla riga del rendimento e da sotto il titolo «Statistiche avanzate» e sta una volta, ultima riga del blocco delle statistiche avanzate, dopo le stagioni precedenti. Il blocco del rendimento c'è solo con avanzate.minuti, come quello delle statistiche avanzate: la riga c'è ogni volta che c'è uno dei due. Non in cima a «Tutti i numeri»: stagione e voti vengono da un'altra fonte, che va avanti.",
+      "iPhone, TuttiINumeri: stessa posizione e stesso testo. Demo, foto giocatore-fondo: la scheda parte scorsa in fondo (demoInFondo), dove sta la riga; tolti lo scorrimento al blocco «Statistiche avanzate» del #862 (demoScorriA) e TuttiINumeri.idAvanzate. Test del browser tests/browser/test_scheda_dati_fino_al.py: una volta sola, ultima riga di «Tutti i numeri».",
+      "Nessuna rotta né campo dell'API cambiato; catalogo dei testi e calcolo non toccati."
+    ]
+  },
+  {
+    "versione": "1.573",
+    "data": "2026-11-26T08:55:41",
+    "titolo": "Privacy e Termini d'uso parlano dell'app di oggi",
+    "voci": [
+      "Privacy e Termini d'uso non parlano più degli scambi, che l'app non ha più, e chiamano le schermate con i nomi che vedi: Formazione e Giornate. La data di «Ultimo aggiornamento» è il 26 novembre 2026."
+    ],
+    "tecnico": [
+      "fanta/testi_legali.py, italiano e inglese: Termini senza «analizza scambi»; Privacy senza «formazione e scambi» (diventa «la formazione consigliata delle altre squadre») e senza «gli scambi che salvi» sul dispositivo (diventa «una copia degli ultimi dati ricevuti, per aprirsi subito», la copia delle risposte in localStorage della web); token del widget: «lo stato della giornata, il widget e i risultati in diretta» al posto dei «riquadri di Oggi»; controlli automatici: «Formazione, Giornate, widget, risultati in diretta» al posto di «Oggi, Formazione, Diario».",
+      "Data delle pagine 26/11/2026 e account.VERSIONE_TERMINI = \"2026-11-26\" (le tiene uguali test_versione_termini_come_la_data_delle_pagine_legali): chi si iscrive da ora registra la versione nuova; nessuno deve riaccettare.",
+      "Sito (sito/, italiano e inglese): panchina d'esempio nell'ordine in cui entra (Pernoli 7,9, Rinvelli 7,6, Sarvelli 6,4), «App per iPhone e iPad in arrivo», «con il link o il codice d'invito», email facoltativa e collegamento a Google nella domanda sui dati, dati strutturati senza sameAs."
+    ]
+  },
+  {
     "versione": "1.572",
     "data": "2026-11-26T06:52:44",
     "titolo": "Giornate e regolamento: due ritocchi ai testi",

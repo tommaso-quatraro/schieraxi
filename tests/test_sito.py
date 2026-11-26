@@ -323,6 +323,34 @@ def test_stato_reale_delle_app(nome, stati):
     assert "invit" in senza_tag(sezione(testo, "eroe")).lower()
 
 
+# Per lingua: la frase sotto il pulsante in cima e il nome dell'app per iPhone, che è anche per iPad, ovunque nella pagina.
+APP_IPHONE = {
+    "index.html": ("App per iPhone e iPad in arrivo", "iPhone e iPad"),
+    "en/index.html": ("iPhone and iPad app coming", "iPhone and iPad"),
+}
+
+
+@pytest.mark.parametrize("nome", PAGINE)
+def test_app_per_iphone_e_ipad_con_lo_stesso_nome(nome):
+    """In cima diceva «App per iPhone in arrivo», nella tabella «App per iPhone e iPad»: lo stesso nome nei due posti."""
+    frase, nome_app = APP_IPHONE[nome]
+    _, testo = leggi(nome)
+    assert frase in senza_tag(sezione(testo, "eroe"))
+    visibile = senza_tag(principale(testo))
+    assert visibile.count("iPhone") == visibile.count(nome_app) >= 2, visibile.count("iPhone")
+
+
+# Per lingua: come si crea l'account nel primo passo di «Per iniziare» (l'invito arriva come link o come codice).
+PASSO_INVITO = {"index.html": "con il link o il codice d'invito", "en/index.html": "with an invitation link or code"}
+
+
+@pytest.mark.parametrize("nome", PAGINE)
+def test_primo_passo_con_link_o_codice_d_invito(nome):
+    _, testo = leggi(nome)
+    passi = re.findall(r"<li><h3>(.*?)</h3><p>(.*?)</p></li>", sezione(testo, "iniziare"), re.S)
+    assert PASSO_INVITO[nome] in senza_tag(passi[0][1]), passi[0][1]
+
+
 @pytest.mark.parametrize("nome", PAGINE)
 def test_niente_descrizione_delle_schede_e_niente_cursore(nome):
     p, testo = leggi(nome)
@@ -502,17 +530,34 @@ def _campo(testo):
 
 @pytest.mark.parametrize("nome", PAGINE)
 def test_esempio_di_campo(nome):
-    """4-3-3 dall'attacco al portiere, panchina in ordine di punti attesi (fantavoto per probabilità di giocare)."""
+    """4-3-3 dall'attacco al portiere, panchina nell'ordine in cui entra come nell'app (#612, docs/GUIDA-UTENTE.md): prima chi
+    vale di più quando gioca, anche se gioca meno spesso, perché una riserva entra solo se ha preso voto."""
     _, testo = leggi(nome)
     eroe, giocatori, panca = _campo(testo)
     assert [len(l) for l in giocatori] == [3, 3, 4, 1]
     assert re.search(r'<dd class="n">4-3-3</dd>', eroe)
     assert len(panca) == 3 and [int(r[0]) for r in panca] == [1, 2, 3]
-    attesi = [numero(r[2]) * numero(r[3]) for r in panca]
-    assert attesi == sorted(attesi, reverse=True)
+    fantavoti = [numero(r[3]) for r in panca]
+    assert fantavoti == sorted(fantavoti, reverse=True), fantavoti
     for l in giocatori:
         for _, fv in l:
             assert 4 <= numero(fv) <= 10
+
+
+# Per lingua: cosa dice la didascalia dell'esempio sull'ordine della panchina, e la frase di prima, che era sbagliata.
+DIDASCALIA_PANCA = {
+    "index.html": ("la panchina è nell'ordine in cui entrano i giocatori", "ordine di punti attesi"),
+    "en/index.html": ("the bench is in the order the players come on", "ordered by expected points"),
+}
+
+
+@pytest.mark.parametrize("nome", PAGINE)
+def test_didascalia_dice_l_ordine_vero_della_panchina(nome):
+    """La didascalia non dice più «in ordine di punti attesi»: la panchina dell'app è nell'ordine in cui entra."""
+    giusta, sbagliata = DIDASCALIA_PANCA[nome]
+    _, testo = leggi(nome)
+    didascalia = senza_tag(re.search(r'<figcaption class="didascalia">(.*?)</figcaption>', sezione(testo, "eroe"), re.S).group(1))
+    assert giusta in didascalia and sbagliata not in didascalia, didascalia
 
 
 @pytest.mark.parametrize("nome", PAGINE)
@@ -546,15 +591,17 @@ def test_esempio_di_calcolo_torna(nome):
 # Per lingua: la domanda, le voci dell'informativa che la risposta deve citare (oltre all'account) e l'inizio vietato, che
 # presenterebbe un elenco chiuso («solo questi») più corto di quello dell'informativa.
 DOMANDA_DATI = {
-    "index.html": ("Quali dati raccoglie?", ("notifiche", "indirizzo di rete", "statistiche d'uso"), "Solo"),
-    "en/index.html": ("What data does it collect?", ("notifications", "network address", "usage statistics"), "Only"),
+    "index.html": ("Quali dati raccoglie?", ("notifiche", "indirizzo di rete", "statistiche d'uso", "email", "facoltativa",
+                                             "Google"), "Solo"),
+    "en/index.html": ("What data does it collect?", ("notifications", "network address", "usage statistics", "email", "optional",
+                                                     "Google"), "Only"),
 }
 
 
 @pytest.mark.parametrize("nome", PAGINE)
 def test_domanda_sui_dati_non_promette_meno_dell_informativa(nome):
-    """La risposta cita anche notifiche, registro con l'indirizzo di rete e statistiche d'uso (fanta/testi_legali.py) e
-    rimanda all'informativa per l'elenco completo."""
+    """La risposta cita anche l'email facoltativa, il collegamento a Google, notifiche, registro con l'indirizzo di rete e
+    statistiche d'uso (fanta/testi_legali.py) e rimanda all'informativa per l'elenco completo."""
     domanda, voci, inizio_vietato = DOMANDA_DATI[nome]
     _, testo = leggi(nome)
     m = re.search(r"<summary>" + re.escape(domanda) + r"</summary><p>(.*?)</p>", sezione(testo, "domande"), re.S)
@@ -731,6 +778,18 @@ def test_anteprima_social_con_immagine(nome):
     assert p.meta.get("twitter:image") == p.meta.get("og:image")
     for k in ("description", "og:description"):
         assert "Schierali" not in p.meta[k] and "Line them up" not in p.meta[k]
+    # l'immagine dell'anteprima ha la sua descrizione, nella lingua della pagina, uguale per i due tipi di anteprima
+    assert p.meta.get("og:image:alt") and p.meta.get("og:image:alt") == p.meta.get("twitter:image:alt")
+
+
+@pytest.mark.parametrize("nome", PAGINE)
+def test_dati_strutturati_senza_rimando_all_app(nome):
+    """`sameAs` dice «è la stessa cosa di quest'altra pagina» (un profilo, una voce d'enciclopedia): l'app nel browser non lo
+    è, quindi non va nei dati strutturati. L'indirizzo dell'app resta nei pulsanti «Apri l'app»."""
+    p, _ = leggi(nome)
+    dati = json.loads(p.jsonld)
+    assert "sameAs" not in dati
+    assert "app.schieraxi.it" not in p.jsonld
 
 
 def test_tipografia_con_tetto_per_gli_schermi_larghi():

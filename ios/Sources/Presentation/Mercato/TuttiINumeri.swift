@@ -153,11 +153,12 @@ struct TuttiINumeri: View {
         }
     }
 
-    /// La riga sotto il numero, come la web: gol e assist rispetto agli attesi, cosa vuol dire e fin dove arrivano i dati (#862).
+    /// La riga sotto il numero, come la web: gol e assist rispetto agli attesi e cosa vuol dire. Fin dove arrivano i dati lo dice
+    /// una volta sola la riga in fondo a «Statistiche avanzate», stessa fonte (#911).
     private func rigaRendimento(_ r: Rendimento, sovra: Double) -> String {
         let riga = Catalogo.Mercato.rendimentoRiga(a: Formato.conSegno(r.assistMenoXa ?? 0), g: Formato.conSegno(r.golMenoXg ?? 0))
         let senso = sovra > 0.3 ? Catalogo.Mercato.rendCala : sovra < -0.3 ? Catalogo.Mercato.rendSblocca : Catalogo.Mercato.rendLinea
-        return [riga, senso, LetturaScheda.datiFinoAl(scheda.avanzate)].compactMap { $0 }.joined(separator: " ")
+        return riga + " " + senso
     }
 
     // MARK: stagione e statistiche avanzate
@@ -184,18 +185,14 @@ struct TuttiINumeri: View {
         }
     }
 
-    /// L'identità del blocco «Statistiche avanzate»: la foto `giocatore-fondo` ci si ferma (`demoScorriA` in `SchedaGiocatoreView`),
-    /// così anche col testo grande si vede «Dati fino al …» sotto il titolo (#862).
-    static let idAvanzate = "scheda-statistiche-avanzate"
-
+    /// Le statistiche avanzate e, in fondo, una volta sola, fin dove arrivano i dati della fonte (#911, come `riempiScheda` della
+    /// web): vale anche per «Gol e assist rispetto alle occasioni», che c'è solo quando c'è questo blocco. Non in cima a «Tutti i
+    /// numeri», perché «Stagione» e i voti vengono da un'altra fonte, che va avanti.
     @ViewBuilder
     private var avanzate: some View {
         if let a = scheda.avanzate, (a.minuti ?? 0) > 0 {
             VStack(alignment: .leading, spacing: 8) {
                 titolo(Catalogo.Mercato.statisticheAvanzate)
-                if let finoAl = LetturaScheda.datiFinoAl(a) {
-                    nota(finoAl)
-                }
                 LazyVGrid(columns: griglia, spacing: 12) {
                     TesseraDato(valore: Formato.decimali(a.xg, cifre: 2), etichetta: Catalogo.Mercato.golAttesiTot)
                     TesseraDato(valore: Formato.decimali(a.xa, cifre: 2), etichetta: Catalogo.Mercato.assistAttesiTot)
@@ -212,8 +209,10 @@ struct TuttiINumeri: View {
                                                        m: String(Formato.intero(p.minuti)), s: p.stagione,
                                                        xa: Formato.decimali(p.xa), xg: Formato.decimali(p.xg)))
                 }
+                if let finoAl = LetturaScheda.datiFinoAl(a) {
+                    nota(finoAl).padding(.top, 4)
+                }
             }
-            .id(Self.idAvanzate)
         }
     }
 }
