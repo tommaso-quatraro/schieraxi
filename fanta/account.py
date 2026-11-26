@@ -315,6 +315,28 @@ MIGRAZIONI = [
     """
     ALTER TABLE token_widget ADD COLUMN sessione_id INTEGER;
     """,
+    # un token del widget per sessione, non più uno per utente (26/11/2026): lo stesso account su iPhone e iPad ha due widget, e
+    # entrare o uscire da un dispositivo non spegne quello dell'altro. SQLite non cambia la chiave di una tabella: se ne fa una nuova
+    # con un numero suo, si copiano i token (restano validi come sono, con o senza legame) e si cambia nome. Al massimo un token per
+    # sessione (l'indice unico); i token senza legame, nati prima del #814, restano fino alla loro scadenza.
+    """
+    CREATE TABLE token_widget_nuova (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        utente_id INTEGER NOT NULL REFERENCES utenti(id) ON DELETE CASCADE,
+        token_hash TEXT NOT NULL UNIQUE,
+        etichetta TEXT NOT NULL DEFAULT 'widget',
+        creato TEXT NOT NULL,
+        scade TEXT NOT NULL,
+        ultimo_uso TEXT NOT NULL,
+        sessione_id INTEGER
+    );
+    INSERT INTO token_widget_nuova (utente_id, token_hash, etichetta, creato, scade, ultimo_uso, sessione_id)
+        SELECT utente_id, token_hash, etichetta, creato, scade, ultimo_uso, sessione_id FROM token_widget;
+    DROP TABLE token_widget;
+    ALTER TABLE token_widget_nuova RENAME TO token_widget;
+    CREATE INDEX token_widget_utente ON token_widget(utente_id);
+    CREATE UNIQUE INDEX token_widget_sessione ON token_widget(sessione_id) WHERE sessione_id IS NOT NULL;
+    """,
 ]
 
 # Versione dei testi «Privacy» e «Termini d'uso» (la data di «Ultimo aggiornamento» delle pagine): si cambia quando cambiano i testi.
@@ -1319,10 +1341,12 @@ def _id_sessione_aperta(db: sqlite3.Connection, utente_id: int, token: str) -> i
 
 
 def crea_token_widget(db: sqlite3.Connection, utente_id: int, adesso: datetime | None = None, sessione: str | None = None) -> tuple[str, str]:
-    """Un token nuovo per il widget (il precedente, se c'era, smette di valere). Restituisce (token, scadenza): il token si vede una volta sola.
+    """Un token nuovo per il widget del dispositivo che lo chiede. Restituisce (token, scadenza): il token si vede una volta sola.
     `sessione`: il token della sessione che lo chiede (None ad account spenti); il widget le resta legato e «Esci» da quella
-    sessione lo chiude (#814). La sessione si rilegge nella stessa transazione della scrittura (BEGIN IMMEDIATE): se nel
-    frattempo è uscita, niente token (401), così un rinnovo non resta legato a una sessione chiusa."""
+    sessione lo chiude (#814). Un token per sessione (26/11/2026): quello nuovo prende il posto di quello che la stessa sessione
+    aveva già, mentre i token degli altri dispositivi dello stesso account restano; via anche i suoi token già scaduti. La sessione
+    si rilegge nella stessa transazione della scrittura (BEGIN IMMEDIATE): se nel frattempo è uscita, niente token (401), così un
+    rinnovo non resta legato a una sessione chiusa."""
     adesso = _ora(adesso)
     token = PREFISSO_TOKEN_WIDGET + secrets.token_urlsafe(32)
     scade = _testo(adesso + DURATA_TOKEN_WIDGET)
@@ -1333,7 +1357,10 @@ def crea_token_widget(db: sqlite3.Connection, utente_id: int, adesso: datetime |
             sessione_id = _id_sessione_aperta(db, utente_id, sessione)
             if sessione_id is None:
                 raise ErroreAccount("Accesso richiesto", 401)
-        db.execute("INSERT OR REPLACE INTO token_widget (utente_id, token_hash, etichetta, creato, scade, ultimo_uso, sessione_id) "
+        # `IS`: senza sessione (account spenti) prende il posto di quello senza legame
+        db.execute("DELETE FROM token_widget WHERE utente_id = ? AND (sessione_id IS ? OR scade <= ?)",
+                   (utente_id, sessione_id, _testo(adesso)))
+        db.execute("INSERT INTO token_widget (utente_id, token_hash, etichetta, creato, scade, ultimo_uso, sessione_id) "
                    "VALUES (?, ?, 'widget', ?, ?, ?, ?)",
                    (utente_id, _hash_token(token), _testo(adesso), scade, _testo(adesso), sessione_id))
         db.commit()
@@ -1345,17 +1372,33 @@ def crea_token_widget(db: sqlite3.Connection, utente_id: int, adesso: datetime |
     return token, scade
 
 
-def stato_token_widget(db: sqlite3.Connection, utente_id: int, adesso: datetime | None = None) -> dict:
-    """Esiste un token del widget? Mai il token (di lui resta solo l'hash)."""
-    r = db.execute("SELECT * FROM token_widget WHERE utente_id = ?", (utente_id,)).fetchone()
+def _sessione_del_widget(db: sqlite3.Connection, utente_id: int, sessione: str | None) -> tuple[bool, int | None]:
+    """Il legame che cercano stato e revoca: (vale, numero della sessione). Senza sessione (account spenti) il token senza legame
+    (numero None); con una sessione che non è aperta, niente (False)."""
+    if sessione is None:
+        return True, None
+    sessione_id = _id_sessione_aperta(db, utente_id, sessione)
+    return sessione_id is not None, sessione_id
+
+
+def stato_token_widget(db: sqlite3.Connection, utente_id: int, adesso: datetime | None = None, sessione: str | None = None) -> dict:
+    """Esiste un token del widget per questo dispositivo (quello legato a `sessione`, come in `crea_token_widget`)? Mai il token
+    (di lui resta solo l'hash). I token degli altri dispositivi dello stesso account non contano."""
+    vale, sessione_id = _sessione_del_widget(db, utente_id, sessione)
+    r = db.execute("SELECT * FROM token_widget WHERE utente_id = ? AND sessione_id IS ?", (utente_id, sessione_id)).fetchone() if vale else None
     if r is None:
         return {"presente": False}
     return {"presente": True, "valido": _data(r["scade"]) > _ora(adesso), "etichetta": r["etichetta"], "creato": r["creato"],
             "scade": r["scade"], "ultimo_uso": r["ultimo_uso"]}
 
 
-def revoca_token_widget(db: sqlite3.Connection, utente_id: int) -> bool:
-    cur = db.execute("DELETE FROM token_widget WHERE utente_id = ?", (utente_id,))
+def revoca_token_widget(db: sqlite3.Connection, utente_id: int, sessione: str | None = None) -> bool:
+    """Toglie il token del widget di questo dispositivo (quello legato a `sessione`): i widget degli altri dispositivi dello stesso
+    account e i token senza legame restano. La mandano a «Esci» le app di prima del 26/11/2026."""
+    vale, sessione_id = _sessione_del_widget(db, utente_id, sessione)
+    if not vale:
+        return False
+    cur = db.execute("DELETE FROM token_widget WHERE utente_id = ? AND sessione_id IS ?", (utente_id, sessione_id))
     db.commit()
     if cur.rowcount:
         evento("token_widget_revocato", utente=utente_id)
@@ -1371,16 +1414,16 @@ def utente_da_token_widget(db: sqlite3.Connection, token: str | None, adesso: da
     if r is None or _data(r["scade"]) <= adesso:
         return None
     if adesso - _data(r["ultimo_uso"]) > RINNOVO_DOPO:
-        db.execute("UPDATE token_widget SET ultimo_uso = ? WHERE utente_id = ?", (_testo(adesso), r["utente_id"]))
+        db.execute("UPDATE token_widget SET ultimo_uso = ? WHERE id = ?", (_testo(adesso), r["id"]))      # questo token, non gli altri dell'utente
         db.commit()
     return trova(db, r["utente_id"])
 
 
 def esci(db: sqlite3.Connection, token: str | None, chiudi_widget: bool = False) -> None:
     """Chiude la sessione con questo token. Con `chiudi_widget` (il pulsante «Esci», #814), DOPO aver chiuso e salvato la sessione,
-    toglie anche il token del widget nato da questa sessione: quello rinnovato da un altro dispositivo dello stesso account, o
-    nato prima del legame (`sessione_id` vuoto), resta. Il nuovo accesso sullo stesso dispositivo (che chiude la sessione di
-    prima) non lo usa."""
+    toglie anche il token del widget nato da questa sessione: quelli degli altri dispositivi dello stesso account, e quello nato
+    prima del legame (`sessione_id` vuoto), restano. Il nuovo accesso sullo stesso dispositivo (che chiude la sessione di prima)
+    non lo usa."""
     if token and isinstance(token, str) and len(token) <= 200:
         h = _hash_token(token)
         sessione = db.execute("SELECT id, utente_id FROM sessioni WHERE token_hash = ?", (h,)).fetchone() if chiudi_widget else None
@@ -1425,7 +1468,7 @@ def _togli_widget(db: sqlite3.Connection, utente_id: int, sql: str, parametri: t
 def esci_da_tutti(db: sqlite3.Connection, utente_id: int, tranne: str | None = None, scollega_social: bool = False,
                   tieni_push: str | None = None) -> int:
     """Revoca tutte le sessioni dell'utente (tranne, se indicata, quella con questo token). Restituisce quante ne ha chiuse.
-    Chiude anche il token del widget. Con `tranne` (cambio dell'email, #843) resta solo quello nato dalla sessione che resta aperta;
+    Chiude anche i token del widget. Con `tranne` (cambio dell'email, #843) resta solo quello nato dalla sessione che resta aperta;
     uno senza legame (`sessione_id` vuoto) si chiude.
     Senza `tranne` (esci da tutti, cambio password, recupero) si dimenticano anche i dispositivi e gli indirizzi fidati e si
     tolgono le iscrizioni alle notifiche web, tranne quella del dispositivo che sta chiedendo (`tieni_push`, il suo indirizzo

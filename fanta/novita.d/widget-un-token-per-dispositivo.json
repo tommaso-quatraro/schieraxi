@@ -1,0 +1,11 @@
+{
+  "titolo": "Widget su iPhone e iPad insieme, e «Da controllare» con il numero giusto",
+  "voci": [
+    "Se usi SchieraXI su iPhone e iPad con lo stesso account, entrare o uscire su uno dei due non scollega più il widget dell'altro: prima il widget dell'altro dispositivo diceva «Tocca per collegare».",
+    "Widget «Da controllare», «Prossima giornata» e «Formazione consigliata», con l'app aggiornata: il numero dei titolari da controllare è giusto anche quando in rosa hai tanti infortunati o squalificati fuori formazione. Prima poteva contarne meno, e qualche dubbio dei titolari restava fuori dall'elenco."
+  ],
+  "tecnico": [
+    "Token del widget: uno per sessione invece di uno per utente (migrazione di `token_widget`: chiave `id`, indice unico su `sessione_id`). POST /api/account/token-widget sostituisce solo il token della stessa sessione e toglie quelli scaduti dell'utente; GET e DELETE guardano solo il token della sessione che chiede (le app già installate mandano DELETE a «Esci»: ora non tocca l'altro dispositivo). I token senza legame restano validi fino alla scadenza.",
+    "GET /api/widget: `avvisi` con quelli dei titolari prima del taglio a 6 e campo nuovo facoltativo `da_controllare` (quanti avvisi di Oggi hanno `in_formazione`, contati su tutti). docs/openapi.json: cambiano solo le descrizioni delle tre rotte del token."
+  ]
+}
