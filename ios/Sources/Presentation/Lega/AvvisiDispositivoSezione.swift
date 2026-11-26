@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// La sezione Avvisi delle Impostazioni, come `avvisiTelefono` della web (#673 passo 3): «Avvisi su questo dispositivo» con la sua
-/// riga d'aiuto (il promemoria che arriva, o che arriva già dalla web app: `AvvisiDispositivoViewModel.aiutoQui`) e «Ore tranquille»
+/// riga d'aiuto (il promemoria che arriva, o che arriva anche dalla web app: `AvvisiDispositivoViewModel.aiutoQui`) e «Ore tranquille»
 /// con la fascia scelta. Gli altri interruttori di prima non ci sono più:
 /// restano sul server come sono. Logica in `AvvisiDispositivoViewModel`.
 struct AvvisiDispositivoSezione: View {

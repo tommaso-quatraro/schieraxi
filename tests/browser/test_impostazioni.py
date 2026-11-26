@@ -1602,9 +1602,9 @@ def test_l_iscrizione_che_non_arriva_si_rimanda_all_apertura_dopo(web):
     assert len(iscritte) == 2, f"l'iscrizione arrivata è stata rimandata ancora: {iscritte}"
 
 
-# ---------------------------------------------------------------- un promemoria per telefono (26/11/2026)
-# Il server tace i promemoria dell'app per iPhone solo per un'iscrizione nata su un iPhone e confermata da poco (`promemoria_da`
-# di /api/avvisi): la web dice se gira su un iPhone (iPad e Mac si presentano come «Macintosh») e, con il permesso delle
+# ---------------------------------------------------------------- promemoria anche dalla web app (26/11/2026)
+# Il server dice all'app per iPhone che il promemoria arriva anche dalla web app solo per un'iscrizione nata su un iPhone e
+# confermata da poco (`promemoria_da` di /api/avvisi): la web dice se gira su un iPhone (iPad e Mac si presentano come «Macintosh») e, con il permesso delle
 # notifiche, rimanda la sua iscrizione una volta al giorno. Qui il browser finge di essere un iPhone, un iPad o un Mac.
 DISPOSITIVO = """(() => {
   Object.defineProperty(Navigator.prototype, 'userAgent', { configurable: true, get: () => __UA__ });
@@ -1655,7 +1655,7 @@ def test_con_il_permesso_l_iscrizione_si_conferma_una_volta_al_giorno(web):
 @pytest.mark.parametrize("permesso", ["denied", "default"])
 def test_senza_il_permesso_l_iscrizione_non_si_conferma(web, permesso):
     """Notifiche spente nelle impostazioni del telefono: la web non conferma più l'iscrizione, e dopo qualche giorno il server
-    lascia che l'app per iPhone mandi i suoi promemoria."""
+    non dice più all'app per iPhone che il promemoria arriva anche dalla web app."""
     solo(web, "prima")
     da_utente(web)
     web.memoria({"account": json.dumps(UTENTE["utente"])})

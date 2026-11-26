@@ -2484,11 +2484,10 @@ def _stato_avvisi(ctx: Contesto, opzioni: dict) -> dict:
 
 def _promemoria_da(iscrizioni: list[dict], ntfy_app: bool, adesso: datetime) -> str:
     """Da dove arrivano già i promemoria della scadenza all'iPhone (`promemoria_da` di GET /api/avvisi): `web` con un'iscrizione
-    alle notifiche della web nata su un iPhone e confermata da poco (`notifiche_web.su_iphone_viva`), `ntfy` con «Avvisi anche
-    per l'app nativa» e il canale (`ntfy_app`: il tocco apre l'app), altrimenti `app`. Con `web` o `ntfy` l'app per iPhone non
-    programma i suoi promemoria: sullo stesso telefono lo stesso promemoria arriverebbe due volte. Nel dubbio `app` (un promemoria
-    doppio è meglio di uno che non arriva): notifiche della web solo su un computer, un iPad o un Mac, iscrizioni di prima senza
-    il dato dell'iPhone, o non confermate negli ultimi giorni (web app tolta dalla Home, notifiche spente)."""
+    alle notifiche della web nata su un iPhone, confermata da poco e non rifiutata (`notifiche_web.su_iphone_viva`), `ntfy` con
+    «Avvisi anche per l'app nativa» e il canale (`ntfy_app`: il tocco apre l'app), altrimenti `app`. Solo un'informazione: l'app
+    per iPhone programma i suoi promemoria lo stesso (nessuna regola qui sa con certezza cosa mostra quel telefono), e con `web`
+    la riga sotto «Avvisi su questo dispositivo» dice che il promemoria arriva anche dalla web app e come evitare il doppione."""
     if any(notifiche_web.su_iphone_viva(s, adesso) for s in iscrizioni):
         return "web"
     return "ntfy" if ntfy_app else "app"
@@ -2535,7 +2534,7 @@ def avviso_di_prova(ctx: Contesto = Depends(lega_corrente)):
 class IscrizionePush(BaseModel):
     endpoint: str
     keys: dict[str, str]
-    iphone: bool = False            # la web gira su un iPhone (non iPad né Mac): vedi `promemoria_da` di GET /api/avvisi
+    iphone: bool = False            # la web gira su un iPhone (non iPad né Mac): serve a `promemoria_da` di GET /api/avvisi
 
 
 @app.get("/api/push/chiave")

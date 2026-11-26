@@ -95,10 +95,9 @@ enum ArchivioMessa {
     }
 }
 
-/// Il server manda già i promemoria a questo telefono (la web app di un iPhone con gli avvisi accesi, o ntfy per l'app
-/// nativa: `promemoria_da`)? Si ricorda a ogni lettura di `GET /api/avvisi` (`StatoAvvisi.mandaGiaIlServer`): se sì, l'app non
-/// programma i suoi promemoria della scadenza, perché arriva già quello del server, con lo stesso testo. Senza una lettura (mai
-/// riuscita) vale «no»: i promemoria del telefono partono.
+/// Il server manda già i suoi avvisi proprio a questa app (ntfy per l'app nativa, #906)? Si ricorda a ogni lettura di
+/// `GET /api/avvisi` (`StatoAvvisi.mandaGiaIlServer`): se sì, l'app non programma i suoi promemoria della scadenza, perché arriva
+/// già quello del server, con lo stesso testo. Senza una lettura (mai riuscita) vale «no»: i promemoria del telefono partono.
 enum ArchivioAvvisiDalServer {
     static let chiave = "avvisi.dalServer"
 

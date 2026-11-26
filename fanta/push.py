@@ -458,7 +458,7 @@ def maschera(ep: str) -> str:
 def su_apple(ep: str) -> bool:
     """L'iscrizione è di un dispositivo Apple? Lo dice il servizio di notifica, quello di Apple (`web.push.apple.com`): la web app
     sulla Home di un iPhone o di un iPad, oppure Safari sul Mac. Chrome, Firefox ed Edge usano i servizi di Google, Mozilla e
-    Microsoft. Serve a `su_iphone_viva` (un solo promemoria per telefono)."""
+    Microsoft. Serve a `su_iphone_viva`."""
     from urllib.parse import urlsplit
     try:
         host = (urlsplit(ep).hostname or "") if ep.startswith("https://") else ""
@@ -468,16 +468,19 @@ def su_apple(ep: str) -> bool:
 
 
 def su_iphone_viva(s: dict, adesso: datetime, giorni: int = GIORNI_CONFERMA) -> bool:
-    """L'iscrizione arriva di sicuro a un iPhone ed è viva? Nata su un iPhone (`iphone`, lo dice la web), del servizio di Apple e
-    confermata negli ultimi `giorni` giorni (`confermata`). Serve a `promemoria_da` di GET /api/avvisi: solo allora l'app per
-    iPhone non programma i suoi promemoria. Nel dubbio no (un promemoria doppio è meglio di uno che non arriva): un'iscrizione di
-    prima senza i dati, di un iPad o di un Mac, mai confermata, con una data illeggibile o nel futuro. Una web app tolta dalla
-    Home o con le notifiche spente smette di confermare: il server non lo sa finché un invio non fallisce, ma dopo `giorni`
-    giorni non la conta più."""
+    """L'iscrizione arriva di sicuro a un iPhone ed è viva? Nata su un iPhone (`iphone`, lo dice la web), del servizio di Apple,
+    confermata negli ultimi `giorni` giorni (`confermata`) e senza un invio rifiutato da allora (`fallita`, `segna_fallite`).
+    Serve a `promemoria_da` di GET /api/avvisi, che è solo un'informazione: con «web» la riga d'aiuto dell'app per iPhone dice che
+    il promemoria arriva anche dalla web app (l'app lo programma lo stesso). Nel dubbio no: un'iscrizione di prima senza i dati,
+    di un iPad o di un Mac, mai confermata, con una data illeggibile o nel futuro. Una web app tolta dalla Home o con le notifiche
+    spente smette di confermare: dopo `giorni` giorni non conta più."""
     if s.get("iphone") is not True or not su_apple(str(s.get("endpoint") or "")):
         return False
     try:
-        return timedelta(0) <= adesso - datetime.fromisoformat(str(s.get("confermata"))) <= timedelta(days=giorni)
+        confermata = datetime.fromisoformat(str(s.get("confermata")))
+        if "fallita" in s and datetime.fromisoformat(str(s["fallita"])) >= confermata:
+            return False
+        return timedelta(0) <= adesso - confermata <= timedelta(days=giorni)
     except (ValueError, TypeError):        # TypeError: una data con il fuso, che non si confronta con l'ora del server
         return False
 
@@ -539,7 +542,7 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", perco
     finally:
         sessione.chiudi()                              # a tempo finito chi e' ancora collegato si ferma: non lo aspetta nessuno
         esecutore.shutdown(wait=False, cancel_futures=True)
-    consegnate, scadute = 0, []
+    consegnate, scadute, rifiutate = 0, [], []
     for s, futuro in zip(lista, futuri):              # registro e iscrizioni si scrivono da qui, uno alla volta
         esito, dettaglio = futuro.result() if futuro.done() and not futuro.cancelled() else ("errore", "TimeoutError")
         if esito == "consegnata":
@@ -550,6 +553,7 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", perco
             _annota(f"Iscrizione ignorata (indirizzo non pubblico o non valido): {maschera(s['endpoint'])}")
         elif esito == "rifiutata":                     # per esempio 403 a tutti dopo un cambio delle chiavi: deve restare traccia
             _annota(f"Rifiutata {dettaglio} ({maschera(s['endpoint'])})")
+            rifiutate.append(s["endpoint"])
         else:
             _annota(f"{dettaglio} ({maschera(s['endpoint'])})")
     for ep in scadute:
@@ -557,4 +561,26 @@ def invia(titolo: str, testo: str, priorita: int = 3, tag: str = "soccer", perco
             togli(ep, percorso)
         except Occupato:                               # push.json tenuto da un altro processo: si toglie al prossimo invio
             _annota(f"Iscrizione scaduta non tolta (file occupato): {maschera(ep)}")
+    if rifiutate:
+        try:
+            segna_fallite(rifiutate, percorso)
+        except Occupato:                               # resta senza il segno: `promemoria_da` serve solo a informare
+            _annota(f"Rifiuto non segnato (file occupato): {', '.join(maschera(ep) for ep in rifiutate)}")
     return consegnate
+
+
+def segna_fallite(endpoints: list[str], percorso: Path | None = None, adesso: datetime | None = None) -> None:
+    """Segna sulle iscrizioni con questi indirizzi l'ultimo invio rifiutato dal servizio (`fallita`, data e ora): un codice
+    diverso da 404/410, che invece la tolgono. L'iscrizione resta (il rifiuto può passare), ma per `su_iphone_viva` non è più viva
+    finché la web non la conferma di nuovo (l'iscrizione rimandata non ha il segno). Senza la cartella del file non la crea.
+    File occupato oltre ATTESA_BLOCCO secondi: Occupato."""
+    p = percorso or FILE_ISCRIZIONI
+    quando = (adesso or datetime.now()).isoformat(timespec="seconds")
+    with _scrittura_iscrizioni(p, crea_cartella=False) as aperto:
+        if not aperto:
+            return
+        lista = iscrizioni(p)
+        for s in lista:
+            if s["endpoint"] in endpoints:
+                s["fallita"] = quando
+        scrivi_sicuro(p, json.dumps(lista))

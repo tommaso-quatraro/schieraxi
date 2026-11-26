@@ -16,8 +16,8 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
     @Published private(set) var appNativa: Bool?
     /// Il server ha spento le ore tranquille (inizio e fine alla stessa ora): si dice finché non si salva di nuovo.
     @Published private(set) var oreTranquilleSpente = false
-    /// I promemoria arrivano già dalla web app, con gli avvisi accesi su un iPhone (`promemoria_da` «web»): qui non si
-    /// programmano, e la riga sotto «Avvisi su questo dispositivo» lo dice (`aiutoQui`).
+    /// Il promemoria arriva anche dalla web app, con gli avvisi accesi su un iPhone (`promemoria_da` «web»): qui si programma lo
+    /// stesso, e la riga sotto «Avvisi su questo dispositivo» dice come evitare il doppione (`aiutoQui`).
     @Published private(set) var promemoriaDaWeb = false
     /// Cosa è successo all'ultimo tocco sull'interruttore del dispositivo (permesso negato, avvisi spenti).
     @Published private(set) var messaggio: String?
@@ -47,8 +47,8 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
     }
 
     /// La riga sotto «Avvisi su questo dispositivo»: di solito il promemoria che l'interruttore accende (`imp.avvisi_qui_aiuto_app`);
-    /// se il promemoria arriva già dalla web app (`promemoriaDaWeb`), che qui non si ripete (`imp.avvisi_qui_aiuto_web`). Con ntfy
-    /// per l'app nativa resta quella di sempre: il promemoria arriva lo stesso su questo telefono e il suo tocco apre l'app.
+    /// se il promemoria arriva anche dalla web app (`promemoriaDaWeb`), che può arrivare due volte e come evitarlo
+    /// (`imp.avvisi_qui_aiuto_web`). Con ntfy per l'app nativa resta quella di sempre.
     var aiutoQui: String {
         promemoriaDaWeb ? Catalogo.Imp.avvisiQuiAiutoWeb : Catalogo.Imp.avvisiQuiAiutoApp
     }

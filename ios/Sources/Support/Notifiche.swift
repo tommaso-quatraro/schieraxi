@@ -3,9 +3,9 @@ import UserNotifications
 /// Promemoria locali di iOS: non servono server né l'account a pagamento di Apple (le notifiche push, invece, sì).
 /// Un'ora e un quarto d'ora prima della scadenza della formazione, solo con «Avvisi su questo dispositivo» acceso (un interruttore
 /// unico come la web, #673 passo 3). Titolo e testo li scrive il server (`testi_promemoria` di Oggi, #906): l'app non compone frasi
-/// sue. Se il server manda già i promemoria a questo telefono (`promemoria_da` di `/api/avvisi`: la web app di un iPhone con gli
-/// avvisi accesi, o ntfy per l'app nativa) l'app non programma i suoi; nel dubbio (computer, iPad, Mac) sì.
-/// Gli avvisi quando cambia la formazione li manda solo il server (#676, #906).
+/// sue. Se il server manda già i suoi avvisi proprio a questa app (ntfy per l'app nativa) l'app non programma i suoi; con le
+/// notifiche della web sì, sempre (potrebbero essere sul computer, o su una web app che non le mostra più: la riga d'aiuto dice
+/// come evitare il doppione). Gli avvisi quando cambia la formazione li manda solo il server (#676, #906).
 /// Si programmano quando l'app legge la giornata, quando l'interruttore si riaccende e quando cambiano le ore tranquille;
 /// spegnendolo si tolgono subito (vedi `TelefonoAvvisi`).
 enum Notifiche {

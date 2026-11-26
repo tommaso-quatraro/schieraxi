@@ -92,7 +92,9 @@ extension ImpostazioniAvvisi {
 }
 
 struct StatoAvvisi: Decodable {
-    /// Da dove arrivano già i promemoria della scadenza secondo il server (`promemoria_da`, 26/11/2026).
+    /// Da dove arrivano già i promemoria della scadenza secondo il server (`promemoria_da`, 26/11/2026). Solo per informare: l'app
+    /// programma i suoi promemoria lo stesso (`mandaGiaIlServer` non lo guarda); con «web» la riga sotto «Avvisi su questo
+    /// dispositivo» dice che il promemoria arriva anche dalla web app (`AvvisiDispositivoViewModel.aiutoQui`).
     enum PromemoriaDa: String, Sendable {
         /// Le notifiche della web sono accese sulla web app di un iPhone, che le ha confermate negli ultimi giorni.
         case web
@@ -126,14 +128,15 @@ struct StatoAvvisi: Decodable {
         promemoriaDa = (try? c.decodeIfPresent(String.self, forKey: .promemoriaDa)).flatMap(PromemoriaDa.init(rawValue:))
     }
 
-    /// Il server manda già i promemoria della scadenza a questo telefono? Allora l'app non programma i suoi, che arriverebbero due
-    /// volte. Decide il server con `promemoria_da`: «web» (la web app di un iPhone con gli avvisi accesi, il doppione sullo stesso
-    /// telefono) e «ntfy» sì, «app» no. Nel dubbio il server dice «app»: notifiche della web su un computer, un iPad o un Mac, o non
-    /// confermate negli ultimi giorni. Senza il campo (server di prima) la regola di prima (#906): sì solo con «Avvisi anche per l'app
-    /// nativa», un canale e nessun dispositivo con le notifiche della web, perché `canale` è vero anche con le sole notifiche della web.
+    /// Il server manda già i suoi avvisi proprio a questa app (#906)? Sì solo con «Avvisi anche per l'app nativa» acceso, un canale
+    /// e nessun dispositivo con le notifiche della web (`app_nativa`, `canale`, `dispositivi` 0): sul server `canale` è vero anche
+    /// con le sole notifiche della web, quindi vuol dire ntfy (il cui tocco apre questa app) solo senza dispositivi. Allora l'app non
+    /// programma i suoi promemoria della scadenza, che arriverebbero due volte. Con le notifiche della web accese li programma
+    /// sempre, anche con `promemoria_da` «web» (26/11/2026): nessuna regola del server sa con certezza cosa mostra questo telefono
+    /// (web app tolta dalla Home, notifiche spente da iOS, un secondo iPhone), e un promemoria doppio è meglio di uno che non
+    /// arriva; la riga d'aiuto dice come evitare il doppione. Senza i campi (server di prima): no.
     var mandaGiaIlServer: Bool {
-        if let promemoriaDa { return promemoriaDa != .app }
-        return impostazioni.app_nativa == true && canale == true && (dispositivi ?? 0) == 0
+        impostazioni.app_nativa == true && canale == true && (dispositivi ?? 0) == 0
     }
 }
 

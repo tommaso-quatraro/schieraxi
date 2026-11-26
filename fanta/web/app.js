@@ -3894,14 +3894,14 @@ function avvisiDiQuestoAccount() {
   try { return localStorage.getItem(AVVISI_DI) === n; } catch { return false; }
 }
 // Il corpo di POST /api/push/iscrivi: l'iscrizione con `iphone`, vero se questo browser gira su un iPhone (iPad e Mac si presentano
-// come «Macintosh»). Il server tace i promemoria dell'app per iPhone solo per un'iscrizione nata su un iPhone e confermata da poco
-// (`promemoria_da` di /api/avvisi): con gli avvisi della web solo su un iPad o su un Mac l'iPhone tiene i suoi.
+// come «Macintosh»). Il server dice all'app per iPhone che il promemoria arriva anche dalla web app (`promemoria_da` di /api/avvisi)
+// solo per un'iscrizione nata su un iPhone e confermata da poco: l'app lo scrive sotto «Avvisi su questo dispositivo».
 function corpoIscrizione(sub) {
   return JSON.stringify({ ...sub.toJSON(), iphone: /iPhone/.test(navigator.userAgent || "") });
 }
 // La conferma di ogni giorno: con il permesso delle notifiche, la prima apertura del giorno rimanda l'iscrizione al server, che ne
 // segna la data. Una web app tolta dalla Home, o con le notifiche spente, smette di confermare: dopo qualche giorno il server non la
-// conta più e l'app per iPhone torna a mandare i suoi promemoria. Il giorno dell'ultima conferma sta in AVVISI_CONFERMATI.
+// conta più. Il giorno dell'ultima conferma sta in AVVISI_CONFERMATI.
 const AVVISI_CONFERMATI = "avvisi-confermati";
 const giornoDiOggi = () => new Date().toISOString().slice(0, 10);
 async function rimandaAvvisi() {
