@@ -57,6 +57,7 @@ struct ContrattoDalVeroTests {
         "/api/formazione": [.modello(Formazione.self)],
         "/api/formazione/valuta": [.modello(ValutazioneManuale.self)],
         "/api/formazione/metti-in-campo": [.modello(RispostaMettiInCampo.self)],
+        "/api/formazione/sostituisci": [.modello(RispostaSostituisci.self)],
         "/api/foto-disponibili": [.modello(FotoDisponibili.self)],
         "/api/funzioni": [.modello(RispostaFunzioni.self, snake: false)],
         "/api/giocatore/{id}": [.modello(SchedaGiocatore.self)],
@@ -97,6 +98,7 @@ struct ContrattoDalVeroTests {
     static let facoltative: [String: String] = [
         "/api/foto-disponibili": "c'è solo sui server con le foto dei calciatori, non in quello del repository: lì risponde 404 e prove/fotografie_dal_vero.py non la scrive",
         "/api/formazione/metti-in-campo": "le fotografie sono di prima della rotta (#643, #778): quando prove/fotografie_dal_vero.py la registra, si legge come le altre",
+        "/api/formazione/sostituisci": "le fotografie sono di prima della rotta (26/11/2026): quando prove/fotografie_dal_vero.py la registra, si legge come le altre",
     ]
 
     // MARK: test

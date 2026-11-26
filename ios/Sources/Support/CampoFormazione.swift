@@ -138,6 +138,10 @@ struct CampoFormazione: View {
     /// Le pedine entrano una dopo l'altra e un tocco apre la scheda.
     var apribile = false
 
+    /// Sull'iPad (#896): metà campo e cerchio in una fascia libera fra centrocampo e difesa, e il campo alto almeno tre quarti
+    /// della larghezza (`DisposizioneCampo`). Sull'iPhone le file stanno in colonna con la metà campo a metà altezza, come prima.
+    var spazioso = false
+
     /// Le file del campo, dall'alto: attaccanti, centrocampisti, difensori, portiere.
     static let file = ["A", "C", "D", "P"]
 
@@ -149,12 +153,15 @@ struct CampoFormazione: View {
     }
 
     var body: some View {
-        VStack(spacing: 10) {
-            ForEach(Self.file, id: \.self) { ruolo in
-                HStack(alignment: .top, spacing: 2) {
-                    ForEach(Self.inFila(ruolo, titolari)) { g in
-                        pedina(g)
-                    }
+        Group {
+            if spazioso {
+                DisposizioneCampo {
+                    ForEach(Self.file, id: \.self) { ruolo in fila(ruolo) }
+                    MetaCampo()
+                }
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(Self.file, id: \.self) { ruolo in fila(ruolo) }
                 }
             }
         }
@@ -167,12 +174,22 @@ struct CampoFormazione: View {
         .accessibilityLabel("Campo con i titolari")
     }
 
+    /// Una fila del campo: le pedine di un ruolo, affiancate.
+    private func fila(_ ruolo: String) -> some View {
+        HStack(alignment: .top, spacing: 2) {
+            ForEach(Self.inFila(ruolo, titolari)) { g in
+                pedina(g)
+            }
+        }
+    }
+
     private func pedina(_ g: Giocatore) -> some View {
         PedinaCampo(g: g, diametro: diametro, apribile: apribile)
             .transizione(.scale(scale: 0.6).combined(with: .opacity))
     }
 
-    /// Prato verde a fasce, con le righe del campo (area, cerchio di centrocampo, metà campo).
+    /// Prato verde a fasce, con le righe del campo (area, cerchio di centrocampo, metà campo). Con `spazioso` metà campo e cerchio
+    /// li disegna `MetaCampo`, nella fascia fra centrocampo e difesa.
     private var erba: some View {
         ZStack {
             LinearGradient(colors: [Color(red: 0.12, green: 0.45, blue: 0.27), Color(red: 0.08, green: 0.34, blue: 0.20)], startPoint: .top, endPoint: .bottom)
@@ -185,9 +202,11 @@ struct CampoFormazione: View {
                 let w = g.size.width, h = g.size.height
                 Path { p in
                     p.addRect(CGRect(x: 10, y: 10, width: w - 20, height: h - 20))
-                    p.move(to: CGPoint(x: 10, y: h / 2))
-                    p.addLine(to: CGPoint(x: w - 10, y: h / 2))
-                    p.addEllipse(in: CGRect(x: w / 2 - 34, y: h / 2 - 34, width: 68, height: 68))
+                    if !spazioso {
+                        p.move(to: CGPoint(x: 10, y: h / 2))
+                        p.addLine(to: CGPoint(x: w - 10, y: h / 2))
+                        p.addEllipse(in: CGRect(x: w / 2 - 34, y: h / 2 - 34, width: 68, height: 68))
+                    }
                     p.addRect(CGRect(x: w / 2 - 60, y: 10, width: 120, height: 40))
                     p.addRect(CGRect(x: w / 2 - 60, y: h - 50, width: 120, height: 40))
                 }

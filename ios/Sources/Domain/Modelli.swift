@@ -447,8 +447,13 @@ struct DaFareVoce: Decodable, Identifiable, Equatable {
     var giocatore: PersonaDaFare? = nil
     /// Il sostituto proposto da una voce `dubbio` (azione «Sostituisci»), con i suoi punti attesi (facoltativo).
     var alternativa: AlternativaDaFare? = nil
+    /// Con `alternativa`: i punti attesi della FORMAZIONE in più con il cambio proposto (dal 26/11/2026), il numero da mostrare
+    /// accanto al cambio («+1,3 punti attesi.»), non la differenza fra i due giocatori. Facoltativo: un server vecchio non lo manda.
+    var differenza: Double? = nil
 
-    private enum Chiavi: String, CodingKey { case id, tipo, testo, priorita, azione, destinazione, motivo, decisione, giocatore, alternativa }
+    private enum Chiavi: String, CodingKey {
+        case id, tipo, testo, priorita, azione, destinazione, motivo, decisione, giocatore, alternativa, differenza
+    }
 
     init(from decoder: Decoder) throws {
         let k = try decoder.container(keyedBy: Chiavi.self)
@@ -466,13 +471,15 @@ struct DaFareVoce: Decodable, Identifiable, Equatable {
         decisione = (try? k.decodeIfPresent(Int.self, forKey: .decisione)) ?? nil
         giocatore = (try? k.decodeIfPresent(PersonaDaFare.self, forKey: .giocatore)) ?? nil
         alternativa = (try? k.decodeIfPresent(AlternativaDaFare.self, forKey: .alternativa)) ?? nil
+        differenza = (try? k.decodeIfPresent(Double.self, forKey: .differenza)) ?? nil
     }
 
     init(id: String, tipo: String? = nil, testo: String, priorita: Int? = nil, azione: String? = nil, destinazione: DestinazioneDaFare? = nil,
-         motivo: String? = nil, decisione: Int? = nil, giocatore: PersonaDaFare? = nil, alternativa: AlternativaDaFare? = nil) {
+         motivo: String? = nil, decisione: Int? = nil, giocatore: PersonaDaFare? = nil, alternativa: AlternativaDaFare? = nil,
+         differenza: Double? = nil) {
         self.motivo = motivo
         self.id = id; self.tipo = tipo; self.testo = testo; self.priorita = priorita; self.azione = azione; self.destinazione = destinazione
-        self.decisione = decisione; self.giocatore = giocatore; self.alternativa = alternativa
+        self.decisione = decisione; self.giocatore = giocatore; self.alternativa = alternativa; self.differenza = differenza
     }
 }
 
@@ -1188,28 +1195,39 @@ struct GiornataInCorso: Decodable, Equatable {
     /// tutti tranne Bapepe, che aspetta il recupero.», «I voti dei tuoi giocatori sono tutti usciti.»… Facoltativa: un server di
     /// prima non la manda (allora le parole di sempre da `ancoraDaGiocare`).
     let situazione: String?
+    /// La stessa riga in breve per il widget medio (`situazione_breve`, solo in `/api/widget`, #911): «3 giocatori aspettano il
+    /// recupero; mancano i voti ufficiali.» al posto dei nomi. Facoltativa: il server la manda solo per le righe con i nomi di chi
+    /// aspetta il recupero, e un server di prima non la manda (allora vale `situazione`).
+    let situazioneBreve: String?
     let giocatori: [GiocatoreInCorso]
     let sostituzioni: [CambioPanchina]
     let partite: ContoPartite?
 
     private enum Chiavi: String, CodingKey {
         case giornata, giornataLega, formazioneDi, puntiFatti, puntiAttesiRestanti, puntiPrevisti, modificatore, ancoraDaGiocare
-        case situazione, giocatori, sostituzioni, partite
+        case situazione, situazioneBreve, giocatori, sostituzioni, partite
     }
 
     init(giornata: Int? = nil, giornataLega: Int? = nil, formazioneDi: String? = nil, puntiFatti: Double? = nil,
          puntiAttesiRestanti: Double? = nil, puntiPrevisti: Double? = nil, modificatore: Double? = nil, ancoraDaGiocare: Int? = nil,
-         situazione: String? = nil, giocatori: [GiocatoreInCorso] = [], sostituzioni: [CambioPanchina] = [],
-         partite: ContoPartite? = nil) {
+         situazione: String? = nil, situazioneBreve: String? = nil, giocatori: [GiocatoreInCorso] = [],
+         sostituzioni: [CambioPanchina] = [], partite: ContoPartite? = nil) {
         self.giornata = giornata; self.giornataLega = giornataLega; self.formazioneDi = formazioneDi; self.puntiFatti = puntiFatti
         self.puntiAttesiRestanti = puntiAttesiRestanti; self.puntiPrevisti = puntiPrevisti; self.modificatore = modificatore
-        self.ancoraDaGiocare = ancoraDaGiocare; self.situazione = situazione; self.giocatori = giocatori
+        self.ancoraDaGiocare = ancoraDaGiocare; self.situazione = situazione; self.situazioneBreve = situazioneBreve
+        self.giocatori = giocatori
         self.sostituzioni = sostituzioni; self.partite = partite
     }
 
     /// La frase del server sotto i punti senza spazi ai lati; nil se manca o è vuota (server di prima).
     var testoSituazione: String? {
         let t = situazione?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return t.isEmpty ? nil : t
+    }
+
+    /// La riga breve per il widget medio senza spazi ai lati; nil se manca o è vuota (riga già corta, server di prima, `/api/oggi`).
+    var testoSituazioneBreve: String? {
+        let t = situazioneBreve?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return t.isEmpty ? nil : t
     }
 
@@ -1224,6 +1242,7 @@ struct GiornataInCorso: Decodable, Equatable {
         modificatore = k.facoltativo(Double.self, .modificatore)
         ancoraDaGiocare = k.facoltativo(Int.self, .ancoraDaGiocare)
         situazione = k.facoltativo(String.self, .situazione)
+        situazioneBreve = k.facoltativo(String.self, .situazioneBreve)
         giocatori = k.elenco(GiocatoreInCorso.self, .giocatori)
         sostituzioni = k.elenco(CambioPanchina.self, .sostituzioni)
         partite = k.facoltativo(ContoPartite.self, .partite)

@@ -1070,14 +1070,8 @@ function rileggiFormazione() {
 // Anticipi già cominciati (#373): chi gioca una partita già cominciata non si sposta più (campo `bloccati` di GET /api/formazione;
 // manca senza anticipi cominciati e con un server vecchio). Il server rifiuta comunque un salvataggio che ne sposta uno.
 const giocatoriFermi = f => new Set((Array.isArray(f && f.bloccati) ? f.bloccati : []).map(Number));
-// Chi può prendere il posto di `base`: stesso ruolo, non già fra i titolari (`dentro`) e non fermo, il migliore per punti attesi in
-// cima. Nessuno se `base` stesso è fermo.
-function sostituti(f, base, dentro) {
-  const fermi = giocatoriFermi(f);
-  if (fermi.has(Number(base.id))) return [];
-  return Object.values(f.schede).filter(x => x.ruolo === base.ruolo && !dentro.has(x.id) && !fermi.has(Number(x.id)))
-    .sort((a, b) => b.punti_attesi - a.punti_attesi);
-}
+// Chi può prendere il posto di un titolare lo dice il server (POST /api/formazione/sostituisci, `apriSostituzione`): stesso ruolo,
+// non già fra i titolari e non fermo, con i punti attesi della formazione dopo il cambio.
 // La Formazione si ridisegna (modulo, «Torna alla consigliata», un salvataggio arrivato): la sostituzione di un titolare aperta
 // (`data-sostituzione`, anche l'elenco di «Metti in campo») si chiude, perché i suoi candidati erano quelli della formazione di
 // prima. Le schede dei giocatori restano.
@@ -1252,6 +1246,24 @@ function mostraFormazione(b, squadra, opz = {}) {
     if (await rileggiFormazione() && stato.scelta && !stato.scelta.sola) avviso(e.message, 8000);
   };
 
+  // Dopo una scrittura riuscita sulla scelta le decisioni in cima si rileggono dal server (/api/oggi, come l'iPhone con
+  // `rileggiDopoUnSalvataggio`): il numero di un cambio proposto (`differenza`) è calcolato sulla formazione salvata, e un cambio
+  // che con la formazione nuova scende sotto la soglia il server non lo propone più (revisione della #928). Vale solo se nel
+  // frattempo non è partita un'altra scrittura e la schermata è la stessa; la pagina si ridisegna solo se le decisioni sono
+  // cambiate, e non con un elenco di «Sostituisci» o «Metti in campo» aperto (lo chiuderebbe: le decisioni nuove compaiono al
+  // prossimo disegno). Se la lettura non riesce restano quelle di prima, come sull'iPhone.
+  const rileggiDecisioni = async n => {
+    if (!o) return;
+    let nuova;
+    try { nuova = await api("/api/oggi"); } catch { return; }
+    if (!qui(n) || !nuova || !Array.isArray(nuova.da_fare)) return;
+    const prima = JSON.stringify(o.da_fare || []);
+    o.da_fare = nuova.da_fare;
+    const foglio = $("#foglio");
+    const elencoAperto = !!foglio && !foglio.hidden && !!$("#foglio-contenuto [data-sostituzione]");
+    if (JSON.stringify(nuova.da_fare) !== prima && !elencoAperto) disegna(true);
+  };
+
   // Cambia gli 11 (una sostituzione, un altro modulo, la spunta «L'ho messa»): il server li valuta e li salva subito. Una richiesta
   // alla volta: se nel frattempo ne parte un'altra, la risposta di prima si ignora. `messa`: vero o falso dalla spunta; senza, resta
   // com'era finché gli 11 sono gli stessi (la stessa regola del server, scelte.salva).
@@ -1271,6 +1283,7 @@ function mostraFormazione(b, squadra, opz = {}) {
       ricorda(m ? null : r);
       if (fuoco) sc.fuoco = fuoco;
       disegna(true);
+      rileggiDecisioni(n);
       return true;
     } catch (e) {
       if (e.status === 412) { cambiataAltrove(e); return false; }
@@ -1291,6 +1304,7 @@ function mostraFormazione(b, squadra, opz = {}) {
       sc.manuale = null; sc.salvata = null; sc.nonValida = false;
       ricorda();
       disegna(true);
+      rileggiDecisioni(n);
     } catch (e) {
       if (e.status === 412) { cambiataAltrove(e); return; }
       if (!qui(n)) { if (altrove(n)) avviso(nonSalvata(e), 5000); return; }
@@ -1358,10 +1372,10 @@ function mostraFormazione(b, squadra, opz = {}) {
     const vale = v => v.tipo === "dubbio" ? !chiusa && !!v.giocatore && m.titolari.includes(Number(v.giocatore.id)) && !m.titolari.includes(Number(v.alternativa.id))
       : dfConsigliataCambiata(v) ? !chiusa && !!sc.salvata && diversi(m) > 0 : true;
     const decisioni = mia && o ? dfDecisioni(o.da_fare, vale) : [];
-    // «+0,9 punti»: quanto vale in più, da solo, il sostituto proposto rispetto al titolare (i punti attesi sono quelli del server)
+    // «+1,3 punti attesi»: quanto guadagna la formazione con il cambio proposto (`differenza` della voce, numero del server: fatto il
+    // cambio i punti attesi accanto al modulo cambiano di tanto), non la differenza fra i due giocatori (collaudo del 26/11)
     const guadagno = v => {
-      const x = v.tipo === "dubbio" && v.giocatore ? scheda(v.giocatore.id) : null;
-      const d = x && v.alternativa ? v.alternativa.punti_attesi - x.punti_attesi : NaN;
+      const d = v.tipo === "dubbio" && v.alternativa ? Number(v.differenza) : NaN;
       return Number.isFinite(d) && d >= 0.05 ? t("formazione.decisione_punti", { d: segno(d, 1) }) : "";
     };
     const moduli = l.moduli.some(x => x.modulo === m.modulo) ? l.moduli : [...l.moduli, m];
@@ -1622,7 +1636,9 @@ function riempiScheda(s, cal) {
     ? tile(perc(pr.porta_inviolata), t("mercato.porta_inviolata")) + tile(num(pr.gol_avversario, 1), t("mercato.gol_subiti_attesi")) + tile(perc(pr.p_giallo), t("mercato.giallo"))
     : tile(perc(pr.p_gol), t("mercato.segna")) + tile(perc(pr.p_assist), t("mercato.assist")) + tile(perc(pr.p_giallo), t("mercato.giallo")) + tile(perc(pr.p_rosso), t("mercato.rosso"));
   const motivi = pr && !iniziataP ? motiviUtili(pr).filter(senzaPercentuale) : [];
-  // fin dove arrivano i dati della fonte delle statistiche avanzate (#862): con la fonte ferma i numeri restano quelli di quel giorno
+  // fin dove arrivano i dati della fonte delle statistiche avanzate (#862): con la fonte ferma i numeri restano quelli di quel giorno.
+  // Una volta sola, in fondo (#911): vale per «Gol e assist rispetto alle occasioni» e per «Statistiche avanzate», stessa fonte; non
+  // in cima, perché «Stagione» e i voti vengono da un'altra fonte, che va avanti. Il rendimento c'è solo con `av.minuti`, come le avanzate.
   const finoAl = av && giornoMese(av.dati_fino_al) ? t("mercato.dati_fino_al", { data: giornoMese(av.dati_fino_al) }) : "";
   numeri.innerHTML = `
     <div class="etichette"><span class="etichetta ${s.proprietario ? "neutra" : "arancio"}">${s.proprietario ? esc(s.proprietario) : t("mercato.svincolato")}</span><span class="etichetta neutra">${t("mercato.quot", { n: c.quotazione })}</span></div>
@@ -1637,16 +1653,17 @@ function riempiScheda(s, cal) {
     ${s.rendimento ? `<h3>${t("mercato.rende_sopra_sotto")}</h3>
       <div class="grande ${s.rendimento.sovra_rendimento > 0.3 ? "positivo" : s.rendimento.sovra_rendimento < -0.3 ? "negativo" : ""}">${segno(s.rendimento.sovra_rendimento, 2)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.punti_partita")}</span></div>
       <div class="debole piccolo">${t("mercato.rendimento_riga", { g: segno(s.rendimento.gol_meno_xg), a: segno(s.rendimento.assist_meno_xa) })}
-        ${t(s.rendimento.sovra_rendimento > 0.3 ? "mercato.rend_cala" : s.rendimento.sovra_rendimento < -0.3 ? "mercato.rend_sblocca" : "mercato.rend_linea")} ${finoAl}</div>` : ""}
+        ${t(s.rendimento.sovra_rendimento > 0.3 ? "mercato.rend_cala" : s.rendimento.sovra_rendimento < -0.3 ? "mercato.rend_sblocca" : "mercato.rend_linea")}</div>` : ""}
     <h3>${t("mercato.stagione")}</h3><div class="statistiche">
       ${tile(`${st.presenze}/${st.giornate_giocate_serie_a}`, t("mercato.presenze"))}${tile(num(st.media_voto, 2), t("mercato.media_voto"))}${tile(num(st.fantamedia, 2), t("mercato.fantamedia"))}
       ${tile(st.gol + st.rig_segnati, t("mercato.gol_rig", { n: st.rig_segnati }))}${tile(st.assist, tp("mercato.n_assist", st.assist))}${tile(`${st.ammonizioni}/${st.espulsioni}`, t("mercato.gialli_rossi"))}
       ${c.ruolo === "P" ? tile(st.gol_subiti, t("mercato.gol_subiti")) + tile(st.rig_parati, t("mercato.rigori_parati")) : ""}</div>
-    ${av && av.minuti ? `<h3>${t("mercato.statistiche_avanzate")}</h3>${finoAl ? `<div class="debole piccolo" style="margin-bottom:8px">${finoAl}</div>` : ""}<div class="statistiche">
+    ${av && av.minuti ? `<h3>${t("mercato.statistiche_avanzate")}</h3><div class="statistiche">
       ${tile(num(av.xg, 2), t("mercato.gol_attesi_tot"))}${tile(num(av.xa, 2), t("mercato.assist_attesi_tot"))}${tile(`${av.minuti}'`, t("mercato.minuti"))}
       ${tile(num(av.per_90?.xg, 2), t("mercato.xg_90"))}${tile(num(av.per_90?.xa, 2), t("mercato.xa_90"))}${tile(num(av.per_90?.tiri, 1), t("mercato.tiri_90"))}
       ${tile(av.rigori_calciati, t("mercato.rigori_calciati"))}${tile(av.passaggi_chiave, t("mercato.passaggi_chiave"))}${tile(av.punizioni, t("mercato.punizioni"))}</div>
-      ${(av.stagioni_precedenti || []).map(p => `<div class="debole piccolo" style="margin-top:8px">${t("mercato.stagione_prec", { s: esc(p.stagione), m: p.minuti, g: p.gol, xg: num(p.xg), a: p.assist, xa: num(p.xa) })}</div>`).join("")}` : ""}`;
+      ${(av.stagioni_precedenti || []).map(p => `<div class="debole piccolo" style="margin-top:8px">${t("mercato.stagione_prec", { s: esc(p.stagione), m: p.minuti, g: p.gol, xg: num(p.xg), a: p.assist, xa: num(p.xa) })}</div>`).join("")}
+      ${finoAl ? `<div class="debole piccolo" style="margin-top:12px">${finoAl}</div>` : ""}` : ""}`;
   numeri.removeAttribute("aria-busy");
 }
 
@@ -1681,25 +1698,49 @@ const giocaPoco = x => {
     ? `<span class="etichetta ${classeGioca(q) === "basso" ? "rossa" : "arancio"}">${t("giocatore.gioca", { p: perc(q) })}</span>` : "";
 };
 
-// «Sostituisci» (dalla scheda di un titolare): i compagni dello stesso ruolo che non sono titolari, il migliore in cima, ognuno con
-// i punti attesi in più o in meno rispetto a lui: è già il confronto, in una riga. Un tocco fa il cambio, che si salva da solo.
-function apriSostituzione(id) {
+// «Sostituisci» (dalla scheda di un titolare): chi può prendere il suo posto lo dice il server (POST /api/formazione/sostituisci, con
+// gli 11 in pagina): i compagni dello stesso ruolo che non sono titolari, dal cambio che rende di più. Il numero grande di ogni riga
+// sono i punti attesi della formazione in più o in meno con quel cambio (numero del server, la valutazione di POST
+// /api/formazione/valuta: fatto il cambio i punti attesi accanto al modulo cambiano di tanto). Prima era la differenza fra i due
+// giocatori, che non tornava: se il titolare non gioca entra già uno dalla panchina (collaudo del 26/11). Sotto il nome «gioca N%»,
+// lo stato e il posto in formazione. Un tocco fa il cambio, che si salva da solo. Il contrario di «Metti in campo», con gli stessi errori.
+async function apriSostituzione(id) {
   const fz = stato.vista === "formazione" ? stato.formaz : null, base = fz && fz.scheda(id);
   if (!base || !fz.sostituibile(Number(id)) || !fz.pronta()) return;
-  ultimaScheda++;                                                         // una scheda ancora in arrivo non prende il posto dell'elenco
-  const candidati = sostituti(fz.f, base, new Set(fz.modulo.titolari)).map(x => fz.scheda(x.id));
-  const riga = x => {
-    const d = x.punti_attesi - base.punti_attesi;
-    return `<li class="riga-gioc"><button class="voce voce-g" data-entra="${x.id}">${volto(x)}
+  const numero = ++ultimaScheda;                                          // una scheda ancora in arrivo non prende il posto dell'elenco
+  const testa = `<h2 class="titolo-foglio">${t("formazione.al_posto_di", { nome: esc(base.nome) })}</h2>
+    <div class="debole piccolo">${t("formazione.sost_spiega", { nome: esc(base.nome) })}</div>`;
+  apriFoglio(`${testa}<div data-sostituzione aria-busy="true"><div class="debole" style="margin-top:12px">${t("comune.carico")}</div></div>`, { affianco: true });   // accanto al campo, da 1200 px
+  // la risposta vale per questa scheda e per la formazione da cui è partita (come «Metti in campo»)
+  const aperto = () => { const foglio = $("#foglio"); return !foglio.hidden && !foglio.classList.contains("chiude"); };
+  const ancoraLei = () => numero === ultimaScheda && stato.formaz === fz && aperto() && !!$("#foglio-contenuto [data-sostituzione]");
+  let r;
+  try {
+    r = await api("/api/formazione/sostituisci", { method: "POST",
+      body: JSON.stringify({ esce: Number(id), titolari: fz.modulo.titolari.map(Number), giornata: fz.f.giornata }) });
+  } catch (e) {
+    if (!ancoraLei()) return;
+    if (e.codice === "formazione_chiusa") { chiudiFoglio(); avviso(e.message, 5000); rileggiFormazione(); return; }   // scadenza passata con la pagina aperta
+    const dove = $("#foglio-contenuto [data-sostituzione]");
+    // la sua partita è cominciata e la pagina non lo sapeva ancora: la frase del server, come informazione al posto dell'elenco
+    dove.innerHTML = e.codice === "giocatore_bloccato" ? `<p class="debole" role="status" style="margin-top:12px">${esc(e.message)}</p>` : errore(e);
+    dove.removeAttribute("aria-busy");
+    return;
+  }
+  if (!ancoraLei()) return;
+  const entrate = (Array.isArray(r && r.entrate) ? r.entrate : [])
+    .filter(e => e && !fz.modulo.titolari.includes(Number(e.entra)) && fz.scheda(e.entra)).map(e => ({ ...e, x: fz.scheda(e.entra) }));
+  const riga = ({ x, differenza }) => {
+    const d = Number(differenza);
+    return `<li class="riga-gioc"><button class="voce voce-g" data-entra="${Number(x.id)}">${volto(x)}
       <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${esc(x.nome)}</span></span>
         <span class="dettaglio">${lineetta(x.squadra)}${pezziRiga([x.avversario ? partitaBreve(x) : sigla(x.squadra), postoInFormazione(x.id)])}</span>
         <span class="etichette">${etichetteGiocatore(x, giocaPoco(x))}</span></span>
-      <span class="valore"><b class="${d > 0.04 ? "positivo" : ""}">${segno(d, 1)}</b><span class="solo-lettori"> ${t("formazione.punti_rispetto", { nome: esc(base.nome) })}</span></span>
+      ${Number.isFinite(d) ? `<span class="valore"><b class="${d > 0 ? "positivo" : ""}">${segno(d, 1)}</b><span class="solo-lettori"> ${t("formazione.punti_rispetto", { nome: esc(base.nome) })}</span></span>` : ""}
       <span class="pv-g">${t("formazione.fv_atteso_breve", { fv: num(x.fv_atteso) })}</span></button></li>`;
   };
-  apriFoglio(`<h2 class="titolo-foglio">${t("formazione.al_posto_di", { nome: esc(base.nome) })}</h2>
-    <div class="debole piccolo">${t("formazione.sost_spiega", { nome: esc(base.nome) })}</div>
-    <div data-sostituzione>${candidati.length ? `<ul class="elenco" style="margin-top:8px">${candidati.map(riga).join("")}</ul>` : `<div class="debole" style="margin-top:12px">${t("formazione.nessun_altro_giocatore")}</div>`}</div>`, { affianco: true });   // accanto al campo, da 1200 px
+  apriFoglio(`${testa}<div data-sostituzione>${entrate.length ? `<ul class="elenco" style="margin-top:8px">${entrate.map(riga).join("")}</ul>`
+    : `<div class="debole" style="margin-top:12px">${t("formazione.nessun_altro_giocatore")}</div>`}</div>`, { affianco: true });
   document.querySelectorAll("#foglio-contenuto [data-entra]").forEach(b => b.addEventListener("click", () => {
     // con il pannello affiancato la pagina resta attiva: nel frattempo il modulo o «Torna alla consigliata» possono aver cambiato
     // la formazione. Si chiude comunque; il cambio si fa solo se il titolare c'è ancora.

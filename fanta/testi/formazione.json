@@ -252,16 +252,16 @@
     "en": "This match"
   },
   "formazione.punti_rispetto": {
-    "it": "punti attesi rispetto a {nome}",
-    "en": "expected points compared with {nome}"
+    "it": "punti attesi della formazione con lui al posto di {nome}",
+    "en": "lineup expected points with him instead of {nome}"
   },
   "formazione.fv_atteso_breve": {
     "it": "atteso {fv}",
     "en": "expected {fv}"
   },
   "formazione.sost_spiega": {
-    "it": "Stesso ruolo, dalla tua rosa. Il numero grande sono i punti attesi in più o in meno rispetto a {nome}.",
-    "en": "Same role, from your roster. The big number is the expected points more or less than {nome}."
+    "it": "Stesso ruolo, dalla tua rosa. Il numero grande sono i punti attesi della formazione in più o in meno se {nome} esce e gioca lui.",
+    "en": "Same role, from your roster. The big number is the lineup's expected points more or less if {nome} comes out and he plays."
   },
   "formazione.metti_in_campo": {
     "it": "Metti in campo",
