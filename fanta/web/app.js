@@ -4517,6 +4517,17 @@ if ("serviceWorker" in navigator && (location.protocol === "https:" || location.
     const v = e.data && e.data.tipo === "apri" ? String(e.data.vista || "") : "";
     if (v) vai(v);
   });
+  // Una web installata può restare aperta in memoria per giorni, e il browser cerca una versione nuova solo quando si apre una pagina
+  // (collaudo del 26/11). Quando l'app torna in primo piano la cerca lei, al massimo una volta ogni CONTROLLO_VERSIONE_MS: la versione
+  // nuova si installa e prende il posto della vecchia, la pagina aperta resta com'è (con «Ricarica», qui sopra) e al prossimo
+  // caricamento si apre la versione nuova. Chi sta lavorando non viene interrotto.
+  const CONTROLLO_VERSIONE_MS = 3 * 3600 * 1000;
+  let ultimoControllo = Date.now();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || Math.abs(Date.now() - ultimoControllo) < CONTROLLO_VERSIONE_MS) return;
+    ultimoControllo = Date.now();
+    registrazioneSW.then(r => r && r.update()).catch(() => { /* senza rete o senza service worker: alla prossima volta */ });
+  });
 }
 // La prima schermata: quella dell'indirizzo (anche di una versione di prima: dove()); senza, l'ultima aperta fra Formazione e Giornate.
 // Un altro nome salvato da una versione di prima (Squadra, Altro, Oggi...) vale la Formazione: si riapre per schierare.
