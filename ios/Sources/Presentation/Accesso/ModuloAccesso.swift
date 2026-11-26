@@ -36,10 +36,10 @@ enum MetodoRecupero: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Come la web: con la registrazione a invito, o con la posta spenta sul server, si parte dal codice di recupero;
-    /// altrimenti dall'email.
+    /// Come la web: si parte dall'email solo dove ce l'hanno tutti (modo `email`) e con la posta accesa; con l'invito o la
+    /// registrazione aperta (email facoltativa) dal codice di recupero.
     static func iniziale(_ modo: ModalitaRegistrazione, postaAccesa: Bool = true) -> MetodoRecupero {
-        modo == .invito || !postaAccesa ? .codice : .email
+        modo.chiedeEmail && postaAccesa ? .email : .codice
     }
 }
 
@@ -112,12 +112,13 @@ struct ModuloAccesso: Equatable {
     /// I campi del modulo, nell'ordine della web (l'invio dalla tastiera passa al campo dopo; dall'ultimo manda il modulo).
     enum Campo: Hashable { case invito, nome, email, password, codice, codiceEmail }
 
-    /// `postaAccesa` falso (il server non manda email): con l'invito l'email non si chiede, come la web.
+    /// `postaAccesa` falso (il server non manda email): dove l'email è facoltativa (invito, registrazione aperta) non si chiede,
+    /// come la web.
     func campi(_ modo: ModalitaRegistrazione, postaAccesa: Bool = true) -> [Campo] {
         switch passo {
         case .accedi: return [.nome, .password]
         case .registra:
-            let conEmail = postaAccesa || modo != .invito
+            let conEmail = postaAccesa || modo.chiedeEmail
             let base: [Campo] = conEmail ? [.nome, .email, .password] : [.nome, .password]
             return modo.chiedeInvito ? [Campo.invito] + base : base
         case .verificaIscrizione: return [.codiceEmail]
@@ -203,7 +204,7 @@ struct ModuloAccesso: Equatable {
             switch modo {
             case .invito: return Catalogo.Accesso.serveInvito
             case .email: return Catalogo.Accesso.serveInvitoEmail
-            case .aperta: return Catalogo.Accesso.serveEmail
+            case .aperta: return Catalogo.Accesso.registrazioneAperta
             }
         case .verificaIscrizione:
             return Catalogo.Accesso.verificaSpiega(email: iscrizione?.email ?? "")

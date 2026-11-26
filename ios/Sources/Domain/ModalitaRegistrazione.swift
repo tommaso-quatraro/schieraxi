@@ -1,7 +1,8 @@
 import Foundation
 
-/// Come ci si registra su un server (campo `registrazione` della risposta 401): serve l'invito, l'email verificata con un codice,
-/// oppure entrambe (`email`: invito ed email) o niente invito (`aperta`: email verificata, invito facoltativo).
+/// Come ci si registra su un server (campo `registrazione` della risposta 401): serve l'invito (`invito`), l'invito e l'email
+/// verificata con un codice (`email`), oppure niente (`aperta`, il modo predefinito del server dal 26/11/2026: nome utente e
+/// password, email facoltativa come con l'invito).
 enum ModalitaRegistrazione: String, Equatable {
     case invito, email, aperta
 
@@ -35,7 +36,8 @@ enum ModalitaRegistrazione: String, Equatable {
 
     var chiedeInvito: Bool { self != .aperta }
     var invitoObbligatorio: Bool { self != .aperta }
-    var chiedeEmail: Bool { self != .invito }
+    /// L'email obbligatoria (verificata con il codice per posta prima che l'account nasca): solo con il modo `email`.
+    var chiedeEmail: Bool { self == .email }
 }
 
 /// Registrazione con email a metà: l'account nasce quando arriva il codice.

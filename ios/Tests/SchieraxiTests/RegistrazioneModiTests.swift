@@ -20,7 +20,8 @@ final class RegistrazioneModiTests: XCTestCase {
         XCTAssertTrue(ModalitaRegistrazione.email.invitoObbligatorio)
         XCTAssertTrue(ModalitaRegistrazione.email.chiedeEmail)
         XCTAssertFalse(ModalitaRegistrazione.aperta.invitoObbligatorio)
-        XCTAssertTrue(ModalitaRegistrazione.aperta.chiedeEmail)
+        XCTAssertFalse(ModalitaRegistrazione.aperta.chiedeInvito)
+        XCTAssertFalse(ModalitaRegistrazione.aperta.chiedeEmail, "registrazione aperta: l'email è facoltativa, come con l'invito")
     }
 
     func testLaRispostaDellIscrizioneConEmailSiLegge() throws {
