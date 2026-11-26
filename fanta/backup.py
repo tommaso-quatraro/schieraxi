@@ -208,7 +208,7 @@ def _rose(d: Any) -> None:
     r = lega.da_dict(d)
     giusti = (_corto(r.mia_squadra) and _corto(r.aggiornato)
               and all(_corto(s.nome) and _corto(s.nome_importato) for s in r.squadre)
-              and all(_corto(g.nome) and _corto(g.ruolo) and _corto(g.squadra) and _corto(g.riconosciuto)
+              and all(_corto(g.nome) and _corto(g.ruolo) and _corto(g.squadra) and _corto(g.riconosciuto) and _corto(g.testo)
                       and _corto(g.avviso, MAX_AVVISO_ROSE) for s in r.squadre for g in s.giocatori))
     if not giusti:
         raise ValueError("formato non riconosciuto")

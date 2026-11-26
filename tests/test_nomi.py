@@ -175,6 +175,17 @@ def test_nome_e_cognome_per_esteso(indice):
     assert e.metodo == "ambiguo" and {c.id for c in e.alternative} == {6, 7}
 
 
+def test_secondo_nome_proprio_con_club_e_ruolo(indice):
+    """Collaudo del 26/11: «Pio Esposito», attaccante dell'Inter, è «Esposito F.P.» (Francesco Pio). Il nome proprio scritto è
+    il secondo del listone: con club e ruolo giusti e un solo candidato si risolve da solo, senza è una proposta."""
+    e = indice.cerca("Pio Esposito", "Inter", "A")
+    assert (e.metodo, e.calciatore.id, e.avviso) == ("esatto", 9, "")
+    e = indice.cerca("Pio Esposito")
+    assert (e.metodo, e.calciatore.id) == ("abbreviato", 9)
+    assert indice.cerca("Esposito Pio", "INT", "A").calciatore.id == 9
+    assert not indice.cerca("Pio Esposito", "Inter", "D").metodo == "esatto"      # ruolo diverso: mai sicuro
+
+
 def test_iniziale_in_piu_con_il_cognome_nudo(indice):
     for testo in ("Kean M.", "M. Kean", "Kean M"):
         e = indice.cerca(testo)
