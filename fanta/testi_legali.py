@@ -14,7 +14,7 @@ Si configurano con variabili d'ambiente:
                    (per esempio nginx con logrotate «rotate 14»: 15); se non indicato: «un tempo limitato»;
   FANTA_HOSTING    chi ospita il server e dove (per esempio «Aruba S.p.A., in Italia»); se non indicato, una frase generica.
   FANTA_POSTA_FORNITORE  chi spedisce le email e dove (per esempio «IONOS SE, in Germania»); se non indicato, «se sono attive».
-Il testo cambia da solo secondo il modo di iscrizione (FANTA_REGISTRAZIONE). Nessuna promessa su ricavi o scopo di lucro.
+Il testo cambia da solo secondo il modo di iscrizione (FANTA_REGISTRAZIONE: aperta, invito o email). Nessuna promessa su ricavi o scopo di lucro.
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ TESTI: dict[str, dict] = {
         "altra_termini": "Termini d'uso",
         "altra_crediti": "Crediti e fonti",
         "altra_elimina": "Elimina il tuo account",
-        "contatto_manca": "chi gestisce l'app (di solito la persona che ti ha dato il codice d'invito)",
+        "contatto_manca": "chi gestisce l'app",
         "titolare_manca": "chi gestisce questa copia dell'app (la persona o l'organizzazione indicata da chi te l'ha proposta)",
         "backup_manca": "un tempo limitato",
         "backup_giorni": "al massimo {n} giorni",
@@ -42,10 +42,10 @@ TESTI: dict[str, dict] = {
         "posta_manca": "se sono attive",
         "iscrizione_invito": "Per iscriverti serve un codice d'invito. L'account è personale: non darlo ad altri.",
         "iscrizione_email": "Per iscriverti serve un codice d'invito e un indirizzo email, che verifichi con un codice. L'account è personale: non darlo ad altri.",
-        "iscrizione_aperta": "Per iscriverti serve un indirizzo email, che verifichi con un codice (oppure un codice d'invito). L'account è personale: non darlo ad altri.",
+        "iscrizione_aperta": "Per iscriverti bastano un nome utente e una password. L'account è personale: non darlo ad altri.",
         "email_invito": "L'email è facoltativa: puoi aggiungerla per recuperare l'accesso. Se la aggiungi la usiamo solo per i codici di verifica e di recupero e per gli avvisi di sicurezza (per esempio un accesso da un dispositivo nuovo): niente newsletter né pubblicità.",
         "email_email": "L'indirizzo email è richiesto per iscriverti e per recuperare l'accesso: lo usiamo solo per i codici di verifica e di recupero e per gli avvisi di sicurezza (per esempio un accesso da un dispositivo nuovo): niente newsletter né pubblicità.",
-        "email_aperta": "L'indirizzo email è richiesto per iscriverti e per recuperare l'accesso: lo usiamo solo per i codici di verifica e di recupero e per gli avvisi di sicurezza (per esempio un accesso da un dispositivo nuovo): niente newsletter né pubblicità.",
+        "email_aperta": "L'email è facoltativa: puoi aggiungerla per recuperare l'accesso. Se la aggiungi la usiamo solo per i codici di verifica e di recupero e per gli avvisi di sicurezza (per esempio un accesso da un dispositivo nuovo): niente newsletter né pubblicità.",
         "titolo_privacy": "Privacy: quali dati raccoglie SchieraXI",
         "titolo_termini": "Termini d'uso di SchieraXI",
         "titolo_crediti": "Crediti e fonti",
@@ -236,7 +236,7 @@ TESTI: dict[str, dict] = {
         "altra_termini": "Terms of use",
         "altra_crediti": "Credits and sources",
         "altra_elimina": "Delete your account",
-        "contatto_manca": "whoever runs the app (usually the person who gave you the invitation code)",
+        "contatto_manca": "whoever runs the app",
         "titolare_manca": "whoever runs this copy of the app (the person or organisation named by whoever offered it to you)",
         "backup_manca": "a limited time",
         "backup_giorni": "at most {n} days",
@@ -244,10 +244,10 @@ TESTI: dict[str, dict] = {
         "posta_manca": "if active",
         "iscrizione_invito": "To sign up you need an invitation code. The account is personal: do not give it to others.",
         "iscrizione_email": "To sign up you need an invitation code and an email address, which you verify with a code. The account is personal: do not give it to others.",
-        "iscrizione_aperta": "To sign up you need an email address, which you verify with a code (or an invitation code). The account is personal: do not give it to others.",
+        "iscrizione_aperta": "To sign up you only need a username and a password. The account is personal: do not give it to others.",
         "email_invito": "The email is optional: you can add it to recover your access. If you add it we use it only for verification and recovery codes and for security alerts (for example a sign-in from a new device): no newsletters and no advertising.",
         "email_email": "The email address is required to sign up and to recover your access: we use it only for verification and recovery codes and for security alerts (for example a sign-in from a new device): no newsletters and no advertising.",
-        "email_aperta": "The email address is required to sign up and to recover your access: we use it only for verification and recovery codes and for security alerts (for example a sign-in from a new device): no newsletters and no advertising.",
+        "email_aperta": "The email is optional: you can add it to recover your access. If you add it we use it only for verification and recovery codes and for security alerts (for example a sign-in from a new device): no newsletters and no advertising.",
         "titolo_privacy": "Privacy: what data SchieraXI collects",
         "titolo_termini": "SchieraXI terms of use",
         "titolo_crediti": "Credits and sources",

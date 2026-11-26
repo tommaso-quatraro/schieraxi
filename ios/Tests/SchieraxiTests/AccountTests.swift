@@ -382,6 +382,23 @@ final class SessioneAccountTests: XCTestCase {
         XCTAssertNil(s.codiceDaMostrare)
     }
 
+    /// La registrazione aperta (decisione del 26/11/2026): niente invito e niente email, l'account nasce subito con il codice di
+    /// recupero. Nel corpo non partono né l'invito né l'email vuota.
+    func testRegistrazioneApertaSenzaInvitoNeEmailApreSubitoLAccount() async throws {
+        memoria.set(true, forKey: "account.multiutente")
+        let server = serverAccount()
+        let s = sessione(server)
+        let attesa = try await s.registra(nomeUtente: "mister.rossi", password: "Prova-Finta-Zero", invito: "", email: "")
+        XCTAssertNil(attesa, "nessun codice per posta da aspettare")
+        XCTAssertEqual(s.codiceDaMostrare, "AAAAA-BBBBB-CCCCC")
+        XCTAssertNotNil(s.utente)
+        XCTAssertEqual(archivio.leggi(server: server.indirizzo), "tok-2")
+        let corpo = try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(server.corpiInviati(a: "/registra").first)) as? [String: Any])
+        XCTAssertNil(corpo["invito"], "senza invito: non si manda")
+        XCTAssertNil(corpo["email"], "email vuota: non si manda")
+        XCTAssertEqual(corpo["accetto_termini"] as? Bool, true)
+    }
+
     func testRecuperoRestituisceIlNuovoCodiceEMandaMaiuscolo() async throws {
         let server = serverAccount()
         let s = sessione(server)

@@ -598,8 +598,8 @@ final class SessioneAccount: ObservableObject {
         try conferma(r)
     }
 
-    /// Crea l'account. Con l'invito (e senza email) l'account nasce subito e il codice di recupero finisce in `codiceDaMostrare`.
-    /// Con l'email (server con registrazione «email» o «aperta») nasce solo dopo il codice arrivato per posta: in quel caso
+    /// Crea l'account. Con la registrazione aperta o con l'invito l'account nasce subito (l'email è facoltativa) e il codice di
+    /// recupero finisce in `codiceDaMostrare`. Con il modo «email» nasce solo dopo il codice arrivato per posta: in quel caso
     /// restituisce l'iscrizione in attesa da confermare con `confermaIscrizione`.
     @discardableResult
     func registra(nomeUtente: String, password: String, invito: String = "", email: String? = nil, accettoTermini: Bool = true) async throws -> IscrizioneInAttesa? {

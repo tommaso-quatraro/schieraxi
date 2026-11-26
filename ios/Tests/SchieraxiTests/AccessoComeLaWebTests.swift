@@ -104,12 +104,21 @@ struct PostaSpentaTests {
         #expect(m.emailDaMandare(.invito, postaAccesa: true) == "nome@example.invalid")
     }
 
-    @Test("Con i modi «email» e «aperta» il campo resta (la web lo toglie solo con l'invito)",
-          arguments: [ModalitaRegistrazione.email, .aperta])
-    func modiConEmail(modo: ModalitaRegistrazione) {
-        let m = registrazione(modo)
-        #expect(m.campi(modo, postaAccesa: false).contains(.email))
-        #expect(m.emailDaMandare(modo, postaAccesa: false) == "nome@example.invalid")
+    @Test("Con il modo «email» il campo resta (la web lo toglie dove l'email è facoltativa)")
+    func modoEmailTieneIlCampo() {
+        let m = registrazione(.email)
+        #expect(m.campi(.email, postaAccesa: false).contains(.email))
+        #expect(m.emailDaMandare(.email, postaAccesa: false) == "nome@example.invalid")
+    }
+
+    @Test("Registrazione aperta e posta spenta: niente email, come con l'invito (e come la web)")
+    func apertaSenzaPostaSenzaEmail() {
+        var m = registrazione(.aperta)
+        m.email = "nome@example.invalid"
+        #expect(!m.campi(.aperta, postaAccesa: false).contains(.email))
+        #expect(m.emailDaMandare(.aperta, postaAccesa: false) == "")
+        #expect(m.pronto(.aperta, postaAccesa: false))
+        #expect(m.campi(.aperta, postaAccesa: true) == [.nome, .email, .password])
     }
 
     @Test("Password dimenticata con la posta spenta: solo il codice di recupero, niente «Con l'email»")
@@ -120,8 +129,10 @@ struct PostaSpentaTests {
         #expect(m.passo == .recuperoCodice)
         #expect(!m.mostraMetodi(postaAccesa: false))
         #expect(m.mostraMetodi(postaAccesa: true))
-        #expect(MetodoRecupero.iniziale(.aperta, postaAccesa: true) == .email)
+        #expect(MetodoRecupero.iniziale(.aperta, postaAccesa: true) == .codice, "registrazione aperta: l'email è facoltativa")
         #expect(MetodoRecupero.iniziale(.aperta, postaAccesa: false) == .codice)
+        #expect(MetodoRecupero.iniziale(.email, postaAccesa: true) == .email)
+        #expect(MetodoRecupero.iniziale(.email, postaAccesa: false) == .codice)
         #expect(MetodoRecupero.iniziale(.invito, postaAccesa: true) == .codice)
     }
 }

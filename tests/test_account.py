@@ -141,18 +141,19 @@ def test_tetto_utenti(db, monkeypatch):
     nuovo(db, "uno")
     nuovo(db, "due")
     inv = account.crea_invito(db, "terzo", adesso=ADESSO)
-    assert "numero massimo" in errore(account.registra, db, "tre", PASSWORD, inv, adesso=ADESSO).messaggio
+    assert errore(account.registra, db, "tre", PASSWORD, inv, adesso=ADESSO).messaggio == "Iscrizioni chiuse: siamo al completo"
     monkeypatch.setenv("MAX_UTENTI", "3")
     account.registra(db, "tre", PASSWORD, inv, adesso=ADESSO)
 
 
-def test_tetto_utenti_predefinito_trenta(monkeypatch):
+def test_tetto_utenti_predefinito_quindici(monkeypatch):
+    """Stretto: con la registrazione aperta (predefinita dal 26/11/2026) chiunque trovi il sito può provare a entrare."""
     monkeypatch.delenv("MAX_UTENTI", raising=False)
-    assert account.max_utenti() == 30
+    assert account.max_utenti() == 15
     monkeypatch.setenv("MAX_UTENTI", "boh")
-    assert account.max_utenti() == 30
+    assert account.max_utenti() == 15
     monkeypatch.setenv("MAX_UTENTI", "-4")
-    assert account.max_utenti() == 30
+    assert account.max_utenti() == 15
 
 
 def test_nel_database_non_ci_sono_segreti(db):
