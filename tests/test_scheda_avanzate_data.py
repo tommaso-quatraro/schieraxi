@@ -37,14 +37,14 @@ def test_la_data_e_l_ultima_partita_letta_della_fonte_anche_se_lui_non_ha_giocat
     _partita(db, 3, "2026-11-22 18:00:00", ST, 1)                     # giocata ma mai letta (fonte ferma): non conta
     _partita(db, 4, "2027-05-30 20:45:00", ST, 0)                     # da giocare
     _partita(db, 5, "2026-05-24 20:45:00", "2025-26", 1, 70)          # stagione passata
-    s = scheda.scheda(db, 7, ST)
+    s = scheda.scheda(db, 7, ST, Regole())
     assert s["avanzate"]["minuti"] == 90
     assert s["avanzate"]["dati_fino_al"] == "2026-11-09"
 
 
 def test_senza_partite_lette_nella_stagione_la_data_e_vuota(db):
     _partita(db, 5, "2026-05-24 20:45:00", "2025-26", 1, 70)
-    s = scheda.scheda(db, 7, ST)
+    s = scheda.scheda(db, 7, ST, Regole())
     assert s["avanzate"]["dati_fino_al"] is None
 
 
@@ -84,4 +84,4 @@ def test_rendimento_conta_solo_le_partite_con_voto_fino_al_giorno_della_fonte(tm
 def test_giocatore_senza_abbinamento_niente_statistiche_avanzate(db):
     db.execute("INSERT INTO calciatori (id, nome, ruolo, squadra, squadra_slug) VALUES (9, 'Neri', 'D', 'Genoa', 'genoa')")
     _partita(db, 1, "2026-10-26 20:45:00", ST, 1, 70)
-    assert scheda.scheda(db, 9, ST)["avanzate"] is None
+    assert scheda.scheda(db, 9, ST, Regole())["avanzate"] is None

@@ -1,10 +1,14 @@
 """Scheda di un giocatore: tutto quello che l'archivio sa su di lui, in un dizionario (lo userà anche l'app)."""
 from __future__ import annotations
 
+import logging
 import sqlite3
 from datetime import datetime
 
-FONTI_VOTO = {"redazione": ("voto_red", "fv_red"), "statistico": ("voto_stat", "fv_stat"), "italia": ("voto_ita", "fv_ita")}
+from .punteggio import BONUS_E_MALUS, COLONNA_VOTO, fantavoto
+from .regole import Regole
+
+LOG = logging.getLogger(__name__)
 
 
 def rendimento(avanzate: dict | None, ruolo: str, con_voto: int, regole) -> dict | None:
@@ -28,7 +32,7 @@ def con_voto_fino_al(db: sqlite3.Connection, calciatore_id: int, stagione: str, 
     ferma il numero calava da solo a ogni giornata (#862). 0 senza giorno."""
     if not giorno:
         return 0
-    col_v = FONTI_VOTO[fonte_voto][0]
+    col_v = COLONNA_VOTO[fonte_voto]
     return db.execute(
         f"SELECT COUNT(*) FROM voti v WHERE v.stagione = ? AND v.calciatore_id = ? AND v.{col_v} IS NOT NULL AND EXISTS "
         "(SELECT 1 FROM partite p WHERE p.stagione = v.stagione AND p.giornata = v.giornata "
@@ -52,15 +56,33 @@ def andamento(voti: list[dict]) -> str | None:
     return "in_crescita" if differenza > SOGLIA_ANDAMENTO else "in_calo" if differenza < -SOGLIA_ANDAMENTO else "stabile"
 
 
-def scheda(db: sqlite3.Connection, calciatore_id: int, stagione: str, fonte_voto: str = "redazione") -> dict:
+def _voti(db: sqlite3.Connection, calciatore_id: int, stagione: str, ruolo: str | None, regole: Regole) -> list[dict]:
+    """Le giornate del giocatore con `voto` (quello scelto dalla lega, `fonte_voto`) e `fv`, il fantavoto con i bonus della lega
+    (`punteggio.fantavoto`, lo stesso di Formazione, Oggi e Giornate), mai quello già pronto di Fantacalcio.it con i bonus classici
+    (26/11/2026). `fv` None = senza voto, oppure ruolo senza bonus nelle regole (non P, D, C o A): come `rendimento`, allora il
+    calcolo si salta e il guasto va nel registro."""
+    col_v = COLONNA_VOTO[regole.fonte_voto]
+    calcolabile = ruolo in regole.bonus.gol
+    if not calcolabile:
+        LOG.warning("scheda del giocatore %s: ruolo %r senza bonus nelle regole (non è P, D, C o A), fantavoti non calcolati",
+                    calciatore_id, ruolo)
+    voti = []
+    for r in db.execute(f"SELECT giornata, {col_v} AS voto, {', '.join(BONUS_E_MALUS)}, subentrato, sostituito "
+                        "FROM voti WHERE stagione = ? AND calciatore_id = ? ORDER BY giornata", (stagione, calciatore_id)):
+        v = dict(r)
+        fv = fantavoto({col_v: v["voto"]} | {k: v[k] or 0 for k in BONUS_E_MALUS}, ruolo, regole) if calcolabile else None
+        v.pop("mvp")                                    # la scheda manda gli stessi campi di prima
+        voti.append(v | {"fv": None if fv is None else round(float(fv), 2)})
+    return voti
+
+
+def scheda(db: sqlite3.Connection, calciatore_id: int, stagione: str, regole: Regole) -> dict:
+    """La scheda del giocatore; voti, fantamedia e andamento con le regole della lega (`regole`)."""
     c = db.execute("SELECT * FROM calciatori WHERE id = ?", (calciatore_id,)).fetchone()
     if not c:
         raise ValueError(f"calciatore {calciatore_id} non nel listone")
-    col_v, col_fv = FONTI_VOTO[fonte_voto]
-    voti = [dict(r) for r in db.execute(
-        f"SELECT giornata, {col_v} AS voto, {col_fv} AS fv, gol, assist, ammonizioni, espulsioni, gol_subiti, "
-        "rig_segnati, rig_sbagliati, rig_parati, autogol, subentrato, sostituito "
-        "FROM voti WHERE stagione = ? AND calciatore_id = ? ORDER BY giornata", (stagione, calciatore_id))]
+    voti = _voti(db, calciatore_id, stagione, c["ruolo"], regole)
+    calcolabile = c["ruolo"] in regole.bonus.gol       # senza: niente fantamedia né andamento (vedi `_voti`)
     giornate_giocate = db.execute("SELECT COUNT(DISTINCT giornata) FROM partite WHERE stagione = ? AND giocata = 1",
                                   (stagione,)).fetchone()[0]
     con_voto = [v for v in voti if v["voto"] is not None]
@@ -69,7 +91,7 @@ def scheda(db: sqlite3.Connection, calciatore_id: int, stagione: str, fonte_voto
         "giornate_giocate_serie_a": giornate_giocate,
         "presenze": len(voti), "con_voto": n,
         "media_voto": round(sum(v["voto"] for v in con_voto) / n, 2) if n else None,
-        "fantamedia": round(sum(v["fv"] for v in con_voto) / n, 2) if n else None,
+        "fantamedia": round(sum(v["fv"] for v in con_voto) / n, 2) if n and calcolabile else None,
         **{k: sum(v[k] for v in voti) for k in ("gol", "assist", "ammonizioni", "espulsioni", "gol_subiti",
                                                  "rig_segnati", "rig_sbagliati", "rig_parati", "autogol")},
         "titolare": sum(1 for v in voti if not v["subentrato"]),
@@ -116,7 +138,7 @@ def scheda(db: sqlite3.Connection, calciatore_id: int, stagione: str, fonte_voto
         "calciatore": dict(c),
         "stagione": stagione_fc,
         "voti": voti,
-        "andamento": andamento(voti),
+        "andamento": andamento(voti) if calcolabile else None,
         "avanzate": avanzate,
         "probabile": dict(prob) if prob else None,
         "prossima_partita": dict(prossima) if prossima else None,
