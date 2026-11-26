@@ -29,15 +29,20 @@ struct PromemoriaFusoTests {
         let elenco = Notifiche.promemoriaDaProgrammare(giornata: nome, inizio: scadenza, testi: nil, lettaIl: nil, ore: .predefinite,
                                                        attivi: [60, 15], tace: false, dalServer: false, adesso: adesso)
         #expect(elenco.map(\.id) == ["fanta-60", "fanta-15"])
-        let attese = elenco.map { Notifiche.attivazione(per: $0.quando, adesso: adesso) }
-        #expect(attese.map(\.timeInterval) == [45 * 60, 90 * 60], "45 minuti alle 20:45 italiane, 90 alle 21:30")
-        #expect(attese.allSatisfy { !$0.repeats })
+        let attese: [UNTimeIntervalNotificationTrigger] = elenco.map { Notifiche.attivazione(per: $0.quando, adesso: adesso) }
+        let secondi: [TimeInterval] = attese.map(\.timeInterval)
+        let attesi: [TimeInterval] = [2700, 5400]          // 45 minuti: alle 20:45 italiane; 90 minuti: alle 21:30
+        #expect(secondi == attesi)
+        let ripetute: Bool = attese.contains { $0.repeats }
+        #expect(!ripetute)
     }
 
     @Test("Un promemoria il cui momento è appena passato suona subito: iOS non accetta un'attesa nulla")
     func appenaPassato() {
         let adesso = Date(timeIntervalSince1970: 1_795_000_000)
-        #expect(Notifiche.attivazione(per: adesso.addingTimeInterval(-0.5), adesso: adesso).timeInterval == 1)
-        #expect(Notifiche.attivazione(per: adesso.addingTimeInterval(3600), adesso: adesso).timeInterval == 3600)
+        let passato: TimeInterval = Notifiche.attivazione(per: adesso.addingTimeInterval(-0.5), adesso: adesso).timeInterval
+        let traUnOra: TimeInterval = Notifiche.attivazione(per: adesso.addingTimeInterval(3600), adesso: adesso).timeInterval
+        #expect(passato == 1)
+        #expect(traUnOra == 3600)
     }
 }

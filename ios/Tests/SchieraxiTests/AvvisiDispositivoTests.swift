@@ -220,14 +220,15 @@ struct AvvisiDispositivoTests {
     /// suo promemoria (`promemoria_da` «web»), quindi il telefono non programma il suo e la riga sotto l'interruttore lo dice.
     /// Senza il campo (server di prima) vale la regola di prima: con le sole notifiche della web l'app programma i suoi.
     @Test("Promemoria già dalla web app o da ntfy: il telefono non programma i suoi; la riga d'aiuto lo dice solo per la web app",
-          arguments: zip([Optional("web"), "ntfy", "app", nil], [true, true, false, false]))
+          arguments: zip(["web", "ntfy", "app", nil] as [String?], [true, true, false, false]))
     func promemoriaDa(da: String?, tace: Bool) async throws {
         let telefono = Telefono()
         let vm = AvvisiDispositivoViewModel(server: server(dispositivi: 1, promemoriaDa: da), telefono: telefono.avvisi,
                                             memoria: try memoria())
         await vm.carica()
         #expect(telefono.serverManda.last == tace)
-        #expect(vm.aiutoQui == (da == "web" ? Catalogo.Imp.avvisiQuiAiutoWeb : Catalogo.Imp.avvisiQuiAiutoApp))
+        let riga: String = da == "web" ? Catalogo.Imp.avvisiQuiAiutoWeb : Catalogo.Imp.avvisiQuiAiutoApp
+        #expect(vm.aiutoQui == riga)
     }
 
     @Test("Aprendo la pagina degli avvisi, se per i promemoria è cambiato qualcosa sul server, i promemoria tornano in programma")
