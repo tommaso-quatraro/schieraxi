@@ -605,7 +605,7 @@ final class SessioneAccount: ObservableObject {
     func registra(nomeUtente: String, password: String, invito: String = "", email: String? = nil, accettoTermini: Bool = true) async throws -> IscrizioneInAttesa? {
         try inizia()
         defer { inCorso = false }
-        let invitoPulito = invito.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        let invitoPulito = CodiceInvito.daCampo(invito)
         let emailPulita = email?.trimmingCharacters(in: .whitespacesAndNewlines)
         let corpo = CorpoRegistrazione(nomeUtente: RegoleAccount.pulisciNome(nomeUtente), password: password,
                                        invito: invitoPulito.isEmpty ? nil : invitoPulito,
@@ -896,7 +896,7 @@ final class SessioneAccount: ObservableObject {
     func completaConGoogle(_ nuovo: NuovoAccountSocial, nomeUtente: String, invito: String, accettoTermini: Bool) async throws {
         try inizia()
         defer { inCorso = false }
-        let invitoPulito = invito.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        let invitoPulito = CodiceInvito.daCampo(invito)
         let corpo = CorpoCompletaSocial(iscrizione: nuovo.iscrizione, nomeUtente: RegoleAccount.pulisciNome(nomeUtente),
                                         invito: invitoPulito.isEmpty ? nil : invitoPulito, accettoTermini: accettoTermini)
         let r: RispostaAccount = try await conTraduzione { try await server.posta("POST", "/api/account/social/completa", corpo) }

@@ -7,6 +7,12 @@ pav.tutto_pronto_mister
 pav.hai_finito
 pav.non_sono_riuscito
 pav.permesso_negato_abilita
+# «Tutto pronto» come la web (#880): i punteggi usati finché non metti quelli della lega ({regole} = «Regole e scadenza», imp.regole)
+# e il pulsante che chiude la guida sulla Formazione
+pav.regole_comuni
+pav.vai_formazione
 pav.avvisi_spiega
 # Il pulsante del file di Importa le rose (ImportaRoseView), come il passo «Le rose» della web e Squadra › Aggiorna le rose.
 pav.scegli_file
+# Importa le rose al primo caricamento, senza rose salvate (ImportaExcelViewModel): la frase del passo «Le rose» della web (#880)
+pav.incolla_testo_delle
