@@ -99,6 +99,11 @@
     "it": "Non è quello che ho schierato",
     "en": "That is not what I fielded"
   },
+  "giornate.perche_punti": {
+    "it": "Da dove vengono i punti",
+    "en": "Where the points come from",
+    "nota": "nome dell'elenco sotto la tabella, per il lettore di schermo (#900)"
+  },
   "giornate.vuoto": {
     "it": "Ancora niente: le giornate compaiono qui dopo la prima finita.",
     "en": "Nothing yet: matchdays appear here after the first one ends."
