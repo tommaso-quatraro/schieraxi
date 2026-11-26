@@ -327,12 +327,11 @@ def _cambi_pronti(db: sqlite3.Connection, regole: Regole, rose: Rose, prev: pd.D
             continue
         nome = v["giocatore"]["nome"]
         consiglio = F("n.meglio", alt=alt["nome"])
-        try:
-            d = float(alt["punti_attesi"]) - float(prev.at[i, "atteso"])
-            if d > 0.05:
-                consiglio = F("n.meglio_guadagno", alt=alt["nome"], punti=d)
-        except (KeyError, TypeError, ValueError):
-            pass
+        # i punti attesi della FORMAZIONE in più con il cambio (`differenza` della voce, gli stessi della decisione in cima alla
+        # Formazione), non la differenza fra i due giocatori: la panchina copre già in parte chi non gioca (collaudo del 26/11)
+        d = v.get("differenza")
+        if isinstance(d, (int, float)) and d > 0.05:
+            consiglio = F("n.meglio_guadagno", alt=alt["nome"], punti=float(d))
         risultato.append({"nome": nome, "chiave": f"{chiave}/{i}/{nuovi[i]}", "frase": F("n.tuo_" + nuovi[i], nome=nome),
                           "consiglio": consiglio, "fatto": f"{i}/{nuovi[i]}"})
     return risultato

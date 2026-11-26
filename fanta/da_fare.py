@@ -27,6 +27,8 @@ ORE_FORMAZIONE = 12            # la formazione non salvata si segnala da qui all
 ORE_URGENTE = 3
 SOGLIA_GUADAGNO = 1.5          # punti in più (stagione) sotto cui uno svincolato o uno scambio non si nomina nemmeno; le regole
 #                                di buon senso (soglie per ruolo sulle prossime giornate, titolarità, costo...) stanno in buon_senso.py
+SOGLIA_CAMBIO = consigli.SOGLIA_CAMBIO_PUNTI     # punti attesi della formazione in più sotto cui un cambio di titolare non si propone:
+#                                la soglia della consigliata che cambia e degli avvisi (sotto è il su e giù normale, «differenze minime»)
 CONSIGLI = ("dubbio", "copertura", "svincolato", "scambio")      # le voci che sono consigli: al massimo buon_senso.MAX_CONSIGLI
 GIORNI_SOSTA = 10              # fra l'ultima partita di una giornata e la prima della successiva: da qui in su è una sosta
 GIORNI_DATI = 3
@@ -94,6 +96,10 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
     del confronto (`consigli.da_schierare`). Se la consigliata tiene il titolare, la voce dice chi entra dalla panchina se lui non
     gioca (la prima riserva dello stesso ruolo che gioca quasi di sicuro, o nessun nome se non c'è) e porta alla formazione: Oggi e
     Formazione non si contraddicono.
+    Il cambio proposto ha `differenza`: quanto cambiano i punti attesi della FORMAZIONE con lui al posto del titolare (la
+    valutazione di POST /api/formazione/valuta, come «Sostituisci» e «Metti in campo»), non la differenza fra i due giocatori: un
+    titolare che rischia di non giocare lo copre già la panchina (collaudo del 26/11: «+1,1» in cima, «+0,1» sotto il campo). Sotto
+    SOGLIA_CAMBIO il cambio non si propone (differenze minime): la voce resta, senza «Meglio» e senza «Sostituisci».
     `formazione`: la consigliata (`consigli.formazione`) se chi chiama l'ha già calcolata (l'avviso «cambio pronto», notifiche.py)."""
     s = rose.squadra(rose.mia_squadra or "")
     prev, _, _ = consigli.previsioni(db, regole)
@@ -117,6 +123,14 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
     in_dubbio = [i for i in titolari if i not in fermi and (x := schede.get(i)) and (x["stato"] in FUORI or x["dubbio"] or x["p_voto"] < 0.75)]
     in_dubbio.sort(key=lambda i: (schede[i]["stato"] not in FUORI, schede[i]["p_voto"]))
     usati: set[int] = set()
+    valutate: dict[frozenset, float] = {}
+
+    def punti(ids: list[int]) -> float:
+        """I punti attesi di questi 11 (consigli.valuta, una decina di millisecondi: la consigliata è già in cache)."""
+        chiave = frozenset(ids)
+        if chiave not in valutate:
+            valutate[chiave] = consigli.valuta(db, regole, rose, list(ids), None, giornata)["punteggio_atteso"]
+        return valutate[chiave]
 
     def libero(j: int, ruolo: str) -> bool:
         y = schede.get(j)
@@ -136,12 +150,16 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
         else:
             chiave, param = "dafare.dubbio_incerto", {"p": etichette.percento(x["p_voto"])}
         extra = {}
+        differenza = None
         if alt and consigli.da_schierare(x, alt, sistema)["id"] == alt["id"]:
+            differenza = float(frasi.differenza(punti([alt["id"] if j == i else j for j in titolari]), punti(titolari)))
+        if differenza is not None and differenza >= SOGLIA_CAMBIO:
             usati.add(alt["id"])
             testo = F(chiave + "_alt", nome=x["nome"], alt=alt["nome"], **param)       # «Adams A.» finisce già col punto: ne basta uno
             extra["alternativa"] = {"id": alt["id"], "nome": alt["nome"], "ruolo": alt["ruolo"], "punti_attesi": alt["punti_attesi"]}
+            extra["differenza"] = differenza
             azione, destinazione = F("dafare.az_sostituisci"), _destinazione("formazione", giocatore=i)
-        else:                       # nessun cambio da proporre (la consigliata lo tiene, o non c'è un sostituto): niente «Sostituisci»
+        else:                       # nessun cambio da proporre (la consigliata lo tiene, non c'è un sostituto o rende troppo poco)
             riserva = None
             if not fuori and sistema and i in sistema and _sostituzioni_ammesse(regole):
                 # la riserva che si nomina è la prima del ruolo che gioca quasi di sicuro, come `incerti` della Formazione
