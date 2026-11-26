@@ -153,16 +153,18 @@ struct VistaWidget: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// Il medio a giornata in corso o finita. A giornata in corso la frase del server su cosa manca (`in_corso.situazione`, #900:
-    /// «Hanno giocato tutti tranne Glauco Brevisi, Teo Kloosmeijer e Cesare Pulinski, che aspettano il recupero; mancano anche i voti
-    /// ufficiali.») può essere lunga. Si misura (`ViewThatFits`) e vale la prima che entra; la frase non si taglia mai con «…»:
+    /// Il medio a giornata in corso o finita. A giornata in corso la frase del server su cosa manca: la breve scritta per il medio
+    /// (`in_corso.situazione_breve`, #911: «3 giocatori aspettano il recupero; mancano i voti ufficiali.») se il server la manda,
+    /// altrimenti `in_corso.situazione` (#900), che con un server di prima o i dati di `/api/oggi` può essere lunga («Hanno giocato
+    /// tutti tranne Glauco Brevisi, Teo Kloosmeijer e Cesare Pulinski, che aspettano il recupero; mancano anche i voti ufficiali.»).
+    /// Per quella restano le prove: si misura (`ViewThatFits`) e vale la prima che entra; la frase non si taglia mai con «…»:
     /// 1. intera nella colonna di destra; 2. intera a tutta larghezza sotto le due colonne;
     /// 3-4. con il testo grande, le stesse due con tutto il widget alla misura del testo normale (#911: prima con il testo grande si
     ///    rimpiccioliva subito la sola frase, che usciva più piccola che con il testo normale);
     /// 5. ultima scelta: tutto alla misura del testo normale e la frase rimpicciolita nella colonna di destra, fino a 5 righe.
     @ViewBuilder
     private func faseMedio(_ r: RiassuntoOggi) -> some View {
-        if r.inCorso, let frase = r.ancoraDaGiocareTesto {
+        if r.inCorso, let frase = r.fraseDelMedio {
             ViewThatFits(in: .vertical) {
                 colonneMedio(r, frase: frase, stretta: false)
                 colonneConFraseSotto(r, frase: frase)

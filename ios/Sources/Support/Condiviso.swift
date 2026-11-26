@@ -129,6 +129,10 @@ struct RiassuntoOggi: Codable, Equatable {
     /// `in_corso`: la riga sotto i punti scelta dal server (`in_corso.situazione`, #895), la stessa della testa della Formazione.
     /// Nil con un server di prima e nei riassunti salvati da una versione di prima.
     var situazione: String?
+    /// `in_corso`: la stessa riga in breve per il widget medio (`in_corso.situazione_breve` di `/api/widget`, #911), con il numero al
+    /// posto dei nomi di chi aspetta il recupero. Nil se il server non la manda (righe già corte, server di prima, `/api/oggi`) e nei
+    /// riassunti salvati da una versione di prima.
+    var situazioneBreve: String?
     /// `finita`: la giornata appena chiusa (Serie A e lega); `giornata` e `inizio` sono già quelli della prossima.
     var giornataChiusa: Int?
     var giornataChiusaLega: Int?
@@ -186,6 +190,7 @@ struct RiassuntoOggi: Codable, Equatable {
             puntiFine = c.puntiPrevisti
             ancoraDaGiocare = c.ancoraDaGiocare
             situazione = c.testoSituazione
+            situazioneBreve = c.testoSituazioneBreve
         } else if let r = f.riepilogo {
             puntiFatti = r.puntiFatti
             puntiFine = r.puntiAttesi
@@ -313,6 +318,14 @@ extension RiassuntoOggi {
         if let frase = situazione?.trimmingCharacters(in: .whitespacesAndNewlines), !frase.isEmpty { return frase }
         guard let n = ancoraDaGiocare, n >= 0 else { return nil }
         return n == 0 ? Catalogo.Oggi.tuttiGiocato : Catalogo.Oggi.ancoraDaGiocare(n)
+    }
+
+    /// La riga sotto i punti nel widget medio: la breve del server se c'è (#911: «3 giocatori aspettano il recupero; mancano i voti
+    /// ufficiali.», che sta intera senza rimpicciolirsi al posto della riga con tre nomi), altrimenti quella di sempre
+    /// (`ancoraDaGiocareTesto`). VoiceOver (`descrizioneFase`) legge sempre la riga intera, con i nomi.
+    var fraseDelMedio: String? {
+        if let breve = situazioneBreve?.trimmingCharacters(in: .whitespacesAndNewlines), !breve.isEmpty { return breve }
+        return ancoraDaGiocareTesto
     }
 
     /// Una frase per VoiceOver sulla fase; nil nella fase `prima` (lì valgono i testi di sempre). Dopo la scadenza «formazione
