@@ -6,6 +6,9 @@ account.ruolo_admin
 account.ruolo_utente
 account.dal
 account.esci
+# la conferma di «Esci», come la web (#931)
+account.esci_conferma
+account.esci_conferma_spiega
 account.esci_no
 account.esci_solo_qui
 account.esci_solo_qui_spiega

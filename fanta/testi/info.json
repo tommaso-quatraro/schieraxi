@@ -5,7 +5,13 @@
   },
   "info.versione": {
     "it": "Versione",
-    "en": "Version"
+    "en": "Version",
+    "nota": "Informazioni: la versione del server (`versione` di /api/stato), uguale su web e iPhone"
+  },
+  "info.versione_app": {
+    "it": "Versione dell'app",
+    "en": "App version",
+    "nota": "solo iPhone: Informazioni, sotto info.versione, la versione dell'app installata (#931)"
   },
   "info.sorgente": {
     "it": "Codice sorgente",

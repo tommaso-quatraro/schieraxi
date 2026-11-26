@@ -90,5 +90,11 @@ extension Catalogo {
 
         /// `scambio.probabili_formazioni_raccolt`
         static let probabiliFormazioniRaccolt = "Probabili formazioni raccolte"
+
+        /// `scambio.quanto_azzecca_modello`
+        static let quantoAzzeccaModello = "Quanto ci azzecca il modello"
+
+        /// `scambio.quanto_affidabile_modello`
+        static let quantoAffidabileModello = "Quanto è affidabile il modello"
     }
 }

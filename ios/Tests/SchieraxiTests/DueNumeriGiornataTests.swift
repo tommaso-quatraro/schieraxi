@@ -185,6 +185,9 @@ struct DueNumeriGiornataTests {
             ("della 11ª, nella 8ª, sulla 11ª", "dell'11ª, nell'8ª, sull'11ª"),
             ("la 1ª giornata di Serie A", "la 1ª giornata di Serie A"),
             ("dalla 18ª alla 11ª", "dalla 18ª all'11ª"),
+            // con la maiuscola, come la web (le voci del primo avvio, #931)
+            ("Dalla 8ª", "Dall'8ª"),
+            ("La 11ª giornata di Serie A", "L'11ª giornata di Serie A"),
             // niente articolo, o articolo dentro un'altra parola: si lascia com'è
             ("Giornata 8 · 11ª di Serie A", "Giornata 8 · 11ª di Serie A"),
             ("la Giornata 8 · 11ª di Serie A", "la Giornata 8 · 11ª di Serie A"),
