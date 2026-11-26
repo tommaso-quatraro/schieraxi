@@ -585,6 +585,29 @@ def test_le_altre_squadre_contano_ed_elencano_solo_le_altre(web, scelta):
     assert not any("la tua" in n for n in nomi), nomi
 
 
+@pytest.mark.parametrize("quale", ["prima", "ultima"])
+def test_la_mia_squadra_non_scelta_si_sceglie_anche_la_prima_dell_elenco(web, quale):
+    """Collaudo del 26/11 (#923): in «La mia squadra», finché la mia non è scelta, il menu salvava appena cambiava e mostrava già la
+    prima squadra dell'elenco: sceglierla non era un cambio, quindi non si salvava mai. Il menu parte senza squadra («Scegli una
+    squadra»): ogni squadra, la prima compresa, si sceglie e si salva."""
+    solo(web, "prima")
+    squadre = web.registrata("/api/squadre")
+    for s in squadre:
+        s["mia"] = False
+    web.risposta("/api/squadre", squadre)
+    web.risposta("/api/stato", {**web.registrata("/api/stato"), "mia_squadra": None})
+    web.risposta("/api/mia-squadra", {"ok": True})                       # lo scenario non la registra (il server finto non salva)
+    salvate = _scritture(web, "/api/mia-squadra")
+    web.apri("/?vista=impostazioni&gruppo=squadra")
+    menu = principale(web).get_by_role("combobox", name="La tua squadra")
+    assert menu.input_value() == "", "il menu mostra già una squadra: sceglierla non sarebbe un cambio"
+    nome = squadre[0 if quale == "prima" else -1]["nome"]
+    menu.select_option(nome)
+    web.aspetta()
+    assert salvate == [{"nome": nome}], salvate
+    assert not web.errori_console, web.errori_console
+
+
 def test_le_altre_squadre_con_la_sola_mia_squadra_lo_dicono(web):
     """Con le rose della sola mia squadra la riga non c'è, ma la pagina si apre dal suo indirizzo: diceva «Importa prima le rose…»,
     falso perché le rose ci sono (#779). Ora dice che nella lega c'è solo la mia squadra e niente elenco."""

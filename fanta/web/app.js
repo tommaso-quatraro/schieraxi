@@ -2085,11 +2085,16 @@ function htmlDifferenze(d) {
 // è la mia («Non è la tua squadra?»); un nome: un'altra squadra (?gruppo=squadre&rosa=…), sotto «Le altre squadre», con la sua
 // formazione consigliata. Nome e crediti si cambiano qui; stemma e maglia nel loro foglio (apriStemmaMaglia), con «Rimuovi» e l'indirizzo
 // web. L'indirizzo lo scrive vai().
-const sceltaMiaSquadra = (squadre = stato.squadre || []) => `<select class="campo-testo" id="mia-squadra" aria-label="${t("lega.tua_squadra")}">${squadre.map(x =>
+// `vuoto`: il menu parte senza squadra («Scegli una squadra», che non si può riscegliere), per il menu che salva al cambio quando la
+// mia non è ancora scelta: se mostrasse già la prima squadra dell'elenco, sceglierla non sarebbe un cambio e non si salverebbe (#923).
+// Come il selettore dell'iPhone (SelettoreMiaSquadra), che parte vuoto.
+const sceltaMiaSquadra = (squadre = stato.squadre || [], vuoto = false) => `<select class="campo-testo" id="mia-squadra" aria-label="${t("lega.tua_squadra")}">${
+  vuoto ? `<option value="" disabled selected>${t("lega.scegli_squadra")}</option>` : ""}${squadre.map(x =>
   `<option value="${esc(x.nome)}" ${x.mia ? "selected" : ""}>${esc(x.nome)}</option>`).join("")}</select>`;
 function collegaSceltaMia() {
   const ms = $("#mia-squadra");
   if (ms) ms.addEventListener("change", async () => {
+    if (!ms.value) return;
     try {
       await api("/api/mia-squadra", { method: "PUT", body: JSON.stringify({ nome: ms.value }) });
       svuotaCache(); stato.squadraVista = null;
@@ -2103,7 +2108,7 @@ async function vistaRosa(nome) {
   const mia = nuovaRichiesta(), miaS = miaSquadra(), squadre = stato.squadre || [];
   const indietro = nome ? { testo: esc(t("imp.altre_squadre")), gruppo: "squadre" } : { testo: t("shell.impostazioni"), gruppo: "" };
   if (!nome && !miaS) {                                                    // la mia squadra non è ancora scelta (o mancano le rose)
-    pagina(`<div class="carta">${squadre.length ? `<p class="debole">${t("lega.scegli_quale_delle")}</p>${sceltaMiaSquadra(squadre)}`
+    pagina(`<div class="carta">${squadre.length ? `<p class="debole">${t("lega.scegli_quale_delle")}</p>${sceltaMiaSquadra(squadre, true)}`
       : `<p class="debole">${t("lega.importa_prima_rose")}</p><div class="pulsanti"><button class="bottone" type="button" data-imp-gruppo="rose">${t("lega.voce_importa")}</button></div>`}</div>`,
     { titolo: t("lega.mia_squadra"), stato: false, indietro });
     collegaSceltaMia();
