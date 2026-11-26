@@ -2770,7 +2770,8 @@ function dettaglioGiornata(d, g, stagioni) {
     ${spiegati}${cambi}${correggi}</section>`;
 }
 
-// In cima una riga sola sulla precisione (`precisione.fantavoto.errore_medio`) con i dettagli a richiesta; poi una riga per giornata.
+// In cima una riga sola sulla precisione (`precisione.fantavoto.errore_medio`) con i dettagli a richiesta e le giornate che
+// aspettano il recupero (`in_attesa`, revisione di #947: la loro riga non c'è, la frase del server lo dice); poi una riga per giornata.
 function mostraGiornate(d, opz = {}) {
   const voci = Array.isArray(d.giornate) ? d.giornate : [];
   giornate.dati = d;
@@ -2785,8 +2786,10 @@ function mostraGiornate(d, opz = {}) {
   const p = d.precisione || {}, fv = p.fantavoto;
   const errore = fv && fv.errore_medio != null && isFinite(Number(fv.errore_medio)) ? num(Number(fv.errore_medio)) : null;
   const dettagli = dettagliPrecisione(p, voci.some(conMostrata));
-  const testa = errore || dettagli ? `<div class="gn-testa">${errore ? `<p class="gn-precisione">${t("giornate.precisione", { e: errore })}</p>` : ""}
-    ${dettagli ? `<details class="gn-dettagli"><summary>${errore ? t("giornate.dettagli") : t("diario.af_titolo")}</summary>${dettagli}</details>` : ""}</div>` : "";
+  const attese = (Array.isArray(d.in_attesa) ? d.in_attesa : []).map(x => fraseGiornata(x)).filter(Boolean);
+  const attesa = attese.map(x => `<p class="gn-nota gn-attesa">${x}</p>`).join("");
+  const testa = errore || dettagli || attesa ? `<div class="gn-testa">${errore ? `<p class="gn-precisione">${t("giornate.precisione", { e: errore })}</p>` : ""}
+    ${dettagli ? `<details class="gn-dettagli"><summary>${errore ? t("giornate.dettagli") : t("diario.af_titolo")}</summary>${dettagli}</details>` : ""}${attesa}</div>` : "";
   const riga = g => {
     const id = idGiornata(g), aperta = giornate.aperte.has(id), { f } = formazioneDi(g);
     // fatti meno attesi, come la dà il server (`fatti_e_attesi.differenza`, #672): solo con il segno, niente conti qui
@@ -2807,8 +2810,9 @@ function mostraGiornate(d, opz = {}) {
   const fuoco = rigaAttiva ? `#${rigaAttiva.id}` : attivo && attivo.matches(".gn-dettagli > summary") ? ".gn-dettagli > summary"
     : attivo && attivo.matches("[data-correggi]") ? `[data-correggi="${attivo.dataset.correggi}"]` : null;
   const dettagliAperti = !!opz.sostituisce && !!($(".gn-dettagli", contenuto) || {}).open;
+  // senza righe ma con una giornata che aspetta il recupero, la sua frase prende il posto di «ancora niente»
   pagina(voci.length ? `<div class="gn">${testa}<ul class="gn-elenco" aria-label="${t("giornate.elenco")}">${voci.map(riga).join("")}</ul>${lato}</div>`
-    : `${testa}<p class="debole gn-vuoto">${vuoto}</p>`, opz);
+    : attesa ? testa : `${testa}<p class="debole gn-vuoto">${vuoto}</p>`, opz);
   if (dettagliAperti) { const x = $(".gn-dettagli", contenuto); if (x) x.open = true; }
   const radice = $(".gn", contenuto);
   if (radice) radice.addEventListener("click", ev => {

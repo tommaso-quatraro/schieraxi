@@ -584,6 +584,26 @@ def test_senza_giornate_finite_la_pagina_lo_dice_senza_errori(web):
     assert not web.errori_mostrati() and not web.in_caricamento() and righe(web).count() == 0
 
 
+ATTESA = "Giornata 9 · 12ª di Serie A: in attesa del recupero, i punti arrivano dopo."
+IN_ATTESA = [{"stagione": "2026-27", "giornata": 12, "giornata_lega": 9, "testo": ATTESA,
+              "frase": {"chiave": "diario.in_attesa_recupero", "param": {"giornata": {"chiave": "giornata.lega", "param": {"n": 9, "a": 12}}}}}]
+
+
+@pytest.mark.parametrize("altre", [True, False])
+def test_la_giornata_che_aspetta_il_recupero_ha_una_riga_che_lo_dice(web, altre):
+    """Revisione di #947: una giornata finita che passa ad aspettare il recupero non ha la sua riga (il server la mette in
+    `in_attesa`, con la frase già scritta). La pagina mostra la frase così com'è, con le altre giornate e anche senza nessuna (al
+    posto di «non ci sono giornate»)."""
+    solo(web, "prima")
+    d = web.registrata("/api/diario") if altre else diario_vuoto("calcolo")
+    d["in_attesa"] = IN_ATTESA
+    web.risposta("/api/diario", d)
+    web.apri(GIORNATE)
+    testo = " ".join(web.testo_principale().split())
+    assert ATTESA in testo and righe(web).count() == len(d["giornate"])
+    assert not web.errori_mostrati() and not web.in_caricamento()
+
+
 @pytest.mark.parametrize("altrui", [True, False])
 def test_senza_la_tua_squadra_la_pagina_dice_dove_sceglierla(web, altrui):
     """La tua squadra si sceglie in Impostazioni › La mia squadra (#618: prima era la scheda Squadra, con un nome della voce diverso

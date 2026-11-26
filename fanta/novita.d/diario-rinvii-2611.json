@@ -1,0 +1,15 @@
+{
+  "titolo": "Giornate e riepilogo di Oggi più giusti con le partite rinviate",
+  "voci": [
+    "Giornate: una giornata finita che torna ad aspettare il recupero dice «in attesa del recupero», poi torna con i punti giusti.",
+    "Giornate: per chi aveva una partita rinviata la tabella mostra il voto che la tua lega ha contato, e «Meglio del previsto» non lo nomina più.",
+    "Oggi: «Con la consigliata» compare solo quando c'è anche in Giornate; la consigliata mostrata prima della scadenza non si perde più per un errore."
+  ],
+  "tecnico": [
+    "Diario (diario.py): sospesa() nasconde la voce di una giornata della stagione in corso che non è più in rinvii.giornate_chiuse e ha l'impronta delle regole diversa da quella di adesso; la usano elenco(percorso, regole, db), fasi.blocco_riepilogo (nel_diario false, punti dai voti) e widget._diario. GET /api/diario apre l'archivio prima di elenco; se non si apre, registro e voci tutte. Revisione: la voce resta sospesa finché fasi.voti_arrivati non è vero; aggiorna rifà anche fuori dalle ultime MASSIMO_GIORNATE le giornate con partite fuori dal turno e l'impronta delle regole diversa; sospesa non legge l'archivio se l'impronta è una delle due delle regole di adesso; GET /api/diario ha in_attesa [{stagione, giornata, giornata_lega, testo, frase}] (frase diario.in_attesa_recupero), mostrato da web e iPhone.",
+    "Diario: giocatori[].fv è il voto contato dalla lega (_fv_della_lega con rinvii.voti_lega), con il campo facoltativo rinvio (senza_voto o voto_ufficio) per chi aveva la partita rinviata; fatti_e_attesi e precisione.numeri_giornata li lasciano fuori. numeri_giocatori e _stessi_voti usano la stessa regola, e confrontano anche il segno: le voci già scritte si correggono quando cambiano i voti della giornata.",
+    "Diario: per_il_consiglio legge l'istantanea fuori dal try e la passa anche al ripiego {istantanea, indicatori: false}; aggiorna rifà una volta le voci con consigliata_di_allora «non_salvata» e un'istantanea con i titolari nel file. server._copia_automatica scrive nel registro il tipo d'errore invece di except Exception: pass.",
+    "Oggi (fasi.blocco_riepilogo): riepilogo.consigliata è null se consigliata.origine non è «mostrata». Web e iPhone già nascondevano la riga senza il campo.",
+    "Seconda revisione: aggiorna, con le regole cambiate e una voce con la schierata ma senza più la scelta valida (un titolare ceduto o la scelta persa), ne rifà i punti con le stesse formazioni (rifai_i_punti) invece di saltarla; i titolari ceduti della schierata o della copia alla scadenza si contano (ceduti di calcola_giornata, solo con tieni, e in altri). sospesa nasconde senza leggere l'archivio la voce con i segni giocatori[].rinvio quando la regola di adesso è «aspetta»; elenco chiede giornate_chiuse una volta sola."
+  ]
+}
