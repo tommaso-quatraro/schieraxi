@@ -260,11 +260,14 @@ struct GiornateView: View {
     }
 
     /// In cima alla lista il titolo intero (solo con il testo grande) e sotto la riga della web: giornata, mia squadra e data dei
-    /// dati (#863).
+    /// dati (#863). La riga è l'intestazione di una sezione vuota, non una riga della lista: una riga sola fa una sezione con gli
+    /// angoli tondi, che tagliavano la prima lettera di ogni riga di testo quando davanti non c'è lo stemma (#936).
     @ViewBuilder
     private var capo: some View {
         TitoloNellaPagina()
-        if let riga = vm.rigaStato { RigaStatoView(riga: riga) }
+        if let riga = vm.rigaStato {
+            Section {} header: { RigaStatoView(riga: riga) }
+        }
     }
 
     /// «Com'è andata» della Formazione: la giornata chiesta passa alla pagina, che la apre appena c'è.
