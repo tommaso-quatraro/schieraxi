@@ -55,9 +55,11 @@ def manda_commento(dati: Commento, request: Request, dopo: BackgroundTasks, uten
 
 @router.get("/api/admin/feedback", dependencies=[Depends(_con_account), Depends(rotte_account.solo_amministratore)])
 def commenti_degli_utenti():
-    """Gli ultimi commenti, il più recente in alto, e quanti sono ancora da leggere."""
+    """Gli ultimi commenti (feedback.MAX_ELENCO), il più recente in alto, e quanti di QUESTI sono ancora da leggere: segnandoli
+    tutti letti il numero torna a zero anche quando i commenti sono di più."""
     with closing(account.apri()) as db:
-        return {"commenti": feedback.elenco(db), "da_leggere": feedback.da_leggere(db)}
+        commenti = feedback.elenco(db)
+    return {"commenti": commenti, "da_leggere": sum(1 for c in commenti if not c["letto"])}
 
 
 @router.post("/api/admin/feedback/{commento_id}/letto", dependencies=[Depends(_con_account), Depends(rotte_account.solo_amministratore)])

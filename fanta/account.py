@@ -316,9 +316,10 @@ MIGRAZIONI = [
     ALTER TABLE token_widget ADD COLUMN sessione_id INTEGER;
     """,
     # «Scrivici» (26/11/2026, vedi fanta/feedback.py): i commenti degli utenti per chi gestisce il server. Vanno via con l'account
-    # (dato personale); `letto` = quando chi gestisce l'ha segnato come letto (NULL = da leggere)
+    # (dato personale); `letto` = quando chi gestisce l'ha segnato come letto (NULL = da leggere). IF NOT EXISTS: una tabella già
+    # presente (creata a mano o da una prova a metà) non deve fermare il database di tutti
     """
-    CREATE TABLE feedback (
+    CREATE TABLE IF NOT EXISTS feedback (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         utente_id INTEGER NOT NULL REFERENCES utenti(id) ON DELETE CASCADE,
         testo TEXT NOT NULL,
@@ -328,7 +329,7 @@ MIGRAZIONI = [
         schermata TEXT,
         letto TEXT
     );
-    CREATE INDEX feedback_utente ON feedback(utente_id);
+    CREATE INDEX IF NOT EXISTS feedback_utente ON feedback(utente_id);
     """,
 ]
 

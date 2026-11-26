@@ -2276,7 +2276,7 @@
   },
   "/api/admin/feedback": {
    "get": {
-    "description": "Gli ultimi commenti, il più recente in alto, e quanti sono ancora da leggere.",
+    "description": "Gli ultimi commenti (feedback.MAX_ELENCO), il più recente in alto, e quanti di QUESTI sono ancora da leggere: segnandoli\ntutti letti il numero torna a zero anche quando i commenti sono di più.",
     "responses": {
      "200": {
       "content": {

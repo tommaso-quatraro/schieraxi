@@ -39,12 +39,13 @@ Chi è già entrato con quell'invito tiene il suo account. Gli inviti usati, sca
   solito dalla pagina prima dell'ingresso) sono dette a parte; un accesso con un codice o una sessione che non vale, o una
   richiesta a una parte riservata, resta fra le rifiutate. Nessuna password e nessun dato delle richieste.
 
-- **Commenti degli utenti**: quello che gli amici scrivono da **Impostazioni › Scrivici** (web e iPhone), il più recente in
-  alto: chi, quando (ora italiana), da dove (web, iPhone, Android) con la versione dell'app, e il testo intero. **Segna come
-  letto** toglie il commento da quelli da leggere (il numero sta sotto il titolo). A ogni commento nuovo arriva un avviso sul
-  canale ntfy del server (lo stesso della sentinella e degli script, `~/.config/schieraxi/canale`): «SchieraXI · un commento
-  nuovo», senza il testo e senza il nome, che restano sul server. Senza quel file l'avviso non parte, il commento si salva lo
-  stesso. Ognuno ne manda al massimo 5 al giorno (sul server si cambia con `FANTA_MAX_COMMENTI_AL_GIORNO`); con l'account
+- **Commenti degli utenti** (solo sulla web): quello che gli amici scrivono da **Impostazioni › Scrivici** (web e iPhone), gli
+  ultimi 100, il più recente in alto: chi, quando (ora italiana), da dove (web, iPhone, Android) con la versione dell'app, e il
+  testo intero. **Segna come letto** toglie il commento da quelli da leggere (il numero sta sotto il titolo e conta i commenti
+  mostrati). A ogni commento nuovo arriva un avviso sul canale ntfy del server (lo stesso della sentinella e degli script,
+  `~/.config/schieraxi/canale`): «SchieraXI · un commento nuovo», senza il testo e senza il nome, che restano sul server. Al
+  massimo 6 avvisi all'ora per tutto il server: oltre, i commenti si salvano senza avviso. Senza quel file l'avviso non parte,
+  il commento si salva lo stesso. Ognuno ne manda al massimo 5 al giorno (sul server si cambia con `FANTA_MAX_COMMENTI_AL_GIORNO`); con l'account
   eliminato se ne vanno anche i suoi commenti. Sul server, via ssh, gli ultimi 20 con il testo intero:
   `.venv/bin/python -m fanta feedback --ultimi 20` (dalla cartella dell'app, sola lettura).
 

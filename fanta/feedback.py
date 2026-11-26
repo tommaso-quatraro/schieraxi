@@ -6,6 +6,7 @@
 - Al massimo MAX_AL_GIORNO al giorno per utente (contatori di `limiti.py`); un testo vuoto o troppo lungo non si salva e non conta.
 - Privato: il testo non va mai nei log né nell'avviso. L'avviso al titolare passa dal suo canale ntfy (lo stesso della sentinella e
   degli script del server, `sentinella.canale`) e dice solo che c'è un commento nuovo e dove leggerlo: ntfy.sh è un servizio pubblico.
+  Al massimo MAX_AVVISI_ORA avvisi all'ora per tutto il server; oltre, i commenti si salvano senza avviso.
 - Lo legge solo chi gestisce il server: Impostazioni › Gestione › «Commenti degli utenti» (`GET /api/admin/feedback`) oppure, sul
   server, `python -m fanta feedback --ultimi 20`.
 Le rotte stanno in `rotte_feedback.py`; qui solo la logica, senza FastAPI.
@@ -15,15 +16,17 @@ from __future__ import annotations
 import logging
 import re
 import sqlite3
+from contextlib import closing
 from datetime import datetime, timezone
 
-from . import fuso, limiti, sentinella
+from . import account, fuso, limiti, sentinella
 from .account import ErroreAccount
 
 LOG = logging.getLogger(__name__)
 MAX_CARATTERI = 2000
 MAX_AL_GIORNO = limiti.MAX_COMMENTI_AL_GIORNO     # per utente (sul server: FANTA_MAX_COMMENTI_AL_GIORNO); chi gestisce non ha tetto
-MAX_ELENCO = 100                      # commenti mostrati in Gestione (i più recenti)
+MAX_AVVISI_ORA = 6                    # avvisi al titolare all'ora per tutto il server: oltre, i commenti si salvano senza avviso
+MAX_ELENCO = 100                      # commenti mostrati in Gestione (i più recenti); «da leggere» in Gestione conta questi
 PIATTAFORME = ("web", "ios", "android")
 NOMI_PIATTAFORME = {"web": "web", "ios": "iPhone", "android": "Android"}
 VUOTO = "Il commento è vuoto: scrivi qualcosa e riprova."
@@ -31,7 +34,7 @@ TROPPO_LUNGO = f"Il commento è troppo lungo: al massimo {MAX_CARATTERI} caratte
 
 # caratteri di controllo (tranne a capo e tabulazione) e quelli che girano il verso del testo: nell'elenco di Gestione farebbero
 # sembrare il commento un'altra cosa
-_INVISIBILI = re.compile(r"[\x00-\x08\x0b-\x1f\x7f‪-‮⁦-⁩]")
+_INVISIBILI = re.compile(r"[\x00-\x08\x0b-\x1f\x7f\u202a-\u202e\u2066-\u2069]")
 _VERSIONE = re.compile(r"[0-9A-Za-z.+_() -]{1,40}")
 _SCHERMATA = re.compile(r"[a-z0-9_-]{1,40}")
 
@@ -39,7 +42,7 @@ _SCHERMATA = re.compile(r"[a-z0-9_-]{1,40}")
 def pulisci(testo: str) -> str:
     """Il testo da salvare: a capo uniformi, senza caratteri invisibili né spazi in testa e in coda. ErroreAccount 400 se resta
     vuoto o supera MAX_CARATTERI (contati come li vede chi legge, non in byte)."""
-    t = str(testo or "").replace("\r\n", "\n").replace("\r", "\n").replace(" ", "\n").replace(" ", "\n")
+    t = str(testo or "").replace("\r\n", "\n").replace("\r", "\n").replace("\u2028", "\n").replace("\u2029", "\n")
     t = _INVISIBILI.sub("", t).strip()
     if not t:
         raise ErroreAccount(VUOTO, 400)
@@ -115,14 +118,30 @@ def _manda(titolo: str, testo: str) -> bool:
 
 def testo_avviso(da_leggere: int) -> tuple[str, str]:
     """Titolo e riga dell'avviso: né il testo né il nome di chi scrive (passano da ntfy.sh)."""
-    testo = "Leggilo in Impostazioni › Gestione › Commenti degli utenti."
+    testo = "Leggilo sulla web in Impostazioni › Gestione › Commenti degli utenti."      # sull'iPhone l'elenco non c'è
     return "SchieraXI · un commento nuovo", testo + (f" Da leggere: {da_leggere}." if da_leggere > 1 else "")
 
 
+def _avviso_concesso() -> bool:
+    """Tetto degli avvisi per tutto il server (MAX_AVVISI_ORA all'ora, contati nel database degli account come i tentativi): con la
+    registrazione aperta chiunque può scrivere, e il telefono del titolare non deve ricevere una raffica. Controlla e conta in una
+    transazione sola."""
+    try:
+        with closing(account.apri()) as db:
+            account.limite.consuma(db, account._chiave("avviso-commenti"), MAX_AVVISI_ORA, account.ORA)
+    except ErroreAccount:
+        return False
+    return True
+
+
 def avvisa_titolare(da_leggere: int) -> None:
-    """Dopo il salvataggio, fuori dalla richiesta. Senza canale (PC, ambiente di prova) non c'è niente da mandare; con il canale e
-    l'invio che non riesce, una riga nel registro (il commento resta salvato e si vede in Gestione)."""
+    """Dopo il salvataggio, fuori dalla richiesta. Senza canale (PC, ambiente di prova) non c'è niente da mandare; oltre il tetto
+    dell'ora l'avviso si salta (il commento resta salvato e si vede in Gestione); con il canale e l'invio che non riesce, una riga
+    nel registro."""
     if not _canale():
+        return
+    if not _avviso_concesso():
+        LOG.info("Commento salvato senza avviso al titolare: già %d avvisi nell'ultima ora", MAX_AVVISI_ORA)
         return
     if not _manda(*testo_avviso(da_leggere)):
         LOG.warning("Commento salvato, ma l'avviso al titolare non è partito: ntfy non ha risposto")

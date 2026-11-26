@@ -45,6 +45,7 @@ def avvisi(multiutente, dati_isolati, monkeypatch):
 def test_il_testo_si_pulisce_e_resta_a_capo():
     assert feedback.pulisci("  ciao\r\nseconda riga\x00\x07  ") == "ciao\nseconda riga"
     assert feedback.pulisci("à" * feedback.MAX_CARATTERI) == "à" * feedback.MAX_CARATTERI
+    assert feedback.pulisci("a‮b⁦c d") == "abc\nd"          # niente testo girato al contrario; a capo Unicode = a capo
 
 
 @pytest.mark.parametrize("testo", ["", "   \n\t ", "x" * (feedback.MAX_CARATTERI + 1)])
@@ -101,6 +102,27 @@ def test_i_commenti_entrano_in_scarica_i_tuoi_dati(avvisi):
     assert cliente(anna).get("/api/backup").json()["account"]["commenti"][0]["testo"] == "commento di anna"
 
 
+def test_la_tabella_gia_presente_non_ferma_il_database(multiutente, tmp_path):
+    """Se la tabella c'è già (creata a mano o da una prova a metà) la migrazione non deve fallire: altrimenti il database degli
+    account risponderebbe 503 a tutti."""
+    import sqlite3
+    percorso = tmp_path / "account.sqlite"
+    db = sqlite3.connect(percorso)
+    for numero, voce in enumerate(account.MIGRAZIONI[:-1]):
+        if callable(voce):
+            voce(db)
+        else:
+            db.executescript(voce)
+        db.execute(f"PRAGMA user_version = {numero + 1}")
+    db.executescript("CREATE TABLE feedback (id INTEGER PRIMARY KEY AUTOINCREMENT, utente_id INTEGER NOT NULL REFERENCES utenti(id) "
+                     "ON DELETE CASCADE, testo TEXT NOT NULL, creato TEXT NOT NULL, piattaforma TEXT, versione TEXT, schermata TEXT, "
+                     "letto TEXT); CREATE INDEX feedback_utente ON feedback(utente_id);")
+    db.commit()
+    db.close()
+    with contextlib.closing(account.apri(percorso)) as db:
+        assert db.execute("PRAGMA user_version").fetchone()[0] == len(account.MIGRAZIONI)
+
+
 # ---------------------------------------------------------------- la rotta dell'utente
 def test_serve_l_accesso(avvisi):
     assert cliente().post("/api/feedback", json={"testo": "ciao"}).status_code == 401
@@ -142,6 +164,21 @@ def test_l_elenco_e_solo_di_chi_gestisce(avvisi):
     assert cliente(token).get("/api/admin/feedback").status_code == 403
     assert cliente(token).post("/api/admin/feedback/1/letto").status_code == 403
     assert cliente().get("/api/admin/feedback").status_code == 401
+
+
+def test_da_leggere_conta_quelli_mostrati_e_torna_a_zero(avvisi):
+    """L'elenco mostra gli ultimi 100: «da leggere» conta quelli, così segnandoli tutti letti torna a zero anche con più commenti."""
+    marco, _ = utente("marco")
+    _, capo = utente("capo", "amministratore")
+    with contextlib.closing(account.apri()) as db:
+        for i in range(feedback.MAX_ELENCO + 1):
+            feedback.salva(db, marco, f"commento {i}", None, None, None, ADESSO.replace(minute=i % 60, second=i // 60))
+    c = cliente(capo)
+    corpo = c.get("/api/admin/feedback").json()
+    assert len(corpo["commenti"]) == feedback.MAX_ELENCO and corpo["da_leggere"] == feedback.MAX_ELENCO
+    for commento in corpo["commenti"]:
+        assert c.post(f"/api/admin/feedback/{commento['id']}/letto").status_code == 200
+    assert c.get("/api/admin/feedback").json()["da_leggere"] == 0
 
 
 def test_segna_letto_dalla_gestione(avvisi):
@@ -190,7 +227,23 @@ def test_avviso_al_titolare_senza_testo_ne_nome(avvisi):
     assert len(avvisi) == 1
     titolo, testo = avvisi[0]
     assert "commento" in titolo.lower() and "Gestione" in testo
+    assert "sulla web" in testo                                       # sull'iPhone l'elenco dei commenti non c'è
     assert "segreto" not in titolo + testo and "marco" not in (titolo + testo).lower()
+
+
+def test_al_massimo_sei_avvisi_all_ora_per_tutto_il_server(avvisi, multiutente):
+    """Con la registrazione aperta chiunque può scrivere: oltre MAX_AVVISI_ORA avvisi in un'ora (per tutto il server) i commenti
+    si salvano ma l'avviso non parte; passata l'ora riparte."""
+    _, capo = utente("capo", "amministratore")                        # chi gestisce non ha il tetto dei 5 al giorno
+    c = cliente(capo)
+    for i in range(7):
+        assert c.post("/api/feedback", json={"testo": f"commento {i}"}).status_code == 200
+    assert len(avvisi) == 6
+    with contextlib.closing(account.apri()) as db:
+        assert len(feedback.elenco(db)) == 7                          # salvati tutti
+    multiutente.t += 3601
+    assert c.post("/api/feedback", json={"testo": "un'ora dopo"}).status_code == 200
+    assert len(avvisi) == 7
 
 
 def test_il_testo_non_finisce_nel_registro(avvisi, caplog):
