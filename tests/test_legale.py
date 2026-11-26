@@ -48,6 +48,23 @@ def test_privacy_e_termini_parlano_dell_app_di_oggi(lingua, scambi, vecchie, nuo
     assert nuove in tl.pagina("privacy", lingua)
 
 
+@pytest.mark.parametrize("lingua,voce,file,frasi", [
+    ("it", "Se usi «Scrivici»: il testo del commento", "commenti mandati con «Scrivici»",
+     ("la data, la versione e la piattaforma", "solo chi gestisce l'app", "finché non elimini l'account", "«Scarica i tuoi dati»",
+      "Non va a terzi", "solo «un commento nuovo», senza testo né nome")),
+    ("en", "If you use «Write to us»: the text of the comment", "comments sent with «Write to us»",
+     ("the date and the version and platform", "Only whoever runs the app", "until you delete your account", "«Download your data»",
+      "does not go to third parties", "only says «a new comment», without the text or your name")),
+])
+def test_privacy_dice_dei_commenti_di_scrivici(lingua, voce, file, frasi):
+    """«Scrivici» (26/11/2026, fanta/feedback.py) salva un dato personale: la Privacy dice cosa si salva, chi lo legge, quanto resta
+    (fino all'eliminazione dell'account, ed è nella copia dei dati) e che a terzi (l'avviso esterno, ntfy) arriva solo «un commento nuovo»."""
+    t = tl.pagina("privacy", lingua)
+    assert voce in t and file in t
+    for frase in frasi:
+        assert frase in t, frase
+
+
 AMBIENTE_LEGALE = ("FANTA_CONTATTO", "FANTA_TITOLARE", "FANTA_SORGENTE", "FANTA_BACKUP_GIORNI", "FANTA_REGISTRO_WEB_GIORNI",
                    "FANTA_HOSTING", "FANTA_POSTA_FORNITORE")
 # nomi di siti e di file citati nel testo (ntfy.sh, Fantacalcio.it, football-data.co.uk, THIRD-PARTY-NOTICES.md): lì il punto

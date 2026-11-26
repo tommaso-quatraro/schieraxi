@@ -960,12 +960,13 @@ def canale() -> str | None:
     return c or None
 
 
-def manda_ntfy(titolo: str, testo: str) -> bool:
-    """Manda l'avviso con ntfy. Il canale non compare mai nei log né tra gli argomenti di un comando."""
+def manda_ntfy(titolo: str, testo: str, *, priorita: int = 4, tag: str = "mag") -> bool:
+    """Manda l'avviso con ntfy. Il canale non compare mai nei log né tra gli argomenti di un comando. `priorita` e `tag` cambiano
+    solo per chi non segnala un guasto (i commenti di «Scrivici», feedback.py: priorità normale)."""
     c = canale()
     if not c:
         return False
-    corpo = json.dumps({"topic": c, "title": titolo, "message": testo, "priority": 4, "tags": ["mag"]}).encode()
+    corpo = json.dumps({"topic": c, "title": titolo, "message": testo, "priority": priorita, "tags": [tag]}).encode()
     richiesta = urllib.request.Request(os.environ.get("SENTINELLA_NTFY_URL") or NTFY, data=corpo, method="POST",
                                        headers={"Content-Type": "application/json"})
     try:

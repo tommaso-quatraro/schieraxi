@@ -238,6 +238,7 @@ pagina loro, con **‹ Impostazioni** in alto per tornare. Su uno schermo più l
 | Il tuo account | nome, email, Google collegato (**Accessi**), password (la nuova si scrive due volte: **Ripeti la nuova password**), nuovo codice di recupero, **Scarica i tuoi dati**, **Elimina l'account**, **Esci**, **Esci da tutti i dispositivi** |
 | Aspetto | tema (automatico, chiaro, scuro) e lingua (italiano o inglese). La dimensione del testo è quella del telefono o dello zoom del browser |
 | Informazioni | Privacy, Termini d'uso, Crediti e fonti, Codice sorgente, versione e **Novità**: le ultime dieci versioni, le altre con un tocco in fondo |
+| Scrivici | con un account: un commento per chi gestisce l'app (un'idea, un problema, un dubbio). Scrivi nella casella (fino a 2000 caratteri, va a capo), tocca **Invia** e compare «Grazie, l'abbiamo ricevuto.». Al massimo 5 commenti al giorno; lo legge solo chi gestisce l'app, ed entra in **Scarica i tuoi dati** |
 | Gestione | solo per chi gestisce l'app: vedi [GUIDA-GESTIONE.md](GUIDA-GESTIONE.md) |
 
 - **Scarica i tuoi dati**: un file con i tuoi dati (account e lega: regole, rose, scelte, avvisi), mai la password né quelli degli altri utenti. Serve per tenerne una copia; non si ricarica nell'app. Sull'iPhone si salva da **Condividi › Salva su File**.
@@ -292,4 +293,4 @@ Sulla schermata Home, a schermo intero, senza store:
 | «SchieraXI · Da rinnovare» sull'iPhone | Rinnova l'app da SideStore prima che scada (sezione 4, «L'app per iPhone: il rinnovo»). |
 | Dati che non sembrano aggiornati | Ricarica la pagina. Se non cambia, avvisa chi gestisce l'app. |
 
-Se l'errore non è in lista, annota cosa stavi facendo e a che ora, e scrivi al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
+Se l'errore non è in lista, annota cosa stavi facendo e a che ora, e scrivilo in **Impostazioni › Scrivici** (con un account) o al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
