@@ -1246,6 +1246,24 @@ function mostraFormazione(b, squadra, opz = {}) {
     if (await rileggiFormazione() && stato.scelta && !stato.scelta.sola) avviso(e.message, 8000);
   };
 
+  // Dopo una scrittura riuscita sulla scelta le decisioni in cima si rileggono dal server (/api/oggi, come l'iPhone con
+  // `rileggiDopoUnSalvataggio`): il numero di un cambio proposto (`differenza`) è calcolato sulla formazione salvata, e un cambio
+  // che con la formazione nuova scende sotto la soglia il server non lo propone più (revisione della #928). Vale solo se nel
+  // frattempo non è partita un'altra scrittura e la schermata è la stessa; la pagina si ridisegna solo se le decisioni sono
+  // cambiate, e non con un elenco di «Sostituisci» o «Metti in campo» aperto (lo chiuderebbe: le decisioni nuove compaiono al
+  // prossimo disegno). Se la lettura non riesce restano quelle di prima, come sull'iPhone.
+  const rileggiDecisioni = async n => {
+    if (!o) return;
+    let nuova;
+    try { nuova = await api("/api/oggi"); } catch { return; }
+    if (!qui(n) || !nuova || !Array.isArray(nuova.da_fare)) return;
+    const prima = JSON.stringify(o.da_fare || []);
+    o.da_fare = nuova.da_fare;
+    const foglio = $("#foglio");
+    const elencoAperto = !!foglio && !foglio.hidden && !!$("#foglio-contenuto [data-sostituzione]");
+    if (JSON.stringify(nuova.da_fare) !== prima && !elencoAperto) disegna(true);
+  };
+
   // Cambia gli 11 (una sostituzione, un altro modulo, la spunta «L'ho messa»): il server li valuta e li salva subito. Una richiesta
   // alla volta: se nel frattempo ne parte un'altra, la risposta di prima si ignora. `messa`: vero o falso dalla spunta; senza, resta
   // com'era finché gli 11 sono gli stessi (la stessa regola del server, scelte.salva).
@@ -1265,6 +1283,7 @@ function mostraFormazione(b, squadra, opz = {}) {
       ricorda(m ? null : r);
       if (fuoco) sc.fuoco = fuoco;
       disegna(true);
+      rileggiDecisioni(n);
       return true;
     } catch (e) {
       if (e.status === 412) { cambiataAltrove(e); return false; }
@@ -1285,6 +1304,7 @@ function mostraFormazione(b, squadra, opz = {}) {
       sc.manuale = null; sc.salvata = null; sc.nonValida = false;
       ricorda();
       disegna(true);
+      rileggiDecisioni(n);
     } catch (e) {
       if (e.status === 412) { cambiataAltrove(e); return; }
       if (!qui(n)) { if (altrove(n)) avviso(nonSalvata(e), 5000); return; }

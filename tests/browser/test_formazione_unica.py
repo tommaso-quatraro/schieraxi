@@ -407,6 +407,54 @@ def test_al_massimo_due_decisioni_e_solo_quelle_con_un_azione(web):
     assert entra["nome"].split()[0] in " ".join(nomi_sul_campo(web))
 
 
+def _due_cambi(f) -> tuple[dict, dict]:
+    """Due cambi proposti sugli 11 della consigliata registrata, in due ruoli diversi: [(chi esce, chi entra)] × 2."""
+    titolari = next(m for m in f["moduli"] if m["modulo"] == f["modulo"])["titolari"]
+    cambi = []
+    for ruolo in ("C", "A", "D"):
+        esce = next((f["schede"][str(i)] for i in titolari if f["schede"][str(i)]["ruolo"] == ruolo), None)
+        entra = next((x for x in f["schede"].values() if x["ruolo"] == ruolo and x["id"] not in titolari), None)
+        if esce and entra:
+            cambi.append((esce, entra))
+    assert len(cambi) >= 2, "lo scenario registrato è cambiato: rivedi il test"
+    return cambi[0], cambi[1]
+
+
+def _voce_cambio(esce, entra, differenza, decisione):
+    return {"id": f"dubbio:{esce['id']}", "tipo": "dubbio", "testo": f"{esce['nome']} è in dubbio (45% di giocare). Meglio {entra['nome']}.",
+            "priorita": 2, "azione": "Sostituisci", "destinazione": {"scheda": "formazione", "sezione": None, "giocatore": esce["id"]},
+            "giocatore": {"id": esce["id"], "nome": esce["nome"]}, "decisione": decisione,
+            "alternativa": {"id": entra["id"], "nome": entra["nome"], "ruolo": entra["ruolo"], "punti_attesi": 5.0}, "differenza": differenza}
+
+
+@pytest.mark.parametrize("dopo", ["numero_nuovo", "sotto_la_soglia"])
+def test_dopo_un_salvataggio_le_altre_decisioni_si_rileggono_dal_server(web, dopo):
+    """Revisione della #928: il numero di un cambio proposto (`differenza`) è calcolato sulla formazione salvata. Fatto un cambio,
+    la web rilegge /api/oggi (come l'iPhone con `rileggiDopoUnSalvataggio`): l'altra decisione in cima mostra il numero nuovo, o
+    sparisce se con la formazione nuova il server non la propone più (sotto la soglia)."""
+    solo(web, "prima")
+    mem = server_con_memoria(web, None)
+    f = web.registrata("/api/formazione")
+    (esce1, entra1), (esce2, entra2) = _due_cambi(f)
+    oggi = web.registrata("/api/oggi")
+    mem["oggi"] = {**oggi, "da_fare": [_voce_cambio(esce1, entra1, 1.3, 1), _voce_cambio(esce2, entra2, 1.1, 2)]}
+    web.apri("/")
+    righe = [" ".join(r.split()) for r in _decisioni(web).all_inner_texts()]
+    assert len(righe) == 2 and "+1,3 punti attesi." in righe[0] and "+1,1 punti attesi." in righe[1], righe
+    # il server, con la formazione nuova: l'altro cambio vale +1,6, oppure non lo propone più
+    rimasta = [_voce_cambio(esce2, entra2, 1.6, 1)] if dopo == "numero_nuovo" else []
+    mem["oggi"] = {**oggi, "da_fare": rimasta}
+    lette = web.richieste.count("/api/oggi")
+    tocca(web, _decisioni(web).first.get_by_role("button", name="Sostituisci"))
+    assert web.richieste.count("/api/oggi") == lette + 1, "dopo il salvataggio /api/oggi non si è riletto"
+    righe = [" ".join(r.split()) for r in _decisioni(web).all_inner_texts()]
+    if dopo == "numero_nuovo":
+        assert len(righe) == 1 and righe[0].startswith(esce2["nome"]) and "+1,6 punti attesi." in righe[0], righe
+    else:
+        assert righe == [] and principale(web).get_by_role("list", name="Da fare").count() == 0
+    assert entra1["nome"].split()[0] in " ".join(nomi_sul_campo(web)) and not web.errori_mostrati()
+
+
 def test_senza_decisioni_non_c_e_nessun_elenco_di_cose_da_fare(web):
     solo(web, "prima")
     _con_da_fare(web, [{"id": "dubbio:1", "tipo": "dubbio", "testo": "Esempio (in ballottaggio, gioca 66%) resta titolare: se non gioca entra Prova dalla panchina.",
