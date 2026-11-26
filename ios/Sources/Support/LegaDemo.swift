@@ -521,6 +521,10 @@ enum LegaDemo {
         return "Hanno giocato tutti tranne \(nomi[0]), \(nomi[1]) e \(nomi[2]), che aspettano il recupero; mancano anche i voti ufficiali."
     }
 
+    /// La stessa riga in breve, come la manda il server in `/api/widget` per il widget medio (`in_corso.situazione_breve`, chiave
+    /// `in_corso.voti_e_recupero_breve` con `n` = 3, #911): il numero al posto dei tre nomi, così nel medio sta intera.
+    static let situazioneRecuperoBreve = "3 giocatori aspettano il recupero; mancano i voti ufficiali."
+
     /// Il blocco `in_corso` di Oggi a giornata in corso: punti fatti, previsti, giocatore per giocatore e i cambi dalla panchina.
     /// Un cambio già fatto (Bastrani senza voto, entra Dimarzi) e due probabili.
     static func bloccoInCorso(adesso: Date) -> [String: Any] {
