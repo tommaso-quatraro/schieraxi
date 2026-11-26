@@ -7,6 +7,9 @@ struct ElencoSostituti: Identifiable {
     let id: Int
     /// Chi esce: la sua scheda nella Formazione.
     let uscente: Giocatore
+    /// Gli 11 in campo quando l'elenco si è aperto: se una rilettura ne porta altri, l'elenco si chiude
+    /// (`FormazioneViewModel.chiudiElenchiSuperati`, come `chiudiSostituzione` della web).
+    var titolari: [Int] = []
     var stato: Stato = .carico
 
     enum Stato {

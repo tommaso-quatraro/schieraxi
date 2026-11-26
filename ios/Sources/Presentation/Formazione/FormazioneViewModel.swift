@@ -141,13 +141,14 @@ final class FormazioneViewModel: ViewModelBase {
     private var puoScrivere: Bool { squadraVista == nil && !chiusa && !comandiSpenti }
 
     /// Perché adesso un cambio della tua formazione non si può fare, con la frase del catalogo che lo dice (nil = si può): la
-    /// formazione si è chiusa (`formazione.chiusa`), restano i dati salvati sul telefono (`formazione.copia_ferma`), stanno
-    /// arrivando i dati, si rilegge o un salvataggio è in volo (`formazione.sto_ancora_ricalcolando`, come `libero()` della web),
-    /// la scelta salvata non si è letta (`formazione.scelta_non_letta`). Negli elenchi di «Sostituisci» e «Metti in campo» spegne
-    /// le righe e si legge sopra di loro; un cambio che non parte lo dice sotto il campo (collaudo del 26/11).
+    /// formazione si è chiusa (`err.formazione_chiusa`, la frase della web e del 409 del server), restano i dati salvati sul
+    /// telefono (`formazione.copia_ferma`), stanno arrivando i dati, si rilegge o un salvataggio è in volo
+    /// (`formazione.sto_ancora_ricalcolando`, come `libero()` della web), la scelta salvata non si è letta
+    /// (`formazione.scelta_non_letta`). Negli elenchi di «Sostituisci» e «Metti in campo» spegne le righe e si legge sopra di loro;
+    /// un cambio che non parte lo dice sotto il campo (collaudo del 26/11).
     var motivoCambiSpenti: String? {
         guard squadraVista == nil else { return nil }
-        if chiusa { return Catalogo.Formazione.chiusa }
+        if chiusa { return Catalogo.Err.formazioneChiusa }
         if copiaFerma { return Catalogo.Formazione.copiaFerma }
         if leggendo || occupato || copia { return Catalogo.Formazione.stoAncoraRicalcolando }
         if !sceltaLetta { return Catalogo.Formazione.sceltaNonLetta }
@@ -379,7 +380,12 @@ final class FormazioneViewModel: ViewModelBase {
         generazione += 1
         let g = generazione
         leggendo = true
-        defer { if g == generazione { leggendo = false } }
+        defer {
+            if g == generazione {
+                leggendo = false
+                chiudiElenchiSuperati()
+            }
+        }
         // all'apertura, prima della copia della Formazione, la scelta tenuta sul telefono: in campo subito la formazione salvata
         if squadraVista == nil, giornata == nil { await riprendiSceltaDalTelefono() }
         await caricatore.ricarica(percorso)
@@ -825,7 +831,7 @@ final class FormazioneViewModel: ViewModelBase {
         numeroElenco += 1
         let numero = numeroElenco
         let titolari = vista(f).titolari.map(\.id)
-        elencoSostituti = ElencoSostituti(id: numero, uscente: uscente)
+        elencoSostituti = ElencoSostituti(id: numero, uscente: uscente, titolari: titolari)
         do {
             let r: RispostaSostituisci = try await server.posta("POST", "/api/formazione/sostituisci",
                                                                RichiestaSostituisci(esce: id, titolari: titolari, giornata: f.giornata))
@@ -879,14 +885,23 @@ final class FormazioneViewModel: ViewModelBase {
 
     /// Un cambio scelto in un elenco non è partito: sotto il campo il perché, mai un elenco che si chiude senza niente (collaudo del
     /// 26/11). La formazione chiusa, la rilettura, la copia del telefono o la scelta non letta (`motivoCambiSpenti`), oppure uno dei
-    /// due gioca ora una partita già cominciata (`formazione.bloccati`). Gli 11 cambiati nel frattempo non hanno una frase: in campo
-    /// si vede già la formazione nuova.
+    /// due gioca ora una partita già cominciata (`formazione.bloccati`). Con gli 11 cambiati da una rilettura l'elenco si è già
+    /// chiuso da solo (`chiudiElenchiSuperati`).
     private func cambioNonPartito(esce: Int, entra: Int) {
         if let motivo = motivoCambiSpenti {
             messaggio = motivo
         } else if fermi.contains(esce) || fermi.contains(entra) {
             messaggio = Catalogo.Formazione.bloccati
         }
+    }
+
+    /// Dopo una rilettura gli 11 in campo non sono più quelli da cui è partito l'elenco aperto di «Sostituisci» o di «Metti in
+    /// campo»: l'elenco si chiude, come `chiudiSostituzione` della web, perché i suoi numeri e i suoi giocatori erano di un'altra
+    /// formazione (revisione della #946). Con gli stessi 11 resta aperto (le righe si riaccendono a rilettura finita).
+    private func chiudiElenchiSuperati() {
+        let ora = formazione.map { Set(vista($0).titolari.map(\.id)) }
+        if let e = elencoSostituti, Set(e.titolari) != ora { elencoSostituti = nil }
+        if let e = elencoEntra, Set(e.titolari) != ora { elencoEntra = nil }
     }
 
     // MARK: «Metti in campo» (#778, come `apriMettiInCampo` della web)
@@ -923,7 +938,7 @@ final class FormazioneViewModel: ViewModelBase {
         numeroElenco += 1
         let numero = numeroElenco
         let titolari = vista(f).titolari.map(\.id)
-        elencoEntra = ElencoMettiInCampo(id: numero, entra: entra)
+        elencoEntra = ElencoMettiInCampo(id: numero, entra: entra, titolari: titolari)
         do {
             let r: RispostaMettiInCampo = try await server.posta("POST", "/api/formazione/metti-in-campo",
                                                                 RichiestaMettiInCampo(entra: id, titolari: titolari, giornata: f.giornata))
