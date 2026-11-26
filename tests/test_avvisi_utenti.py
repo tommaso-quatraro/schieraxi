@@ -74,6 +74,17 @@ def test_sono_attivi_solo_gli_utenti_con_squadra_e_dispositivo(mondo, registro):
     assert [a.utente.nome_utente for a in avvisi_utenti.utenti_attivi()] == ["amico1"]
 
 
+def test_un_account_bloccato_non_riceve_avvisi(mondo, registro):
+    """Bloccato da chi gestisce il server (revisione della #933): fuori dal giro anche se un dispositivo o il canale ntfy fossero rimasti."""
+    nuovo("amico1", (1, "Castro"))
+    ctx = nuovo("capo", (2, "Bonny"), amministratore=True)
+    notifiche.salva_impostazioni({"app_nativa": True}, ctx.impostazioni_avvisi)
+    with contextlib.closing(account.apri()) as db:
+        db.execute("UPDATE utenti SET bloccato = '2026-10-27T08:00:00+00:00'")     # tutti e due, senza toccare i loro dispositivi
+        db.commit()
+    assert avvisi_utenti.utenti_attivi() == []
+
+
 def test_un_amministratore_con_ntfy_e_senza_dispositivi_e_attivo(mondo, registro):
     ctx = nuovo("capo", (1, "Castro"), amministratore=True, iscritto=False)
     assert avvisi_utenti.utenti_attivi() == []

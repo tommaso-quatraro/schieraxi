@@ -1,5 +1,22 @@
 [
   {
+    "versione": "1.583",
+    "data": "2026-11-26T14:23:49",
+    "titolo": "Gestione: chi gestisce il server può bloccare o eliminare un account",
+    "voci": [
+      "Impostazioni › Gestione › Utenti: chi gestisce il server vede iscrizione e ultimo accesso di ogni account e può bloccarlo (non entra più, i dati restano) o eliminarlo con tutti i suoi dati, dopo una conferma. Gli altri amministratori si gestiscono solo sul server.",
+      "Chi è bloccato e prova a entrare, o a cambiare la password con il codice di recupero o l'email, legge «Questo account è bloccato: chiedi a chi gestisce SchieraXI.»."
+    ],
+    "tecnico": [
+      "Rotte nuove, solo amministratore (docs/API.md): POST /api/admin/utenti/{id}/blocca → {ok, sessioni_chiuse}, POST /api/admin/utenti/{id}/sblocca → {ok}, DELETE /api/admin/utenti/{id} → {ok}. 400 sul proprio account, 403 sull'account di un altro amministratore (solo dai comandi), 404 se non esiste. GET /api/admin/utenti: campi nuovi per utente ultimo_accesso, bloccato, bloccato_il, dettaglio/dettaglio_frase (admin.utente_dettaglio, admin.utente_dettaglio_senza_accesso) e blocco/blocco_frase (admin.utente_bloccato).",
+      "account.sqlite: migrazione nuova in fondo a MIGRAZIONI, una funzione (_aggiungi_bloccato) che aggiunge utenti.bloccato (TEXT, quando; NULL = no) solo se manca. account.blocca chiude sessioni, token del widget, dispositivi fidati e notifiche web (esci_da_tutti); _apri_sessione rifiuta un bloccato (403, codice account_bloccato, solo dopo la password giusta o Google), come il recupero della password (codice di recupero, codice di chi gestisce, email) dopo il codice giusto e prima di cambiare qualsiasi cosa; utente_da_token / utente_da_token_widget non lo fanno passare; avvisi_utenti.utenti_attivi lo salta. «Ultimo amministratore» (elimina, imposta_ruolo, blocca) conta solo gli amministratori non bloccati.",
+      "Eliminazione: rotte_account.elimina_account_e_dati, la stessa di POST /api/account/elimina (account.elimina con le cascate, contesto.elimina_cartella, consigliate già mostrate).",
+      "Registro di sicurezza: account_bloccato, account_sbloccato e account_eliminato con nome e da (chi gestisce) o via=comando; accesso_negato_bloccato.",
+      "Comandi: python -m fanta utente-blocca <nome>, utente-sblocca <nome>, utente-elimina <nome>, con la conferma del nome.",
+      "iPhone: nessun cambio (la Gestione dell'iPhone non ha gli strumenti degli account); all'accesso mostra il detail del server."
+    ]
+  },
+  {
     "versione": "1.582",
     "data": "2026-11-26T13:11:14",
     "titolo": "Risultati in diretta più onesti quando la fonte principale non risponde",
