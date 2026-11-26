@@ -3,7 +3,7 @@
 Non dipende da un formato fisso: cerca nella tabella i nomi dei calciatori (riconosciuti col listone),
 poi per ognuno risale fino al nome della fantasquadra. Funziona con:
 - l'Excel di Leghe Fantacalcio (squadre affiancate: "nome squadra | costo", poi i 25 giocatori, poi "totale");
-- tabelle con colonne ruolo / calciatore / squadra / costo;
+- tabelle con colonne ruolo / calciatore / squadra / costo, anche con la fantasquadra scritta su ogni riga;
 - testo incollato, con le colonne separate da tabulazioni o con un valore per riga.
 Quello che non è sicuro finisce negli avvisi, non viene indovinato in silenzio.
 I fogli che non sono rose (listone, calendario, classifica nello stesso Excel) si riconoscono e si saltano (`_foglio_non_rosa`);
@@ -668,16 +668,24 @@ def _estrai_blocco(celle: _Celle, c0: int, c1: int, nome_foglio: str,
     colonne = range(c0, c1 + 1)
     squadra_corrente: SquadraLetta | None = None
     col_costo: int | None = None
+    col_squadra = _colonna_fantasquadra(celle, colonne)
     for r, _riga in enumerate(celle.g):
         tipi = {c: celle.tipo[r, c] for c in colonne}
         if all(t == "vuoto" for t in tipi.values()):
             continue
+        # colonna del costo dichiarata da un'intestazione ("costo", "prezzo"...), e quella della fantasquadra («Fantasquadra»)
+        intestazioni = [c for c, t in tipi.items() if t == "intestazione"]
+        for c in intestazioni:
+            if set(normalizza(celle.g[r][c]).split()) & PAROLE_COSTO:
+                col_costo = c
+            if len(intestazioni) >= 2 and normalizza(celle.g[r][c]) in PAROLE_FANTASQUADRA:
+                col_squadra = c
+        if col_squadra is not None and col_squadra in tipi:
+            nome = celle.g[r][col_squadra]
+            if tipi.pop(col_squadra) not in ("vuoto", "numero", "intestazione", "crediti"):
+                squadra_corrente = squadre.setdefault(nome, SquadraLetta(nome))     # la squadra scritta sulla riga
         giocatori = [c for c, t in tipi.items() if t == "giocatore"]
         testi = [c for c, t in tipi.items() if t == "testo"]
-        # colonna del costo dichiarata da un'intestazione ("costo", "prezzo"...)
-        for c, t in tipi.items():
-            if t == "intestazione" and set(normalizza(celle.g[r][c]).split()) & PAROLE_COSTO:
-                col_costo = c
         # testo con accanto un ruolo o un costo, dentro una squadra: giocatore non riconosciuto (es. ceduto); così anche un nome
         # che la lettura di un valore per riga ha già riconosciuto come giocatore
         if not giocatori and testi and (r in celle.giocatori or squadra_corrente is not None and any(
@@ -707,6 +715,23 @@ def _estrai_blocco(celle: _Celle, c0: int, c1: int, nome_foglio: str,
         crediti = [c for c, t in tipi.items() if t == "crediti"]
         if crediti and squadra_corrente is not None:
             _leggi_crediti(celle, r, crediti[0], colonne, squadra_corrente)
+
+
+# l'intestazione della colonna con la fantasquadra di ogni riga (non «Squadra», che di solito è il club di Serie A)
+PAROLE_FANTASQUADRA = {"fantasquadra", "fantasquadre", "fanta squadra", "squadra fanta", "fantateam", "team"}
+
+
+def _colonna_fantasquadra(celle: _Celle, colonne) -> int | None:
+    """Senza intestazione: la colonna che, sulle righe con un giocatore, ha quasi sempre un nome che non è un calciatore e si
+    ripete (lo stesso nome su tante righe, come la fantasquadra di un CSV con una riga per giocatore). None se non c'è."""
+    righe = [r for r in range(len(celle.g)) if sum(celle.tipo[r, c] == "giocatore" for c in colonne) == 1]
+    if len(righe) < 4:
+        return None
+    for c in colonne:
+        valori = [celle.g[r][c] for r in righe if celle.tipo[r, c] == "testo"]
+        if len(valori) >= 0.8 * len(righe) and 2 * len(set(valori)) <= len(valori):
+            return c
+    return None
 
 
 def _costo(celle: _Celle, r: int, c: int, c1: int, col_costo: int | None) -> int | None:

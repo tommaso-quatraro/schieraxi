@@ -210,6 +210,25 @@ def test_gli_accenti_restano_giusti_con_cp1252(indice):
     assert rose.decodifica(b"\x81abc") == "\x81abc"                  # byte che cp1252 non ha: si ricade su latin-1, senza errori
 
 
+FANTASQUADRA = Path(__file__).parent / "dati" / "rose_colonna_fantasquadra.csv"
+
+
+@pytest.mark.parametrize("con_intestazione", [True, False])
+def test_colonna_fantasquadra_su_ogni_riga(indice, con_intestazione):
+    """Collaudo del 26/11: un CSV con la fantasquadra scritta su ogni riga («Fantasquadra;Ruolo;Calciatore;Squadra;Costo»)
+    diventava una sola «Squadra senza nome» con tutti i giocatori. La colonna dice di quale squadra è ogni giocatore, anche
+    senza la riga delle intestazioni."""
+    testo = FANTASQUADRA.read_text(encoding="utf-8")
+    if not con_intestazione:
+        testo = testo.split("\n", 1)[1]
+    s = {x.nome: x for x in rose.estrai(rose.griglie_da_bytes(testo.encode()), indice)}
+    assert list(s) == ["Union Esempio", "Olimpia Prova"]
+    union = s["Union Esempio"].righe
+    assert [(r.testo, r.ruolo, r.costo) for r in union] == [("Sommer", "P", 2), ("Bastoni", "D", 35), ("Pinco Pallino", "A", 3)]
+    assert [r.esito.calciatore.id if r.esito.calciatore else None for r in union] == [2, 3, None]
+    assert [r.esito.calciatore.id for r in s["Olimpia Prova"].righe] == [1, 12, 14]
+
+
 def test_una_colonna_sola_una_squadra_per_blocco(indice):
     testo = "Real Esempio\nP\nSommer\nInter\n10\nD\nBastoni\nInter\n15\nI Bomber\nA\nKean\nFiorentina\n30\n"
     for dati in (testo.encode(), codecs.BOM_UTF8 + testo.replace("\n", "\r\n").encode(), codecs.BOM_UTF16_LE + testo.encode("utf-16-le")):
