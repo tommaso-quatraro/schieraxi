@@ -28,7 +28,7 @@ Regole: `CLAUDE.md` e `.claude/rules/`. Comandi: `CLAUDE.md`.
 | Lega | `regole.py`, `regole_testo.py`, `rose.py` (Excel, CSV, testo), `lega.py`, `squadre.py`, `movimenti.py`, `nomi.py` (riconoscimento dei nomi), `listone.py`, `stagione.py` |
 | Fonti e archivio | `fonti/` (un lettore per fonte), `aggiorna.py` (riempie `dati/fanta.sqlite`), `archivio.py`, `rete.py`, `fonti_attive.py`, `controlli.py`, `stato_dati.py` |
 | Avvisi | `notifiche.py` (promemoria e cambio della formazione), `push.py`, `avvisi_utenti.py`, `pianificatore.py`, `frasi.py` e `frasi_avvisi.py` (frasi con chiave) |
-| Account | `account.py` (sessioni, inviti, migrazioni), `account_email.py`, `posta.py`, `social.py` (Google), `onboarding.py`, `testi_legali.py` |
+| Account | `account.py` (sessioni, inviti, migrazioni), `account_email.py`, `posta.py`, `social.py` (Google), `onboarding.py`, `testi_legali.py`, `feedback.py` e `rotte_feedback.py` («Scrivici»: commenti degli utenti per chi gestisce) |
 | Misura | `verifica*.py` (misure sul passato), `registro_giornate.py`, `registro_nostri.py`, `indicatori_consiglio.py`, `affidabilita.py` |
 | Sorveglianza | `sentinella.py`, `salute.py`, `misura_ingresso.py` |
 | Mercato e lega | `scambi.py`, `scambi_multi.py`, `asta.py`, `coppe.py`, `osservati.py` |

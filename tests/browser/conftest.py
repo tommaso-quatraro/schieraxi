@@ -39,7 +39,8 @@ REGOLE_AXE = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]       # WCAG 2.0, 2.1
 FUSO = "Europe/Rome"                                              # «adesso» dello scenario è l'ora italiana
 # Rotte che le registrazioni tolgono apposta (prove/fotografie_dal_vero.py), con la risposta del server vero quando non ha dati.
 # /api/avatar: i tratti dei volti vengono dalle foto vere dei calciatori; senza tratti l'app disegna i volti dal codice.
-RISPOSTE_IN_PIU = {"/api/avatar": {"versione": 3, "tratti": {}}}
+# /api/admin/feedback: i commenti di «Scrivici» (26/11/2026) non sono nelle registrazioni; il server senza commenti risponde così.
+RISPOSTE_IN_PIU = {"/api/avatar": {"versione": 3, "tratti": {}}, "/api/admin/feedback": {"commenti": [], "da_leggere": 0}}
 
 # Patti con ogni versione della web (tests/browser/LEGGIMI.md), senza selettori di una schermata:
 # - il contenuto della schermata sta nell'area principale, `<main>` (o un elemento con role="main");

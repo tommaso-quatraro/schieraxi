@@ -1,0 +1,101 @@
+{
+  "scrivici.voce": {
+    "it": "Scrivici",
+    "en": "Write to us",
+    "nota": "Impostazioni, riga sotto Informazioni (solo con un account) e titolo della sua pagina: un commento a chi gestisce il server (26/11/2026). Web e iPhone"
+  },
+  "scrivici.voce_sub": {
+    "it": "Un'idea, un problema, un dubbio",
+    "en": "An idea, a problem, a question",
+    "nota": "la riga piccola sotto «Scrivici» in Impostazioni"
+  },
+  "scrivici.spiega": {
+    "it": "Scrivi cosa non va o cosa ti piacerebbe trovare: lo legge chi gestisce SchieraXI.",
+    "en": "Tell us what's wrong or what you'd like to find: the person who runs SchieraXI reads it.",
+    "nota": "in cima alla pagina Scrivici, sopra la casella"
+  },
+  "scrivici.campo": {
+    "it": "Il tuo commento",
+    "en": "Your comment",
+    "nota": "nome della casella di testo (al massimo 2000 caratteri, va a capo)"
+  },
+  "scrivici.invia": {
+    "it": "Invia",
+    "en": "Send",
+    "nota": "pulsante della pagina Scrivici: spento finché la casella è vuota"
+  },
+  "scrivici.grazie": {
+    "it": "Grazie, l'abbiamo ricevuto.",
+    "en": "Thanks, we got it.",
+    "nota": "dopo l'invio riuscito, sotto il pulsante; la casella si svuota"
+  },
+  "scrivici.non_inviato": {
+    "it": "Non sono riuscito a mandarlo: riprova.",
+    "en": "I couldn't send it: try again.",
+    "nota": "invio non riuscito senza un messaggio del server (di solito c'è il suo, per esempio il limite di 5 al giorno); il testo scritto resta"
+  },
+  "scrivici.titolo_gestione": {
+    "it": "Commenti degli utenti",
+    "en": "Users' comments",
+    "nota": "Gestione (solo web, solo per chi gestisce il server): titolo dell'elenco dei commenti arrivati con Scrivici"
+  },
+  "scrivici.spiega_gestione": {
+    "it": "Quello che gli utenti scrivono con «Scrivici», il più recente in alto. Ti arriva anche un avviso, senza il testo.",
+    "en": "What users write with «Write to us», newest first. You also get an alert, without the text.",
+    "nota": "Gestione, sotto «Commenti degli utenti»"
+  },
+  "scrivici.da_leggere.one": {
+    "it": "{n} da leggere",
+    "en": "{n} to read",
+    "nota": "Gestione, accanto al titolo dei commenti (campo da_leggere); con zero non si scrive"
+  },
+  "scrivici.da_leggere.other": {
+    "it": "{n} da leggere",
+    "en": "{n} to read"
+  },
+  "scrivici.nessuno": {
+    "it": "Ancora nessun commento.",
+    "en": "No comments yet.",
+    "nota": "Gestione, elenco dei commenti vuoto"
+  },
+  "scrivici.da_web": {
+    "it": "dal web",
+    "en": "from the web",
+    "nota": "Gestione, da dove arriva un commento (piattaforma web)"
+  },
+  "scrivici.da_ios": {
+    "it": "dall'iPhone",
+    "en": "from iPhone",
+    "nota": "Gestione, da dove arriva un commento (piattaforma ios)"
+  },
+  "scrivici.da_android": {
+    "it": "da Android",
+    "en": "from Android",
+    "nota": "Gestione, da dove arriva un commento (piattaforma android)"
+  },
+  "scrivici.versione": {
+    "it": "versione {v}",
+    "en": "version {v}",
+    "nota": "Gestione, dopo da dove: la versione dell'app che ha scritto"
+  },
+  "scrivici.segna_letto": {
+    "it": "Segna come letto",
+    "en": "Mark as read",
+    "nota": "Gestione, sotto un commento da leggere; dopo il tocco il pulsante sparisce e la riga dice «Letto»"
+  },
+  "scrivici.segna_letto_di": {
+    "it": "Segna come letto il commento di {utente}",
+    "en": "Mark {utente}'s comment as read",
+    "nota": "nome del pulsante «Segna come letto» per chi usa un lettore di schermo"
+  },
+  "scrivici.letto": {
+    "it": "Letto",
+    "en": "Read",
+    "nota": "Gestione, in fondo alla riga di un commento già segnato letto"
+  },
+  "scrivici.non_segnato": {
+    "it": "Non sono riuscito a segnarlo come letto: riprova.",
+    "en": "I couldn't mark it as read: try again.",
+    "nota": "Gestione, «Segna come letto» non riuscito senza un messaggio del server"
+  }
+}
