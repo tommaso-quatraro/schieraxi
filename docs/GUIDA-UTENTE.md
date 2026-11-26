@@ -59,7 +59,7 @@ Se ti fermi prima di caricare le rose, alla prossima apertura la guida riprende 
 
 Alla fine compare **Tutto pronto, Mister**: puoi attivare gli avvisi e toccare **Vai alla Formazione**. Una frase dice che i fantavoti attesi usano i punteggi più comuni delle leghe classic (gol 3, assist 1, ammonizione −0,5) finché non metti quelli della tua lega in **Regole e scadenza**.
 
-Sull'iPhone i passi sono altri: **Carica le rose**, **Scegli la tua squadra**, **Stemma e maglia**, **Aggiungi il widget** e **Attiva gli avvisi**. Scadenza e giornata di partenza si scrivono in **Impostazioni › Regole e scadenza**.
+Sull'iPhone i passi sono gli stessi tre, più **Il widget** e **Gli avvisi** (con **L'ho già fatto** se li hai già sistemati). **Le rose** e **La tua squadra** aprono la loro pagina; quando la lasci, la guida continua dal passo dopo. Invece della ✕ c'è **Più tardi**. Lo stemma della tua squadra si sceglie in **Impostazioni › La mia squadra**.
 
 Su un computer la guida sta in un pannello a destra. Se in un secondo momento le rose cambiano da un altro telefono, SchieraXI le rilegge e ti chiede di ricontrollare; le scelte già fatte restano.
 
@@ -240,12 +240,12 @@ pagina loro, con **‹ Impostazioni** in alto per tornare. Sulla web, su uno sch
 | La mia lega | **Aggiorna le rose**, **La mia squadra**, **Regole e scadenza**, **Le altre squadre** (sezione 3, «La mia lega») |
 | Il tuo account | nome, email, Google collegato (**Accessi**), password (la nuova si scrive due volte: **Ripeti la nuova password**), nuovo codice di recupero, **Scarica i tuoi dati**, **Elimina l'account**, **Esci**, **Esci da tutti i dispositivi** |
 | Aspetto | tema (automatico, chiaro, scuro) e lingua (italiano o inglese). La dimensione del testo è quella del telefono o dello zoom del browser |
-| Informazioni | Privacy, Termini d'uso, Crediti e fonti, Codice sorgente, versione e **Novità**: le ultime dieci versioni, le altre con un tocco in fondo |
+| Informazioni | Privacy, Termini d'uso, Crediti e fonti, Codice sorgente, versione (sull'iPhone anche **Versione dell'app**) e **Novità**: le ultime dieci versioni, le altre con un tocco in fondo |
 | Scrivici | con un account: un commento per chi gestisce l'app (un'idea, un problema, un dubbio). Scrivi nella casella (fino a 2000 caratteri, va a capo), tocca **Invia** e compare «Grazie, l'abbiamo ricevuto.». Al massimo 5 commenti al giorno; lo legge solo chi gestisce l'app, ed entra in **Scarica i tuoi dati** |
 | Gestione | solo per chi gestisce l'app: vedi [GUIDA-GESTIONE.md](GUIDA-GESTIONE.md) |
 
 - **Scarica i tuoi dati**: un file con i tuoi dati (account e lega: regole, rose, scelte, avvisi, e i commenti mandati con **Scrivici**), mai la password né quelli degli altri utenti. Serve per tenerne una copia; non si ricarica nell'app. Sull'iPhone si salva da **Condividi › Salva su File**.
-- **Esci**: chiude l'accesso su questo dispositivo e toglie da qui i tuoi dati e gli avvisi. Se non riesce (per esempio senza rete) l'app lo dice e resti dentro: riprova.
+- **Esci**: dopo una conferma, chiude l'accesso su questo dispositivo e toglie da qui i tuoi dati e gli avvisi. Se non riesce (per esempio senza rete) l'app lo dice e resti dentro: riprova.
 - **Esci da tutti i dispositivi**: se non riconosci un accesso (te lo segnala anche un'email di sicurezza), chiude l'accesso su ogni telefono e computer, anche su quello che stai usando, dopo una conferma. Si chiudono anche il widget e le notifiche. Poi si rientra come sempre.
 - **Elimina l'account** cancella anche tutti i tuoi dati dal server e non si annulla. Se entri solo con Google, per aggiungere una password, cambiare l'email o eliminare l'account l'app chiede prima **Conferma con Google**.
 - **Cambiare l'email**: quando confermi il codice del nuovo indirizzo, gli altri dispositivi escono (resta dentro quello che stai usando) e all'indirizzo di prima arriva un messaggio con i passi da fare se non sei stato tu. Lo stesso messaggio arriva se togli l'email.
@@ -286,6 +286,7 @@ Sulla schermata Home, a schermo intero, senza store:
 | «Il server non risponde: riprova fra poco» | La rete c'è, ma il server è spento o sta ripartendo: riprova dopo qualche minuto. Se dura, avvisa chi gestisce l'app. |
 | «Aggiornamento pronto» in basso, con **Ricarica** | È uscita una versione nuova dell'app: tocca **Ricarica** per usarla, oppure finisci quello che stai facendo e la trovi la prossima volta che apri l'app. |
 | «Un attimo, mister: ci sto lavorando.» | Aspetta: l'app riprova da sola. |
+| «Il calcolo sta durando più del previsto: riprova tra poco.» | Il server è ancora al lavoro: riprova fra qualche minuto. |
 | «Questi dati sono stati cambiati da un altro dispositivo» | L'app ha ricaricato la versione nuova: controlla e rifai la modifica. |
 | «Troppi tentativi» | Aspetta il tempo indicato e riprova. |
 | «La sessione è finita: accedi di nuovo.» | Entra di nuovo con nome e password. |

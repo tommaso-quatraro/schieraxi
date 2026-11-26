@@ -52,5 +52,25 @@ extension Catalogo {
         static func provaSu(_ n: Int) -> String {
             n == 1 ? "Prova sull'ultima giornata giocata, usando solo i dati che c'erano prima. «Da fantamedia» è la formazione scelta con la fantamedia dei giocatori e la loro probabilità di giocare; per chi ha pochi voti la fantamedia si avvicina a quella del suo ruolo." : "Prova sulle ultime \(n) giornate giocate, usando per ognuna solo i dati che c'erano prima. «Da fantamedia» è la formazione scelta con la fantamedia dei giocatori e la loro probabilità di giocare; per chi ha pochi voti la fantamedia si avvicina a quella del suo ruolo."
         }
+
+        /// `avv.errore_sui_fantavoti`
+        static let erroreSuiFantavoti = "errore sui fantavoti (modello)"
+
+        /// `avv.errore_fantamedia`
+        static let erroreFantamedia = "errore (da fantamedia)"
+
+        /// `avv.punti_formazione_modello`
+        static let puntiFormazioneModello = "punti formazione (modello)"
+
+        /// `avv.punti_medi`
+        static func puntiMedi(f: String, m: String, p: String) -> String {
+            "Punti medi per giornata: modello \(m), da fantamedia \(f), massimo possibile \(p). Errore più basso e punti più alti sono meglio."
+        }
+
+        /// `avv.mancano_probabili`
+        static let mancanoProbabili = "Nelle giornate passate mancano le probabili formazioni, quindi dal vivo il modello va un po' meglio."
+
+        /// `avv.prova_sola_dopo`
+        static let provaSolaDopo = "La prova si fa da sola dopo gli aggiornamenti, appena c'è almeno una giornata finita."
     }
 }

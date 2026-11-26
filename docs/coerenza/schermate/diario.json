@@ -68,8 +68,8 @@
       "schermata": "Giornate, da dove vengono i punti (riserve entrate, modificatore difesa, partita rinviata)",
       "web": "nella giornata aperta, sotto la tabella degli 11, una riga per frase: «Rossi (10,0) è entrato dalla panchina al posto di Bianchi.», «Modificatore difesa: +1,5.», «Al posto di Verdi non è entrato nessuno dalla panchina.», «Partita rinviata: Neri prende il voto d'ufficio (6,0).»; per una giornata calcolata prima, solo se i conti non tornano, «Per questa giornata manca il dettaglio dei punti …»; niente se non c'è niente da spiegare",
       "iphone": "manca: la tabella degli 11 senza le righe sotto",
-      "forma": "server (`spiegazione_punti.righe` di ogni voce di `GET /api/diario`, così com'è; `null` o assente: niente)",
-      "chi": "server e web con #900; l'iPhone da fare (#900)",
+      "forma": "web; le frasi dal server (`spiegazione_punti.righe` di ogni voce di `GET /api/diario`, così com'è; `null` o assente: niente)",
+      "chi": "**da fare** sull'iPhone (#900); server e web **fatto** con #905",
       "stato": "da-fare"
     },
     {

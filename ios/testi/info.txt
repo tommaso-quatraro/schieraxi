@@ -1,0 +1,4 @@
+# Impostazioni > Informazioni (InformazioniPagina): la versione del server, come la web, e quella dell'app (solo iPhone, #931).
+# Poi: python script/testi.py --scrivi
+info.versione
+info.versione_app

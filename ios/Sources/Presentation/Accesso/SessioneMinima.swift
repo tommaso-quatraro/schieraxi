@@ -30,10 +30,11 @@ struct SessioneMinimaSezione: View {
             } footer: {
                 Text("Se l'app non si collega, puoi uscire e accedere di nuovo, oppure scegliere un altro server.").foregroundStyle(Color.testoSecondario)
             }
-            .confirmationDialog("Esci da SchieraXI su questo telefono?", isPresented: $chiediEsci, titleVisibility: .visible) {
+            // la stessa conferma di «Esci» in «Il tuo account», con le parole della web (`account.esci_conferma`, #931)
+            .confirmationDialog(Catalogo.Account.esciConferma, isPresented: $chiediEsci, titleVisibility: .visible) {
                 Button(Catalogo.Account.esci, role: .destructive) { Task { await sessione.esciAncheSenzaServer() } }
             } message: {
-                Text("I dati salvati su questo telefono vengono cancellati.")
+                Text(Catalogo.Account.esciConfermaSpiega)
             }
         }
     }

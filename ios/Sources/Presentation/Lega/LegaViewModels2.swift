@@ -315,8 +315,6 @@ final class AggiornaDatiViewModel: ViewModelBase {
     @Published private(set) var errori: [String] = []
     /// Pausa tra una domanda e l'altra al server (i test la azzerano).
     var pausa: UInt64 = 2_000_000_000
-    /// Dopo quante domande si smette di aspettare.
-    var tentativiMassimi = 150
     /// Il server è occupato con un aggiornamento partito altrove (aggiornamento programmato, giro leggero, installazione di una
     /// versione): `aggiornamento_in_corso` di `GET /api/stato`.
     @Published private(set) var serverOccupato = false
@@ -364,7 +362,8 @@ final class AggiornaDatiViewModel: ViewModelBase {
 
     /// Come `aggiornaDati` della web: appena il server conferma l'avvio il pulsante è spento con la frase `aggiorna.in_corso` e sotto
     /// il messaggio dell'avvio (sulla web un avviso); la frase sparisce quando l'aggiornamento finisce o dopo cinque domande senza
-    /// risposta. Se dura più del solito resta, e la toglie la rilettura dello stato (`segui`) quando il server è libero.
+    /// risposta. Anche se dura più del solito si continua a chiedere finché il server non ha finito, come la web (#931: prima si
+    /// smetteva dopo 150 domande con una frase scritta solo qui).
     func avvia() async {
         guard !inCorso else { return }
         inCorso = true
@@ -386,7 +385,7 @@ final class AggiornaDatiViewModel: ViewModelBase {
         segna(occupato: true)
         messaggio = Catalogo.Aggiorna.avviato
         var senzaRisposta = 0
-        for _ in 0..<tentativiMassimi {
+        while !Task.isCancelled {
             if pausa > 0 { try? await Task.sleep(nanoseconds: pausa) }
             if Task.isCancelled { return }
             do {
@@ -409,7 +408,6 @@ final class AggiornaDatiViewModel: ViewModelBase {
                 }
             }
         }
-        messaggio = "L'aggiornamento sta durando più del solito: controlla tra poco."
     }
 }
 
