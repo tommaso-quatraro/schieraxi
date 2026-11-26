@@ -419,6 +419,9 @@ final class SessioneAccountTests: XCTestCase {
         let prima = pulizie
         try await s.esci()
         XCTAssertEqual(server.quante("POST /api/account/esci"), 1)
+        // il widget di questo dispositivo lo chiude il server con la sessione: niente DELETE, che con il server di prima spegneva
+        // anche il widget dell'altro dispositivo dello stesso account (26/11/2026)
+        XCTAssertEqual(server.quante("DELETE /api/account/token-widget"), 0)
         XCTAssertEqual(s.stato, .daAccedere)
         XCTAssertNil(archivio.leggi(server: server.indirizzo))
         XCTAssertGreaterThan(pulizie, prima, "all'uscita i dati locali si cancellano")
@@ -474,9 +477,9 @@ final class SessioneAccountTests: XCTestCase {
         XCTAssertEqual(widget.leggi(server: server.indirizzo), widgetVecchio, "il widget resta collegato com'era")
     }
 
-    /// Server in errore o troppe richieste: come con la rete giù si resta dentro. Il server aveva già tolto il token del widget
-    /// (si toglie prima dell'uscita, finché la sessione vale): il telefono dimentica quel token, che non vale più, e ne chiede uno
-    /// nuovo. Il token di prima non scade (`sessioneDentro`): se restasse sul telefono, l'app non ne chiederebbe un altro.
+    /// Server in errore o troppe richieste: come con la rete giù si resta dentro. Il token del widget lo toglie il server solo
+    /// insieme alla sessione (#814): l'app non manda più `DELETE /api/account/token-widget` (26/11/2026), quindi con l'uscita non
+    /// riuscita il widget resta collegato con il suo token e non se ne chiede un altro.
     func testUscitaNonRiuscitaColServerInErroreRestaDentroConIlWidget() async throws {
         let errori: [ErroreApi] = [.risposta(503), .troppiTentativi("Troppe richieste.", riprovaTra: 30)]
         for errore in errori {
@@ -494,14 +497,14 @@ final class SessioneAccountTests: XCTestCase {
             var ricevuto: Error?
             do { try await s.esci() } catch { ricevuto = error }
             XCTAssertNotNil(ricevuto, "\(errore): non si può dire che sei uscito")
-            XCTAssertEqual(server.quante("DELETE /api/account/token-widget"), 1, "\(errore): il token del widget si toglie prima")
+            XCTAssertEqual(server.quante("DELETE /api/account/token-widget"), 0, "\(errore): il token del widget lo toglie solo l'uscita")
             XCTAssertEqual(s.utente?.nomeUtente, "mister.rossi", "\(errore): si resta dentro")
             XCTAssertEqual(archivio.leggi(server: server.indirizzo), "tok")
             XCTAssertEqual(pulizie, prima, "\(errore): i dati di questo telefono restano")
             XCTAssertFalse(s.inCorso)
             _ = await s.rinnovoWidget?.value
-            XCTAssertEqual(server.quante("POST /api/account/token-widget"), 1, "\(errore): il token revocato si dimentica e se ne chiede uno nuovo")
-            XCTAssertEqual(widget.leggi(server: server.indirizzo), widgetNuovo, "\(errore): il widget ha il token nuovo, non quello revocato")
+            XCTAssertEqual(server.quante("POST /api/account/token-widget"), 0, "\(errore): il token del widget vale ancora")
+            XCTAssertEqual(widget.leggi(server: server.indirizzo), widgetVecchio, "\(errore): il widget resta collegato con il suo token")
         }
     }
 

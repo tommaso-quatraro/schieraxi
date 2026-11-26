@@ -2282,6 +2282,7 @@
   },
   "/api/account/token-widget": {
    "delete": {
+    "description": "Toglie solo il token del widget di questo dispositivo: lo mandano a «Esci» le app di prima del 26/11/2026, che così non\nspengono più il widget dell'altro dispositivo dello stesso account. Le app nuove non lo mandano (lo fa già /api/account/esci).",
     "responses": {
      "200": {
       "content": {
@@ -2295,6 +2296,7 @@
     "summary": "Revoca Token Widget"
    },
    "get": {
+    "description": "Il token del widget di questo dispositivo (della sessione che chiede): quelli degli altri dispositivi non contano.",
     "responses": {
      "200": {
       "content": {
@@ -2308,7 +2310,7 @@
     "summary": "Stato Token Widget"
    },
    "post": {
-    "description": "Il token per il widget iOS: uno solo per utente (uno nuovo revoca il precedente), vale 90 giorni e serve solo a leggere (GET)\n/api/oggi, /api/widget e /api/live. Si vede una volta sola: sul server resta l'hash. (Con il token del widget questa rotta è già chiusa dal controllo d'accesso.)",
+    "description": "Il token per il widget iOS: uno per dispositivo (legato alla sessione che lo chiede: uno nuovo revoca solo il precedente della\nstessa sessione, 26/11/2026), vale 90 giorni e serve solo a leggere (GET) /api/oggi, /api/widget e /api/live. Si vede una volta\nsola: sul server resta l'hash. (Con il token del widget questa rotta è già chiusa dal controllo d'accesso.)",
     "responses": {
      "200": {
       "content": {
