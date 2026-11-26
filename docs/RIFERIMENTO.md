@@ -265,9 +265,9 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
   `GET /api/widget` e `GET /api/live`. Ogni altra rotta risponde 403. Cambio password e «esci da tutti» lo revocano; dal 20/11/2026
   (#843) anche il cambio dell'email confermato, tranne se è legato alla sessione che conferma. Resta legato
   alla sessione che l'ha chiesto (`token_widget.sessione_id`, #814): «Esci» da quella sessione lo revoca, da un'altra no; i token
-  nati prima del 20/11/2026 restano senza legame fino alla scadenza. Dal 26/11/2026 uno per sessione, non più uno per utente:
-  iPhone e iPad dello stesso account hanno ognuno il suo widget, e `GET`/`DELETE /api/account/token-widget` guardano solo quello
-  della sessione che chiede.
+  nati prima del 20/11/2026 restano senza legame fino alla scadenza o al primo «Esci» dell'account. Dal 26/11/2026 uno per
+  sessione, non più uno per utente (al massimo 10): iPhone e iPad dello stesso account hanno ognuno il suo widget, e
+  `GET`/`DELETE /api/account/token-widget` guardano solo quello della sessione che chiede.
 - Giocatori: all'utente una sola percentuale sul giocare, «gioca N%» (`p_voto`); `percentuale` delle probabili non si mostra e
   `titolarita` va a parole. Dopo la scadenza `GET /api/formazione` ha `iniziata: true`, `titolarita: null` e `stato_partita`
   (`fanta/fasi.py`, `formazione_a_giornata_iniziata`). Dettagli in `docs/API.md`, «Giocatori».
