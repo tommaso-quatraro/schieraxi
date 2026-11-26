@@ -1005,6 +1005,17 @@ function menuRinvio(rv) {
       <select class="rinvio-modo" data-giornata="${Number(rv.giornata)}" data-stagione="${esc(rv.stagione || "")}">${modi.map(m => `<option value="${esc(m)}" ${m === scelto ? "selected" : ""}>${esc(nomeModoRinvio(m, voto))}</option>`).join("")}</select></span></label>
     <p class="debole piccolo">${rv.eccezione ? t("oggi.rinvio_eccezione", { regola: esc(nomeModoRinvio(rv.predefinito, voto)) }) : t("oggi.rinvio_regola_lega")}</p>`;
 }
+// Un menu dentro un campo con la domanda sopra (`label.accesso-campo`), con la scelta intera come il menu del rinvio: i tempi della lega
+// in Regole e scadenza e nella guida del primo avvio. Con lo zoom al 200% il <select> si leggeva «10 minuti prima dell…» (#923).
+// `select`: l'HTML del <select>, senza classe; `scelta`: il testo della voce scelta (testo semplice). I cambi a mano li segue
+// `seguiScelta`; dopo un valore messo dal codice va chiamata `mostraScelta`.
+const menuIntero = (select, scelta) =>
+  `<span class="menu-scelta"><span class="menu-scelta-testo" aria-hidden="true">${esc(scelta)}</span>${select}</span>`;
+function mostraScelta(sel) {
+  const testo = sel && sel.closest(".menu-scelta")?.querySelector(".menu-scelta-testo");
+  if (testo) testo.textContent = sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : "";
+}
+const seguiScelta = sel => { if (sel) sel.addEventListener("change", () => mostraScelta(sel)); };
 // «UDI vs MIL»: le sigle, prima la squadra di casa. La usano il riquadro del rinvio e la riga dei recuperi che mancano (#310).
 const partitaVs = p => `${sigla(p.casa)} vs ${sigla(p.trasferta)}`;
 // `titolo` (la giornata finita, #895): il titolo con la giornata a cui si riferisce, già pronto, al posto di «Partita rinviata»;
@@ -3298,13 +3309,13 @@ async function vistaRegole() {
   const malusRighe = [["ammonizione", t("bonus.ammonizione")], ["espulsione", t("bonus.espulsione")], ["autogol", t("bonus.autogol")], ["rigore_sbagliato", t("bonus.rigore_sbagliato")], ["gol_subito_portiere", t("bonus.gol_subito_portiere"), t("regole.per_ogni_gol")]];
   const opzioniScadenza = valore => [...new Set([...PA_SCADENZE, valore])].sort((a, b) => a - b)
     .map(m => `<option value="${m}" ${m === valore ? "selected" : ""}>${esc(paScadenzaNome(m))}</option>`).join("");
-  const prima = Number(r.prima_giornata_lega ?? 1);
+  const prima = Number(r.prima_giornata_lega ?? 1), scadenza = Number(r.scadenza_minuti ?? 0);
   pagina(`<div class="regole-colonne"><div class="regole-testa">
     <div class="carta" id="tempi-lega"><h2>${t("regole.tempi_della_lega")}</h2>
       <label class="accesso-campo"><span>${t("pav.scad_domanda")}</span>
-        <select class="campo-testo" id="tempi-scadenza">${opzioniScadenza(Number(r.scadenza_minuti ?? 0))}</select></label>
+        ${menuIntero(`<select id="tempi-scadenza">${opzioniScadenza(scadenza)}</select>`, paScadenzaNome(scadenza))}</label>
       <label class="accesso-campo"><span>${t("pav.prima_domanda")}</span>
-        <select class="campo-testo" id="tempi-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === prima ? "selected" : ""}>${esc(vocePrimaGiornata(g))}</option>`).join("")}</select></label>
+        ${menuIntero(`<select id="tempi-prima">${Array.from({ length: 38 }, (_, i) => i + 1).map(g => `<option value="${g}" ${g === prima ? "selected" : ""}>${esc(vocePrimaGiornata(g))}</option>`).join("")}</select>`, vocePrimaGiornata(prima))}</label>
       <div class="debole piccolo">${t("regole.prima_giornata_conta")}</div>
     </div>
 
@@ -3421,11 +3432,15 @@ async function vistaRegole() {
       avviso(t("regole.tempi_salvati"));
     } catch (e) {                      // resta scritto ciò che vale sul server
       sc.value = String(r.scadenza_minuti ?? 0); pg.value = String(r.prima_giornata_lega ?? 1);
+      mostraScelta(sc); mostraScelta(pg);
       avviso(e.message, 8000);
     }
   };
-  $("#tempi-scadenza").addEventListener("change", salvaTempi);
-  $("#tempi-prima").addEventListener("change", salvaTempi);
+  for (const sel of [$("#tempi-scadenza"), $("#tempi-prima")]) {
+    mostraScelta(sel);                 // la voce che il menu mostra davvero (una giornata fuori elenco: la prima)
+    seguiScelta(sel);
+    sel.addEventListener("change", salvaTempi);
+  }
   $("#md_attivo").addEventListener("change", ev => { $("#md-corpo").hidden = !ev.target.checked; mostraSalva(); });
   $("#vu_attivo").addEventListener("change", ev => { $("#vu-corpo").hidden = !ev.target.checked; mostraSalva(); });
   $("#p_cambio").addEventListener("change", mostraSalva);
@@ -3487,8 +3502,8 @@ async function vistaRegole() {
       else if (k.startsWith("bonus.")) imposta("b_" + k.slice(6), v);
       else if (k.startsWith("rosa.")) imposta("rosa_" + k.slice(5), v, 0);
       else if (k === "crediti_iniziali") imposta("crediti", v, 0);
-      else if (k === "scadenza_minuti") { const sc = $("#tempi-scadenza"); sc.innerHTML = opzioniScadenza(Number(v)); }
-      else if (k === "prima_giornata_lega") $("#tempi-prima").value = String(v);
+      else if (k === "scadenza_minuti") { const sc = $("#tempi-scadenza"); sc.innerHTML = opzioniScadenza(Number(v)); mostraScelta(sc); }
+      else if (k === "prima_giornata_lega") { const pg = $("#tempi-prima"); pg.value = String(v); mostraScelta(pg); }
       else if (k === "panchina.numero") imposta("p_numero", v, 0);
       else if (k === "panchina.posti") { $("#posti_fissi").checked = true; $("#posti-corpo").hidden = false; $("#numero-corpo").hidden = true; for (const x of ["P", "D", "C", "A"]) imposta("posti_" + x, v[x], 0); aggiornaPosti(); }
       else if (k === "panchina.max_sostituzioni") imposta("p_max", v, 0);
