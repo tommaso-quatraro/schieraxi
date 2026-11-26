@@ -82,9 +82,9 @@ def griglia_da_testo(testo: str) -> list[list[str]]:
 MAX_FOGLI, MAX_RIGHE, MAX_COLONNE, MAX_TESTO_CELLA = 10, 1500, 60, 200      # un Excel normale delle rose sta largamente dentro
 
 # intero, senza tagli: il server manda al massimo 500 caratteri (tests/test_rose_fogli_non_rose.py)
-NESSUNA_ROSA = ("Non ho trovato rose nel file. Leggo l'esportazione «rosters» di Leghe (righe come «Real Esempio,7627,12», "
-                "con «$,$,$» tra una squadra e l'altra) oppure un Excel, un CSV o un testo con il nome di ogni squadra "
-                "e sotto i suoi calciatori (come «P;Sommer;10»).")
+# in parole semplici (#883): quale file serve, senza i segni dell'esportazione né righe d'esempio con i codici
+NESSUNA_ROSA = ("Non ho trovato rose nel file. Serve il file delle rose esportato da Leghe (Excel o CSV), oppure un testo "
+                "con il nome di ogni squadra e sotto i suoi giocatori, uno per riga.")
 
 
 # ---------- CSV e testo caricati: codifica e separatori ----------

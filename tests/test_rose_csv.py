@@ -294,13 +294,18 @@ def test_file_binari_hanno_un_messaggio_chiaro(dati, frammento):
         rose.decodifica(dati)
 
 
-def test_csv_di_un_altro_tipo_da_un_messaggio_con_gli_esempi(indice):
+def test_csv_di_un_altro_tipo_da_un_messaggio_in_parole_semplici(indice):
     # (una classifica ha il suo messaggio: tests/test_rose_fogli_non_rose.py)
     appunti = "Data;Nota\n1 settembre;Asta di riparazione\n2 settembre;Mercato chiuso\n3 settembre;Rose consegnate\n"
     lette = rose.estrai(rose.griglie_da_bytes(appunti.encode()), indice)
     assert not any(r.esito.trovato for s in lette for r in s.righe)          # il server allora risponde con NESSUNA_ROSA
-    for frammento in ("rosters", "$,$,$", "Real Esempio,7627,12", "P;Sommer;10"):
-        assert frammento in rose.NESSUNA_ROSA
+    # #883: dice quale file serve con parole semplici, senza i segni dell'esportazione («$,$,$»), righe d'esempio con i codici
+    # («Real Esempio,7627,12», «P;Sommer;10») o il nome tecnico «rosters»
+    assert rose.NESSUNA_ROSA.startswith("Non ho trovato rose nel file.")
+    for parola in ("Leghe", "Excel", "CSV", "squadra", "giocatori"):
+        assert parola in rose.NESSUNA_ROSA
+    for segno in ("$", ";", "rosters", "Sommer", "7627"):
+        assert segno not in rose.NESSUNA_ROSA
 
 
 def test_celle_enormi_o_virgolette_sbilanciate_non_vanno_in_errore(indice):
@@ -370,7 +375,7 @@ def test_dal_server_i_limiti_di_sicurezza_non_rifiutano_un_csv_normale(ambiente,
 def test_dal_server_formato_sconosciuto_messaggio_chiaro(ambiente):
     a, _ = nuovo_utente("utentea")
     r = a.post("/api/rose/file", files={"file": ("numeri.csv", b"Pos,Punti,Gol\n1,30,4\n2,25,7\n", "text/csv")})
-    assert r.status_code == 400 and "rosters" in r.json()["detail"] and "$,$,$" in r.json()["detail"]
+    assert r.status_code == 400 and r.json()["detail"] == rose.NESSUNA_ROSA and "esportato da Leghe" in r.json()["detail"]
     r = a.post("/api/rose/file", files={"file": ("rose.pdf", b"%PDF-1.4 ...", "application/pdf")})
     assert r.status_code == 400 and "PDF" in r.json()["detail"] and "Formato non supportato" not in r.json()["detail"]
     r = a.post("/api/rose/file", files={"file": ("rose.xls", b"\xd0\xcf\x11\xe0" + b"\x00" * 30, "application/vnd.ms-excel")})
