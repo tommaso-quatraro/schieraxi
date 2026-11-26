@@ -30,6 +30,10 @@ struct FormazioneDalCatalogoTests {
             Catalogo.Formazione.mettiInCampo, Catalogo.Formazione.chiEscePer(nome: segno), Catalogo.Formazione.esceSpiega(nome: segno),
             Catalogo.Formazione.passiAl(modulo: segno), Catalogo.Formazione.puntiCon(nome: segno),
             Catalogo.Formazione.nessunoLasciaPosto,
+            // il titolo della panchina, la stessa parola della web (`scambi.panchina`, collaudo del 26/11)
+            Catalogo.Scambi.panchina,
+            // il posto di chi entra nelle righe di «Sostituisci» (collaudo del 26/11)
+            Catalogo.Mercato.postoTitolare, Catalogo.Mercato.panchinaN(n: segno), Catalogo.Mercato.postoFuori,
             // la scheda del giocatore unica (#616)
             Catalogo.Formazione.partitaCasa(avv: segno, quando: segno), Catalogo.Formazione.partitaFuori(avv: segno, quando: segno),
             Catalogo.Formazione.seGioca, Catalogo.Formazione.percheTitolare, Catalogo.Formazione.incerto(p: segno, riserva: segno),
