@@ -44,7 +44,7 @@ Chi è già entrato con quell'invito tiene il suo account. Gli inviti usati, sca
 
   Il proprio account non si blocca e da qui non si elimina (si elimina da **Il tuo account**, con la password); l'ultimo
   amministratore non si blocca né si elimina. Ogni blocco, sblocco ed eliminazione lascia una riga negli eventi di sicurezza di
-  **Errori recenti**, con chi l'ha fatto. Sul server, via ssh, dalla cartella dell'app, gli stessi passi con la conferma del nome:
+  **Errori recenti** («Account bloccato · luca»); nel registro di sicurezza del server la riga dice anche chi l'ha fatto. Sul server, via ssh, dalla cartella dell'app, gli stessi passi con la conferma del nome:
   `.venv/bin/python -m fanta utente-blocca <nome>`, `utente-sblocca <nome>` e `utente-elimina <nome>`.
 - **Errori recenti**: le richieste dall'ultimo riavvio con le rifiutate e gli errori del server, tempo medio e massimo, gli
   eventi di sicurezza con il loro nome in parole, le richieste più lente con accanto al percorso tecnico il nome della parte
