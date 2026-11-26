@@ -1862,6 +1862,7 @@ const TESTI = {
     "social.password_collega": "La tua password (serve per collegare Google)",
 
     "srv.aggiorna_nessuna_fonte": "Nessuna fonte di dati è accesa, quindi non c'è niente da aggiornare: accendine una in Impostazioni › Gestione › Stato dei dati.",
+    "srv.aggiorna_pausa": "I dati sono stati aggiornati da poco: riprova fra {1}.",
     "srv.una_sola_squadra": "Con una sola squadra funzionano formazione e consigli; le rose degli altri servono a guardare le altre squadre: puoi aggiungerle quando vuoi.",
 
     "tempo.oggi": "oggi",
@@ -3743,6 +3744,7 @@ const TESTI = {
     "social.password_collega": "Your password (needed to link Google)",
 
     "srv.aggiorna_nessuna_fonte": "No data source is on, so there is nothing to refresh: turn one on in Settings › Management › Data status.",
+    "srv.aggiorna_pausa": "The data was refreshed recently: try again in {1}.",
     "srv.una_sola_squadra": "With just one team, the lineup and the advice work; the other teams' rosters let you look at the other teams: you can add them whenever you like.",
 
     "tempo.oggi": "today",
