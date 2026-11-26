@@ -3,7 +3,8 @@ import XCTest
 /// La schermata di accesso e il resto dell'account, con l'app in modalità demo (`-DEMO_ACCESSO <scenario>`): server finto, nessuna rete.
 /// Un tocco che apre qualcosa passa da `tocca(_:finchéCompare:_:)` (Tocchi.swift): se il tocco si perde, si ritocca. Restano a
 /// parte i tocchi che aspettano altro: `scrivi` (il fuoco della tastiera, #209), `apriFoglio` (scorre se la voce è sotto il
-/// bordo) e l'interruttore del codice di recupero (tocco sulla levetta, poi «Continua» acceso).
+/// bordo), `chiudiFoglio` (il foglio che sparisce, #860) e l'interruttore del codice di recupero (tocco sulla levetta, poi
+/// «Continua» acceso).
 final class AccessoUITests: XCTestCase {
     private var app: XCUIApplication!
 
@@ -199,11 +200,64 @@ final class AccessoUITests: XCTestCase {
 
     /// Chiude il foglio con il pulsante della sua barra (`titolo`): sotto c'è la barra delle Impostazioni con un altro «Chiudi».
     /// La chiusura si controlla con `siChiude`, la stessa prova di `restaAperto`: così ogni corsa mostra che vede un foglio che si chiude davvero.
-    private func chiudiFoglio(_ titolo: String, _ pulsante: String, segno: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+    /// Un tocco che non arriva all'app si ripete, come in `tocca` (Tocchi.swift): #860, «Annulla» di «Elimina l'account» toccato
+    /// una volta sola e foglio ancora aperto dopo 10 secondi, una volta (corsa 44830138599); la diagnosi sulla stessa schermata con
+    /// i dati che cambiano non ha visto nessuna chiusura mancata su 26 (senza carico e con la CPU occupata). Al massimo 3 tocchi, e
+    /// dopo il primo solo se il pulsante c'è ancora e si può toccare. Un foglio ancora aperto dopo 3 tocchi è un difetto vero: il
+    /// test fallisce e dice com'era il pulsante. Quando non basta la prima attesa (tocco perso o chiusura lenta) il registro del test
+    /// ha una riga sola, scritta con `print` (a inizio riga), vedi `rigaChiusuraLenta`. `tap` serve solo al test che simula un tocco
+    /// perso (`testUnToccoPersoSuAnnullaSiRitocca`): con `tap` la riga dice che è la prova voluta.
+    private func chiudiFoglio(_ titolo: String, _ pulsante: String, segno: XCUIElement, file: StaticString = #filePath, line: UInt = #line,
+                              tap: ((XCUIElement) -> Void)? = nil) {
         let b = app.navigationBars[titolo].buttons[pulsante]
         XCTAssertTrue(b.waitForExistence(timeout: 10), "manca «\(pulsante)»", file: file, line: line)
-        b.tap()
-        XCTAssertTrue(siChiude(segno, entro: 10), "il foglio non si chiude con «\(pulsante)»", file: file, line: line)
+        var chiuso = false
+        var tocchi = 0
+        var attese = 0
+        let inizio = Date()
+        for tentativo in 0..<3 where !chiuso {
+            if tentativo == 0 || (b.exists && b.isHittable) {
+                if let tap { tap(b) } else { b.tap() }
+                tocchi += 1
+            }
+            attese += 1
+            chiuso = siChiude(segno, entro: 10)
+        }
+        if chiuso && attese > 1 {
+            print(Self.rigaChiusuraLenta(tocchi: tocchi, secondi: Int(Date().timeIntervalSince(inizio)), pulsante: pulsante,
+                                         titolo: titolo, prova: tap != nil))
+        }
+        if !chiuso {
+            let comEra = b.exists ? (b.isHittable ? "c'è e si può toccare" : "c'è ma non si può toccare") : "non c'è più"
+            XCTFail("il foglio non si chiude con «\(pulsante)»: \(tocchi) tocchi, il pulsante \(comEra)", file: file, line: line)
+        }
+    }
+
+    /// La riga del registro quando chiudere un foglio ha chiesto più di un'attesa: «chiudiFoglio: 2 tocchi, chiuso dopo 11 s
+    /// («Annulla» di «Elimina l'account»)», da contare nel riepilogo della corsa. Quella del test che perde apposta il primo tocco
+    /// comincia con «chiudiFoglio (prova voluta):», così non si conta come un tocco ripetuto vero.
+    private static func rigaChiusuraLenta(tocchi: Int, secondi: Int, pulsante: String, titolo: String, prova: Bool) -> String {
+        "chiudiFoglio\(prova ? " (prova voluta)" : ""): \(tocchi) tocchi, chiuso dopo \(secondi) s («\(pulsante)» di «\(titolo)»)"
+    }
+
+    /// Il rimedio di #860: il primo tocco su «Annulla» si perde (non lo si manda all'app) e `chiudiFoglio` deve accorgersene e
+    /// ritoccare finché il foglio si chiude. Con un tocco solo questo test fallisce.
+    func testUnToccoPersoSuAnnullaSiRitocca() {
+        avvia("account")
+        attendi("Il tuo account")
+        let elimina = app.navigationBars["Elimina l'account"]
+        apriFoglio(app.buttons["account-elimina"], segno: elimina)
+        var tocchi = 0
+        chiudiFoglio("Elimina l'account", "Annulla", segno: elimina, tap: { pulsante in
+            tocchi += 1
+            if tocchi > 1 { pulsante.tap() }   // il primo tocco «si perde»
+        })
+        XCTAssertGreaterThanOrEqual(tocchi, 2, "un tocco perso e almeno uno arrivato")
+        // la riga del registro di questa prova non si confonde con un tocco ripetuto vero, che il riepilogo della corsa conta
+        XCTAssertEqual(Self.rigaChiusuraLenta(tocchi: 2, secondi: 11, pulsante: "Annulla", titolo: "Elimina l'account", prova: false),
+                       "chiudiFoglio: 2 tocchi, chiuso dopo 11 s («Annulla» di «Elimina l'account»)")
+        XCTAssertEqual(Self.rigaChiusuraLenta(tocchi: 2, secondi: 11, pulsante: "Annulla", titolo: "Elimina l'account", prova: true),
+                       "chiudiFoglio (prova voluta): 2 tocchi, chiuso dopo 11 s («Annulla» di «Elimina l'account»)")
     }
 
     /// Build 219: «Cambia password» si apriva e si chiudeva subito da solo. Con i dati dell'account che cambiano di continuo
