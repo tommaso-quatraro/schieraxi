@@ -1,5 +1,27 @@
 [
   {
+    "versione": "1.584",
+    "data": "2026-11-26T14:55:33",
+    "titolo": "Web: più affidabile con la rete lenta o assente",
+    "voci": [
+      "Formazione: se una volta la formazione che hai salvato non si legge, aprendo l'app senza rete vedi ancora i tuoi 11, non quelli consigliati come se fossero i tuoi.",
+      "Con la rete lenta la prima schermata non resta più vuota: dopo pochi secondi compare la Formazione salvata, e quando arrivano i dati nuovi si aggiorna senza saltare. I volti dei giocatori non si fanno più aspettare.",
+      "Scheda del giocatore: le prossime partite sono quelle del calendario aggiornato; quelle salvate in precedenza si vedono solo se il calendario non arriva.",
+      "Se in un'altra scheda del browser esci o entri con un altro account, la scheda rimasta aperta si ricarica con l'account giusto.",
+      "La web installata sul telefono, quando torna in primo piano, controlla se c'è una versione nuova (al massimo ogni tre ore): la prepara senza interromperti e la usa alla prossima apertura, oppure subito con «Ricarica»."
+    ],
+    "tecnico": [
+      "Web, caricaConCache: daSalvare ora dà true (salva), false (toglie la copia) o null (non salva e tiene la copia di prima). vistaFormazione dà null alle risposte con scelta_non_letta (lettura di GET /api/scelta o della valutazione non riuscita), false a senza_squadra come prima.",
+      "Web, controllaAccesso: GET /api/account/me con un tempo massimo di 4 secondi (ATTESA_CHI_SONO_MS) solo se nel browser restano l'account o copie (restanoCopie) e non si torna da Google né da un link d'invito; scaduto, stato.account dall'account salvato (riprendiAccountSalvato) e la risposta tardiva va a chiSonoInRitardo: 401 con multiutente → sessioneScaduta, altro account → ricordaAccount e ricarica, stesso account → dati dell'account e lingua. Estratti ricordaDatiAccesso e ricordaAccount, senza cambiare cosa salvano.",
+      "Web, avvio: la Formazione e Giornate si disegnano subito dopo «chi sono», senza aspettare /api/stato, /api/squadre, /api/avatar e /api/funzioni; caricaGiornata e la lettura del diario aspettano avvioLetto (stato e squadre) prima di chiedere, così senza rose o senza squadra non partono richieste che rispondono 409 o 400. Le pagine di Impostazioni aprono dopo stato, squadre e funzioni, come prima; aperte dalla barra prima che arrivassero si ridisegnano quando arrivano (ridisegnaImpostazioniAvvio, la stessa regola di rileggiAvvio, mai sotto la schermata di accesso). La riga di stato parte dalla copia «stato».",
+      "Web, volti: copia «tratti» di /api/avatar, usata subito; all'arrivo, se i tratti cambiano, ridisegnaVolti riscrive al loro posto gli SVG degli .avatar[data-volto] (avatar() mette data-volto, data-squadra e data-ruolo a chi non ha i tratti nella risposta).",
+      "Web, datiCalendario: senza calendario della sessione aspetta GET /api/calendario fino a 1,5 secondi (ATTESA_CALENDARIO_MS); poi mostra la copia e ridisegna «Tutti i numeri» quando arriva; la copia da sola solo se la lettura non riesce.",
+      "Web, evento storage: se cambia l'id dell'account salvato in localStorage (uscita, altro accesso, localStorage svuotato) rispetto a stato.account, location.reload().",
+      "Web, service worker: a ogni visibilitychange verso visibile, se sono passate almeno tre ore dall'ultimo controllo (CONTROLLO_VERSIONE_MS), registration.update(); la versione nuova si installa e prende il posto della vecchia come già faceva (skipWaiting, clients.claim, barra «Ricarica»).",
+      "Test del browser: tests/browser/test_copie_e_rete.py (rete governata dal test) e un test in test_web_installata.py. Nessuna rotta né campo dell'API cambiato; calcolo non toccato."
+    ]
+  },
+  {
     "versione": "1.583",
     "data": "2026-11-26T14:23:49",
     "titolo": "Gestione: chi gestisce il server può bloccare o eliminare un account",
