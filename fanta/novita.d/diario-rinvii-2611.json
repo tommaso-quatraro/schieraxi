@@ -1,0 +1,15 @@
+{
+  "titolo": "Giornate e riepilogo di Oggi più giusti con le partite rinviate",
+  "voci": [
+    "Giornate: se una giornata già finita passa ad aspettare il recupero, la pagina non la mostra più con i punti del voto d'ufficio; torna, con i punti del recupero, quando il recupero si gioca. Lo stesso nel riepilogo di Oggi e nel widget.",
+    "Giornate: per chi aveva una partita rinviata la tabella degli 11 mostra il voto che la tua lega ha contato (il voto d'ufficio, oppure «senza voto»), non quello del recupero, e la riga «Meglio del previsto» non lo nomina più. Neanche «Quanto ci abbiamo preso» lo conta.",
+    "Giornate: la consigliata mostrata prima della scadenza non si perde più per un errore del calcolo, e le giornate che dicevano per sbaglio «non era stata salvata» si sistemano da sole.",
+    "Oggi: «Con la consigliata: X punti» compare solo quando la pagina Giornate fa il confronto, cioè con la consigliata che ti era stata mostrata prima della scadenza."
+  ],
+  "tecnico": [
+    "Diario (diario.py): sospesa() nasconde la voce di una giornata della stagione in corso che non è più in rinvii.giornate_chiuse e ha l'impronta delle regole diversa da quella di adesso; la usano elenco(percorso, regole, db), fasi.blocco_riepilogo (nel_diario false, punti dai voti) e widget._diario. GET /api/diario apre l'archivio prima di elenco; se non si apre, registro e voci tutte.",
+    "Diario: giocatori[].fv è il voto contato dalla lega (_fv_della_lega con rinvii.voti_lega), con il campo facoltativo rinvio (senza_voto o voto_ufficio) per chi aveva la partita rinviata; fatti_e_attesi e precisione.numeri_giornata li lasciano fuori. numeri_giocatori e _stessi_voti usano la stessa regola, e confrontano anche il segno: le voci già scritte si correggono quando cambiano i voti della giornata.",
+    "Diario: per_il_consiglio legge l'istantanea fuori dal try e la passa anche al ripiego {istantanea, indicatori: false}; aggiorna rifà una volta le voci con consigliata_di_allora «non_salvata» e un'istantanea con i titolari nel file. server._copia_automatica scrive nel registro il tipo d'errore invece di except Exception: pass.",
+    "Oggi (fasi.blocco_riepilogo): riepilogo.consigliata è null se consigliata.origine non è «mostrata». Web e iPhone già nascondevano la riga senza il campo."
+  ]
+}
