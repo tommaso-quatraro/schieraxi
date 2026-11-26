@@ -1,18 +1,24 @@
 {
   "titolo": "Account: invito per un gruppo, eliminazione più chiara, un messaggio alla volta",
   "voci": [
-    "Impostazioni, Gestione, Nuovo invito: con «Quante persone» lo stesso link vale per un gruppo di amici, fino a 30. L'esito dice per quante persone è e che il link va nella chat.",
-    "Il tuo account, Elimina l'account: prima l'app controlla la password e solo dopo chiede conferma; con la password sbagliata dice «La password non è giusta». Dopo l'eliminazione la pagina d'accesso dice «Il tuo account e tutti i tuoi dati sono stati eliminati.». Uguale sull'iPhone.",
-    "Quando la sessione finisce compare un solo messaggio, «La sessione è finita: accedi di nuovo.».",
-    "Accesso, troppi tentativi: la frase non si ripete più e il pulsante conta da solo quanto manca («Riprova tra 24 secondi»), poi torna come prima. Uguale sull'iPhone, che ora scrive «secondi» e «minuti» come la web.",
-    "Accesso, Registrati: le regole del nome utente sono scritte sotto il campo prima di sbagliare (anche il trattino basso; comincia con una lettera o un numero). Uguale sull'iPhone.",
-    "Impostazioni, Gestione, Errori recenti: «Uscita da tutti i dispositivi» dice di chi è."
+    "Gestione, Nuovo invito: con «Quante persone» lo stesso link vale per un gruppo di amici, da mandare nella chat.",
+    "Elimina l'account: prima l'app controlla la password, poi chiede conferma; dopo, la pagina d'accesso dice che account e dati sono stati eliminati. Uguale sull'iPhone.",
+    "Accesso: dopo troppi tentativi il pulsante conta da solo quanto manca, e in Registrati le regole del nome sono sotto il campo. Uguale sull'iPhone.",
+    "A sessione finita compare un solo messaggio; in Gestione, Errori recenti, «Uscita da tutti i dispositivi» dice di chi è."
+  ],
+  "titolo_en": "Account: invitation for a group, clearer account deletion, one message at a time",
+  "voci_en": [
+    "Management, New invitation: with «How many people» the same link works for a group of friends, to send in the chat.",
+    "Delete the account: the app first checks your password, then asks you to confirm; afterwards the sign-in page says that the account and its data have been deleted. The same on iPhone.",
+    "Sign in: after too many attempts the button counts down by itself, and in Sign up the username rules are under the field. The same on iPhone.",
+    "When the session ends there is only one message; in Management, Recent errors, «Signed out of all devices» says whose it is."
   ],
   "tecnico": [
-    "POST /api/account/elimina/controlla {password}: controlla la password (o la riconferma con Google) senza toccare niente; stesso tetto delle altre conferme (password-attuale, 10 all'ora). Web e iPhone lo chiamano prima della conferma.",
+    "POST /api/account/elimina/controlla {password}: controlla la password (o la riconferma con Google) senza toccare niente; stesso tetto delle altre conferme (password-attuale, 10 all'ora). Web e iPhone lo chiamano prima della conferma; la web tiene spento «Elimina il mio account» per tutto il percorso.",
     "Password sbagliata nelle conferme: «La password non è giusta» (err.password_sbagliata); «La password attuale non è giusta» resta solo per cambia-password (account._controlla_password con il messaggio).",
-    "GET /api/account/me?anche_senza_accesso=1: senza sessione 200 con utente null e i campi del 401 (registrazione, social, email_attiva); la web lo usa all'avvio. Senza il parametro resta il 401.",
+    "GET /api/account/me?anche_senza_accesso=1: senza sessione 200 con utente null e i campi del 401 (registrazione, social, email_attiva); la web lo usa all'avvio. Senza il parametro resta il 401. GET /api/admin/inviti: campo nuovo max_usi (il tetto delle persone di un invito), letto dalla web per «Quante persone».",
     "Web: api() con un 401 di sessione finita apre l'accesso e non passa più l'errore a chi ha chiesto (errore401 per Esci ed Esci da tutti); contaAttesa nel pulsante d'invio dopo un 429 fino a un'ora; senzaInvitoARiprovare; comune.attesa_secondi al plurale giusto; avviso dell'accesso dopo l'eliminazione (sessionStorage avviso-accesso).",
-    "Registro di sicurezza: esci_da_tutti con nome. Catalogo: accesso.nome_utente_aiuto, accesso.riprova_tra (al posto di accesso.riprova_secondi/minuti/ore), account.eliminato_fatto, admin.posti, admin.posti_aiuto, admin.posti_non_validi, admin.invito_esito_gruppo, admin.invito_manda_gruppo; admin.invito_spiega e admin.invito_copiato riscritti."
+    "iPhone: SessioneAccount.controllaPerEliminare, AttesaRiprova.testoPulsante e tempo; ErroreApi.tempoLeggibile usa AttesaRiprova.tempo (le parole di attesaTesto della web).",
+    "Registro di sicurezza: esci_da_tutti con nome. Catalogo: accesso.nome_utente_aiuto, accesso.riprova_tra (al posto di accesso.riprova_secondi/minuti/ore), account.eliminato_fatto, admin.posti, admin.posti_aiuto, admin.posti_non_validi, admin.posti_non_validi_senza_tetto, admin.invito_esito_gruppo, admin.invito_manda_gruppo; admin.invito_spiega e admin.invito_copiato riscritti."
   ]
 }

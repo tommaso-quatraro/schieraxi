@@ -814,18 +814,21 @@ final class ConfiguraLegaTests: XCTestCase {
 
 /// Gli errori con messaggio del server (429) si leggono una volta sola, con il tempo che manca in parole.
 final class ErroriDelServerTests: XCTestCase {
+    /// Le parole della web (`attesaTesto` in app.js, #940): prima «1 secondi», «75 minuti», «6 h 55 min», «3 giorni».
     func testIlTempoInParole() {
+        XCTAssertEqual(ErroreApi.tempoLeggibile(1), "1 secondo")
         XCTAssertEqual(ErroreApi.tempoLeggibile(30), "30 secondi")
         XCTAssertEqual(ErroreApi.tempoLeggibile(600), "10 minuti")
-        XCTAssertEqual(ErroreApi.tempoLeggibile(415 * 60), "6 h 55 min")
-        XCTAssertEqual(ErroreApi.tempoLeggibile(3 * 3600), "3 h")
-        XCTAssertEqual(ErroreApi.tempoLeggibile(72 * 3600), "3 giorni")
+        XCTAssertEqual(ErroreApi.tempoLeggibile(75 * 60), "circa 1 ora")
+        XCTAssertEqual(ErroreApi.tempoLeggibile(415 * 60), "circa 7 ore")
+        XCTAssertEqual(ErroreApi.tempoLeggibile(3 * 3600), "circa 3 ore")
+        XCTAssertEqual(ErroreApi.tempoLeggibile(72 * 3600), "circa 72 ore")
     }
 
     func testIlLimiteDiRicercheNonHaDoppioniNeRetePrivata() {
         let e = ErroreApi.troppiTentativi("Per oggi hai già fatto 20 ricerche di scambi. Riprova domani.", riprovaTra: 415 * 60)
         let testo = e.errorDescription ?? ""
-        XCTAssertEqual(testo, "Per oggi hai già fatto 20 ricerche di scambi. Riprova tra 6 h 55 min.")
+        XCTAssertEqual(testo, "Per oggi hai già fatto 20 ricerche di scambi. Riprova tra circa 7 ore.")
         XCTAssertFalse(testo.localizedCaseInsensitiveContains("rete privata"))
         XCTAssertEqual(testo.components(separatedBy: "Riprova").count - 1, 1, "una volta sola")
         XCTAssertTrue(e.eLimite)

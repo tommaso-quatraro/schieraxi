@@ -393,7 +393,7 @@ struct SchermataAccesso: View {
     /// conta da solo («Riprova tra 35 secondi», come la web, #940): la frase non dice il numero, che resterebbe fermo accanto a
     /// quello che scende (#787).
     /// Resta la frase del server senza l'invito a riprovare («Troppi tentativi sbagliati.»). Oltre l'ora il pulsante non conta
-    /// tutto e la frase tiene il tempo, come la web («Riprova tra 20 h»). Negli altri casi, e se della frase non resta niente,
+    /// tutto e la frase tiene il tempo, come la web («Riprova tra circa 20 ore.»). Negli altri casi, e se della frase non resta niente,
     /// `testoErrore`; fuori dall'accesso, dove nessun pulsante conta, il tempo resta nella frase (`ErroreApi.errorDescription`).
     static func fraseDopoInvio(_ errore: Error) -> String {
         if case ErroreApi.troppiTentativi(let messaggio, let attesa) = errore, let attesa, attesa > 0,

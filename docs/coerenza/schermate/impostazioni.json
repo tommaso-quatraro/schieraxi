@@ -238,7 +238,7 @@
       "id": 122,
       "schermata": "Accesso: «troppi tentativi» (#940)",
       "web": "prima: «Troppi tentativi: riprova più tardi (riprova tra 24 secondi)», con il numero fermo. Ora la frase del server senza l'invito a riprovare («Troppi tentativi.», `senzaInvitoARiprovare`) e il pulsante d'invio spento che conta da solo «Riprova tra 24 secondi», «Riprova tra 1 secondo», dai 90 secondi i minuti (`accesso.riprova_tra` con `comune.attesa_*`, `contaAttesa`); a zero torna com'era e la frase se ne va. Oltre l'ora il pulsante resta acceso e il tempo sta nella frase («… Riprova tra circa 20 ore.»)",
-      "iphone": "il pulsante contava già da solo, ma «Riprova tra 35 s» e i secondi anche oltre il minuto, e con un'attesa oltre l'ora contava un'ora sola mentre la frase diceva il tempo vero. Ora le parole della web (`AttesaRiprova.testoPulsante`) e oltre l'ora niente conto, come la web; la frase oltre l'ora resta quella di sempre («Riprova tra 20 h»)",
+      "iphone": "il pulsante contava già da solo, ma «Riprova tra 35 s» e i secondi anche oltre il minuto, e con un'attesa oltre l'ora contava un'ora sola mentre la frase diceva il tempo vero. Ora le parole della web (`AttesaRiprova.testoPulsante`) e oltre l'ora niente conto, come la web; il tempo nelle frasi dei limiti (429), qui e nel resto dell'app, ha le parole della web: «Riprova tra circa 20 ore.», «1 secondo», «circa 1 ora» (`ErroreApi.tempoLeggibile`; prima «20 h», «1 secondi», «75 minuti», «6 h 55 min»)",
       "forma": "web",
       "chi": "**fatto** (#940): prove nel browser `tests/browser/test_account_browser_940.py`, `tests/test_web_attese.py`, sull'iPhone `AccessoFraseEContoTests`",
       "stato": "fatto"

@@ -40,11 +40,11 @@ struct AccessoFraseEContoTests {
     }
 
     /// Il pulsante conta al massimo un'ora: oltre (per esempio il tetto delle iscrizioni del giorno) la frase tiene il tempo,
-    /// come la web («Riprova tra 20 h»).
+    /// con le parole della web («Riprova tra circa 20 ore.», #940; prima «Riprova tra 20 h»).
     @Test("Attesa oltre l'ora: la frase tiene il tempo, come la web; fino all'ora no")
     func attesaLunga() {
         let lunga = ErroreApi.troppiTentativi("Per oggi le iscrizioni sono chiuse: riprova domani", riprovaTra: 72_000)
-        #expect(SchermataAccesso.fraseDopoInvio(lunga) == "Per oggi le iscrizioni sono chiuse. Riprova tra 20 h.")
+        #expect(SchermataAccesso.fraseDopoInvio(lunga) == "Per oggi le iscrizioni sono chiuse. Riprova tra circa 20 ore.")
         #expect(SchermataAccesso.fraseDopoInvio(ErroreApi.troppiTentativi("Calma.", riprovaTra: 3600)) == "Calma.",
                 "un'ora esatta la conta ancora il pulsante")
     }
