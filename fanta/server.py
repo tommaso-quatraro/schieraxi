@@ -2084,7 +2084,7 @@ def _riconosci(griglie, ctx: Contesto, excel: bool = False) -> _Riconosciute:
     avvisi: list[str] = []
     indice = nomi.Indice(calciatori, listone.nomi_completi(), scaduto=limiti.tempo_riconoscimento(ctx))
     try:
-        lette = rose.estrai(griglie, indice, _regole(ctx).rosa, avvisi)
+        lette = rose.estrai(griglie, indice, _regole(ctx).rosa, avvisi, _squadre_salvate(ctx))
     except nomi.TempoScaduto:
         raise ValueError(importa_sicuro.riconoscimento_lungo(excel)) from None
     if not lette:
@@ -2093,6 +2093,15 @@ def _riconosci(griglie, ctx: Contesto, excel: bool = False) -> _Riconosciute:
     if taglio:
         avvisi.insert(0, taglio)
     return _Riconosciute(lette, avvisi, calciatori, griglie)
+
+
+def _squadre_salvate(ctx: Contesto) -> set[str]:
+    """I nomi delle squadre già salvate (anche quello di Leghe di una squadra rinominata): in un testo con un nome per riga sono
+    titoli di squadra, non giocatori (rose.estrai). Niente se le rose non si leggono o sono solo gli esempi."""
+    prima, _, _ = _rose_di_prima(ctx)
+    if prima is None:
+        return set()
+    return {s.nome for s in prima.squadre} | {s.nome_importato for s in prima.squadre if s.nome_importato}
 
 
 def _leggi_rose(lette: _Riconosciute, correzioni: list[dict] | None = None, prima: lega.Rose | None = None):

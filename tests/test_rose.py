@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 import openpyxl
 
@@ -89,6 +91,40 @@ def test_un_valore_per_riga(indice):
     squadre = _per_nome(rose.estrai([("testo", rose.griglia_da_testo(testo))], indice))
     assert [(r.esito.calciatore.id, r.ruolo, r.costo) for r in squadre["Real Esempio"].righe] == [(2, "P", 10), (3, "D", 15)]
     assert [(r.esito.calciatore.id, r.costo) for r in squadre["I Bomber"].righe] == [(14, 30)]
+
+
+DATI = Path(__file__).parent / "dati"
+
+
+def _da_testo(testo, indice, rosa=None, **k):
+    return _per_nome(rose.estrai([("testo", rose.griglia_da_testo(testo))], indice, rosa, **k))
+
+
+def test_uno_per_riga_un_nome_non_riconosciuto_non_apre_una_squadra(indice):
+    """Collaudo del 26/11: nel testo con un nome per riga «Maignan» e «D'Ambrosio» (non nel listone) diventavano squadre e il
+    nome in fondo spariva. Un nome non riconosciuto dentro una squadra è un giocatore non trovato; la squadra nuova comincia dopo
+    la riga vuota."""
+    squadre = _da_testo((DATI / "rose_uno_per_riga.txt").read_text(encoding="utf-8"), indice)
+    assert list(squadre) == ["Real Finzione", "Sporting Fantasia"]
+    righe = squadre["Real Finzione"].righe
+    assert [r.testo for r in righe] == ["Carnesecchi", "Maignan", "Bastoni", "D'Ambrosio", "Dimarco", "Barella", "Mkhitaryan",
+                                        "Kean", "Pio Esposito"]
+    assert [r.testo for r in righe if r.esito.metodo == "non trovato"][:3] == ["Maignan", "D'Ambrosio", "Mkhitaryan"]
+    assert [r.testo for r in squadre["Sporting Fantasia"].righe] == ["Thuram", "Laurienté"]
+
+
+def test_uno_per_riga_senza_riga_vuota_la_squadra_nuova_dopo_una_rosa_completa(indice):
+    # senza righe vuote: un nome sconosciuto dopo una rosa già completa è la squadra dopo; prima, è un giocatore non trovato
+    squadre = _da_testo("Alfa\nSommer\nBastoni\nBarella\nKean\nBeta\nThuram\nDimarco\n", indice, ROSA_PICCOLA)
+    assert list(squadre) == ["Alfa", "Beta"] and len(squadre["Beta"].righe) == 2
+    squadre = _da_testo("Alfa\nSommer\nPinco Pallino\nBarella\nKean\n", indice, ROSA_PICCOLA)
+    assert list(squadre) == ["Alfa"] and [r.testo for r in squadre["Alfa"].righe][1] == "Pinco Pallino"
+
+
+def test_uno_per_riga_titolo_riconosciuto_dall_allenatore_o_dalle_squadre_salvate(indice):
+    assert list(_da_testo("Alfa\nSommer\nBeta\nAllenatore: luca\nKean\n", indice)) == ["Alfa", "Beta"]
+    assert list(_da_testo("Alfa\nSommer\nBeta\nKean\n", indice, squadre_note={"Beta"})) == ["Alfa", "Beta"]
+    assert list(_da_testo("Alfa\nSommer\nBeta\nKean\n", indice)) == ["Alfa"]
 
 
 def test_csv_con_punto_e_virgola(tmp_path, indice):

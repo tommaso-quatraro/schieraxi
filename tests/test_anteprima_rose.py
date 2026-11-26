@@ -89,6 +89,16 @@ def test_la_tua_squadra_resta_se_aggiungi_le_rose_degli_altri(calciatori):
     assert leggi("Altra\nA\tThuram\t20\n", calciatori, prima=prima)["mia_squadra"] == "Mia"     # non l'unica letta
 
 
+def test_nel_testo_uno_per_riga_le_squadre_gia_salvate_sono_titoli(ambiente):
+    """Un nome per riga, senza righe vuote: «Beta» potrebbe essere un giocatore che il listone non conosce, ma è una squadra già
+    salvata, quindi è il titolo della squadra dopo (collaudo del 26/11)."""
+    a, _ = nuovo_utente("utentea")
+    assert importa(a, "Alfa\nP\tSommer\t1\nBeta\nA\tKean\t1\n").status_code == 200
+    r = a.post("/api/rose/anteprima", json={"testo": "Alfa\nSommer\nBeta\nKean\n"})
+    assert r.status_code == 200, r.text
+    assert [s["nome"] for s in r.json()["squadre"]] == ["Alfa", "Beta"]
+
+
 def test_correzione_su_chi_ce_gia_non_crea_un_doppione(ambiente):
     a, _ = nuovo_utente("utentea")
     corr = [{"squadra": "Mia", "testo": "Rossi", "id": 2}]                      # Sommer, già nella stessa rosa

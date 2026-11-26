@@ -253,7 +253,9 @@ def _e_intestazione(n: str) -> bool:
 class _Celle:
     """Classifica ogni cella: vuoto, numero, ruolo, intestazione, crediti, squadra_a, giocatore, testo."""
 
-    def __init__(self, griglia: list[list], indice: Indice):
+    def __init__(self, griglia: list[list], indice: Indice, giocatori: set[int] | frozenset = frozenset()):
+        """`giocatori`: righe che sono di sicuro un giocatore anche se il nome non è nel listone (`_da_un_valore_per_riga`)."""
+        self.giocatori = giocatori
         larghezza = max((len(r) for r in griglia), default=0)
         self.g = [[_testo(v) for v in r] + [""] * (larghezza - len(r)) for r in griglia]
         self.larghezza = larghezza
@@ -304,21 +306,50 @@ def _primo(celle: _Celle, r: int, colonne, tipo: str) -> str | None:
     return None
 
 
-def _da_un_valore_per_riga(griglia: list[list], indice: Indice) -> list[list[str]]:
-    """Testo con un valore per riga (es. copiato da una pagina a schede): ricompone le righe dei giocatori."""
+ROSA_DI_BASE = 25          # giocatori di una rosa classic (3 + 8 + 8 + 6), se chi legge non passa le regole della lega
+
+
+def _da_un_valore_per_riga(griglia: list[list], indice: Indice, attesi: int = ROSA_DI_BASE,
+                           squadre_note: set[str] | frozenset = frozenset()) -> tuple[list[list[str]], set[int]]:
+    """Testo con un valore per riga (es. copiato da una pagina a schede, o scritto a mano): ricompone le righe dei giocatori.
+    Un nome che il listone non conosce è un giocatore non trovato, mai una squadra, se non c'è un segno chiaro che sia il titolo
+    di una squadra (`_e_titolo`): un nome di giocatore plausibile non deve aprire una squadra (collaudo del 26/11).
+    Restituisce le righe ricomposte e quali sono giocatori (anche non trovati), per `_Celle`."""
     celle = _Celle([[r[0] if r else ""] for r in griglia], indice)
+    tipi = [celle.tipo[r, 0] for r in range(len(celle.g))]
+    valori = [riga[0] for riga in celle.g]
+    prossima: list[int | None] = [None] * len(tipi)              # la riga piena che segue ognuna
+    seguente = None
+    for r in range(len(tipi) - 1, -1, -1):
+        prossima[r] = seguente
+        if tipi[r] != "vuoto":
+            seguente = r
+    # il formato: i giocatori hanno il ruolo sulla riga prima o la squadra di Serie A sulla riga dopo («strutturato»), oppure
+    # sono solo nomi. Nel primo un nome sconosciuto senza ruolo né squadra è il titolo di una squadra, nel secondo no.
+    trovati = [r for r, t in enumerate(tipi) if t == "giocatore"]
+    con_dettagli = sum(1 for r in trovati if (r > 0 and tipi[r - 1] == "ruolo")
+                       or (prossima[r] is not None and tipi[prossima[r]] == "squadra_a"))
+    strutturato = bool(trovati) and 2 * con_dettagli >= len(trovati)
+    note = {normalizza(n) for n in squadre_note}
     nuove: list[list[str]] = []
+    giocatori: set[int] = set()
     ruolo_in_attesa = ""
     corrente: list[str] | None = None
-    for r, riga in enumerate(celle.g):
-        tipo, v = celle.tipo[r, 0], riga[0]
+    aperta, in_squadra, dopo_vuota = False, 0, True              # una squadra (anche senza nome) è aperta? quanti giocatori ha?
+    for r, (tipo, v) in enumerate(zip(tipi, valori)):
+        if tipo == "vuoto":
+            dopo_vuota = True
+            continue
         if tipo == "ruolo":
             ruolo_in_attesa = v
-        elif tipo == "giocatore" or (tipo == "testo" and ruolo_in_attesa):
-            # un testo subito dopo un ruolo è un giocatore non riconosciuto, non una nuova squadra
+        elif tipo == "giocatore" or (tipo == "testo" and (ruolo_in_attesa or not _e_titolo(
+                r, v, tipi, valori, prossima, aperta, dopo_vuota, strutturato, in_squadra >= attesi, note))):
+            # un testo dopo un ruolo, o in mezzo ai giocatori di una squadra, è un giocatore non riconosciuto
             corrente = [ruolo_in_attesa, v, "", ""]
+            giocatori.add(len(nuove))
             nuove.append(corrente)
             ruolo_in_attesa = ""
+            aperta, in_squadra = True, in_squadra + 1
         elif tipo == "squadra_a" and corrente is not None:
             corrente[2] = v
         elif tipo == "numero" and corrente is not None and not corrente[3]:
@@ -326,19 +357,55 @@ def _da_un_valore_per_riga(griglia: list[list], indice: Indice) -> list[list[str
         elif tipo == "testo":
             nuove.append([v])
             corrente = None
+            aperta, in_squadra = True, 0
         elif tipo == "crediti":
             nuove.append(["", "", "", "", v])
             corrente = None
-    return nuove
+            dopo_vuota = True                                  # i crediti chiudono la squadra: dopo può venire la prossima
+            continue
+        dopo_vuota = False
+    return nuove, giocatori
+
+
+def _e_titolo(r: int, v: str, tipi: list[str], valori: list[str], prossima: list[int | None], aperta: bool, dopo_vuota: bool,
+              strutturato: bool, completa: bool, note: set[str]) -> bool:
+    """Un nome che il listone non conosce, in un testo con un valore per riga, è il titolo di una squadra (e non un giocatore
+    non trovato) solo con un segno chiaro: la riga sotto non è la sua squadra di Serie A, e poi è la prima riga, viene dopo una
+    riga vuota o dopo i crediti, è il nome di una squadra già salvata, ha sotto «Allenatore: …», nel testo i giocatori hanno il
+    ruolo o la squadra accanto (e lui no), la squadra di prima ha già la rosa completa, oppure non può essere il nome di un
+    calciatore (`_sembra_squadra`)."""
+    dopo = prossima[r]
+    if dopo is not None and tipi[dopo] == "squadra_a":
+        return False
+    if not aperta or dopo_vuota or normalizza(v) in note or strutturato or completa or _sembra_squadra(v):
+        return True
+    return dopo is not None and bool(ETICHETTA_PERSONA.match(valori[dopo]))
+
+
+# parole che nei nomi delle fantasquadre ci sono spesso e in quelli dei calciatori mai («FC Esempio», «Real Prova», «I Bomber»)
+PAROLE_SQUADRA = {"fc", "ac", "as", "ss", "ssc", "us", "afc", "cf", "sc", "real", "atletico", "athletic", "sporting", "dinamo",
+                  "dynamo", "union", "unione", "olimpia", "olympique", "virtus", "borussia", "united", "city", "team", "club",
+                  "boys", "squadra", "fanta", "fantasquadra", "calcio", "deportivo", "lokomotiv", "spartak", "rapid"}
+ARTICOLI_DAVANTI = {"i", "il", "gli"}       # «La», «Lo», «Le» no: Lo Celso, La Gumina, Le Fée
+
+
+def _sembra_squadra(v: str) -> bool:
+    """Un nome che non può essere di un calciatore: una parola da fantasquadra, un articolo davanti, cifre, più di tre parole o
+    segni come «&», «!», «,»."""
+    parole = normalizza(v).split()
+    return (bool(set(parole) & PAROLE_SQUADRA) or (parole[:1] and parole[0] in ARTICOLI_DAVANTI) or len(parole) > 3
+            or bool(re.search(r"\d|[&!?#@+,/]", v)))
 
 
 # ---------- estrazione ----------
 def estrai(griglie: list[tuple[str, list[list]]], indice: Indice,
-           rosa: dict[str, int] | None = None, avvisi: list[str] | None = None) -> list[SquadraLetta]:
+           rosa: dict[str, int] | None = None, avvisi: list[str] | None = None,
+           squadre_note: set[str] | frozenset = frozenset()) -> list[SquadraLetta]:
     """Trova le fantasquadre e i loro giocatori.
 
     `rosa` (es. {"P": 3, ...}) serve a dedurre il ruolo dalla posizione quando il file non ha la colonna ruolo.
     In `avvisi`, se passato, finiscono le cose da controllare a mano.
+    `squadre_note`: i nomi delle squadre già salvate; in un testo con un nome per riga sono titoli di squadra, non giocatori.
     """
     avvisi = avvisi if avvisi is not None else []
     squadre: dict[str, SquadraLetta] = {}
@@ -354,9 +421,10 @@ def estrai(griglie: list[tuple[str, list[list]]], indice: Indice,
             da_codici |= _estrai_rosters(griglia, indice, squadre, avvisi)
             continue
         piene = [r for r in griglia if any(_testo(x) for x in r)]
+        giocatori: set[int] = set()
         if piene and sum(1 for r in piene if sum(1 for x in r if _testo(x)) == 1) / len(piene) > 0.8:
-            griglia = _da_un_valore_per_riga(griglia, indice)
-        celle = _Celle(griglia, indice)
+            griglia, giocatori = _da_un_valore_per_riga(griglia, indice, sum(rosa.values()) if rosa else ROSA_DI_BASE, squadre_note)
+        celle = _Celle(griglia, indice, giocatori)
         lette: dict[str, SquadraLetta] = {}
         avvisi_foglio: list[str] = []
         for c0, c1 in celle.blocchi():
@@ -610,9 +678,10 @@ def _estrai_blocco(celle: _Celle, c0: int, c1: int, nome_foglio: str,
         for c, t in tipi.items():
             if t == "intestazione" and set(normalizza(celle.g[r][c]).split()) & PAROLE_COSTO:
                 col_costo = c
-        # testo con accanto un ruolo o un costo, dentro una squadra: giocatore non riconosciuto (es. ceduto)
-        if not giocatori and testi and squadra_corrente is not None and any(
-                t in ("ruolo", "numero") for t in tipi.values()):
+        # testo con accanto un ruolo o un costo, dentro una squadra: giocatore non riconosciuto (es. ceduto); così anche un nome
+        # che la lettura di un valore per riga ha già riconosciuto come giocatore
+        if not giocatori and testi and (r in celle.giocatori or squadra_corrente is not None and any(
+                t in ("ruolo", "numero") for t in tipi.values())):
             celle.esiti[r, testi[0]] = Esito(None, "non trovato", celle.esiti[r, testi[0]].alternative)
             giocatori, testi = [testi[0]], testi[1:]
         if len(giocatori) > 1:
