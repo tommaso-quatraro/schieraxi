@@ -344,8 +344,9 @@ function alRitornoDellaRete(riprova) {
 // Formazione tiene spenti i comandi che scrivono finché non lo sa); `sola()` dice se quei comandi sono spenti.
 // Se i dati nuovi non arrivano resta la copia: la nota dice perché non si può cambiare niente e ha «Riprova»; se è caduta la rete,
 // quando il browser dice che è tornata si riprova da soli, una volta. Restituisce se i dati nuovi sono arrivati in pagina.
-// `daSalvare(dati)` (facoltativo): false per una risposta che non è un dato da ritrovare senza rete (la domanda della squadra della
-// Formazione, revisione della #929): non si salva, e la copia di prima, che non vale più, si toglie.
+// `daSalvare(dati)` (facoltativo): true, la risposta si salva al posto della copia; false, non è un dato da ritrovare senza rete (la
+// domanda della squadra della Formazione, revisione della #929): non si salva, e la copia di prima, che non vale più, si toglie;
+// null, la risposta è a metà (la Formazione senza la scelta salvata, che non si è letta): non si salva e la copia di prima resta.
 async function caricaConCache(chiave, percorso, mostra, testo, { daSalvare = () => true } = {}) {
   const mia = nuovaRichiesta();
   alRitornoDellaRete(null);
@@ -358,7 +359,8 @@ async function caricaConCache(chiave, percorso, mostra, testo, { daSalvare = () 
     try {
       const dati = typeof percorso === "function" ? await percorso() : await api(percorso);
       if (!ancoraValida(mia)) return false;
-      if (daSalvare(dati)) salvaCache(chiave, dati); else rimuoviCache(chiave);
+      const copia = daSalvare(dati);
+      if (copia === true) salvaCache(chiave, dati); else if (copia === false) rimuoviCache(chiave);
       if (!salvata || JSON.stringify(salvata.dati) !== JSON.stringify(dati)) { mostra(dati, { sostituisce: !!salvata }); return true; }
       const b = $("#nota-cache");
       if (b && b.contains(document.activeElement)) $("#titolo-pagina").focus({ preventScroll: true });   // il fuoco era su «Riprova», che sparisce
@@ -1129,9 +1131,11 @@ function vistaFormazione() {
     return caricaConCache("formazione-" + squadra, async () => ({ o: null, f: await api(`/api/formazione?squadra=${encodeURIComponent(squadra)}`) }),
       (b, opz) => mostraFormazione(b, squadra, opz), t("formazione.calcolo"));
   }
-  // la domanda della squadra non è un dato da ritrovare senza rete: non va nella copia (revisione della #929)
+  // la domanda della squadra non è un dato da ritrovare senza rete: non va nella copia (revisione della #929). Una Formazione con la
+  // scelta salvata non letta (una lettura non riuscita, collaudo del 26/11) nemmeno, e la copia di prima resta: riaperta senza rete
+  // avrebbe mostrato gli 11 consigliati come se fossero i tuoi.
   return caricaConCache("giornata", caricaGiornata, (b, opz) => mostraFormazione(b, null, opz), t("formazione.calcolo"),
-    { daSalvare: b => !b.senza_squadra });
+    { daSalvare: b => b.senza_squadra ? false : b.scelta_non_letta ? null : true });
 }
 
 // Tutto ciò che serve alla schermata, in una volta: la giornata (/api/oggi), la formazione, la scelta salvata e, se gli 11 salvati non
