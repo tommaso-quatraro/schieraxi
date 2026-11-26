@@ -28,7 +28,8 @@ def _riga_regola(etichetta: str) -> str:
     riga = re.search(r"^const rigaRegola = .*$", APP, re.M).group(0)
     inizio_esc = APP.index("function esc(")
     esc = APP[inizio_esc:APP.index("\n}\n", inizio_esc) + 3]
-    codice = ("const t = k => k; const num = (x) => String(x);\n" + esc + stepper + riga
+    decimali = re.search(r"^const decimaliRegola = .*$", APP, re.M).group(0) + "\n"   # i decimali del valore nel campo (#911)
+    codice = ("const t = k => k; const num = (x) => String(x);\n" + esc + decimali + stepper + riga
               + f"\nconsole.log(JSON.stringify(rigaRegola({json.dumps(etichetta)}, stepper('scad_min', 10, {{ passo: 5 }}), 'aiuto')));")
     r = subprocess.run([NODE, "-e", codice], capture_output=True, text=True, encoding="utf-8", timeout=60)
     assert r.returncode == 0, r.stderr
@@ -50,6 +51,7 @@ def _regole_node(chiamata: str, lingua: str = "it"):
     pezzo = lambda inizio, fine: APP[APP.index(inizio):APP.index(fine, APP.index(inizio))]  # noqa: E731
     codice = "\n".join([TESTI, f"LINGUA = '{lingua}';", pezzo("function esc(", "\n}\n") + "\n}",
                         re.search(r"^const num = .*$", APP, re.M).group(0),
+                        re.search(r"^const decimaliRegola = .*$", APP, re.M).group(0),      # i decimali del valore nel campo (#911)
                         # i limiti dei pulsanti, che la pagina legge dal file del server prima di disegnare i campi (#881)
                         f"const limitiRegole = {(codice_web.WEB / 'limiti-regole.json').read_text(encoding='utf-8')};",
                         pezzo("function stepper(", "\n}\n") + "\n}",

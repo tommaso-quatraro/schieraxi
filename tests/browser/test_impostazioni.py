@@ -780,6 +780,101 @@ def test_nell_anteprima_del_regolamento_i_valori_hanno_nomi_in_parole(web):
     assert not web.errori_mostrati()
 
 
+def test_nell_anteprima_del_regolamento_i_valori_negativi_hanno_il_meno_vero(web):
+    """«Ammonizione: -0,5» con il trattino corto: ora il meno «−», come nel resto della web e sull'iPhone (#911)."""
+    solo(web, "prima")
+    web.risposta("/api/regole/riconosci", {**RICONOSCIUTE, "modifiche": [
+        {"chiave": "bonus.ammonizione", "etichetta": "Ammonizione", "valore": -0.5, "riga": "Ammonizione meno mezzo punto"},
+        {"chiave": "bonus.espulsione", "etichetta": "Espulsione", "valore": -1, "riga": "Espulsione meno un punto"},
+        {"chiave": "bonus.assist", "etichetta": "Assist", "valore": 1.5, "riga": "Assist +1,5"}]})
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Incolla qui il testo del regolamento").fill("Regolamento di prova")
+    tocca(web, principale(web).get_by_role("button", name="Riconosci le regole"))
+    testo = web.testo_principale()
+    assert "Ammonizione: −0,5" in testo and "Espulsione: −1" in testo and "Assist: 1,5" in testo, testo
+    assert "-0,5" not in testo and "-1" not in testo, testo
+    assert not web.errori_mostrati()
+
+
+def test_nell_anteprima_del_regolamento_i_decimali_sono_quelli_veri(web):
+    """«−0,25» si leggeva «−0,3»: un decimale solo per tutti. Ora fino a due, senza zeri inutili, come l'iPhone
+    (`RegoleLogica.descrivi`): intero senza decimali, «1,5» con uno, «0,25» con due (#911)."""
+    solo(web, "prima")
+    web.risposta("/api/regole/riconosci", {**RICONOSCIUTE, "modifiche": [
+        {"chiave": "bonus.ammonizione", "etichetta": "Ammonizione", "valore": -0.25, "riga": "Ammonizione meno un quarto di punto"},
+        {"chiave": "bonus.assist", "etichetta": "Assist", "valore": 1.5, "riga": "Assist +1,5"},
+        {"chiave": "bonus.rigore_parato", "etichetta": "Rigore parato", "valore": 3, "riga": "Rigore parato +3"}]})
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Incolla qui il testo del regolamento").fill("Regolamento di prova")
+    tocca(web, principale(web).get_by_role("button", name="Riconosci le regole"))
+    testo = web.testo_principale()
+    assert "Ammonizione: −0,25" in testo and "Assist: 1,5" in testo and "Rigore parato: 3" in testo, testo
+    assert "−0,3" not in testo and "1,50" not in testo and "3,0" not in testo, testo
+    assert not web.errori_mostrati()
+
+
+def test_il_regolamento_incollato_salva_i_decimali_veri(web):
+    """Con «Ammonizione −0,25» riconosciuta, «Salva queste regole» mandava −0,3: il valore passava da un campo con un decimale solo.
+    Ora parte −0,25, lo stesso valore che mostra l'anteprima (#911)."""
+    solo(web, "prima")
+    web.risposta("/api/regole/riconosci", {**RICONOSCIUTE, "modifiche": [
+        {"chiave": "bonus.ammonizione", "etichetta": "Ammonizione", "valore": -0.25, "riga": "Ammonizione meno un quarto di punto"}]})
+    salvate = _scritture(web, "/api/regole")
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    principale(web).get_by_role("textbox", name="Incolla qui il testo del regolamento").fill("Regolamento di prova")
+    tocca(web, principale(web).get_by_role("button", name="Riconosci le regole"))
+    assert "Ammonizione: −0,25" in web.testo_principale()
+    tocca(web, principale(web).get_by_role("button", name="Salva queste regole"))
+    assert salvate, "le regole riconosciute non sono state salvate"
+    assert salvate[-1]["bonus"]["ammonizione"] == -0.25, salvate[-1]["bonus"]
+    assert not web.errori_mostrati()
+
+
+def test_una_regola_con_due_decimali_resta_uguale_nel_campo_e_nel_salvataggio(web):
+    """Una regola salvata a −0,25 compariva nel campo come «-0,3» (un decimale) e, salvando un'altra modifica, diventava −0,3
+    senza che nessuno l'avesse toccata (#911). Il campo mostra il valore vero e il salvataggio lo lascia com'è."""
+    solo(web, "prima")
+    regole = web.registrata("/api/regole")
+    regole["bonus"] |= {"ammonizione": -0.25, "assist": 1.0}
+    web.risposta("/api/regole", regole)
+    salvate = _scritture(web, "/api/regole")
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    tocca(web, principale(web).get_by_text("Modifica i valori", exact=True))
+    assert principale(web).get_by_label("Ammonizione", exact=True).input_value() == "-0,25"
+    principale(web).get_by_label("Assist", exact=True).fill("1,5")
+    tocca(web, principale(web).get_by_role("button", name="Salva le regole"))
+    assert salvate, "le regole non sono state salvate"
+    assert salvate[-1]["bonus"]["ammonizione"] == -0.25 and salvate[-1]["bonus"]["assist"] == 1.5, salvate[-1]["bonus"]
+    assert not web.errori_mostrati()
+
+
+def test_meno_e_piu_da_un_valore_fuori_dai_passi_vanno_al_passo_vicino(web):
+    """Con i passi da 0,5, da un valore a metà passo «+» ne saltava uno: da 1,25 a 2,0, da −1,25 a −0,5. Ora «+» va al passo
+    subito sopra (1,5; −1,0) e «−» a quello subito sotto (1,0; −1,5), senza saltare valori. Sui passi non cambia niente: da 3,0
+    «+» dà 3,5 e «−» 2,5 (#911)."""
+    solo(web, "prima")
+    regole = web.registrata("/api/regole")
+    regole["bonus"] |= {"ammonizione": -1.25, "assist": 1.25, "rigore_segnato": 3.0}
+    web.risposta("/api/regole", regole)
+    web.apri("/?vista=impostazioni&gruppo=regole")
+    tocca(web, principale(web).get_by_text("Modifica i valori", exact=True))
+
+    def premi(nome: str, partenza: str, pulsante: str) -> str:
+        campo = principale(web).get_by_label(nome, exact=True)
+        riga = principale(web).locator(".stepper").filter(has=web.pagina.get_by_label(nome, exact=True))   # cercato dentro la riga
+        campo.fill(partenza)
+        tocca(web, riga.get_by_role("button", name=pulsante))
+        return campo.input_value()
+
+    dopo = {(nome, partenza, pulsante): premi(nome, partenza, pulsante)
+            for nome, partenza in (("Assist", "1,25"), ("Ammonizione", "-1,25"), ("Rigore segnato", "3,0"))
+            for pulsante in ("Aumenta", "Diminuisci")}
+    assert dopo == {("Assist", "1,25", "Aumenta"): "1,5", ("Assist", "1,25", "Diminuisci"): "1,0",
+                    ("Ammonizione", "-1,25", "Aumenta"): "-1,0", ("Ammonizione", "-1,25", "Diminuisci"): "-1,5",
+                    ("Rigore segnato", "3,0", "Aumenta"): "3,5", ("Rigore segnato", "3,0", "Diminuisci"): "2,5"}, dopo
+    assert not web.errori_mostrati()
+
+
 def test_un_valore_che_non_si_puo_salvare_non_sta_fra_i_riconosciuti(web):
     """«Panchina di 12 giocatori» con i posti fissi per ruolo (11): l'anteprima mostrava 12 e si salvava 11 con «Regole salvate».
     Ora il server lo manda fra i non applicabili: la pagina lo mostra sotto «Non applicato» con il perché, e «Salva queste regole»
