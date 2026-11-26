@@ -9,8 +9,10 @@ password; l'email è facoltativa (vedi `account_email.py`).
   password e nomi si normalizzano in Unicode NFKC (la «é» composta o scomposta, le lettere a larghezza piena...);
 - sessione: token casuale da 256 bit; nel database c'è solo il suo SHA-256, quindi chi legge il file non può usarlo; scade
   dopo 30 giorni senza uso e comunque dopo 180; si revoca; cambiando la password si chiudono tutte e se ne apre una nuova;
-- registrazione: solo con un codice d'invito (7 giorni, monouso o per più amici) generato da un amministratore; tetto MAX_UTENTI; il controllo
-  dell'invito, del tetto e del nome avviene in una transazione sola (due richieste insieme non creano due account);
+- registrazione: aperta (predefinita, FANTA_REGISTRAZIONE, vedi `account_email.modo_registrazione`: nome utente e password, email
+  facoltativa, con un tetto di account nuovi al giorno) oppure solo con un codice d'invito (7 giorni, monouso o per più amici)
+  generato da un amministratore; tetto MAX_UTENTI; il controllo dell'invito, dei tetti e del nome avviene in una transazione sola
+  (due richieste insieme non creano due account);
 - password dimenticata, due vie: il «codice di recupero» (mostrato una volta sola alla registrazione) oppure un codice
   monouso di 24 ore generato da un amministratore;
 - limiti di tentativi salvati nel database (valgono anche dopo un riavvio): per nome utente e indirizzo insieme (attesa
@@ -50,7 +52,8 @@ DURATA_SESSIONE = DURATA_MASSIMA              # durata del cookie (la scadenza v
 RINNOVO_DOPO = timedelta(hours=1)             # l'ultimo uso si scrive al massimo una volta all'ora
 DURATA_INVITO = timedelta(days=7)
 DURATA_RESET = timedelta(hours=24)
-MAX_UTENTI_PREDEFINITO = 30
+MAX_UTENTI_PREDEFINITO = 15                 # stretto: con la registrazione aperta chiunque trovi il sito può provare
+ISCRIZIONI_GIORNO_PREDEFINITO = 5           # account nuovi senza invito al massimo in 24 ore (FANTA_ISCRIZIONI_GIORNO)
 ALFABETO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"      # senza lettere e cifre che si confondono (O/0, I/1)
 PASSWORD_MIN, PASSWORD_MAX = 10, 200
 RUOLI = ("utente", "amministratore")
@@ -108,12 +111,20 @@ def multiutente() -> bool:
     return os.environ.get("FANTA_MULTIUTENTE", "").strip() == "1"
 
 
-def max_utenti() -> int:
+def _intero_positivo(variabile: str, predefinito: int) -> int:
     try:
-        v = int(os.environ.get("MAX_UTENTI", ""))
-        return v if v > 0 else MAX_UTENTI_PREDEFINITO
+        v = int(os.environ.get(variabile, ""))
+        return v if v > 0 else predefinito
     except ValueError:
-        return MAX_UTENTI_PREDEFINITO
+        return predefinito
+
+
+def max_utenti() -> int:
+    return _intero_positivo("MAX_UTENTI", MAX_UTENTI_PREDEFINITO)
+
+
+def iscrizioni_al_giorno() -> int:
+    return _intero_positivo("FANTA_ISCRIZIONI_GIORNO", ISCRIZIONI_GIORNO_PREDEFINITO)
 
 
 def _ora(adesso: datetime | None) -> datetime:
@@ -318,7 +329,7 @@ MIGRAZIONI = [
 ]
 
 # Versione dei testi «Privacy» e «Termini d'uso» (la data di «Ultimo aggiornamento» delle pagine): si cambia quando cambiano i testi.
-VERSIONE_TERMINI = "2026-11-02"
+VERSIONE_TERMINI = "2026-11-26"
 TERMINI_RIFIUTATI = ("Per iscriverti devi accettare Privacy e Termini d'uso. / "
                      "To sign up you must accept the Privacy policy and the Terms of use.")
 
@@ -1084,6 +1095,33 @@ def revoca_invito(db: sqlite3.Connection, invito_id: int) -> None:
 
 
 INVITO_NON_VALIDO = "Invito non valido o scaduto"
+AL_COMPLETO = "Iscrizioni chiuse: siamo al completo"
+CHIUSE_PER_OGGI = "Per oggi le iscrizioni sono chiuse: riprova domani"
+NOME_PRESO = "Questo nome utente è già preso: scegline un altro"
+TRAPPOLA = "Registrazione non riuscita: ricarica la pagina e riprova"
+
+
+def controlla_posti(db: sqlite3.Connection) -> None:
+    """403 «siamo al completo» con gli utenti già al tetto (MAX_UTENTI). Vale per ogni modo d'iscrizione, invito compreso."""
+    if db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0] >= max_utenti():
+        raise ErroreAccount(AL_COMPLETO, 403)
+
+
+def tetto_del_giorno(db: sqlite3.Connection, adesso: datetime) -> None:
+    """Iscrizioni senza invito: quanti account sono nati nelle ultime 24 ore (chi ha un invito non conta qui: lo decide
+    l'amministratore). Contro chi riempie i posti con account fatti in serie: al massimo `iscrizioni_al_giorno()` al giorno."""
+    nuovi = db.execute("SELECT COUNT(*) FROM utenti WHERE creato > ?", (_testo(adesso - timedelta(days=1)),)).fetchone()[0]
+    if nuovi >= iscrizioni_al_giorno():
+        raise ErroreAccount(CHIUSE_PER_OGGI, 403)
+
+
+def trappola(db: sqlite3.Connection, ip: str | None) -> None:
+    """Il modulo della web ha un campo che una persona non vede (`sito`): se arriva pieno l'ha compilato un programma. Il tentativo
+    conta fra quelli dell'indirizzo (429 oltre il tetto), resta nel registro e non crea niente. Il messaggio dice cosa fare a chi
+    (per un riempimento automatico del browser) l'avesse compilato davvero."""
+    conta_per_indirizzo(db, ip, ("registra-ip", *REGISTRAZIONI_PER_IP))
+    evento("registrazione_trappola", ip=ip)
+    raise ErroreAccount(TRAPPOLA)
 
 
 def posti_dell_invito(inv) -> int:
@@ -1139,14 +1177,55 @@ def crea_utente(db: sqlite3.Connection, nome: str, nome_visualizzato: str, passw
 
 
 def registra(db: sqlite3.Connection, nome_utente: str, password: str, invito: str, ip: str | None = None, dispositivo: str = "",
-             adesso: datetime | None = None, accetto_termini: bool | None = None) -> tuple[Utente, str, str]:
-    """Crea l'account (solo con un invito valido, e finché non si è al tetto di utenti) e apre la sessione.
-    Restituisce (utente, token, codice di recupero): quest'ultimo si mostra una volta sola.
-    Invito inesistente, scaduto o già usato: stesso messaggio. Nome già preso: lo si dice (serve a chi si iscrive), ma solo a chi
-    ha un invito valido, e con un tetto di prove per invito e per indirizzo: non si possono provare i nomi in massa."""
+             adesso: datetime | None = None, accetto_termini: bool | None = None,
+             senza_invito: bool = False) -> tuple[Utente, str, str]:
+    """Crea l'account (con un invito valido, o senza se `senza_invito`, cioè con la registrazione aperta, e finché non si è al
+    tetto di utenti) e apre la sessione. Restituisce (utente, token, codice di recupero): quest'ultimo si mostra una volta sola.
+    Invito inesistente, scaduto o già usato: stesso messaggio. Nome già preso: lo si dice (serve a chi si iscrive), con un tetto
+    di prove per invito e per indirizzo: non si possono provare i nomi in massa."""
     termini = controlla_termini(accetto_termini)
     with uno_alla_volta(ip), posto_per_il_calcolo():          # prima dei tetti: a fila piena non si conta niente
+        if senza_invito and not (invito if isinstance(invito, str) else "").strip():
+            return _registra_senza_invito(db, nome_utente, password, ip, dispositivo, adesso, termini)
         return _registra(db, nome_utente, password, invito, ip, dispositivo, adesso, termini)
+
+
+def _registra_senza_invito(db, nome_utente, password, ip, dispositivo, adesso, termini=False) -> tuple[Utente, str, str]:
+    """Registrazione aperta: nessun invito, ruolo «utente». Valgono il tetto di utenti, quello di account nuovi al giorno, gli
+    account nati da un indirizzo e i tentativi non riusciti da un indirizzo (il nome già preso si dice, ma un indirizzo ne prova
+    pochi all'ora). Posti e tetto del giorno si guardano prima di scrypt (a posti finiti non si lavora) e si ricontrollano nella
+    transazione che crea l'account (due richieste insieme non superano i tetti)."""
+    adesso = _ora(adesso)
+    nome = valida_nome(nome_utente)                  # prima dei tetti: un modulo scritto male non consuma tentativi
+    valida_password(password, nome)
+    controlla_posti(db)
+    tetto_del_giorno(db, adesso)
+    troppi_account(db, ip)
+    contate = conta_per_indirizzo(db, ip, ("registra-ip", *REGISTRAZIONI_PER_IP))     # tolto se l'account nasce
+    password_hash = hash_password(password)
+    recupero = nuovo_codice(20)
+    _transazione(db)
+    try:
+        controlla_posti(db)
+        tetto_del_giorno(db, adesso)
+        if db.execute("SELECT 1 FROM utenti WHERE nome_utente = ?", (nome,)).fetchone():
+            raise ErroreAccount(NOME_PRESO)
+        nuovo = crea_utente(db, nome, nome_da_mostrare(nome_utente, nome), password_hash, _hash_codice(recupero), "utente", adesso,
+                            ip=ip, contate=contate)
+        if termini:
+            segna_termini(db, nuovo, adesso)
+        _segna_indirizzo(db, nuovo, ip)
+        db.commit()
+    except sqlite3.IntegrityError:                   # il vincolo UNIQUE del database: un nome preso un attimo prima
+        db.rollback()
+        raise ErroreAccount(NOME_PRESO) from None
+    except BaseException:
+        if db.in_transaction:
+            db.rollback()
+        raise
+    utente = trova(db, nuovo)
+    evento("registrazione", nome=nome, ip=ip, ruolo=utente.ruolo, via="aperta")
+    return utente, _apri_sessione(db, utente.id, dispositivo, adesso), recupero
 
 
 def prenota_invito(db: sqlite3.Connection, ip: str | None) -> list[int]:
@@ -1180,10 +1259,9 @@ def _registra(db, nome_utente, password, invito, ip, dispositivo, adesso, termin
             righe = []                               # resta contato
             evento("registrazione_invito_sbagliato", ip=ip)
             raise ErroreAccount(INVITO_NON_VALIDO, 403)
-        if db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0] >= max_utenti():
-            raise ErroreAccount("Le registrazioni sono chiuse: è stato raggiunto il numero massimo di utenti", 403)
+        controlla_posti(db)
         if db.execute("SELECT 1 FROM utenti WHERE nome_utente = ?", (nome,)).fetchone():
-            raise ErroreAccount("Questo nome utente è già preso: scegline un altro")
+            raise ErroreAccount(NOME_PRESO)
         nuovo = crea_utente(db, nome, nome_da_mostrare(nome_utente, nome), password_hash, _hash_codice(recupero), inv["ruolo"], adesso,
                             ip=ip, contate=contate)
         if not consuma_invito(db, inv["codice_hash"], nuovo):    # un altro ha appena preso l'ultimo posto
@@ -1195,7 +1273,7 @@ def _registra(db, nome_utente, password, invito, ip, dispositivo, adesso, termin
     except sqlite3.IntegrityError:                   # il vincolo UNIQUE del database: un nome preso un attimo prima
         db.rollback()
         limite.annulla(db, righe)
-        raise ErroreAccount("Questo nome utente è già preso: scegline un altro") from None
+        raise ErroreAccount(NOME_PRESO) from None
     except BaseException:
         if db.in_transaction:
             db.rollback()

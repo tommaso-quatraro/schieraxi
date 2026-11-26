@@ -187,6 +187,10 @@
     "it": "Registrazione con un invito non valido",
     "en": "Sign-up with an invalid invitation"
   },
+  "errori.evento_registrazione_trappola": {
+    "it": "Registrazione fermata: modulo compilato da un programma",
+    "en": "Sign-up stopped: form filled in by a bot"
+  },
   "errori.evento_account_eliminato": {
     "it": "Account eliminato",
     "en": "Account deleted"

@@ -420,10 +420,9 @@ def completa(db: sqlite3.Connection, iscrizione: str, nome_utente: str, invito: 
             preso = db.execute("UPDATE flussi_social SET iscrizione_usata = 1 WHERE id = ? AND iscrizione_usata = 0", (riga["id"],))
             if preso.rowcount != 1:
                 raise ErroreAccount(CODICE_NON_VALIDO, 403)
-            if db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0] >= account.max_utenti():
-                raise ErroreAccount("Le registrazioni sono chiuse: è stato raggiunto il numero massimo di utenti", 403)
+            account.controlla_posti(db)
             if modo == "aperta":
-                account_email._tetto_del_giorno(db, adesso)
+                account.tetto_del_giorno(db, adesso)
             if db.execute("SELECT 1 FROM utenti WHERE nome_utente = ?", (nome,)).fetchone():
                 raise ErroreAccount("Questo nome utente è già preso: scegline un altro")
             email = esito["email"] if esito["affidabile"] and not account_email._gia_di_un_account(db, esito["email"]) else None

@@ -1215,6 +1215,15 @@
     "it": "Posti pieni: {n} utenti su {massimo}. Chi riceve un invito adesso trova le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
     "en": "No places left: {n} users out of {massimo}. Whoever gets an invitation now will find sign-ups closed until you raise the server's maximum number of users."
   },
+  "frase.admin.posti_pieni_aperta.one": {
+    "it": "Posti pieni: {n} utente su {massimo}. Chi prova a registrarsi adesso trova le iscrizioni chiuse, finché non alzi il numero massimo di utenti del server.",
+    "en": "No places left: {n} user out of {massimo}. Whoever tries to sign up now will find sign-ups closed until you raise the server's maximum number of users.",
+    "nota": "Gestione con la registrazione aperta: avviso del server sotto «Iscrizioni», come frase.admin.posti_pieni"
+  },
+  "frase.admin.posti_pieni_aperta.other": {
+    "it": "Posti pieni: {n} utenti su {massimo}. Chi prova a registrarsi adesso trova le iscrizioni chiuse, finché non alzi il numero massimo di utenti del server.",
+    "en": "No places left: {n} users out of {massimo}. Whoever tries to sign up now will find sign-ups closed until you raise the server's maximum number of users."
+  },
   "frase.admin.posti_promessi.one": {
     "it": "Posti quasi pieni: {utenti} su {massimo} presi, e {n} posto è già in un invito aperto. Chi riceve un invito in più può trovare le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
     "en": "Almost no places left: {utenti} of {massimo} taken, and {n} place is already in an open invitation. Whoever gets one more invitation may find sign-ups closed until you raise the server's maximum number of users.",

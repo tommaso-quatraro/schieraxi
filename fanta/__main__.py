@@ -836,7 +836,8 @@ def cmd_migra(a) -> None:
     with contextlib.closing(account.apri()) as db:
         riga = db.execute("SELECT id FROM utenti WHERE nome_utente = ?", (account.normalizza_nome(a.utente),)).fetchone()
     if riga is None:
-        sys.exit(f"Errore: l'account «{a.utente}» non esiste. Crealo prima: python -m fanta invito --etichetta ... --admin, poi registrati dall'app.")
+        sys.exit(f"Errore: l'account «{a.utente}» non esiste. Crealo prima registrandoti dall'app (con FANTA_REGISTRAZIONE=invito serve "
+                 "prima un codice: python -m fanta invito --etichetta ... --admin).")
     copiati = contesto.migra(riga["id"], forza=a.forza)
     if not copiati:
         sys.exit("Niente da copiare: lega/ e dati/ non hanno i file della lega.")

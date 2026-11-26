@@ -196,6 +196,9 @@ def multiutente(tmp_path, monkeypatch):
     monkeypatch.setenv("FANTA_DATI_UTENTI", str(tmp_path / "utenti-prova"))
     monkeypatch.setenv("FANTA_PROXY", "1")
     monkeypatch.delenv("MAX_UTENTI", raising=False)
+    # Con gli inviti, come l'ambiente di prova: i test degli account sono scritti per quel modo. La registrazione aperta, predefinita
+    # sul server dal 26/11/2026, la provano i suoi test (tests/test_registrazione_aperta.py) togliendo la variabile.
+    monkeypatch.setenv("FANTA_REGISTRAZIONE", "invito")
     monkeypatch.setattr(account, "COSTO", {"n": 2 ** 4, "r": 8, "p": 1})
     orologio = Orologio()
     orologio.t = 1000.0

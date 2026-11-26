@@ -79,9 +79,14 @@ def test_privacy_ha_titolare_basi_destinatari_conservazione_diritti(monkeypatch)
 def test_testo_segue_il_modo_di_iscrizione(monkeypatch):
     monkeypatch.setenv("FANTA_REGISTRAZIONE", "invito")
     assert "facoltativa" in tl.pagina("privacy") and "codice d'invito." in tl.pagina("termini")
-    monkeypatch.setenv("FANTA_REGISTRAZIONE", "aperta")
+    monkeypatch.setenv("FANTA_REGISTRAZIONE", "aperta")             # registrazione aperta: nome e password, email facoltativa
     p, tm = tl.pagina("privacy"), tl.pagina("termini")
-    assert "richiesto per iscriverti" in p and "serve un indirizzo email" in tm
+    assert "facoltativa" in p and "bastano un nome utente e una password" in tm and "codice d'invito." not in tm
+    monkeypatch.delenv("FANTA_REGISTRAZIONE")                        # il modo predefinito è la registrazione aperta
+    assert "bastano un nome utente e una password" in tl.pagina("termini")
+    monkeypatch.setenv("FANTA_REGISTRAZIONE", "email")
+    p, tm = tl.pagina("privacy"), tl.pagina("termini")
+    assert "richiesto per iscriverti" in p and "un codice d'invito e un indirizzo email" in tm
 
 
 def test_termini_hanno_la_clausola_sui_file_caricati():

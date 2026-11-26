@@ -683,6 +683,12 @@
       "maxLength": 500,
       "title": "Password",
       "type": "string"
+     },
+     "sito": {
+      "default": "",
+      "maxLength": 200,
+      "title": "Sito",
+      "type": "string"
      }
     },
     "required": [
@@ -1891,7 +1897,7 @@
   },
   "/api/account/registra": {
    "post": {
-    "description": "Crea l'account con un invito. Il codice di recupero compare solo qui: l'app deve farlo salvare.",
+    "description": "Crea l'account: con la registrazione aperta basta nome utente e password, altrimenti serve l'invito. Il codice di recupero\ncompare solo qui: l'app deve farlo salvare. Il campo `sito` pieno (la trappola della web) ferma tutto prima di cominciare.",
     "requestBody": {
      "content": {
       "application/json": {

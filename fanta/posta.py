@@ -148,12 +148,11 @@ def _firma() -> str:
     return "\n\nSchieraXI\nSe non sei stato tu, ignora questo messaggio: non succede niente."
 
 
-def modello_verifica(a: str, codice: str, minuti: int, nome_utente: str | None = None) -> Messaggio:
-    """Con `nome_utente` (iscrizione) il messaggio dice per quale account è il codice: chi lo riceve riconosce una richiesta non sua."""
-    cosa = (f"per creare l'account «{nome_utente}» in SchieraXI con questo indirizzo email scrivi il codice" if nome_utente
-            else "per confermare questo indirizzo email in SchieraXI scrivi il codice")
+def modello_verifica(a: str, codice: str, minuti: int) -> Messaggio:
+    """Il codice per confermare un indirizzo (anche all'iscrizione). Mai il nome utente scelto: lo scrive chiunque si registri e
+    finirebbe in un'email a un indirizzo a caso (un testo suo spedito dal server)."""
     return Messaggio(a, "SchieraXI: conferma la tua email",
-                     f"Ciao,\n{cosa}:\n\n    {codice}\n\n"
+                     f"Ciao,\nper confermare questo indirizzo email in SchieraXI scrivi il codice:\n\n    {codice}\n\n"
                      f"Vale {minuti} minuti e si può usare una volta sola. Non darlo a nessuno." + _firma())
 
 

@@ -56,7 +56,7 @@ def scena(multiutente, dati_isolati, monkeypatch):
     monkeypatch.setenv("FANTA_GOOGLE_CLIENT_SECRET", "segreto-di-prova")
     monkeypatch.setenv("FANTA_GOOGLE_REDIRECT", "https://esempio.test/api/account/social/google/ritorno")
     monkeypatch.delenv("FANTA_GOOGLE_DOMINI", raising=False)
-    monkeypatch.delenv("FANTA_REGISTRAZIONE", raising=False)
+    monkeypatch.setenv("FANTA_REGISTRAZIONE", "invito")              # le prove di Google sono scritte per il modo con gli inviti
     s = Scena()
 
     def chiavi():
@@ -235,7 +235,7 @@ def test_il_tetto_degli_utenti_vale_anche_con_google(scena, monkeypatch):
     utente_con_password(c)
     nuovo = iscrivi_con_google(cliente("5.5.5.5"), scena)
     r = cliente("5.5.5.5").post("/api/account/social/completa", json={"iscrizione": nuovo["iscrizione"], "nome_utente": "mario", "invito": invito(), "accetto_termini": True})
-    assert r.status_code == 403 and "massimo" in r.json()["detail"]
+    assert r.status_code == 403 and r.json()["detail"] == account.AL_COMPLETO
 
 
 def test_l_account_nato_con_google_parte_da_una_cartella_vuota(scena):

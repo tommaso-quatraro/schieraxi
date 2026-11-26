@@ -56,11 +56,18 @@ def normalizza_email(testo) -> str:
     return e
 
 
+GMAIL = {"gmail.com", "googlemail.com"}
+
+
 def indirizzo_base(email: str) -> str:
-    """L'indirizzo «base» per confronti e limiti: senza l'eventuale +etichetta prima della @ (anna+prova@x.it vale anna@x.it).
+    """L'indirizzo «base» per confronti e limiti: senza l'eventuale +etichetta prima della @ (anna+prova@x.it vale anna@x.it) e,
+    per Gmail, senza i punti e con un dominio solo (con «a.n.n.a» o «anna», su googlemail o su gmail, per Gmail è la stessa casella).
     Così con un solo indirizzo non si creano tanti account né si aggirano i limiti per indirizzo."""
     locale, dominio = email.rsplit("@", 1)
-    return (locale.split("+", 1)[0] or locale) + "@" + dominio
+    locale = locale.split("+", 1)[0] or locale
+    if dominio in GMAIL:
+        locale, dominio = locale.replace(".", "") or locale, "gmail.com"
+    return locale + "@" + dominio
 
 
 def _gia_di_un_account(db: sqlite3.Connection, email: str, tranne: int | None = None) -> bool:
@@ -320,26 +327,10 @@ def _recupera_con_email(db, email, codice, nuova, ip, adesso, tieni_push=None) -
 
 
 # ---------------------------------------------------------------- come ci si iscrive (FANTA_REGISTRAZIONE)
-MODI_REGISTRAZIONE = ("invito", "aperta", "email")
+MODI_REGISTRAZIONE = ("aperta", "invito", "email")
+ALTRI_NOMI = {"inviti": "invito"}
 ISCRIZIONI_PER_IP = (5, account.ORA)         # richieste di iscrizione con email da un indirizzo IP
 ISCRIZIONI_GLOBALI = (100, 24 * account.ORA)
-ISCRIZIONI_GIORNO_PREDEFINITO = 10           # modo `aperta`: account nuovi al massimo in 24 ore (FANTA_ISCRIZIONI_GIORNO)
-CHIUSE_PER_OGGI = "Per oggi le iscrizioni sono chiuse: riprova domani"
-
-
-def iscrizioni_al_giorno() -> int:
-    try:
-        v = int(os.environ.get("FANTA_ISCRIZIONI_GIORNO", ""))
-        return v if v > 0 else ISCRIZIONI_GIORNO_PREDEFINITO
-    except ValueError:
-        return ISCRIZIONI_GIORNO_PREDEFINITO
-
-
-def _tetto_del_giorno(db: sqlite3.Connection, adesso: datetime) -> None:
-    """Modo `aperta`: quanti account sono nati nelle ultime 24 ore (chi ha un invito non conta qui: lo decide l'amministratore)."""
-    nuovi = db.execute("SELECT COUNT(*) FROM utenti WHERE creato > ?", (_testo(adesso - timedelta(days=1)),)).fetchone()[0]
-    if nuovi >= iscrizioni_al_giorno():
-        raise ErroreAccount(CHIUSE_PER_OGGI, 403)
 
 
 def _hash_segreto(segreto) -> str:
@@ -347,17 +338,23 @@ def _hash_segreto(segreto) -> str:
 
 
 def modo_registrazione() -> str:
-    """- `invito` (predefinito): serve un invito dell'amministratore; l'email è facoltativa.
+    """- `aperta` (predefinito, decisione del proprietario del 26/11/2026): chi vuole si registra con nome utente e password;
+      l'email è facoltativa e l'account nasce subito (tetti MAX_UTENTI e FANTA_ISCRIZIONI_GIORNO, limiti per indirizzo IP). Un invito
+      valido funziona lo stesso (dà il suo ruolo).
+    - `invito` (anche `inviti`): serve un invito dell'amministratore; l'email è facoltativa. È l'interruttore per richiudere.
     - `email`: serve l'invito E un'email: l'account nasce solo quando l'email è verificata col codice.
-    - `aperta`: nessun invito; serve un'email verificata col codice (tetto MAX_UTENTI e limiti per indirizzo IP).
-    In `aperta` un invito valido funziona anche col percorso classico (account subito, email facoltativa)."""
-    m = os.environ.get("FANTA_REGISTRAZIONE", "invito").strip().lower()
+    Variabile assente o vuota: `aperta`. Un valore che non si riconosce vale `invito`: scritto male, non apre per sbaglio."""
+    m = os.environ.get("FANTA_REGISTRAZIONE", "").strip().lower()
+    if not m:
+        return "aperta"
+    m = ALTRI_NOMI.get(m, m)
     return m if m in MODI_REGISTRAZIONE else "invito"
 
 
 def invito_classico(modo: str, invito) -> bool:
-    """Questa richiesta segue il percorso di sempre (invito, account subito)? Sì in modalità `invito`, e in `aperta` se c'è un invito."""
-    return modo == "invito" or (modo == "aperta" and bool(str(invito or "").strip()))
+    """Questa richiesta segue il percorso di sempre (account subito, email facoltativa)? Sì con `invito` e `aperta`; con `email`
+    l'account nasce dopo il codice arrivato per posta (`iscrivi`)."""
+    return modo in ("invito", "aperta")
 
 
 def _invito_vivo(db: sqlite3.Connection, invito, adesso: datetime, ip: str | None) -> sqlite3.Row:
@@ -383,7 +380,7 @@ ISCRIZIONE_POSTA_SPENTA = ("Su questo server l'iscrizione con l'email non è dis
 
 def iscrivi(db: sqlite3.Connection, nome_utente: str, password: str, email_grezza, invito: str | None, ip: str | None = None,
             adesso: datetime | None = None, accetto_termini: bool | None = None) -> dict:
-    """Prima metà dell'iscrizione con email (modi `aperta` e `email`): controlla tutto, tiene nome e hash della password in attesa e
+    """Prima metà dell'iscrizione con email (modo `email`, invito ed email obbligatoria): controlla tutto, tiene nome e hash della password in attesa e
     manda il codice. L'account NON esiste ancora: nasce in `conferma_iscrizione`. Risposta uguale se l'indirizzo è già di un
     altro account (in quel caso la mail dice che l'account c'è già) o ha troppi invii."""
     with account.posto_per_il_calcolo():                     # prima dei tetti: a fila piena non si conta niente
@@ -393,8 +390,7 @@ def iscrivi(db: sqlite3.Connection, nome_utente: str, password: str, email_grezz
 def _iscrivi(db, nome_utente, password, email_grezza, invito, ip, adesso, accetto_termini) -> dict:
     adesso = _ora(adesso)
     termini = account.controlla_termini(accetto_termini)
-    modo = modo_registrazione()
-    if modo == "invito":
+    if modo_registrazione() != "email":         # con `invito` e `aperta` l'account nasce subito (`account.registra`)
         raise ErroreAccount(account.INVITO_NON_VALIDO, 403)
     if not posta.attiva():       # il codice non può arrivare: l'iscrizione resterebbe in attesa per sempre. Uguale per ogni indirizzo, prima dei limiti
         raise ErroreAccount(ISCRIZIONE_POSTA_SPENTA, 503, codice="iscrizione_posta_spenta")
@@ -404,7 +400,7 @@ def _iscrivi(db, nome_utente, password, email_grezza, invito, ip, adesso, accett
         raise ErroreAccount("Per iscriverti serve un indirizzo email: ti mandiamo un codice per confermarlo")
     email = normalizza_email(email_grezza)
     limite.troppi(db, _chiave("iscrizioni-globali"), *ISCRIZIONI_GLOBALI)     # si conta solo quando parte davvero un codice
-    inv = _invito_vivo(db, invito, adesso, ip) if modo == "email" else None
+    inv = _invito_vivo(db, invito, adesso, ip)
     # Tetti per indirizzo: un posto in più per ogni posto ancora libero dell'invito (tutti gli amici chiedono il codice insieme
     # dalla stessa rete); le righe contate si tolgono quando l'account nasce (conferma_iscrizione).
     posti = account.posti_dell_invito(inv)
@@ -412,10 +408,7 @@ def _iscrivi(db, nome_utente, password, email_grezza, invito, ip, adesso, accett
                                           ("registra-ip", account.REGISTRAZIONI_PER_IP[0] + posti, account.REGISTRAZIONI_PER_IP[1]))
     contate += _tetti_ip(db, ip, posti)
     password_hash = account.hash_password(password)           # sempre, anche se poi non si invia niente: stesso tempo
-    if db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0] >= account.max_utenti():
-        raise ErroreAccount("Le registrazioni sono chiuse: è stato raggiunto il numero massimo di utenti", 403)
-    if modo == "aperta":
-        _tetto_del_giorno(db, adesso)
+    account.controlla_posti(db)
     # Il nome già preso NON si dice qui: chi scrive un nome e un indirizzo qualsiasi non deve poter scoprire quali nomi esistono.
     # Lo si dice in `conferma_iscrizione`, dopo che chi si iscrive ha dimostrato di avere l'email. Qui la risposta è sempre la stessa.
     occupata = _gia_di_un_account(db, email)
@@ -426,7 +419,7 @@ def _iscrivi(db, nome_utente, password, email_grezza, invito, ip, adesso, accett
                                {"nome": nome, "nome_visualizzato": account.nome_da_mostrare(nome_utente, nome), "password_hash": password_hash, "invito": inv["codice_hash"] if inv else None,
                                 "segreto": _hash_segreto(segreto), "termini": termini, "contate": contate})
         limite.aggiungi(db, _chiave("iscrizioni-globali"))
-        _invia(db, posta.modello_verifica(email, codice, int(DURATA_CODICE.total_seconds() // 60), nome))
+        _invia(db, posta.modello_verifica(email, codice, int(DURATA_CODICE.total_seconds() // 60)))   # mai il nome scelto: lo scrive chiunque
     else:
         limite.aggiungi(db, _chiave("email-nessun-invio"))
         if consentito:
@@ -485,10 +478,9 @@ def conferma_iscrizione(db: sqlite3.Connection, email_grezza, codice, ip: str | 
             if not account.invito_vivo(inv, adesso):
                 raise ErroreAccount(account.INVITO_NON_VALIDO, 403)
             ruolo = inv["ruolo"]
-        else:                                                 # modo `aperta`: tetto di account nuovi al giorno
-            _tetto_del_giorno(db, adesso)
-        if db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0] >= account.max_utenti():
-            raise ErroreAccount("Le registrazioni sono chiuse: è stato raggiunto il numero massimo di utenti", 403)
+        else:                                                 # iscrizione senza invito (del modo `aperta` di prima): tetto del giorno
+            account.tetto_del_giorno(db, adesso)
+        account.controlla_posti(db)
         nuovo = account.crea_utente(db, dati["nome"], dati.get("nome_visualizzato") or dati["nome"], dati["password_hash"],
                                     _hash_codice(recupero), ruolo, adesso, ip=ip, contate=_righe_contate(dati), email=email)
         if dati.get("invito") and not account.consuma_invito(db, dati["invito"], nuovo):
