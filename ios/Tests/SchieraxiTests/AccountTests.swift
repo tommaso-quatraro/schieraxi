@@ -663,6 +663,44 @@ final class SessioneAccountTests: XCTestCase {
         XCTAssertNil(archivio.leggi(server: server.indirizzo))
     }
 
+    /// #940: prima la password (il server la controlla e non tocca niente), poi la domanda, poi l'eliminazione; dopo, la schermata
+    /// di accesso dice una volta che account e dati non ci sono più, come la web.
+    func testEliminaControllaPrimaLaPasswordSenzaToccareNiente() async throws {
+        let server = serverAccount()
+        archivio.salva("tok", server: server.indirizzo)
+        let s = sessione(server)
+        try await s.controllaPerEliminare(password: "Prova-Finta-Zero")
+        XCTAssertEqual(server.quante("/api/account/elimina/controlla"), 1)
+        XCTAssertFalse(server.richieste.contains("POST /api/account/elimina"), "il controllo non elimina")
+        let corpo = try XCTUnwrap(server.corpiInviati(a: "/elimina/controlla").first)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: corpo) as? [String: Any])
+        XCTAssertEqual(json["password"] as? String, "Prova-Finta-Zero")
+        XCTAssertNotNil(archivio.leggi(server: server.indirizzo), "solo il controllo: l'account c'è ancora")
+        XCTAssertNil(s.prendiAvvisoAccesso())
+        try await s.elimina(password: "Prova-Finta-Zero")
+        XCTAssertEqual(s.stato, .daAccedere)
+        XCTAssertEqual(s.prendiAvvisoAccesso(), "Il tuo account e tutti i tuoi dati sono stati eliminati.")
+        XCTAssertNil(s.prendiAvvisoAccesso(), "una volta sola")
+    }
+
+    func testControlloConPasswordSbagliataNonChiudeNiente() async {
+        let server = serverAccount(extra: { _, p in
+            if p == "/api/account/elimina/controlla" { throw ErroreApi.server("La password non è giusta") }
+            return nil
+        })
+        archivio.salva("tok", server: server.indirizzo)
+        let s = sessione(server)
+        do {
+            try await s.controllaPerEliminare(password: "no")
+            XCTFail("doveva lanciare")
+        } catch {
+            XCTAssertEqual(SchermataAccesso.testoErrore(error), "La password non è giusta")
+        }
+        XCTAssertNotNil(archivio.leggi(server: server.indirizzo))
+        XCTAssertNil(s.prendiAvvisoAccesso())
+        XCTAssertEqual(pulizie, 0)
+    }
+
     func testEliminaConPasswordSbagliataNonTocchiaNiente() async {
         let server = serverAccount(extra: { _, p in
             if p == "/api/account/elimina" { throw ErroreApi.accessoRichiesto("Password non corretta") }

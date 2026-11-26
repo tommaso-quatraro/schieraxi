@@ -2,7 +2,8 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-/// Dopo «troppi tentativi» la schermata di accesso ha il pulsante che conta da solo («Riprova tra 35 s»). Foto del 20/11 (#787,
+/// Dopo «troppi tentativi» la schermata di accesso ha il pulsante che conta da solo («Riprova tra 35 secondi», come la web dal #940;
+/// prima «Riprova tra 35 s» e i secondi anche oltre il minuto). Foto del 20/11 (#787,
 /// punto 4): la frase sopra diceva «Riprova tra 45 secondi» e restava ferma mentre il pulsante contava. Ora la frase non dice il
 /// numero: lo dice solo il pulsante, che cambia.
 @MainActor
@@ -46,6 +47,14 @@ struct AccessoFraseEContoTests {
         #expect(SchermataAccesso.fraseDopoInvio(lunga) == "Per oggi le iscrizioni sono chiuse. Riprova tra 20 h.")
         #expect(SchermataAccesso.fraseDopoInvio(ErroreApi.troppiTentativi("Calma.", riprovaTra: 3600)) == "Calma.",
                 "un'ora esatta la conta ancora il pulsante")
+    }
+
+    @Test("Il pulsante che conta usa le parole della web: secondi (anche al singolare), poi minuti, poi ore (#940)", arguments: [
+        (35, "Riprova tra 35 secondi"), (1, "Riprova tra 1 secondo"), (89, "Riprova tra 89 secondi"), (90, "Riprova tra 2 minuti"),
+        (300, "Riprova tra 5 minuti"), (3599, "Riprova tra 60 minuti"), (3600, "Riprova tra circa 1 ora"),
+    ])
+    func testoDelPulsante(secondi: Int, testo: String) {
+        #expect(AttesaRiprova.testoPulsante(secondi) == testo)
     }
 
     @Test("Altrove, dove nessun pulsante conta, il tempo resta nella frase")

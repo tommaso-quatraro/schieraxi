@@ -275,7 +275,7 @@ struct SchermataAccesso: View {
             Button {
                 Task { await invia() }
             } label: {
-                Text(resto > 0 ? "Riprova tra \(resto) s" : (inInvio || sessione.inCorso ? "Un attimo…" : modulo.titoloPulsante))
+                Text(resto > 0 ? AttesaRiprova.testoPulsante(resto) : (inInvio || sessione.inCorso ? "Un attimo…" : modulo.titoloPulsante))
                     .font(.headline)
                     .monospacedDigit()
                     .frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
@@ -343,8 +343,10 @@ struct SchermataAccesso: View {
         } catch {
             // Se nel frattempo si è cambiato passo, l'errore non c'entra più con quello che si vede.
             guard passoInvio == modulo.passo else { return }
-            if case ErroreApi.troppiTentativi(_, let attesa) = error, let attesa, attesa > 0 {
-                attesaFinoA = Date().addingTimeInterval(TimeInterval(min(attesa, AttesaRiprova.massimoConto)))
+            // il pulsante conta solo un'attesa fino all'ora: oltre il tempo sta nella frase (`fraseDopoInvio`), e un pulsante che
+            // contasse un'ora sola direbbe un tempo diverso da quello della frase (#940)
+            if case ErroreApi.troppiTentativi(_, let attesa) = error, let attesa, attesa > 0, attesa <= AttesaRiprova.massimoConto {
+                attesaFinoA = Date().addingTimeInterval(TimeInterval(attesa))
             }
             // con il pulsante che conta la frase non dice i secondi (#787)
             errore = Self.fraseDopoInvio(error)
@@ -388,7 +390,8 @@ struct SchermataAccesso: View {
     }
 
     /// La frase sopra il pulsante dopo un errore dell'invio. Dopo un «troppi tentativi» con un'attesa fino a un'ora il pulsante
-    /// conta da solo («Riprova tra 35 s»): la frase non dice il numero, che resterebbe fermo accanto a quello che scende (#787).
+    /// conta da solo («Riprova tra 35 secondi», come la web, #940): la frase non dice il numero, che resterebbe fermo accanto a
+    /// quello che scende (#787).
     /// Resta la frase del server senza l'invito a riprovare («Troppi tentativi sbagliati.»). Oltre l'ora il pulsante non conta
     /// tutto e la frase tiene il tempo, come la web («Riprova tra 20 h»). Negli altri casi, e se della frase non resta niente,
     /// `testoErrore`; fuori dall'accesso, dove nessun pulsante conta, il tempo resta nella frase (`ErroreApi.errorDescription`).
