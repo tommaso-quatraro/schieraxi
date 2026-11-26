@@ -30,6 +30,11 @@ struct FormazioneView: View {
     /// Quanto restano a video gli avvisi brevi (un salvataggio non riuscito, la formazione copiata).
     private static let durataAvviso: Duration = .seconds(8)
 
+    /// Il titolo della barra è quello piccolo: con l'altezza compatta (iPhone in orizzontale), dove iOS non mostra quello grande.
+    static func titoloPiccolo(verticale: UserInterfaceSizeClass?) -> Bool {
+        verticale == .compact
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -57,6 +62,10 @@ struct FormazioneView: View {
                 .bordiMorbidi()
             }
             .navigationTitle(Catalogo.Nav.formazione)
+            // iPhone in orizzontale: il titolo piccolo e fermo nella barra, come Cerca e la scheda del giocatore. Con quello grande
+            // (che lì iOS non mostra) all'apertura la pagina partiva sotto la barra, e «Giornata 8» e «Si chiude …» restavano
+            // sfocate dietro il titolo (foto `iphone_scuro_orizz_formazione` del 26/11). In verticale e sull'iPad come prima.
+            .toolbarTitleDisplayMode(Self.titoloPiccolo(verticale: classeVerticale) ? .inline : .automatic)
             // «Sostituisci» nella scheda: chi può prendere il posto del titolare, con i numeri del server; un tocco chiude l'elenco
             // e fa il cambio. Finché il cambio non si può fare le righe sono spente con il perché; un cambio che non parte lo dice
             // il ViewModel sotto il campo (`messaggio`)
