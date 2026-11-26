@@ -26,7 +26,7 @@ struct NomeConAiuto: View {
 #Preview("Nome con riga d'aiuto") {
     List {
         Toggle(isOn: .constant(true)) {
-            NomeConAiuto(Catalogo.Imp.avvisiQui, aiuto: Catalogo.Imp.avvisiQuiAiuto)
+            NomeConAiuto(Catalogo.Imp.avvisiQui, aiuto: Catalogo.Imp.avvisiQuiAiutoApp)
         }
         Toggle(isOn: .constant(false)) { NomeConAiuto(Catalogo.Avv.oreTranq) }
     }

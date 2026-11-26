@@ -24,8 +24,14 @@ struct OggiRepository {
 
     /// L'ultima copia salvata, se c'è.
     func salvato() async -> Oggi? {
-        guard let copia = await Cache.leggi(Self.percorso, indirizzo: server.indirizzo) else { return nil }
-        return try? Decodifica.decodifica(copia.dati)
+        await salvatoConData()?.oggi
+    }
+
+    /// L'ultima copia salvata con l'ora in cui è stata scaricata (i testi dei promemoria hanno numeri di quel momento), se c'è.
+    func salvatoConData() async -> (oggi: Oggi, il: Date)? {
+        guard let copia = await Cache.leggi(Self.percorso, indirizzo: server.indirizzo),
+              let oggi: Oggi = try? Decodifica.decodifica(copia.dati) else { return nil }
+        return (oggi, copia.data)
     }
 
     /// Dal server; se non risponde, dalla cache (con `salvato` true).

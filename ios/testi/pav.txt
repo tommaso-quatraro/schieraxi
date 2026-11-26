@@ -1,6 +1,6 @@
 # Primo avvio (ConfigurazioneGuidataView e il suo ViewModel): i testi che la guida dell'iPhone ha in comune con la web.
-# I passi dell'iPhone (stemma, widget, avvisi) non ci sono sulla web: i loro testi restano in Swift.
-# Poi: python script/testi.py --scrivi
+# I passi dell'iPhone (stemma, widget) non ci sono sulla web: i loro testi restano in Swift. Quello degli avvisi dice cosa fanno i
+# promemoria dell'app, con le parole di imp.avvisi_qui_aiuto_app (#906). Poi: python script/testi.py --scrivi
 pav.primo_avvio
 pav.salta
 pav.tutto_pronto_mister
@@ -11,6 +11,7 @@ pav.permesso_negato_abilita
 # e il pulsante che chiude la guida sulla Formazione
 pav.regole_comuni
 pav.vai_formazione
+pav.avvisi_spiega
 # Il pulsante del file di Importa le rose (ImportaRoseView), come il passo «Le rose» della web e Squadra › Aggiorna le rose.
 pav.scegli_file
 # Importa le rose al primo caricamento, senza rose salvate (ImportaExcelViewModel): la frase del passo «Le rose» della web (#880)

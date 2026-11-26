@@ -29,6 +29,9 @@ extension Catalogo {
         /// `pav.vai_formazione`
         static let vaiFormazione = "Vai alla Formazione"
 
+        /// `pav.avvisi_spiega`
+        static let avvisiSpiega = "Un promemoria prima della scadenza, se non hai spuntato «L'ho messa»."
+
         /// `pav.scegli_file`
         static let scegliFile = "Scegli il file (Excel o CSV)"
 

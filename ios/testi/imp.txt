@@ -2,7 +2,9 @@
 # GestionePagina, AccountSezione; «Avanzate» anche nell'accesso (AccessoView). Poi: python script/testi.py --scrivi
 imp.sez_avvisi
 imp.avvisi_qui
-imp.avvisi_qui_aiuto
+# la riga sotto «Avvisi su questo dispositivo»: sull'iPhone accende solo i promemoria dell'app (#906), quindi non la riga della
+# web (imp.avvisi_qui_aiuto), che dice anche dell'avviso quando cambia la formazione
+imp.avvisi_qui_aiuto_app
 imp.ore_tranquille_aiuto
 imp.ore_tranquille_spente
 imp.lega

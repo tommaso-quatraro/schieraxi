@@ -1,11 +1,27 @@
 import UserNotifications
 
 /// Promemoria locali di iOS: non servono server né l'account a pagamento di Apple (le notifiche push, invece, sì).
-/// Un'ora e un quarto d'ora prima della scadenza della formazione, e l'avviso quando cambia la formazione consigliata, solo con
-/// «Avvisi su questo dispositivo» acceso (un interruttore unico come la web, #673 passo 3: le scelte per singolo avviso non si usano
-/// più). Si programmano quando l'app legge la giornata, quando l'interruttore si riaccende e quando cambiano le ore tranquille;
+/// Un'ora e un quarto d'ora prima della scadenza della formazione, solo con «Avvisi su questo dispositivo» acceso (un interruttore
+/// unico come la web, #673 passo 3). Titolo e testo li scrive il server (`testi_promemoria` di Oggi, #906): l'app non compone frasi
+/// sue. Se il server manda già i suoi avvisi proprio a questa app (ntfy per l'app nativa) l'app non programma i suoi; con le sole
+/// notifiche della web sì (potrebbero essere sul computer). Gli avvisi quando cambia la formazione li manda solo il server (#676, #906).
+/// Si programmano quando l'app legge la giornata, quando l'interruttore si riaccende e quando cambiano le ore tranquille;
 /// spegnendolo si tolgono subito (vedi `TelefonoAvvisi`).
 enum Notifiche {
+    /// Un promemoria locale pronto da programmare: identificativo, quando suona, titolo e testo.
+    struct Promemoria: Equatable, Sendable {
+        let id: String
+        let quando: Date
+        let titolo: String
+        let testo: String
+    }
+
+    /// I promemoria della scadenza, con gli avvisi che l'app non manda più («Cambio di modulo» ed «Escono le probabili», tolti con
+    /// #906 come sul server con #676): togliendo i promemoria si toglie anche un avviso vecchio rimasto in attesa.
+    static let identificativiPromemoria = ["fanta-60", "fanta-15", "fanta-cambio", "fanta-probabili"]
+    /// I due promemoria della scadenza del certificato.
+    static let identificativiCertificato = ["fanta-cert-24", "fanta-cert-6"]
+
     static func stato() async -> UNAuthorizationStatus {
         await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     }
@@ -15,8 +31,8 @@ enum Notifiche {
         return (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
     }
 
-    /// Notifica locale subito (usata dall'aggiornamento in background quando la formazione consigliata cambia), solo con «Avvisi su
-    /// questo dispositivo» acceso. Nelle ore tranquille non suona: arriva alla fine del silenzio. Dice se l'avviso è partito.
+    /// Notifica locale subito (la versione nuova dell'app, `NuovaVersione`), solo con «Avvisi su questo dispositivo» acceso. Nelle
+    /// ore tranquille non suona: arriva alla fine del silenzio. Dice se l'avviso è partito.
     @discardableResult
     static func avviso(id: String, titolo: String, corpo: String, ore: OreTranquille = ArchivioOreTranquille.leggi(), adesso: Date = Date()) async -> Bool {
         guard ArchivioAvvisiQui.acceso() else { return false }
@@ -54,75 +70,123 @@ enum Notifiche {
         return elenco
     }
 
-    /// Due promemoria locali prima che scada il certificato: 24 ore e 6 ore prima. Si richiamano a ogni apertura e a ogni
-    /// aggiornamento in background: con lo stesso identificativo sostituiscono quelli vecchi (dopo un rinnovo la data cambia).
+    /// I testi del server dicono numeri e fatti del momento della lettura di Oggi («Consigliato: 4-3-3, 71,2 punti attesi», «Rossi
+    /// parte dalla panchina», «La formazione che hai salvato non è più valida»): un promemoria li usa solo se la giornata è stata
+    /// letta al massimo due ore prima che suoni. iOS non sveglia l'app a un'ora precisa, quindi rileggere Oggi vicino alla finestra
+    /// non si può promettere.
+    static let freschezzaTesti: TimeInterval = 2 * 3600
+
+    /// I promemoria della scadenza da programmare (#906). Nessuno se il server manda già i suoi avvisi a questa app
+    /// (`dalServer`: ntfy per l'app nativa, `StatoAvvisi.mandaGiaIlServer`), se il promemoria non serve (`tace`) o con gli avvisi
+    /// spenti (`attivi`); quelli nelle ore tranquille o già passati si saltano (`promemoriaConsentiti`). Titolo e testo sono quelli
+    /// del server (`testi`, la voce con gli stessi minuti), così come sono, se letti da poco (`freschezzaTesti`; `lettaIl`: quando è
+    /// stata letta la giornata, nil se non si sa). Senza il testo del server (server di prima, lettura vecchia, spunta appena tolta
+    /// con la lista vuota) il promemoria minimo del catalogo, senza titolo: la giornata e l'ora della scadenza (`oggi.prossima_chiude`,
+    /// la frase della web), mai una frase composta qui.
+    static func promemoriaDaProgrammare(giornata: NomeGiornata, inizio: Date, testi: [TestoPromemoria]?, lettaIl: Date?,
+                                        ore: OreTranquille, attivi: Set<Int>, tace: Bool, dalServer: Bool,
+                                        adesso: Date = Date()) -> [Promemoria] {
+        if dalServer { return [] }
+        return promemoriaConsentiti(inizio: inizio, ore: ore, attivi: attivi, tace: tace, adesso: adesso).map { voce -> Promemoria in
+            let fresco = lettaIl.map { voce.quando.timeIntervalSince($0) <= freschezzaTesti } == true
+            if fresco, let delServer = testi?.first(where: { $0.minuti == voce.minuti }) {
+                return Promemoria(id: voce.id, quando: voce.quando, titolo: delServer.titolo, testo: delServer.testo)
+            }
+            let scadenza = Quando.relativa(inizio, adesso: voce.quando)
+            return Promemoria(id: voce.id, quando: voce.quando, titolo: "",
+                              testo: Catalogo.Oggi.prossimaChiude(g: giornata.intero, quando: scadenza))
+        }
+    }
+
+    /// I due promemoria del certificato, 24 e 6 ore prima della scadenza, mai nelle ore tranquille (#906). Uno che ci cade suona un
+    /// minuto prima che comincino (prima si rinnova, meglio è); se quel momento è già passato, quando finiscono, purché manchi ancora
+    /// almeno un'ora alla scadenza; altrimenti non suona. Il testo dice le ore che mancano davvero.
+    static func promemoriaCertificato(scadenza: Date, ore: OreTranquille, adesso: Date = Date()) -> [Promemoria] {
+        var elenco: [Promemoria] = []
+        for (id, orePrima) in zip(identificativiCertificato, [24.0, 6.0]) {
+            let previsto = scadenza.addingTimeInterval(-orePrima * 3600)
+            guard let quando = momentoCertificato(previsto, scadenza: scadenza, ore: ore, adesso: adesso),
+                  !elenco.contains(where: { $0.quando == quando }) else { continue }
+            elenco.append(Promemoria(id: id, quando: quando, titolo: Catalogo.Avv.certificatoTitolo,
+                                     testo: testoCertificato(ore: scadenza.timeIntervalSince(quando) / 3600)))
+        }
+        return elenco
+    }
+
+    /// Quando suona un promemoria del certificato previsto a `previsto` (vedi `promemoriaCertificato`); nil se non suona.
+    private static func momentoCertificato(_ previsto: Date, scadenza: Date, ore: OreTranquille, adesso: Date) -> Date? {
+        guard previsto > adesso else { return nil }
+        guard let inizio = ore.inizio(di: previsto) else { return previsto }
+        let primaDelSilenzio = inizio.addingTimeInterval(-60)
+        if primaDelSilenzio > adesso { return primaDelSilenzio }
+        guard let fine = ore.fine(da: previsto), scadenza.timeIntervalSince(fine) >= 3600 else { return nil }
+        return fine
+    }
+
+    /// «Tra circa 6 ore l'app smette di aprirsi. …» (`avv.certificato_ore` del catalogo), con le ore che mancano arrotondate
+    /// («circa un'ora» per una).
+    static func testoCertificato(ore: Double) -> String {
+        Catalogo.Avv.certificatoOre(max(1, Int(ore.rounded())))
+    }
+
+    /// I due promemoria del certificato (`promemoriaCertificato`), con le ore tranquille ricordate sul telefono. Si richiamano a ogni
+    /// apertura, a ogni aggiornamento in background e quando cambiano le ore tranquille: con lo stesso identificativo sostituiscono
+    /// quelli vecchi (dopo un rinnovo la data cambia).
     static func programmaScadenza(_ scadenza: Date) async {
-        let centro = UNUserNotificationCenter.current()
         let stato = await stato()
         guard stato == .authorized || stato == .provisional else { return }
-        centro.removePendingNotificationRequests(withIdentifiers: ["fanta-cert-24", "fanta-cert-6"])
-        for (id, ore) in [("fanta-cert-24", 24), ("fanta-cert-6", 6)] {
-            let quando = scadenza.addingTimeInterval(-Double(ore) * 3600)
-            guard quando > Date() else { continue }
-            let contenuto = UNMutableNotificationContent()
-            contenuto.title = "SchieraXI · Da rinnovare"
-            contenuto.body = "Tra circa \(ore) ore l'app smette di aprirsi. Rinnovala dall'app con cui l'hai installata."
-            contenuto.sound = .default
-            let componenti = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: quando)
-            let trigger = UNCalendarNotificationTrigger(dateMatching: componenti, repeats: false)
-            try? await centro.add(UNNotificationRequest(identifier: id, content: contenuto, trigger: trigger))
-        }
+        await sostituisci(identificativiCertificato, con: promemoriaCertificato(scadenza: scadenza, ore: ArchivioOreTranquille.leggi()))
     }
 
     /// Toglie subito i promemoria e gli avvisi già programmati (l'utente ha spento «Avvisi su questo dispositivo»). Restano i due
     /// promemoria della scadenza del certificato: senza rinnovo l'app smette di aprirsi.
     static func togliPromemoria() {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(
-            withIdentifiers: ["fanta-60", "fanta-15", "fanta-cambio", "fanta-probabili"])
-    }
-
-    /// Il testo dei promemoria: la giornata con i due numeri in testa, come gli avvisi del server (#299).
-    static func corpoPromemoria(giornata: NomeGiornata, modulo: String?) -> String {
-        "\(giornata.intero): " + (modulo.map { "modulo consigliato \($0). Mister, dai un'occhiata alla formazione." }
-                                   ?? "mister, dai un'occhiata alla formazione.")
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identificativiPromemoria)
     }
 
     /// Il promemoria della scadenza tace? Una spunta toccata sul telefono dopo l'ultima lettura di Oggi vale subito (`toccata`: vero
-    /// messa, falso tolta); altrimenti decide il server (`serve`, il campo `serve_promemoria` di Oggi): tace solo se dice che non
-    /// serve. Senza il campo (server di prima, lettura non riuscita) il promemoria parte: mai tacere per un dato incerto.
+    /// messa, falso tolta); altrimenti decide il server (`serve`: `serve_promemoria` di Oggi, o la lista dei testi vuota): tace solo
+    /// se dice che non serve. Senza il campo (server di prima, lettura non riuscita) il promemoria parte: mai tacere per un dato incerto.
     static func tacePromemoria(serve: Bool?, toccata: Bool?) -> Bool {
         if let toccata { return toccata }
         return serve == false
     }
 
-    static func programma(giornata: NomeGiornata, inizio: Date, modulo: String?, tace: Bool = false) async {
-        let centro = UNUserNotificationCenter.current()
+    /// Programma i promemoria della scadenza (`promemoriaDaProgrammare`) al posto di quelli di prima: un elenco vuoto li toglie.
+    static func programma(_ elenco: [Promemoria]) async {
         let stato = await stato()
         guard stato == .authorized || stato == .provisional else { return }
-        centro.removePendingNotificationRequests(withIdentifiers: ["fanta-60", "fanta-15"])
-        for (id, minuti, quando) in promemoriaConsentiti(inizio: inizio, ore: ArchivioOreTranquille.leggi(), attivi: ArchivioAvvisiQui.minutiAttivi(),
-                                                         tace: tace) {
+        await sostituisci(identificativiPromemoria, con: elenco)
+    }
+
+    /// Toglie i promemoria in attesa con gli identificativi `vecchi` e programma quelli dell'elenco, al minuto del loro `quando`.
+    private static func sostituisci(_ vecchi: [String], con elenco: [Promemoria]) async {
+        let centro = UNUserNotificationCenter.current()
+        centro.removePendingNotificationRequests(withIdentifiers: vecchi)
+        for promemoria in elenco {
             let contenuto = UNMutableNotificationContent()
-            contenuto.title = minuti == 60 ? "SchieraXI · Manca un'ora" : "SchieraXI · Mancano 15 minuti"
-            contenuto.body = corpoPromemoria(giornata: giornata, modulo: modulo)
+            contenuto.title = promemoria.titolo
+            contenuto.body = promemoria.testo
             contenuto.sound = .default
-            let componenti = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: quando)
+            let componenti = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: promemoria.quando)
             let trigger = UNCalendarNotificationTrigger(dateMatching: componenti, repeats: false)
-            try? await centro.add(UNNotificationRequest(identifier: id, content: contenuto, trigger: trigger))
+            try? await centro.add(UNNotificationRequest(identifier: promemoria.id, content: contenuto, trigger: trigger))
         }
     }
 }
 
-/// Cosa fa «Avvisi su questo dispositivo» al telefono: il permesso di iOS, le ore tranquille ricordate per i promemoria, i promemoria
-/// tolti o rimessi in programma. I test passano una versione che annota le chiamate: così si vede che l'interruttore arriva davvero
-/// ai promemoria.
+/// Cosa fa «Avvisi su questo dispositivo» al telefono: il permesso di iOS, gli avvisi del server ricordati per i promemoria, i
+/// promemoria tolti o rimessi in programma. I test passano una versione che annota le chiamate: così si vede che l'interruttore arriva
+/// davvero ai promemoria.
 struct TelefonoAvvisi: Sendable {
     /// iOS permette le notifiche dell'app?
     var permesso: @MainActor @Sendable () async -> Bool
     /// Chiede il permesso a iOS (la prima volta compare la domanda di sistema); dice se c'è.
     var chiediPermesso: @MainActor @Sendable () async -> Bool
-    /// Ricorda sul telefono le ore tranquille lette dal server: le usa ogni programmazione successiva, anche in background.
-    var ricordaOre: @MainActor @Sendable (OreTranquille) -> Void
+    /// Ricorda sul telefono gli avvisi come li ha il server (`GET` o `PUT /api/avvisi`): le ore tranquille e se il server manda già
+    /// gli avvisi a questa app (`ArchivioAvvisiDalServer`). Li usa ogni programmazione successiva, anche in background. Dice se per i
+    /// promemoria è cambiato qualcosa (`Aggiornamento.ricordaAvvisi`).
+    var ricorda: @MainActor @Sendable (StatoAvvisi) -> Bool
     /// Toglie subito i promemoria e gli avvisi già programmati.
     var togliTutti: @MainActor @Sendable () -> Void
     /// Rimette in programma i promemoria con l'ultima giornata salvata (e quelli del certificato).
@@ -135,7 +199,7 @@ struct TelefonoAvvisi: Sendable {
             return stato == .authorized || stato == .provisional || stato == .ephemeral
         },
         chiediPermesso: { await Notifiche.chiediPermesso() },
-        ricordaOre: { ore in ArchivioOreTranquille.salva(ore) },
+        ricorda: { stato in Aggiornamento.ricordaAvvisi(stato) },
         togliTutti: {
             if !Ambiente.ospiteDeiTest { Notifiche.togliPromemoria() }
         },
