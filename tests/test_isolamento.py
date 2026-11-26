@@ -52,6 +52,8 @@ NON_PERSONALI = {
     ("POST", "/api/account/recupero-email"), ("POST", "/api/account/recupero-email/conferma"), ("POST", "/api/account/registra/conferma"),
     ("POST", "/api/admin/inviti"), ("GET", "/api/admin/inviti"), ("DELETE", "/api/admin/inviti/{invito_id}"), ("POST", "/api/admin/utenti/{utente_id}/rose"), ("GET", "/api/admin/utenti"), ("GET", "/api/admin/registro"), ("GET", "/api/admin/fonti"), ("PUT", "/api/admin/fonti"), ("POST", "/api/admin/reset-password"),
     ("GET", "/api/admin/funzioni"), ("PUT", "/api/admin/funzioni"),
+    # chi gestisce blocca, sblocca o elimina l'account di un altro (tests/test_gestione_utenti.py)
+    ("POST", "/api/admin/utenti/{utente_id}/blocca"), ("POST", "/api/admin/utenti/{utente_id}/sblocca"), ("DELETE", "/api/admin/utenti/{utente_id}"),
     # accesso con Google: parlano solo di account e identità, nessun dato della lega
     ("POST", "/api/account/social/google/inizia"), ("GET", "/api/account/social/google/ritorno"), ("POST", "/api/account/social/scambio"),
     ("POST", "/api/account/social/completa"), ("GET", "/api/account/social/accessi"), ("DELETE", "/api/account/social/{provider}"),
