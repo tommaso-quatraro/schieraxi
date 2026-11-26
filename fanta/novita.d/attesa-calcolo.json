@@ -1,9 +1,0 @@
-{
-  "titolo": "Oggi più veloce dopo un aggiornamento dei dati",
-  "voci": [
-    "Dopo un aggiornamento dei dati o un riavvio del server, Oggi e il widget dell'iPhone si aprono prima: più spesso la formazione arriva subito, senza i secondi di attesa con il marchio animato. Numeri, consigli e testi restano gli stessi."
-  ],
-  "tecnico": [
-    "#907. Con gli account, prima del 202 «sto calcolando» la richiesta aspetta il calcolo in coda al massimo calcolo.ATTESA_MAX (2 s) in tutto: se finisce in tempo risponde subito con il risultato o con il suo errore (a tutte le richieste che lo aspettavano, poi l'errore non resta); se no il 202 ha riprova_tra meno i secondi aspettati (almeno 1), così l'app riprova ogni 3 secondi circa come prima invece che dopo 2 + 3. Al massimo calcolo.MAX_IN_ATTESA (8) richieste aspettano insieme, in tutto il server (ognuna tiene uno dei 40 fili delle rotte); oltre, il 202 subito come prima. Nessun calcolo in più: chi aspetta aspetta quello già in coda. Con il token del widget (sola cache) nessun calcolo parte: si aspetta solo quello già in corso per lo stesso risultato, in coda o nel riscaldamento. Non aspettano (calcolo.senza_attesa) le analisi di scambi, che hanno 3 posti in tutto il server e non li tengono occupati ad aspettare, e le parti facoltative di Oggi e del widget (widget._opzionale). Forma e campi del 202 invariati. Misura con prove/misura_oggi.py --cpu."
-  ]
-}
