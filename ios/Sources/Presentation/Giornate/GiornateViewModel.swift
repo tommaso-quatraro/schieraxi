@@ -11,7 +11,8 @@ final class GiornateViewModel: ViewModelBase {
 
     /// Sul telefono le righe aperte (anche più di una); sull'iPad la prima è la giornata scelta a destra.
     @Published var aperte: Set<String> = []
-    /// Sull'iPad la giornata a destra (nil = la più recente).
+    /// Sull'iPad la riga scelta, che va a destra: una giornata o «Dettagli» (`PaginaGiornate.idDettagli`); nil = la più recente
+    /// (`PaginaGiornate.aDestra`).
     @Published var scelta: String?
     /// «Dettagli» aperto.
     @Published var dettagliAperti = false
@@ -67,8 +68,9 @@ final class GiornateViewModel: ViewModelBase {
     /// Solo per le foto della demo (`giornate-aperta`): la giornata più recente si apre appena c'è.
     private var piuRecenteDaAprire = false
 
-    /// Le foto della demo: `giornate-aperta` apre la giornata più recente, `giornate-dettagli` apre «Dettagli»; anche
-    /// `giornate-confronto`, che poi scorre fino al fondo dei Dettagli, dove sta il confronto (#842, `ConfrontoDemo`).
+    /// Le foto della demo: `giornate-aperta` apre la giornata più recente, `giornate-dettagli` apre «Dettagli» (sull'iPad a
+    /// destra, #896); anche `giornate-confronto`, che poi scorre fino al fondo dei Dettagli, dove sta il confronto (#842,
+    /// `ConfrontoDemo`).
     func preparaFoto(_ nome: String) {
         switch nome {
         case "giornate-aperta":
@@ -76,6 +78,7 @@ final class GiornateViewModel: ViewModelBase {
             applicaChiesta()
         case "giornate-dettagli", "giornate-confronto":
             dettagliAperti = true
+            scelta = PaginaGiornate.idDettagli
         default:
             break
         }
