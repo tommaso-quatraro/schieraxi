@@ -29,7 +29,7 @@ struct OggiPerWidgetTests {
     /// La giornata come nell'app, ma quello che andrebbe a widget e promemoria finisce in `arrivate`.
     static func oggi(_ srv: ServerDiProva, _ arrivate: Arrivate) -> OggiViewModel {
         let vm = OggiViewModel(server: srv, conPromemoria: false)
-        vm.dopoLetturaFresca = { oggi, _ in arrivate.giornate.append(oggi.giornata) }
+        vm.dopoLetturaFresca = { oggi, _, _ in arrivate.giornate.append(oggi.giornata) }
         return vm
     }
 
