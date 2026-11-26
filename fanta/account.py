@@ -376,7 +376,9 @@ def _copia_prima_di_migrare(db: sqlite3.Connection, percorso: Path, versione: in
     (backup.GIORNI_COPIE_MIGRAZIONE).
     La copia si scrive in un file temporaneo della stessa cartella e prende il nome giusto solo quando è finita: se si interrompe
     (disco pieno) il temporaneo si toglie e il giro dopo la rifà. Una copia già presente ma vuota o rovinata (lasciata a metà dalle
-    versioni di prima) si rifà."""
+    versioni di prima) si rifà. La copia esce dal modo WAL (un file solo, come in backup-dati.sh) e prima di darle il nome si tolgono
+    i -journal, -wal e -shm rimasti accanto al nome: un giornale di una copia di prima la svuoterebbe alla prima apertura. I
+    temporanei rimasti da una copia interrotta di colpo li toglie il giro serale (backup.copia_account)."""
     cartella = percorso.parent / "backup"
     cartella.mkdir(parents=True, exist_ok=True)
     destinazione = cartella / f"{percorso.stem}-prima-della-migrazione-{versione}.sqlite"
@@ -389,8 +391,11 @@ def _copia_prima_di_migrare(db: sqlite3.Connection, percorso: Path, versione: in
         copia = sqlite3.connect(temporaneo)
         try:
             db.backup(copia)
+            copia.execute("PRAGMA journal_mode = DELETE")
         finally:
             copia.close()
+        for resto in ("-journal", "-wal", "-shm"):
+            Path(f"{destinazione}{resto}").unlink(missing_ok=True)
         os.replace(temporaneo, destinazione)
     except BaseException:
         temporaneo.unlink(missing_ok=True)
@@ -398,12 +403,12 @@ def _copia_prima_di_migrare(db: sqlite3.Connection, percorso: Path, versione: in
 
 
 def _copia_buona(percorso: Path) -> bool:
-    """La copia di sicurezza c'è, non è vuota e passa il controllo di integrità di SQLite (aperta in sola lettura)."""
+    """La copia di sicurezza c'è, non è vuota e passa il controllo veloce di SQLite (aperta in sola lettura)."""
     try:
         if percorso.stat().st_size == 0:
             return False
         with contextlib.closing(sqlite3.connect(percorso.resolve().as_uri() + "?mode=ro", uri=True)) as copia:
-            return copia.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+            return copia.execute("PRAGMA quick_check").fetchone()[0] == "ok"
     except (OSError, sqlite3.DatabaseError):
         return False
 
