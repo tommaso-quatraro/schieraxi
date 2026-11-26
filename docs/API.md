@@ -351,7 +351,7 @@ Gli scambi usano gli id dei giocatori, separati da virgola (per esempio `do=101,
 | `POST /api/rose/anteprima/file` | file multipart `file`; `sostituisci_tutto?` (query); campo `correzioni?` (testo JSON) (X-Fanta) | la stessa anteprima per un file (gli stessi formati di `/api/rose/file`) |
 | `POST /api/rose/testo` | `{testo, sostituisci_tutto?, correzioni?, mia_squadra?}` (X-Fanta, If-Match) | importa le rose da testo incollato (anche CSV «rosters»). `correzioni` e `mia_squadra` sono facoltativi (dal piano «Ingresso facile»): senza, risponde come sempre. Senza `sostituisci_tutto` le squadre di prima che non sono nel file restano, tranne le squadre di esempio (anche rinominate), che si tolgono sempre insieme alla loro «tua squadra». Lega già mista (importata sopra gli esempi prima del 12/11/2026): se ci sono tutte e quattro le squadre di esempio, col loro nome e ancora come le crea la demo (nessun costo, giocatori riconosciuti esatti), insieme a squadre vere, l'importazione le toglie (con la «tua squadra» se era una di loro), lascia le squadre vere e lo dice nel primo degli `avvisi` (chiave `rose.esempi_tolti` con `squadre`, l'elenco dei nomi, anche in `avvisi_frasi`); con una sola diversa non tocca niente. Se il file delle rose salvato non si legge più, l'importazione lo mette da parte (`rose.json.rovinato`, la copia `rose.json.bak` resta quella di prima), tiene solo le squadre del file e lo dice nel primo degli `avvisi`; l'anteprima, che non scrive, dà lo stesso avviso. Se poi il salvataggio fallisce (disco pieno `507`, database degli account che non risponde `503`) il file rovinato torna al suo posto. Vale anche per `/api/rose/file` e per le due anteprime. Dal 18/11/2026 la risposta ha anche `avvisi_frasi` (facoltativo: le versioni di prima non lo mandano), una voce per ogni avviso nello stesso ordine come nell'anteprima: `{chiave, param}` da tradurre, oppure `null` per un avviso che è solo testo (vedi «Frasi con chiave») |
 | `POST /api/rose/file` | file multipart `file`; `sostituisci_tutto?` (query); campi del modulo facoltativi `correzioni` (testo JSON) e `mia_squadra` (X-Fanta, If-Match) | importa da Excel (`.xlsx`) o da testo (CSV, TSV, TXT). Risposta con `riepilogo` (cosa è cambiato). File oltre 5 MB o vuoto: `400`. Con gli account accesi: `.xlsm` (macro) rifiutato e massimo 1500 righe e 60 colonne (un Excel: 90.000 celle in tutto, e 20 secondi per riconoscere i giocatori, vedi «Limiti»), con `400` e il motivo in italiano |
-| `POST /api/rose/correggi` | `{squadra, nome, id}` (X-Fanta, If-Match) | abbina a mano un giocatore non riconosciuto |
+| `POST /api/rose/correggi` | `{squadra, nome, id}` (X-Fanta, If-Match) | abbina a mano un giocatore non riconosciuto (dal 26/11/2026 anche uno scelto a mano prima, `riconosciuto` «manuale» o «precedente»; `404` solo per chi è riconosciuto con certezza o non c'è) |
 | `GET /api/movimenti` | `limite?` (massimo 300) | storico di scambi, svincoli e tagli, dal più recente |
 | `GET /api/regole` | — | regole della lega (ETag) |
 | `PUT /api/regole` | corpo = regole complete (X-Fanta, If-Match) | salva le regole, dopo i controlli di `regole.da_dict`. Valori non validi: `400`, anche i numeri fuori dai limiti (vedi «Limiti dei numeri delle regole» qui sotto, con il file `/limiti-regole.json` che li elenca). Oltre i tetti di misura (vedi «Tetti delle regole» qui sotto): `422` con `detail` «Regole non valide:» e una riga per ogni tetto superato, senza ripetere i valori mandati |
@@ -418,7 +418,8 @@ C;Kone M.;Roma;9
 - Righe che non tornano (ruolo che non è P/D/C/A, nome vuoto) non si indovinano: finiscono in `avvisi` («Riga N: ignorata (…): mi aspettavo «ruolo;nome;club;prezzo»…», chiave `rose.riga_schermate_ignorata`). Le righe vuote si saltano.
 - Niente virgolette da togliere: le celle si leggono così come sono (niente regole CSV).
 - Ruolo e squadra servono a riconoscere i nomi: con tutti e due uguali al listone un nome abbreviato è `sicuro`; se uno dei due non torna
-  il giocatore è `da_controllare`, con l'avviso «ruolo diverso: indicato X, nel listone Y» / «squadra diversa: indicata X, nel listone Y»,
+  il giocatore è `da_controllare`, con l'avviso «ruolo diverso: nel file portiere, nel listone attaccante» / «squadra diversa: nel file JUV,
+  nel listone Fiorentina» (ruoli e squadra del listone per esteso, dal 26/11/2026),
   oppure un dubbio tra gli omonimi con quello che ha ruolo e squadra giusti per primo.
 - Stessi tetti del testo incollato (200 mila caratteri, 1500 righe) e stesse risposte dell'anteprima.
 - Excel con più di 10 fogli: si leggono i primi 10 e un avviso in cima agli `avvisi` lo dice («Ho letto solo i primi 10 fogli su 12: se negli
@@ -440,10 +441,13 @@ proposte diverse restano tutti e due.
 Se due righe finiscono sullo stesso giocatore resta la prima, con l'avviso «compare due volte».
 Il giocatore scelto entra con il ruolo e la squadra del listone e `riconosciuto: "manuale"`; se il nome scritto nel file è diverso da quello del
 listone, la rosa salvata lo tiene in `testo` (campo nuovo e facoltativo dei `giocatori[]` di `GET /api/rosa`, dal 26/11/2026: `null` se è
-uguale a `nome`; lo tiene anche `POST /api/rose/correggi`). Dal 26/11/2026 le scelte già salvate tornano da sole: in anteprima e importazione
-un giocatore non `sicuro` che nella rosa salvata della stessa squadra era stato scelto a mano per lo stesso nome scritto (`testo`, o `nome`
-se manca) diventa di nuovo quel giocatore, `sicuro` con `metodo: "manuale"`, senza `correzioni` (non se il file gli dà un altro ruolo o se non
-è più nel listone). Le `correzioni` mandate vincono.
+uguale a `nome`; lo tiene anche `POST /api/rose/correggi`). Dal 26/11/2026 le scelte già salvate tornano proposte: in anteprima e
+importazione un giocatore non `sicuro` che nella rosa salvata della stessa squadra era stato scelto a mano per lo stesso nome scritto
+(`testo`, o `nome` se manca) torna con quel giocatore in `id` e per primo in `alternative`, ma resta `da_controllare`, con `metodo:
+"precedente"` e l'avviso «scelto da te l'ultima volta» (chiave `rose.scelta_precedente`): il client lo mostra già scelto e si può cambiare
+(non se il file gli dà un altro ruolo o se non è più nel listone). Le `correzioni` mandate vincono; senza correzioni si salva con
+`riconosciuto: "precedente"`. Testo con un nome per riga e squadre forse una sotto l'altra: in `avvisi` «Real Esempio: manca una riga vuota
+fra le squadre? «Pantere» non è nel listone: …» (chiave `rose.forse_manca_riga_vuota`).
 Nel multipart il campo `correzioni` è lo stesso elenco scritto come testo JSON (JSON non valido: `422`). Una scelta che non corrisponde più al
 testo, o un `id` fuori listone: `400` con il messaggio, e niente si salva. `mia_squadra` che non c'è tra le rose: `400`.
 Si può cominciare con la sola propria rosa: una squadra sola non è un errore (solo un avviso, testo `lega.UNA_SQUADRA`: «Con una sola squadra funzionano formazione e consigli; le rose degli altri servono a guardare le altre squadre: puoi aggiungerle quando vuoi.»).

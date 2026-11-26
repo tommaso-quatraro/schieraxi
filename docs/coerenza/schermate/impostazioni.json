@@ -143,6 +143,15 @@
       "forma": "web",
       "chi": "**fatto** (#863): `SquadreView`, `SceltaSquadraView`, `SelettoreMiaSquadra`, `LegaViewModel.scegliMiaSquadra`, `VociImpostazioni.lega`; prove `SceltaMiaSquadraTests`, `ImpostazioniComeLaWebTests`, `SquadreComeLaWebTests`, `TitoloUnaVoltaUITests`",
       "stato": "fatto"
+    },
+    {
+      "id": 108,
+      "schermata": "Impostazioni, Aggiorna le rose: dove sta «Togli le squadre che non sono nel file» (collaudo del 26/11)",
+      "web": "sotto «Scegli il file (Excel o CSV)», fuori da «Incolla il testo delle rose»: vale per il file e per il testo (`vistaImportaRose` in `app.js`)",
+      "iphone": "nella sezione «Incolla il testo delle rose», sopra «Controlla le rose»: si vede (le sezioni non si chiudono) e vale anche per il file, ma sembra solo del testo. Da spostare sotto «Scegli il file» quando è unita la #931, che lavora su `ImportaRoseView.swift`",
+      "forma": "web",
+      "chi": "web con la #939; l'iPhone da fare dopo la #931",
+      "stato": "da-fare"
     }
   ]
 }
