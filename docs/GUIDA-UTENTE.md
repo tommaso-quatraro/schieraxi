@@ -44,7 +44,7 @@ Password dimenticata: link **Password dimenticata** sotto il modulo. Con un'emai
 ### Caricare la tua squadra
 
 Alla prima apertura il **Primo avvio** ti guida in tre passi, scritti in alto: **Le rose**, **La tua squadra** e **I tempi della lega**. Ogni passo si può saltare con **Salta**: lo ritrovi fra le decisioni in cima alla Formazione.
-Se ti fermi prima di caricare le rose, alla prossima apertura la guida riprende da lì, anche da un altro telefono o computer. Se la chiudi con la ✕, i passi rimasti contano come saltati e la guida non si riapre da sola: la ritrovi toccando **Importa le rose** nella Formazione.
+Se ti fermi prima di caricare le rose, alla prossima apertura la guida riprende da lì, anche da un altro telefono o computer. Se la chiudi con la ✕, i passi rimasti contano come saltati e la guida non si riapre da sola: la ritrovi toccando **Importa le rose** nella Formazione. Se hai salvato le rose senza dire qual è la tua squadra, la Formazione te lo chiede: **Quale squadra è la tua?**, poi **Questa è la mia**.
 
 1. **Le rose.** Esporta le rose da Leghe (Excel, CSV o testo copiato), poi incolla il testo e tocca **Controlla le rose**, oppure tocca **Scegli il file (Excel o CSV)**. Non si salva ancora niente.
    Per cominciare basta anche **solo la tua squadra**: formazione e consigli funzionano subito. Le rose degli altri servono per guardare le altre squadre e le aggiungi quando vuoi. Se vuoi solo guardare l'app, sotto **Prova con gli esempi** ci sono quattro squadre inventate.
@@ -80,7 +80,7 @@ Se ti invitano in una lega che gioca già da un po':
 
 ### Le schede in basso
 
-**Formazione**, **Giornate**, **Impostazioni**. In cima a ogni schermata c'è il suo titolo; in Giornate, sotto, la giornata, la tua squadra e l'ora dei dati. In alto a destra la **lente** cerca un giocatore (sull'iPhone la lente sta in basso, accanto alla barra). Toccando un giocatore si apre la sua scheda. Rose, squadre e regole stanno in **Impostazioni › La mia lega**.
+**Formazione**, **Giornate**, **Impostazioni**. In cima a ogni schermata c'è il suo titolo; in Giornate, sotto, la giornata, la tua squadra e l'ora dei dati (senza rete, quelle dell'ultima volta che si sono letti). In alto a destra la **lente** cerca un giocatore (sull'iPhone la lente sta in basso, accanto alla barra). Toccando un giocatore si apre la sua scheda. Rose, squadre e regole stanno in **Impostazioni › La mia lega**.
 
 Su uno schermo largo (computer, iPad in orizzontale) le schede stanno in alto, accanto al nome SchieraXI, con il campo **Cerca un giocatore** sempre aperto: scrivi e si apre la ricerca. Con Ctrl+clic (⌘+clic sul Mac) una scheda si apre in un'altra scheda del browser, per confrontare due schermate.
 
@@ -88,7 +88,7 @@ Su uno schermo molto largo (computer con la finestra ampia) la scheda di un gioc
 
 Da tastiera: **1**-**3** aprono le schede, **/** cerca, **,** apre le impostazioni, **Esc** chiude il pannello. Il tasto Indietro del browser torna alla schermata di prima. L'app si riapre sull'ultima schermata fra Formazione e Giornate, anche dopo un nuovo accesso.
 
-Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate si dispongono in una colonna: la barra in basso mostra solo le icone e il campo ha due giocatori per fila.
+Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate si dispongono in una colonna: la barra in basso mostra solo le icone e il campo ha due giocatori per fila. In Giornate i punti vanno sotto il nome della giornata e, negli 11, atteso e preso stanno sotto il nome del giocatore.
 
 ## 3. Ogni settimana
 
@@ -155,7 +155,7 @@ Rose, squadre e regole stanno nella sezione **La mia lega** di Impostazioni (sez
 
 - **Aggiorna le rose**: stessa procedura del primo avvio (sezione 2), anche con testo incollato. Con **Togli le squadre che non sono nel file** le squadre mancanti vengono tolte.
 - **La mia squadra** (accanto c'è il suo nome): la rosa della tua squadra, con stemma e maglia se li hai caricati (**Stemma e maglia**) e i crediti. Ogni giocatore ha il costo d'acquisto e la quotazione, quando ci sono. Se non è la tua, **Non è la tua squadra?** la cambia. **Cambia il nome** corregge il nome della squadra (per esempio se l'importazione ha letto quello sbagliato): stemma, maglia e «la tua squadra» lo seguono.
-- **Regole e scadenza**: in cima i **Tempi della lega**, le due domande del primo avvio, che si salvano appena le cambi. Sotto, **Incolla il regolamento**: incolli il testo del regolamento di Leghe, tocchi **Riconosci le regole**, controlli cosa ha capito SchieraXI e tocchi **Salva queste regole**: si salva solo ciò che sta sotto **Riconosciuto**. Quello che non può applicare sta sotto **Non applicato**, con il perché; le righe che non ha saputo leggere con sicurezza stanno in **Righe da controllare a mano**, da impostare tu. I singoli valori (punteggi, modificatore difesa, moduli, panchina, partite rinviate, rosa e crediti, nome della lega) stanno dietro **Modifica i valori**, con **Salva le regole** in fondo. Un campo vuoto o un numero fuori dai limiti si segnala prima di salvare, con il nome del campo.
+- **Regole e scadenza**: in cima i **Tempi della lega**, le due domande del primo avvio, che si salvano appena le cambi. Sotto, **Incolla il regolamento**: incolli il testo del regolamento di Leghe, tocchi **Riconosci le regole**, controlli cosa ha capito SchieraXI e tocchi **Salva queste regole**: si salva solo ciò che sta sotto **Riconosciuto**. Quello che non può applicare sta sotto **Non applicato**, con il perché; le righe che non ha saputo leggere con sicurezza stanno in **Righe da controllare a mano**, da impostare tu. I singoli valori (punteggi, modificatore difesa, moduli, panchina, partite rinviate, rosa e crediti, nome della lega) stanno dietro **Modifica i valori**, con **Salva le regole** in fondo. I malus si scrivono con il meno davanti, «−0,5» o «-0,5», con la virgola o con il punto; i numeri interi, come i crediti, con le sole cifre («1000», non «1.000»). Un campo vuoto, una scritta che non è un numero o un numero fuori dai limiti si segnala prima di salvare, con il nome del campo.
 - **Le altre squadre** (accanto quante sono): le squadre della lega senza la tua. Un tocco apre la rosa di una squadra e, da lì, la sua formazione consigliata. Se chi gestisce l'app ha nascosto le rose degli altri, la voce non c'è.
 
 Nella rosa di una squadra i nomi delle colonne restano in vista in alto mentre scorri, e i **crediti** si scrivono lì. A fine campionato, quando le rose sono ancora quelle dell'anno prima, in cima a **La mia lega** compare l'avviso **Nuova stagione**: un tocco apre il pulsante che archivia le rose e riparte, senza cancellare niente.

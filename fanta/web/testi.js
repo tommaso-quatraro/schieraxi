@@ -1587,7 +1587,6 @@ const TESTI = {
     "regole.rosa_crediti": "Rosa e crediti",
     "regole.salva_regole": "Salva le regole",
     "regole.scegli_almeno_modulo": "Scegli almeno un modulo",
-    "regole.sono_valori_non": "Ci sono valori non numerici: correggili prima di salvare",
     "regole.tempi_della_lega": "Tempi della lega",
     "regole.togli_fascia": "Togli la fascia {n}",
     "regole.fascia_media": "Fascia {n}, media almeno",
@@ -1658,6 +1657,7 @@ const TESTI = {
     "regole.campo_vuoto": "«{campo}» è vuoto: scrivi un numero",
     "regole.fuori_limiti": "«{campo}» deve essere tra {min} e {max}",
     "regole.intero": "«{campo}» deve essere un numero intero",
+    "regole.non_numero": "«{campo}» non è un numero: correggilo prima di salvare",
 
     "ruolo.P_pl": "Portieri",
     "ruolo.D_pl": "Difensori",
@@ -3493,7 +3493,6 @@ const TESTI = {
     "regole.rosa_crediti": "Roster and credits",
     "regole.salva_regole": "Save the rules",
     "regole.scegli_almeno_modulo": "Choose at least one formation",
-    "regole.sono_valori_non": "Some values are not numbers: fix them before saving",
     "regole.tempi_della_lega": "League timing",
     "regole.togli_fascia": "Remove band {n}",
     "regole.fascia_media": "Band {n}, average at least",
@@ -3564,6 +3563,7 @@ const TESTI = {
     "regole.campo_vuoto": "“{campo}” is empty: enter a number",
     "regole.fuori_limiti": "“{campo}” must be between {min} and {max}",
     "regole.intero": "“{campo}” must be a whole number",
+    "regole.non_numero": "“{campo}” is not a number: fix it before saving",
 
     "ruolo.P_pl": "Goalkeepers",
     "ruolo.D_pl": "Defenders",

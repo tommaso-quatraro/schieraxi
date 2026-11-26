@@ -14,3 +14,6 @@ err.p_regola_panchina_posti_c
 err.p_regola_panchina_posti_a
 err.p_regola_voto_senza_sostituto
 err.p_regola_voto_ufficio_rinviate
+
+# La Formazione senza la tua squadra e senza l'elenco delle squadre (SceltaSquadraFormazione), come mostraSenzaSquadra della web
+err.indica_squadra
