@@ -75,6 +75,30 @@ def test_una_partita_che_perde_la_data_e_un_rinvio_non_un_guasto(db, monkeypatch
     assert _partita(db) == ("inter", "monza", None)
 
 
+def _giornata(g, html=BUONA):
+    """La pagina registrata spostata alla giornata g, con altri numeri di partita (17959 diventa 27959 per la giornata 2)."""
+    return html.replace("/calendario/1/", f"/calendario/{g}/").replace("/179", f"/{g}79")
+
+
+def test_giornata_senza_le_date_non_ferma_le_altre_giornate(db, monkeypatch):
+    """Una giornata intera senza le date di prima (pagina cambiata, o giornata rinviata senza data nuova: la pagina non lo
+    distingue) tiene le sue date e il passo non riesce, ma le giornate dopo si aggiornano lo stesso."""
+    monkeypatch.setattr(aggiorna, "GIORNATE", 2)
+    pagine = {}
+    monkeypatch.setattr(aggiorna.rete, "scarica", lambda url, *a, **k: SimpleNamespace(text=pagine[url]))
+    a = aggiorna.Aggiornamento(db, aggiorna.Stagione(2026), scrivi=lambda _: None)
+    pagine.update({aggiorna.fc.url_calendario(1): _giornata(1), aggiorna.fc.url_calendario(2): _giornata(2)})
+    for g in (1, 2):
+        a._calendario_giornata(g)
+    db.commit()
+    pagine.update({aggiorna.fc.url_calendario(1): _giornata(1, BUONA.replace('itemprop="startDate"', 'itemprop="dataInizio"')),
+                   aggiorna.fc.url_calendario(2): _giornata(2, BUONA.replace(">18:30<", ">20:45<", 1))})    # orario spostato
+    a._passo("calendario", a.calendario, "fantacalcio")
+    assert len(a.errori) == 1 and "calendario 2026-27 giornata 1" in a.errori[0]
+    assert _partita(db, 17959) == ("inter", "monza", "2026-08-22 18:30")                 # date di prima tenute
+    assert _partita(db, 27959) == ("inter", "monza", "2026-08-22 20:45")                 # la giornata dopo aggiornata
+
+
 def test_giornata_ancora_senza_date_non_e_un_guasto(db, monkeypatch):
     """Le giornate lontane possono non avere ancora le date (#552): senza date già salvate il passo riesce."""
     a = _agg(db, monkeypatch, BUONA.replace('itemprop="startDate"', 'itemprop="dataInizio"'))
@@ -83,9 +107,10 @@ def test_giornata_ancora_senza_date_non_e_un_guasto(db, monkeypatch):
 
 
 # ---------------------------------------------------------------- listone
-def _pagina_listone(attributo="data-filter-role-classic", ruoli=("p", "d", "c", "a")):
+def _pagina_listone(attributo="data-filter-role-classic", ruoli=("p", "d", "c", "a"), senza_ruolo=0):
+    """350 giocatori; i primi `senza_ruolo` con il ruolo vuoto."""
     righe = "".join(
-        f'<tr class="player-row" {attributo}="{ruoli[i % len(ruoli)]}" data-filter-role-mantra="dc">'
+        f'<tr class="player-row" {attributo}="{"" if i <= senza_ruolo else ruoli[i % len(ruoli)]}" data-filter-role-mantra="dc">'
         f'<th><a class="player-name player-link" href="https://www.fantacalcio.it/serie-a/squadre/inter/gioc-{i}/{i}">'
         f'<span>Gioc {i}</span></a></th><td data-col-key="sq">INT</td><td data-col-key="c_qi">5</td>'
         f'<td data-col-key="c_qa">7</td><td data-col-key="c_fvm">10</td></tr>'
@@ -104,3 +129,16 @@ def test_listone_con_i_quattro_ruoli():
 def test_listone_senza_ruoli_riconoscibili_e_un_errore(pagina):
     with pytest.raises(ValueError, match="Listone"):
         listone.analizza_html(pagina)
+
+
+def test_listone_pochi_giocatori_senza_ruolo_si_saltano_e_si_contano_nel_registro(caplog):
+    """Stessa tolleranza dei voti: fino al 10% delle righe (35 su 350) si saltano, con una riga nel registro."""
+    calciatori = listone.analizza_html(_pagina_listone(senza_ruolo=35))
+    assert len(calciatori) == 315 and {c.ruolo for c in calciatori} == {"P", "D", "C", "A"}
+    righe = [r.getMessage() for r in caplog.records if r.name == "fanta.listone"]
+    assert len(righe) == 1 and "35" in righe[0]
+
+
+def test_listone_oltre_la_soglia_dei_giocatori_senza_ruolo_e_un_errore():
+    with pytest.raises(ValueError, match="Listone: 36 giocatori"):
+        listone.analizza_html(_pagina_listone(senza_ruolo=36))
