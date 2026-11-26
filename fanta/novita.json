@@ -1,5 +1,17 @@
 [
   {
+    "versione": "1.575",
+    "data": "2026-11-26T10:14:55",
+    "titolo": "Widget dell'iPhone: una frase più corta sul recupero",
+    "voci": [
+      "Widget «Prossima giornata» medio, a giornata in corso, con l'app aggiornata: quando qualcuno dei tuoi aspetta il recupero di una partita rinviata, sotto i punti c'è una frase più corta, «3 giocatori aspettano il recupero; mancano i voti ufficiali.», che con il testo normale sta intera senza rimpicciolirsi, anche sull'iPad. Con il testo grande la frase resta intera, ma il widget medio resta alla misura del testo normale. I nomi restano nella Formazione dell'app e sulla web."
+    ],
+    "tecnico": [
+      "GET /api/widget: in `in_corso`, facoltativi, `situazione_breve` e `situazione_breve_frase` ({chiave, param}) solo quando `situazione` è `in_corso.recupero` o `in_corso.voti_e_recupero` (le righe con i nomi); chiavi nuove `in_corso.recupero_breve` e `in_corso.voti_e_recupero_breve` (.one/.other, parametro `n`), italiano e inglese nel catalogo, testi.js rigenerato. Regola in `fasi.situazione_breve`, che legge `situazione_frase`.",
+      "`situazione` e `situazione_frase` non cambiano (le leggono i widget già installati); GET /api/oggi non ha il campo nuovo. Nessuna rotta nuova: docs/openapi.json invariato."
+    ]
+  },
+  {
     "versione": "1.574",
     "data": "2026-11-26T09:01:05",
     "titolo": "Scheda del giocatore: la data delle statistiche avanzate una volta sola",

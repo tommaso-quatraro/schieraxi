@@ -25,6 +25,12 @@ enum Tema {
     static let secondarioChiaro: UInt32 = 0x46564D
     static let secondarioScuro: UInt32 = 0xBCCDC2
 
+    /// Il fondo della riga scelta in un elenco con il dettaglio accanto (Giornate sull'iPad, #919): il grigio di una riga premuta
+    /// di iOS (`systemGray4`), pieno. La selezione di sistema riempiva la riga del colore principale e i testi grigi sparivano; qui
+    /// nomi, punti e testi grigi restano sopra 4,5:1 e la riga si distingue dalla scheda (test `GiornateIPadTests`).
+    static let rigaSceltaChiaro: UInt32 = 0xD1D1D6
+    static let rigaSceltaScuro: UInt32 = 0x3A3A3C
+
     /// La scritta delle pillole arancio e rosse dei giocatori (`PillolaEtichetta`), uguale a `--eti-arancio` e `--eti-rosso` della
     /// web: sopra la tinta della pillola l'arancio e il rosso pieni scendevano sotto 4,5:1 (issue #234: in scuro il rosso nei fogli
     /// faceva 4,1:1). In chiaro un filo più scuri, in scuro il rosso un filo più chiaro; il fondo della pillola non cambia.
@@ -87,6 +93,8 @@ extension Color {
     static let informazione = dinamico(scuro: 0x62A9FF, chiaro: 0x1A5BB5)
     /// Testo secondario (al posto di `.secondary` e dei grigi di sistema): leggibile anche sul fondo sfumato e sul vetro. Vedi `Tema.secondarioChiaro`.
     static let testoSecondario = dinamico(scuro: Tema.secondarioScuro, chiaro: Tema.secondarioChiaro)
+    /// Fondo della riga scelta in un elenco con il dettaglio accanto. Vedi `Tema.rigaSceltaChiaro`.
+    static let rigaScelta = dinamico(scuro: Tema.rigaSceltaScuro, chiaro: Tema.rigaSceltaChiaro)
     /// Scritta delle pillole arancio e rosse (solo dentro la pillola: fuori restano `attenzione` e `malus`). Vedi `Tema.pillolaAttenzioneChiaro`.
     static let attenzionePillola = dinamico(scuro: Tema.pillolaAttenzioneScuro, chiaro: Tema.pillolaAttenzioneChiaro)
     static let malusPillola = dinamico(scuro: Tema.pillolaMalusScuro, chiaro: Tema.pillolaMalusChiaro)

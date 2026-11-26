@@ -635,6 +635,7 @@ struct RegoleEditorView: View {
                     Text(Catalogo.Regole.vItalia).tag("italia")
                 }
                 .pickerStyle(.segmented)
+                .segmentiDellaPagina()   // sull'iPad largo al massimo come quelli della web (#896)
             } header: { Text(Catalogo.Regole.votoPartenza).foregroundStyle(Color.testoSecondario) } footer: {
                 Text(Catalogo.Regole.qualeVotoSomma).foregroundStyle(Color.testoSecondario)
             }
@@ -719,6 +720,7 @@ struct RegoleEditorView: View {
                 Text(Catalogo.Regole.libera).tag("libera")
             }
             .pickerStyle(.segmented)
+            .segmentiDellaPagina()
             Text(vm.valore.valore("panchina.tipo")?.testo == "libera"
                  ? Catalogo.Regole.aiutoLibera
                  : Catalogo.Regole.aiutoPerRuolo)
