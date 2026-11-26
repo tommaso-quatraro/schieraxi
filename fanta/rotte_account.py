@@ -210,11 +210,13 @@ def controllo_accesso(request: Request) -> JSONResponse | None:
     except ErroreAccount as e:                      # database degli account illeggibile: risposta chiara, niente traccia
         return errore_account(None, e)
     if utente is None:
+        come_entrare = {"multiutente": True, "registrazione": account_email.modo_registrazione(), "social": social.provider_attivi(),
+                        "email_attiva": posta.attiva()}
+        if percorso == "/api/account/me" and request.query_params.get("anche_senza_accesso") == "1":
+            # «chi sono» della pagina d'accesso (#940): nessuno non è un errore, e un 401 lascerebbe una riga rossa nella console
+            return JSONResponse(status_code=200, content=come_entrare | {"utente": None})
         request.state.senza_accesso = _senza_nessun_accesso(request, percorso)
-        return JSONResponse(status_code=401, content={"detail": "Accesso richiesto", "multiutente": True,
-                                                                         "registrazione": account_email.modo_registrazione(),
-                                                                         "social": social.provider_attivi(),
-                                                                         "email_attiva": posta.attiva()})
+        return JSONResponse(status_code=401, content={"detail": "Accesso richiesto"} | come_entrare)
     request.state.utente = utente
     if (percorso in SOLO_AMMINISTRATORE or percorso.startswith("/api/admin/")) and not utente.amministratore:
         return JSONResponse(status_code=403, content={"detail": "Solo per l'amministratore"})
@@ -520,6 +522,16 @@ def elimina_account(dati: SoloPassword, request: Request, risposta: Response, ut
         account.conferma_password(db, utente.id, dati.password, token_della_richiesta(request))
     elimina_account_e_dati(utente.id)
     _togli_cookie(risposta, request)
+    return {"ok": True}
+
+
+@router.post("/api/account/elimina/controlla", dependencies=[Depends(_attivo)])
+def controlla_prima_di_eliminare(dati: SoloPassword, request: Request, utente: Utente = Depends(utente_corrente)):
+    """«Elimina l'account», primo passo (#940): la password è giusta? (Per chi entra solo con Google: la riconferma recente.)
+    Non tocca niente: il client chiede la conferma solo dopo, così con la password sbagliata non chiede «Sei sicuro?» per niente.
+    Vale lo stesso tetto dei tentativi delle altre conferme della password. Un server di prima risponde 404: niente di eliminato."""
+    with closing(account.apri()) as db:
+        account.conferma_password(db, utente.id, dati.password, token_della_richiesta(request))
     return {"ok": True}
 
 
