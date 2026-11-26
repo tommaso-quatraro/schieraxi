@@ -508,11 +508,20 @@ def elimina_account(dati: SoloPassword, request: Request, risposta: Response, ut
     Per portarti via i dati prima, usa «Scarica i tuoi dati» (Impostazioni › Il tuo account)."""
     with closing(account.apri()) as db:
         account.conferma_password(db, utente.id, dati.password, token_della_richiesta(request))
-        account.elimina(db, utente.id)
-    contesto.elimina_cartella(utente.id)
-    _togli_dalle_consigliate(utente.id)
+    elimina_account_e_dati(utente.id)
     _togli_cookie(risposta, request)
     return {"ok": True}
+
+
+def elimina_account_e_dati(utente_id: int, **chi) -> None:
+    """Gli stessi passi per «Elimina il mio account», per chi gestisce il server (Gestione › Utenti) e per `python -m fanta
+    utente-elimina`: l'account con tutto ciò che sta nel database degli account (a cascata: sessioni, token del widget, codici, ...),
+    la sua cartella dei dati e il suo numero nelle consigliate già mostrate. `chi` va nella riga del registro di sicurezza.
+    Ultimo amministratore: ErroreAccount, e non si tocca niente."""
+    with closing(account.apri()) as db:
+        account.elimina(db, utente_id, **chi)
+    contesto.elimina_cartella(utente_id)
+    _togli_dalle_consigliate(utente_id)
 
 
 def _togli_dalle_consigliate(utente_id: int) -> None:
@@ -643,10 +652,66 @@ def revoca_invito(invito_id: int = FPath(ge=1, le=MAX_ID)):
     return {"ok": True}
 
 
+def _giorno(testo: str) -> frasi.Frase:
+    return frasi.giorno_mese(datetime.fromisoformat(testo).astimezone(fuso.FUSO))
+
+
+def frasi_utente(u: dict) -> dict:
+    """Le due frasi di una riga di Gestione › Utenti, con la loro chiave per tradurle: `dettaglio` (iscrizione e ultimo accesso) e
+    `blocco` (da quando è bloccato; null se non lo è)."""
+    if u["ultimo_accesso"]:
+        dettaglio = frasi.F("admin.utente_dettaglio", creato=_giorno(u["creato"]), accesso=_giorno(u["ultimo_accesso"]))
+    else:
+        dettaglio = frasi.F("admin.utente_dettaglio_senza_accesso", creato=_giorno(u["creato"]))
+    blocco = frasi.F("admin.utente_bloccato", quando=_giorno(u["bloccato_il"])) if u["bloccato_il"] else None
+    return {"dettaglio": str(dettaglio), "dettaglio_frase": frasi.di(dettaglio),
+            "blocco": str(blocco) if blocco else None, "blocco_frase": frasi.di(blocco)}
+
+
 @router.get("/api/admin/utenti", dependencies=[Depends(_attivo), Depends(solo_amministratore)])
 def elenco_utenti():
+    """Gli account con iscrizione, ultimo accesso e blocco, e le frasi della loro riga in Gestione › Utenti."""
     with closing(account.apri()) as db:
-        return {"utenti": account.elenco(db), "massimo": account.max_utenti()} | _avviso_posti(db)
+        return {"utenti": [u | frasi_utente(u) for u in account.elenco(db)], "massimo": account.max_utenti()} | _avviso_posti(db)
+
+
+def _utente_comune(utente_id: int) -> None:
+    """404 se l'account non c'è, 403 se è un amministratore: chi gestisce il server si gestisce solo dalla riga di comando."""
+    with closing(account.apri()) as db:
+        account.utente_comune(db, utente_id)
+
+
+@router.post("/api/admin/utenti/{utente_id}/blocca", dependencies=[Depends(_attivo)])
+def blocca_utente(utente_id: int = FPath(ge=1, le=MAX_ID), chi: Utente = Depends(solo_amministratore)):
+    """Blocca un account: non entra più e le sue sessioni, il token del widget e le notifiche web si chiudono subito. I dati restano.
+    La conferma la chiede il client. Mai il proprio account (400) né quello di un altro amministratore (403)."""
+    if utente_id == chi.id:
+        raise ErroreAccount("Non puoi bloccare il tuo account")
+    _utente_comune(utente_id)
+    with closing(account.apri()) as db:
+        chiuse = account.blocca(db, utente_id, da=chi.nome_utente)
+    return {"ok": True, "sessioni_chiuse": chiuse}
+
+
+@router.post("/api/admin/utenti/{utente_id}/sblocca", dependencies=[Depends(_attivo)])
+def sblocca_utente(utente_id: int = FPath(ge=1, le=MAX_ID), chi: Utente = Depends(solo_amministratore)):
+    """Toglie il blocco: l'account rientra con la sua password (o con Google). Un amministratore (403) solo dal comando."""
+    _utente_comune(utente_id)
+    with closing(account.apri()) as db:
+        account.blocca(db, utente_id, False, da=chi.nome_utente)
+    return {"ok": True}
+
+
+@router.delete("/api/admin/utenti/{utente_id}", dependencies=[Depends(_attivo)])
+def elimina_utente(utente_id: int = FPath(ge=1, le=MAX_ID), chi: Utente = Depends(solo_amministratore)):
+    """Elimina un account e tutti i suoi dati, come «Elimina il mio account». Non si può annullare: la conferma la chiede il
+    client. Il proprio account si elimina da Impostazioni › Il tuo account, con la password (400); quello di un altro
+    amministratore solo dal comando (403)."""
+    if utente_id == chi.id:
+        raise ErroreAccount("Il tuo account si elimina da Impostazioni › Il tuo account, con la password")
+    _utente_comune(utente_id)
+    elimina_account_e_dati(utente_id, da=chi.nome_utente)
+    return {"ok": True}
 
 
 @router.get("/api/admin/registro", dependencies=[Depends(solo_amministratore)])

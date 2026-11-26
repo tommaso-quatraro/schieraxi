@@ -52,6 +52,8 @@ NON_PERSONALI = {
     ("POST", "/api/account/recupero-email"), ("POST", "/api/account/recupero-email/conferma"), ("POST", "/api/account/registra/conferma"),
     ("POST", "/api/admin/inviti"), ("GET", "/api/admin/inviti"), ("DELETE", "/api/admin/inviti/{invito_id}"), ("POST", "/api/admin/utenti/{utente_id}/rose"), ("GET", "/api/admin/utenti"), ("GET", "/api/admin/registro"), ("GET", "/api/admin/fonti"), ("PUT", "/api/admin/fonti"), ("POST", "/api/admin/reset-password"),
     ("GET", "/api/admin/funzioni"), ("PUT", "/api/admin/funzioni"),
+    # chi gestisce blocca, sblocca o elimina l'account di un altro (tests/test_gestione_utenti.py)
+    ("POST", "/api/admin/utenti/{utente_id}/blocca"), ("POST", "/api/admin/utenti/{utente_id}/sblocca"), ("DELETE", "/api/admin/utenti/{utente_id}"),
     # «Scrivici»: l'utente scrive solo (il numero dalla sessione) e il suo commento sta nel database degli account; legge chi gestisce
     # (tests/test_feedback.py prova che un utente non legge l'elenco e che «Scarica i tuoi dati» ha solo i commenti di chi chiede)
     ("POST", "/api/feedback"), ("GET", "/api/admin/feedback"), ("POST", "/api/admin/feedback/{commento_id}/letto"),
