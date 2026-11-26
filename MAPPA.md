@@ -32,7 +32,7 @@ Regole: `CLAUDE.md` e `.claude/rules/`. Comandi: `CLAUDE.md`.
 | Misura | `verifica*.py` (misure sul passato), `registro_giornate.py`, `registro_nostri.py`, `indicatori_consiglio.py`, `affidabilita.py` |
 | Sorveglianza | `sentinella.py`, `salute.py`, `misura_ingresso.py` |
 | Mercato e lega | `scambi.py`, `scambi_multi.py`, `asta.py`, `coppe.py`, `osservati.py` |
-| Altro | `widget.py`, `live.py` (risultati in diretta), `immagini.py`, `avatar.py`, `backup.py`, `funzioni.py` (interruttori delle funzioni), `gestione.py`, `percorsi.py` |
+| Altro | `widget.py`, `live.py` (risultati in diretta), `immagini.py`, `avatar.py`, `backup.py`, `funzioni.py` e `interruttori.py` (interruttori), `gestione.py`, `percorsi.py` |
 
 ## `fanta/web/`: la web app
 `index.html` (testata e contenitore), `app.js` (schermate e navigazione), `impostazioni.js`, `dafare.js`, `primoavvio.js`,

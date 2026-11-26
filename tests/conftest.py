@@ -336,6 +336,21 @@ def _ricerche_gia_contate_azzerate():
     limiti._gia_contate.clear()
 
 
+@pytest.fixture(autouse=True)
+def _pausa_di_aggiorna_azzerata():
+    """«Aggiorna i dati» ricorda quando è finito l'ultimo giro (pausa di 10 minuti, server.PAUSA_AGGIORNA): ogni test riparte
+    senza. Solo se il server è già stato importato: chi non lo usa non lo carica."""
+    import sys
+
+    def azzera():
+        modulo = sys.modules.get("fanta.server")
+        if modulo is not None:
+            modulo._aggiorna_finito_alle = None
+    azzera()
+    yield
+    azzera()
+
+
 NODE_ITALIANO = str(Path(__file__).resolve().parent / "node_italiano.cjs")
 
 

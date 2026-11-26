@@ -758,6 +758,8 @@ def principale() -> int:
                          # tutte le funzioni accese, anche quelle spente di norma: si fotografa ogni schermata
                          "FANTA_PROFILO_FUNZIONI": "completo", "FANTA_FUNZIONE_LIVE": "1", "FANTA_FUNZIONE_ASTA": "1",
                          "FANTA_FUNZIONE_CREDITI": "1", "FANTA_FUNZIONE_CONFRONTO": "1", "FANTA_FUNZIONE_SCAMBI_TROVA": "1",
+                         # la diretta finta (diretta_finta) si legge solo con la fonte ESPN accesa (live.in_servizio); la rete resta spenta
+                         "FANTA_FONTE_ESPN": "1",
                          "FANTA_LEGA": str(cartella / "lega"), "PYTHONIOENCODING": "utf-8"}
             esito = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--uscita", str(uscita), "--interno",
                                     str(cartella), str(cartella / "info.json")], cwd=cartella, env=ambiente)

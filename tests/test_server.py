@@ -234,6 +234,30 @@ def test_aggiorna_con_tutte_le_fonti_spente_lo_dice_e_non_parte(client, monkeypa
     assert chiamate == [1]
 
 
+def test_aggiorna_dall_app_non_si_rilancia_prima_di_dieci_minuti(client, monkeypatch):
+    """Prima «Aggiorna i dati» si poteva premere di continuo, e ogni giro rifà tutte le richieste alle fonti. Ora fra la fine di
+    un giro e l'avvio del successivo passano almeno 10 minuti: prima la risposta dice fra quanto riprovare (minuti arrotondati
+    per eccesso, `riprova_tra` in secondi) e il lavoro non parte."""
+    import contextlib
+    ora = [1000.0]
+    chiamate = []
+    monkeypatch.setattr(server, "_orologio_aggiorna", lambda: ora[0])
+    monkeypatch.setattr(server.aggiorna, "esegui", lambda **k: chiamate.append(1) or [])
+    monkeypatch.setattr(server.pianificatore, "blocco_processo", lambda: contextlib.nullcontext(True))
+    assert client.post("/api/aggiorna").json() == {"avviato": True}
+    _fine_aggiornamento()
+    ora[0] += 61
+    assert client.post("/api/aggiorna").json() == {"avviato": False, "riprova_tra": 539,
+                                                   "messaggio": "I dati sono stati aggiornati da poco: riprova fra 9 minuti."}
+    ora[0] += 538
+    assert client.post("/api/aggiorna").json()["messaggio"] == "I dati sono stati aggiornati da poco: riprova fra 1 minuto."
+    assert chiamate == [1] and not server._aggiornamento["in_corso"]
+    ora[0] += 1                                                             # 10 minuti dalla fine: riparte
+    assert client.post("/api/aggiorna").json() == {"avviato": True}
+    _fine_aggiornamento()
+    assert chiamate == [1, 1]
+
+
 def test_stato_dice_aggiornamento_in_corso_anche_se_lo_fa_un_altro(client, monkeypatch):
     """`aggiornamento_in_corso` di /api/stato è vero anche quando i dati li sta aggiornando un altro (l'aggiornamento programmato
     del server o un giro leggero, che tengono il blocco su file), non solo dopo «Aggiorna i dati» da qui (#763)."""

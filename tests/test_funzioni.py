@@ -46,11 +46,40 @@ def test_ambiente_e_amministratore(monkeypatch):
         fn.imposta("inventata", True)
 
 
-def test_file_rovinato_o_con_chiavi_strane():
+def test_file_rovinato_lo_dice_nel_registro_e_non_si_sovrascrive(caplog):
+    """Prima un file scritto male valeva «nessuna scelta» senza nessun avviso, e il primo interruttore cambiato dall'app lo
+    riscriveva da capo, perdendo tutte le altre scelte. Ora: una riga nel registro con il nome del file (una volta, finché il file
+    non cambia), le scelte valgono come senza file, e cambiare un interruttore dall'app viene rifiutato con una frase chiara."""
+    from fanta import interruttori
+    fn.FILE.write_text('{"asta": false,}', encoding="utf-8")                # una virgola di troppo
+    with caplog.at_level("WARNING"):
+        assert fn.acceso("live") and fn.origine("asta") == (False, "predefinito") and fn.acceso("diario")
+    righe = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert len(righe) == 1 and fn.FILE.name in righe[0], righe          # nei test il file si chiama funzioni-finte.json
+    with pytest.raises(interruttori.FileIlleggibile, match=fn.FILE.name):
+        fn.imposta("live", False)
+    assert fn.FILE.read_text(encoding="utf-8") == '{"asta": false,}'        # il file resta com'era
+
+
+def test_file_con_chiavi_strane_e_uno_zero(caplog):
+    """`1` e `0` valgono vero e falso (come nelle variabili d'ambiente); i nomi che non sono funzioni e i valori diversi da vero e
+    falso si ignorano, con una riga nel registro che li nomina."""
+    fn.FILE.write_text('{"live": "no", "inventata": false, "asta": false, "diario": 0, "backup": 1}', encoding="utf-8")
+    with caplog.at_level("WARNING"):
+        assert fn.acceso("live") and not fn.acceso("asta")
+        assert fn.origine("diario") == (False, "amministratore") and fn.origine("backup") == (True, "amministratore")
+    righe = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert len(righe) == 1 and fn.FILE.name in righe[0] and "live" in righe[0] and "inventata" in righe[0], righe
+    fn.imposta("seguiti", False)                                           # il file si legge: si può cambiare
+    assert fn.origine("diario") == (False, "amministratore") and fn.origine("seguiti") == (False, "amministratore")
+
+
+def test_dall_app_un_file_rovinato_da_409_con_la_frase(dati_isolati):
     fn.FILE.write_text("non è json", encoding="utf-8")
-    assert fn.acceso("live")
-    fn.FILE.write_text('{"live": "no", "inventata": false, "asta": false}', encoding="utf-8")
-    assert fn.acceso("live") and not fn.acceso("asta")
+    c = TestClient(server.app, headers={"X-Fanta": "1"})
+    r = c.put("/api/admin/funzioni", json={"funzione": "asta", "acceso": False})
+    assert r.status_code == 409 and fn.FILE.name in r.json()["detail"], r.text
+    assert fn.FILE.read_text(encoding="utf-8") == "non è json"
 
 
 def test_rotte_utente_e_admin(dati_isolati):

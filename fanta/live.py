@@ -436,11 +436,26 @@ def _url_ripiego(giornata: int) -> str:
     return fc.url_calendario(giornata)
 
 
+def attiva() -> bool:
+    """La diretta gira solo con la funzione «live» e la fonte ESPN accese. Si chiede a ogni giro e a ogni lettura: un interruttore
+    cambiato dall'app vale subito, senza riavviare il servizio."""
+    from . import funzioni
+    return fonti_attive.acceso(FONTE_ESPN) and funzioni.acceso("live")
+
+
+def in_servizio() -> Raccoglitore | None:
+    """Il raccoglitore del servizio se la diretta è accesa, altrimenti None: a diretta spenta la cache (anche quella riletta da
+    `dati/live.json`) non arriva né a Oggi né a /api/live, come quando a interruttore spento il raccoglitore non partiva."""
+    return unico if unico is not None and attiva() else None
+
+
 def sorveglia(raccoglitore: Raccoglitore, fermo: threading.Event, pausa: float = 15.0) -> None:
-    """Il thread del servizio: ogni 15 secondi guarda se serve una richiesta (e il raccoglitore decide: al massimo una al minuto)."""
+    """Il thread del servizio: ogni 15 secondi guarda se serve una richiesta (e il raccoglitore decide: al massimo una al minuto).
+    Parte sempre con il servizio; a diretta spenta (`attiva`) salta il giro e riparte da solo quando la si riaccende."""
     while not fermo.is_set():
         try:
-            raccoglitore.passo()
+            if attiva():
+                raccoglitore.passo()
         except Exception as e:  # noqa: BLE001 - il raccoglitore non deve mai far cadere il servizio, ma il guasto si vede
             LOG.warning("diretta: giro del raccoglitore non riuscito (%s)", type(e).__name__)
         fermo.wait(pausa)
@@ -529,5 +544,6 @@ def _stringi(corpo: dict) -> dict:
     return corpo
 
 
-# il raccoglitore del servizio (creato all'avvio da server.py; nei test se ne può mettere un altro)
+# il raccoglitore del servizio (creato sempre all'avvio da server.py; nei test se ne può mettere un altro). Chi legge la cache
+# passa da `in_servizio`, che tiene conto degli interruttori
 unico: Raccoglitore | None = None

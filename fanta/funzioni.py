@@ -1,6 +1,7 @@
 """Un interruttore per ogni funzione dell'app (la «dieta»: la formazione al centro, il resto dietro un interruttore, senza cancellare codice).
 
-Stesso schema di `fonti_attive.py`. Chi decide, in ordine: 1) la scelta dell'amministratore (file dati/funzioni.json, cambiabile dall'app);
+Stesso schema di `fonti_attive.py`. Chi decide, in ordine: 1) la scelta dell'amministratore (file dati/funzioni.json, cambiabile dall'app,
+`true`/`false` o `1`/`0`; se è scritto male vale come assente, con una riga nel registro: vedi `interruttori.py`);
 2) la variabile d'ambiente FANTA_FUNZIONE_<NOME> ("1" acceso, "0" spento); 3) il predefinito.
 Il predefinito è quello pubblico della tabella FUNZIONI (il nucleo e poche funzioni; il resto nascosto).
 Con FANTA_PROFILO_FUNZIONI=completo il predefinito diventa «tutto acceso», tranne le funzioni di `SPENTE_DI_NORMA` (il profilo di un server già in uso).
@@ -11,12 +12,11 @@ Le funzioni di `SEMPRE_BLOCCATE` (rete e costi) restano spente per tutti se le h
 """
 from __future__ import annotations
 
-import json
 import os
-import threading
 from pathlib import Path
 
-from .percorsi import RADICE, scrivi_sicuro
+from . import interruttori
+from .percorsi import RADICE
 
 VERSIONE_PUBBLICA = os.environ.get("FANTA_PROFILO_FUNZIONI", "").strip().lower() != "completo"
 FILE = RADICE / "dati" / "funzioni.json"
@@ -82,25 +82,12 @@ def di_rotta(metodo: str, percorso: str) -> str | None:
     """La funzione a cui appartiene la rotta (solo se il server ne blocca le rotte), altrimenti None."""
     return ROTTE.get((metodo.upper(), percorso.rstrip("/") or "/"))
 
-_BLOCCO = threading.Lock()
-_cache: dict[str, tuple[tuple[int, int], dict[str, bool]]] = {}      # percorso -> ((data, dimensione), scelte)
+_SCELTE = interruttori.FileScelte(FUNZIONI)
 
 
 def _scelte_admin(percorso: Path | None = None) -> dict[str, bool]:
-    """Le scelte dell'amministratore; il file si rilegge solo se è cambiato (data e dimensione)."""
-    p = percorso or FILE
-    try:
-        s = p.stat()
-        impronta = (s.st_mtime_ns, s.st_size)
-        c = _cache.get(str(p))
-        if c and c[0] == impronta:
-            return dict(c[1])
-        d = json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
-    ok = {k: v for k, v in d.items() if k in FUNZIONI and isinstance(v, bool)} if isinstance(d, dict) else {}
-    _cache[str(p)] = (impronta, ok)
-    return dict(ok)
+    """Le scelte dell'amministratore (`interruttori.FileScelte`: cache, `1`/`0`, avviso nel registro se il file è scritto male)."""
+    return _SCELTE.leggi(percorso or FILE) or {}
 
 
 def _da_ambiente(funzione: str) -> bool | None:
@@ -162,19 +149,8 @@ def stato(percorso: Path | None = None) -> list[dict]:
 
 
 def imposta(funzione: str, acceso_: bool | None, percorso: Path | None = None) -> None:
-    """Scelta dell'amministratore; None la toglie (torna ambiente o predefinito)."""
+    """Scelta dell'amministratore; None la toglie (torna ambiente o predefinito). Con il file scritto male alza
+    `interruttori.FileIlleggibile` e non lo tocca."""
     if funzione not in FUNZIONI:
         raise KeyError(funzione)
-    p = percorso or FILE
-    with _BLOCCO:                                       # leggi-modifica-scrivi: due richieste insieme non si perdono a vicenda
-        scelte = _scelte_admin(p)
-        if acceso_ is None:
-            scelte.pop(funzione, None)
-        else:
-            scelte[funzione] = bool(acceso_)
-        scrivi_sicuro(p, json.dumps(scelte))
-        try:
-            os.chmod(p, 0o600)                          # solo il proprietario (su Windows non ha effetto)
-        except OSError:
-            pass
-        _cache.pop(str(p), None)
+    _SCELTE.imposta(percorso or FILE, funzione, acceso_)
