@@ -2595,7 +2595,7 @@
     ],
     "titolo_en": "Missing make-up games written like the postponed matches",
     "voci_en": [
-      "When a round is over, the line about missing make-up games writes the matches like the postponed matches card: «ATA vs PAR». Same on phone and computer."
+      "When a matchday is over, the line about missing make-up games writes the matches like the postponed matches card: “ATA vs PAR”. Same on phone and computer."
     ]
   },
   {
@@ -3892,7 +3892,7 @@
     ],
     "titolo_en": "More accurate expected fantasy score for the most expensive players",
     "voci_en": [
-      "The expected match rating of the most expensive players is much less overestimated: before, it was on average about a tenth higher than the real one, now half of that or less, in both seasons tested."
+      "The expected match grade of the most expensive players is much less overestimated: before, it was on average about a tenth higher than the real one, now half of that or less, in both seasons tested."
     ]
   },
   {
@@ -4365,7 +4365,7 @@
     ],
     "titolo_en": "Example teams even with sources off",
     "voci_en": [
-      "«Use the example teams» and roster import also work when whoever runs the server has turned Fantacalcio.it off: the players already saved are used."
+      "“Use the example teams” and roster import also work when whoever runs the server has turned Fantacalcio.it off: the players already saved are used."
     ]
   },
   {
@@ -5053,7 +5053,7 @@
     ],
     "titolo_en": "A smoother app installation",
     "voci_en": [
-      "When a new version is out, a small «Update ready – Reload» notice appears.",
+      "When a new version is out, a small “Update ready – Reload” notice appears.",
       "On tablets the app can now be rotated to landscape.",
       "The preview images show up even before signing in."
     ]
