@@ -159,7 +159,7 @@ struct ImpostazioniView: View {
         case .regole: RegoleEditorView(server: vm.server, lega: vm)
         case .stagione: StagioneView(server: vm.server)
         case .account: AccountPagina()
-        case .informazioni: InformazioniPagina(server: vm.server)
+        case .informazioni: InformazioniPagina(server: vm.server, info: vm.info)
         case .gestione: GestionePagina(vm: vm, avvisi: avvisi)
         case .stato: StatoDatiView(server: vm.server, aggiornamento: vm.aggiornamento)
         case .crediti: CreditiEFontiView()

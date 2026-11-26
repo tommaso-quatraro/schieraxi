@@ -4,8 +4,9 @@ import Testing
 
 // Un amico nuovo sull'iPhone come sulla web dopo la #878 (#880):
 // 1. «Importa le rose» della guida non segna saltati i passi rimasti: lasciata la pagina delle rose (salvate o «indietro»), la
-//    guida si riapre e continua con i passi che restano, fino a «Tutto pronto»; lo stesso dopo le pagine di squadra e stemma e
-//    il foglio del widget, ripartendo dal passo da cui era uscita (revisione della #887);
+//    guida si riapre e continua con i passi che restano, fino a «Tutto pronto»; lo stesso dopo la pagina della squadra e il
+//    foglio del widget, ripartendo dal passo da cui era uscita (revisione della #887). Dal #931 i passi sono quelli della web
+//    (rose, squadra, tempi) più widget e avvisi: lo stemma sta in Impostazioni, come dice «Tutto pronto»;
 // 4. la pagina delle rose al primo caricamento parla a chi le carica la prima volta (la frase del passo «Le rose» della web),
 //    subito se arriva dalla guida, e non mostra frasi forse sbagliate finché non sa se le rose ci sono;
 // 5. dopo «Esci» si rientra dove si apre l'app (Formazione o Giornate), non sulle Impostazioni;
@@ -47,7 +48,7 @@ private final class MemoriaGuida: @unchecked Sendable {
 }
 
 private func serverGuida(_ memoria: MemoriaGuida) -> ServerDiProva {
-    let passi = #"["server","accesso","rose","squadra","stemma","pwa","widget","avvisi"]"#
+    let passi = #"["server","accesso","rose","stemma","squadra","tempi","pwa","widget","avvisi"]"#
     return ServerDiProva { metodo, percorso, corpo in
         if percorso.hasPrefix("/api/primo-avvio") {
             if metodo == "PUT" {
@@ -82,7 +83,7 @@ struct GuidaDopoLeRoseTests {
         #expect(PrimoAvvioLogica.daRiprendere(vm.avanzamento))
     }
 
-    @Test("Salvate le rose, la guida riaperta propone squadra, stemma, widget e avvisi, nessuno già saltato")
+    @Test("Salvate le rose, la guida riaperta propone squadra, tempi, widget e avvisi, nessuno già saltato")
     func riapertaDopoLeRose() async {
         let memoria = MemoriaGuida(guida: appenaRegistrato)
         let s = serverGuida(memoria)
@@ -93,14 +94,14 @@ struct GuidaDopoLeRoseTests {
         memoria.importaRose(mia: nil)        // nell'anteprima la squadra non è stata scelta
         let riaperta = ConfigurazioneGuidataViewModel(server: s)
         await riaperta.carica()
-        #expect(riaperta.passi == [.squadra, .stemma, .widget, .avvisi])
+        #expect(riaperta.passi == [.squadra, .tempi, .widget, .avvisi])
         #expect(riaperta.passoCorrente == .squadra)
         for passo in riaperta.passi {
             #expect(riaperta.esito(passo) == .daFare, "\(passo.rawValue) non è stato saltato: si era solo andati alle rose")
         }
     }
 
-    @Test("Con la squadra scelta nell'anteprima la guida riaperta comincia dallo stemma")
+    @Test("Con la squadra scelta nell'anteprima la guida riaperta comincia dai tempi della lega")
     func riapertaConLaSquadra() async {
         let memoria = MemoriaGuida(guida: appenaRegistrato)
         let s = serverGuida(memoria)
@@ -111,46 +112,46 @@ struct GuidaDopoLeRoseTests {
         memoria.importaRose(mia: "Squadra di prova")
         let riaperta = ConfigurazioneGuidataViewModel(server: s)
         await riaperta.carica()
-        #expect(riaperta.passi == [.stemma, .widget, .avvisi])
+        #expect(riaperta.passi == [.tempi, .widget, .avvisi])
         #expect(riaperta.esito(.squadra) == .fatto)
     }
 
-    @Test("Tornata dalla pagina dello stemma, la guida riparte dallo stemma: la squadra saltata prima non si ripropone")
-    func riapertaDalloStemma() async {
-        // squadra saltata con «Salta», poi «Scegli stemma e maglia»: uscendo i passi rimasti sono stati segnati saltati (si
-        // ritrovano in «Da fare» se l'app si chiude prima di tornare)
-        let memoria = MemoriaGuida(guida: #"{"fatti": ["server", "accesso", "rose"], "saltati": ["squadra", "stemma", "widget", "avvisi"], "chiuso": false}"#)
+    @Test("Tornata dal foglio del widget, la guida riparte dal widget: la squadra saltata prima non si ripropone")
+    func riapertaDalWidgetDopoLaSquadraSaltata() async {
+        // squadra saltata con «Salta», tempi salvati, poi «Collega il widget»: uscendo i passi rimasti sono stati segnati saltati
+        // (si ritrovano in «Da fare» se l'app si chiude prima di tornare)
+        let memoria = MemoriaGuida(guida: #"{"fatti": ["server", "accesso", "rose", "tempi"], "saltati": ["squadra", "widget", "avvisi"], "chiuso": false}"#)
         memoria.importaRose(mia: nil)
-        let riaperta = ConfigurazioneGuidataViewModel(server: serverGuida(memoria), riprendiDa: .stemma)
+        let riaperta = ConfigurazioneGuidataViewModel(server: serverGuida(memoria), riprendiDa: .widget)
         await riaperta.carica()
-        #expect(riaperta.passi == [.squadra, .stemma, .widget, .avvisi])
-        #expect(riaperta.passoCorrente == .stemma)
+        #expect(riaperta.passi == [.squadra, .widget, .avvisi])
+        #expect(riaperta.passoCorrente == .widget)
     }
 
-    @Test("Tornata dalla pagina della squadra con la squadra scelta, la guida riparte dallo stemma")
+    @Test("Tornata dalla pagina della squadra con la squadra scelta, la guida riparte dai tempi della lega")
     func riapertaDopoLaSquadra() async {
-        let memoria = MemoriaGuida(guida: #"{"fatti": ["server", "accesso", "rose"], "saltati": ["squadra", "stemma", "widget", "avvisi"], "chiuso": false}"#)
+        let memoria = MemoriaGuida(guida: #"{"fatti": ["server", "accesso", "rose"], "saltati": ["squadra", "tempi", "widget", "avvisi"], "chiuso": false}"#)
         memoria.importaRose(mia: "Squadra di prova")
         let riaperta = ConfigurazioneGuidataViewModel(server: serverGuida(memoria), riprendiDa: .squadra)
         await riaperta.carica()
-        #expect(riaperta.passoCorrente == .stemma)
+        #expect(riaperta.passoCorrente == .tempi)
         #expect(riaperta.esito(.squadra) == .fatto)
     }
 
     @Test("Tornata dall'ultimo passo che resta, la guida mostra «Tutto pronto»")
     func riapertaSulRiepilogo() async {
-        let memoria = MemoriaGuida(guida: #"{"fatti": ["server", "accesso", "rose", "widget", "avvisi"], "saltati": ["stemma"], "chiuso": false}"#)
+        let memoria = MemoriaGuida(guida: #"{"fatti": ["server", "accesso", "rose", "widget", "avvisi"], "saltati": ["tempi"], "chiuso": false}"#)
         memoria.importaRose(mia: "Squadra di prova")
         let riaperta = ConfigurazioneGuidataViewModel(server: serverGuida(memoria), riprendiDa: .widget)
         await riaperta.carica()
-        #expect(riaperta.passi == [.stemma])
+        #expect(riaperta.passi == [.tempi])
         #expect(riaperta.eRiepilogo)
     }
 
     @Test("Tornata dal widget collegato, la guida lo segna fatto da sola e riparte dagli avvisi")
     func riapertaDopoIlWidgetCollegato() async throws {
         // «Collega il widget» uscendo ha segnato saltati widget e avvisi (si ritrovano in «Da fare» se l'app si chiude prima)
-        let memoria = MemoriaGuida(guida: #"{"fatti": ["server", "accesso", "rose", "squadra", "stemma"], "saltati": ["widget", "avvisi"], "chiuso": false}"#)
+        let memoria = MemoriaGuida(guida: #"{"fatti": ["server", "accesso", "rose", "squadra", "tempi"], "saltati": ["widget", "avvisi"], "chiuso": false}"#)
         memoria.importaRose(mia: "Squadra di prova")
         let s = serverGuida(memoria)
         let riaperta = ConfigurazioneGuidataViewModel(server: s, riprendiDa: .widget, passoFatto: .widget)
@@ -166,7 +167,7 @@ struct GuidaDopoLeRoseTests {
 
     @Test("Tornata dal widget senza collegarlo, la guida torna sul widget, ancora da fare o da segnare con «L'ho già fatto»")
     func riapertaDopoIlWidgetNonCollegato() async {
-        let memoria = MemoriaGuida(guida: #"{"fatti": ["server", "accesso", "rose", "squadra", "stemma"], "saltati": ["widget", "avvisi"], "chiuso": false}"#)
+        let memoria = MemoriaGuida(guida: #"{"fatti": ["server", "accesso", "rose", "squadra", "tempi"], "saltati": ["widget", "avvisi"], "chiuso": false}"#)
         memoria.importaRose(mia: "Squadra di prova")
         let riaperta = ConfigurazioneGuidataViewModel(server: serverGuida(memoria), riprendiDa: .widget)
         await riaperta.carica()
@@ -178,13 +179,13 @@ struct GuidaDopoLeRoseTests {
 struct InizioGuidaTests {
     /// I passi da fare, il passo da cui era uscita (nil = aperta da sola o da «Da fare») e il passo da cui riparte.
     static let casi: [([PassoGuidato], PassoGuidato?, Int)] = [
-        ([.squadra, .stemma, .widget, .avvisi], .rose, 0),
-        ([.stemma, .widget, .avvisi], .squadra, 0),
-        ([.squadra, .stemma, .widget, .avvisi], .stemma, 1),
-        ([.squadra, .widget, .avvisi], .stemma, 1),
+        ([.squadra, .tempi, .widget, .avvisi], .rose, 0),
+        ([.tempi, .widget, .avvisi], .squadra, 0),
+        ([.squadra, .tempi, .widget, .avvisi], .widget, 2),
+        ([.squadra, .widget, .avvisi], .tempi, 1),
         ([.widget, .avvisi], .widget, 0),
         ([.squadra], .widget, 1),
-        ([.squadra, .stemma], nil, 0),
+        ([.squadra, .tempi], nil, 0),
     ]
 
     @Test("Dal passo da cui era uscita, se è ancora da fare; altrimenti dal primo dopo; nessuno dopo: «Tutto pronto»",
@@ -251,12 +252,12 @@ struct RitornoAllaGuidaTests {
         #expect(pile == [nil, nil, nil, .squadra])
     }
 
-    @Test("Stemma e maglia nella rosa della tua squadra: lasciata la rosa, la guida torna dallo stemma")
-    func stemma() {
+    @Test("La scelta della squadra aperta dalla guida: lasciata, la guida torna dalla squadra")
+    func sceltaSquadra() {
         var r = RitornoAllaGuida()
-        r.chiesta(.pagina(.rosa("Squadra di prova")), dalPasso: .stemma)
-        let pile = segui(&r, [[.rosa("Squadra di prova")], []])
-        #expect(pile == [nil, .stemma])
+        r.chiesta(.pagina(.sceltaSquadra), dalPasso: .squadra)
+        let pile = segui(&r, [[.sceltaSquadra], []])
+        #expect(pile == [nil, .squadra])
     }
 
     @Test("«Collega il widget»: chiuso il foglio la guida torna dal widget; la pila delle Impostazioni non c'entra")
@@ -302,10 +303,10 @@ struct RiapriGuidaTests {
         defer { UserDefaults.standard.set(prima, forKey: "ultimaSezione") }
         let nav = Navigazione()
         nav.sezione = .impostazioni
-        nav.riapriGuida(da: .stemma)
+        nav.riapriGuida(da: .squadra)
         #expect(nav.guidaAperta)
         #expect(nav.sezione == .formazione)
-        #expect(nav.guidaRiprendeDa == .stemma)
+        #expect(nav.guidaRiprendeDa == .squadra)
         nav.guidaAperta = false
         #expect(nav.guidaRiprendeDa == nil, "aperta dopo da «Da fare» o da sola, la guida riparte dall'inizio")
     }
@@ -320,7 +321,7 @@ struct RiapriGuidaTests {
         #expect(nav.guidaPassoFatto == .widget)
         nav.guidaAperta = false
         #expect(nav.guidaPassoFatto == nil)
-        nav.riapriGuida(da: .stemma)
+        nav.riapriGuida(da: .squadra)
         #expect(nav.guidaPassoFatto == nil)
     }
 }

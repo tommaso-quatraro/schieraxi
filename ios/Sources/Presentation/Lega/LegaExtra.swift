@@ -543,16 +543,19 @@ struct StatoDatiView: View {
                         AggiornaDatiSezione(vm: aggiornamento)
                     }
                     if let s = caricatore.dato {
-                        Section(titolo: "Dati") {
+                        // i numeri dei dati subito sotto il titolo, senza un titolo loro, come il riepilogo della web (#931; sulla
+                        // web sono una frase sola, `sd.riepilogo`: differenza ammessa)
+                        Section {
                             riga("Stagione", s.stagione ?? "—")
                             riga("Calciatori", "\(s.calciatori ?? 0)")
                             riga("Partite giocate", "\(s.partite?.giocate ?? 0) / \(s.partite?.totali ?? 0)")
                             riga("Voti", "\(s.voti ?? 0)")
                             riga("Coppe europee fino al", s.coppeFino.map { Quando.dataVersione($0) } ?? "—")
                         }
-                        Section(titolo: "Avanzate") {
+                        Section {
                             // il nome di ogni riga è l'etichetta del server, come la web (#808; un server di prima: i nomi
-                            // dell'app); un passo mai riuscito dice «mai». La lista sta ripiegata
+                            // dell'app); un passo mai riuscito dice «mai». La lista sta ripiegata, con il titolo della carta della
+                            // web (#931: prima stava sotto «Avanzate», un titolo che la web non ha)
                             DisclosureGroup(Catalogo.Scambio.ultimiAggiornamenti) {
                                 ForEach((s.aggiornamenti ?? []).filter { !NomiDati.daNascondere($0.cosa) }) { a in
                                     VStack(alignment: .leading, spacing: 2) {
@@ -585,7 +588,7 @@ struct StatoDatiView: View {
                                     // l'ultimo gruppo, subito sopra la riga della taratura: dove si ferma la foto `lega-stato-taratura` (#527)
                                     .id(FondoDemo.idGruppo(g.id, ultimo: gruppi.last?.id))
                                 }
-                            } header: { Text("Quanto sono giuste le previsioni").foregroundStyle(Color.testoSecondario) } footer: {
+                            } header: { Text(Catalogo.Scambio.quantoAzzeccaModello).foregroundStyle(Color.testoSecondario) } footer: {
                                 VStack(alignment: .leading) {
                                     Text((c.giornate ?? 0) > 0 ? Catalogo.Sd.giornateGiocate(n: String(c.giornate ?? 0)) : Catalogo.Sd.appenaFinisce)
                                     // la taratura di «gioca N%» con le probabili (#379): frase e numeri del server, come la web
@@ -601,7 +604,7 @@ struct StatoDatiView: View {
                     } else {
                         ScheletroRighe(righe: 5).listRowBackground(Color.clear)
                     }
-                    Section(titolo: "Quanto sono affidabili le previsioni") {
+                    Section(titolo: Catalogo.Scambio.quantoAffidabileModello) {
                         affidabilitaContenuto
                     }
                     if let registro = caricatore.dato?.registro {
@@ -649,12 +652,16 @@ struct StatoDatiView: View {
             Text(Catalogo.Avv.provaSu(s.giornate ?? 0))
                 .font(.footnote).foregroundStyle(Color.testoSecondario)
                 .id(FondoDemo.idProva)   // dove si ferma la foto `lega-stato-prova` (solo demo, #842)
+            // le etichette e le frasi della web (`mostraAffidabilita`, `avv.*`, #931)
             FilaTessere {
-                TesseraDato(valore: s.erroreModello.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: "errore sui fantavoti (SchieraXI)")
-                TesseraDato(valore: s.erroreFantamedia.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: "errore (da fantamedia)")
-                TesseraDato(valore: s.puntiModello.map { Formato.decimali($0) } ?? "–", etichetta: "punti formazione (SchieraXI)")
+                TesseraDato(valore: s.erroreModello.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: Catalogo.Avv.erroreSuiFantavoti)
+                TesseraDato(valore: s.erroreFantamedia.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: Catalogo.Avv.erroreFantamedia)
+                TesseraDato(valore: s.puntiModello.map { Formato.decimali($0) } ?? "–", etichetta: Catalogo.Avv.puntiFormazioneModello)
             }
-            Text("Punti medi per giornata: SchieraXI \(s.puntiModello.map { Formato.decimali($0) } ?? "–"), da fantamedia \(s.puntiFantamedia.map { Formato.decimali($0) } ?? "–"), massimo possibile \(s.puntiPerfetta.map { Formato.decimali($0) } ?? "–"). Errore più basso e punti più alti sono meglio. Nelle giornate passate mancano le probabili formazioni, quindi dal vivo il modello va un po' meglio.")
+            Text(Catalogo.Avv.puntiMedi(f: s.puntiFantamedia.map { Formato.decimali($0) } ?? "–",
+                                        m: s.puntiModello.map { Formato.decimali($0) } ?? "–",
+                                        p: s.puntiPerfetta.map { Formato.decimali($0) } ?? "–")
+                 + " " + Catalogo.Avv.mancanoProbabili)
                 .font(.footnote).foregroundStyle(Color.testoSecondario)
             let righe = (a.righe ?? []).filter { $0.puntiModello != nil }
             if righe.count >= 2 { GraficoAffidabilita(righe: righe) }
@@ -670,7 +677,7 @@ struct StatoDatiView: View {
                     .accessibilityHint("Riprova a leggere la prova delle previsioni")
             }
         } else {
-            Text("La prova si fa da sola dopo gli aggiornamenti, appena c'è almeno una giornata finita.").font(.footnote).foregroundStyle(Color.testoSecondario)
+            Text(Catalogo.Avv.provaSolaDopo).font(.footnote).foregroundStyle(Color.testoSecondario)
         }
     }
 

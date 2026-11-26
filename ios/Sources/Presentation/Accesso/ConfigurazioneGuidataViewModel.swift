@@ -7,8 +7,6 @@ enum AzioneGuida: Equatable {
     case importaRose
     /// «Scegli la squadra»: l'elenco delle squadre, dove si sceglie la propria.
     case scegliSquadra
-    /// «Scegli stemma e maglia»: la rosa della propria squadra (senza squadra scelta, l'elenco delle squadre).
-    case stemma(nome: String?)
     case impostazioni
     /// «Tutto pronto»: «Vai alla Formazione» e il collegamento a Regole e scadenza della frase sui punteggi (#880).
     case formazione
@@ -49,6 +47,14 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
     /// Un messaggio dopo un'azione che non è andata (notifiche rifiutate, salvataggio non riuscito).
     @Published var avviso: String?
     @Published private(set) var inCorso = false
+    /// «I tempi della lega» (#931): i due menu, con i valori più comuni finché le regole della lega non si leggono, come la web.
+    @Published var scadenza = TempiGuida.partenza.scadenza
+    @Published var prima = TempiGuida.partenza.prima
+    /// Le voci del menu della scadenza: le più comuni più quella salvata, se è diversa.
+    @Published private(set) var scadenzeScelte = TempiGuida.scadenze
+    /// Le regole della lega sono state lette: solo allora «Salva» le scrive (come la web, #801: altrimenti i valori di partenza
+    /// andrebbero sopra quelli veri).
+    private(set) var tempiLetti = false
 
     /// Come la web (`pav.non_sono_riuscito`); il salvataggio si ritenta da solo al passo dopo.
     static let erroreSalvataggio = Catalogo.Pav.nonSonoRiuscito
@@ -75,11 +81,18 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
 
     var passoCorrente: PassoGuidato? { indice < passi.count ? passi[indice] : nil }
     var eRiepilogo: Bool { fase == .pronta && indice >= passi.count }
-    var testoAvanzamento: String { "Passo \(min(indice + 1, passi.count)) di \(passi.count)" }
+    /// «Passo 2 di 5» sopra i puntini (la web scrive i nomi dei passi, che sull'iPhone non ci stanno in una riga).
+    var testoAvanzamento: String { Catalogo.Pav.passoDi(n: String(min(indice + 1, passi.count)), tot: String(passi.count)) }
 
     func esito(_ passo: PassoGuidato) -> EsitoPasso {
         if fattiOra.contains(passo) { return .fatto }
         return PrimoAvvioLogica.esito(passo, avanzamento: avanzamento, stato: stato, saltatiOra: saltatiOra)
+    }
+
+    /// La frase di «Tutto pronto», come la web: finito, o i passi non fatti per nome con dove ritrovarli.
+    var frasePronto: String {
+        PrimoAvvioLogica.frasePronto(nonFatti: PassoGuidato.allCases.filter { esito($0) != .fatto },
+                                     roseImportate: stato.roseImportate == true)
     }
 
     // MARK: caricamento
@@ -114,17 +127,10 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
         }
     }
 
-    /// Cosa sa già l'app della lega: rose, mia squadra, stemma e maglia.
+    /// Cosa sa già l'app della lega: rose e mia squadra.
     static func leggiStato(_ server: any ServerClient) async -> StatoConfigurazione {
-        var s = StatoConfigurazione()
         let lega: StatoLega? = try? await server.get("/api/stato")
-        s.roseImportate = lega?.roseImportate
-        s.miaSquadra = lega?.miaSquadra
-        if let squadre: [SquadraLega] = try? await server.get("/api/squadre"),
-           let mia = squadre.first(where: { $0.mia == true }) {
-            s.stemmaEMaglia = mia.immagini?.stemma == true && mia.immagini?.maglia == true
-        }
-        return s
+        return StatoConfigurazione(roseImportate: lega?.roseImportate, miaSquadra: lega?.miaSquadra)
     }
 
     /// All'apertura dell'app, senza rose: parte se non è mai stata iniziata, si riprende se era stata lasciata prima delle rose
@@ -184,6 +190,48 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
     /// salva: se l'app si chiude prima, all'apertura la guida si riprende dalle rose (`PrimoAvvioLogica.daRiprendere`).
     func versoLeRose() async {
         lasciata = true
+    }
+
+    // MARK: i tempi della lega
+
+    /// All'apertura del passo «I tempi della lega» i menu prendono i valori salvati della lega, come `paTempiLeggi` della web. Un
+    /// menu cambiato mentre si leggono le regole resta come l'ha messo l'utente: si confronta con i valori che c'erano quando la
+    /// lettura è partita (`partenza`, nil = quelli di adesso). Se le regole non si leggono restano i valori di prima e «Salva» non
+    /// li scrive (`tempiLetti`).
+    func caricaTempi(partenza: TempiGuida.Valori? = nil) async {
+        let primaDellaLettura = partenza ?? TempiGuida.Valori(scadenza: scadenza, prima: prima)
+        guard let regole: JSONValue = try? await server.get("/api/regole", snake: false) else { return }
+        let salvati = TempiGuida.valori(regole)
+        scadenzeScelte = TempiGuida.sceltaScadenze(salvata: salvati.scadenza)
+        if scadenza == primaDellaLettura.scadenza { scadenza = salvati.scadenza }
+        if prima == primaDellaLettura.prima { prima = salvati.prima }
+        tempiLetti = true
+    }
+
+    /// «Salva» del passo «I tempi della lega», come `paTempiSalva` della web: se le regole non si sono lette non scrive niente, lo
+    /// dice e le rilegge per il tocco dopo; altrimenti le rilegge e le salva tutte, cambiando solo i due valori, e il passo è fatto.
+    func salvaTempi() async {
+        guard !inCorso else { return }
+        inCorso = true
+        defer { inCorso = false }
+        guard tempiLetti else {
+            avviso = Catalogo.Pav.tempiNonLetti
+            await caricaTempi()
+            return
+        }
+        do {
+            let lette: JSONValue = try await server.get("/api/regole", snake: false)
+            let nuove = TempiGuida.regole(lette, scadenza: scadenza, prima: prima)
+            let _: JSONValue = try await server.posta("PUT", "/api/regole", nuove, snake: false)
+        } catch {
+            if Task.isCancelled || error is CancellationError { return }
+            avviso = error.localizedDescription
+            return
+        }
+        if avviso == Catalogo.Pav.tempiNonLetti { avviso = nil }
+        // la giornata della lega cambia subito anche nelle altre schermate (la web rilegge la testata)
+        NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
+        await segnaFatto(.tempi)
     }
 
     /// Fine del percorso: non si riapre più da solo.

@@ -100,6 +100,8 @@ struct ContenitoreApp: View {
     var body: some View {
         RadiceView()
             .environmentObject(modello)
+            // un calcolo del server che dura (risposta 202): «Un attimo, mister: ci sto lavorando.» sopra la barra, come la web (#931)
+            .overlay(alignment: .bottom) { AvvisoCalcolo() }
             .onAppear {
                 // Solo con l'argomento di lancio -DEMO (fotografie nel simulatore): apre la schermata chiesta.
                 Demo.applica(nav: nav, modello: modello)
@@ -116,7 +118,7 @@ struct ContenitoreApp: View {
                     .onDisappear { nav.guidaSparita() }
             }
             .task { await avviaGuidaSeServe() }
-            // una pagina aperta da un passo della guida (rose, squadra, stemma) è stata lasciata: la guida si riapre da quel passo (#880)
+            // una pagina aperta da un passo della guida (rose, squadra) è stata lasciata: la guida si riapre da quel passo (#880)
             .onReceive(modello.lega.$percorso) { pagine in
                 if let passo = modello.lega.ritornoAllaGuida.pilaCambiata(pagine) { riapriGuida(da: passo) }
             }
@@ -144,7 +146,7 @@ struct ContenitoreApp: View {
 
     /// Lasciata una pagina aperta da un passo della guida, la guida torna sulla Formazione (come la web, dove dietro «Tutto pronto»
     /// c'è già la Formazione) e riparte da quel passo, o dal primo dopo se è fatto: dopo le rose salvate dalla squadra, dopo la
-    /// squadra scelta dallo stemma (#880). Fuori dal cambio che l'ha annunciato.
+    /// squadra scelta dai tempi della lega (#880, #931). Fuori dal cambio che l'ha annunciato.
     private func riapriGuida(da passo: PassoGuidato, fatto: Bool = false, dopo attesa: Duration = .zero) {
         Task {
             if attesa > .zero { try? await Task.sleep(for: attesa) }
@@ -162,10 +164,6 @@ struct ContenitoreApp: View {
         case .scegliSquadra:
             modello.lega.ritornoAllaGuida.chiesta(.pagina(.sceltaSquadra), dalPasso: .squadra)
             nav.sezione = modello.lega.apri([.sceltaSquadra])
-        case .stemma(let nome):
-            let pagina = nome.map { PaginaImpostazioni.rosa($0) } ?? .sceltaSquadra   // prima la squadra, poi lo stemma (#868)
-            modello.lega.ritornoAllaGuida.chiesta(.pagina(pagina), dalPasso: .stemma)
-            nav.sezione = modello.lega.apri([pagina])
         case .impostazioni:
             nav.sezione = .impostazioni
         case .formazione:

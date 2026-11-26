@@ -245,8 +245,19 @@ struct ServerHTTP: ServerClient {
     /// Il server risponde 202 «sto calcolando»: si riprova dopo questi secondi (se il server non dice altro) fino a `massimoTentativiCalcolo` volte.
     var attesaCalcolo: TimeInterval = 3
     var massimoTentativiCalcolo = 40
+    /// Dove si conta chi aspetta un calcolo, per la frase «Un attimo, mister…» (#931); nil = quella di tutta l'app.
+    var attesa: AttesaCalcolo? = nil
 
     var indirizzo: String { IndirizzoServer.attuale }
+
+    /// Comincia o finisce l'attesa di un calcolo, sul MainActor dove vive il contatore.
+    private func segnaAttesa(cominciata: Bool) async {
+        let contatore = attesa
+        await MainActor.run {
+            let a = contatore ?? AttesaCalcolo.condivisa
+            if cominciata { a.inizia() } else { a.finisce() }
+        }
+    }
 
     private func costruisci(_ percorso: String, token: String?) throws -> URLRequest {
         // Nei test automatici la rete vera è vietata: ogni test passa una sessione finta (URLProtocol). Una richiesta con la
@@ -378,39 +389,54 @@ struct ServerHTTP: ServerClient {
 
     func richiesta(_ metodo: String, _ percorso: String, corpo: Data?) async throws -> Data {
         var tentativiDiCalcolo = 0
+        // vero da quando un 202 ha fatto cominciare l'attesa a quando finisce (risposta, errore, tentativi finiti, annullamento)
+        var aspetto = false
         while true {
-            let token = archivioToken.leggi(server: indirizzo)
-            var r = try costruisci(percorso, token: token)
-            r.httpMethod = metodo
-            if let corpo {
-                r.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                r.httpBody = corpo
-            }
-            // Risorse personali con ETag: chi scrive rimanda l'ETag che ha letto; se nel frattempo è cambiato il server risponde 412.
-            let risorsa = VersioniRisorse.risorsa(per: percorso, corpo: corpo)
-            if let risorsa, metodo != "GET", metodo != "HEAD",
-               let visto = VersioniRisorse.condivise.leggi(server: indirizzo, risorsa: risorsa) {
-                r.setValue(visto, forHTTPHeaderField: "If-Match")
-            }
             do {
+                let token = archivioToken.leggi(server: indirizzo)
+                var r = try costruisci(percorso, token: token)
+                r.httpMethod = metodo
+                if let corpo {
+                    r.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    r.httpBody = corpo
+                }
+                // Risorse personali con ETag: chi scrive rimanda l'ETag che ha letto; se nel frattempo è cambiato il server risponde 412.
+                let risorsa = VersioniRisorse.risorsa(per: percorso, corpo: corpo)
+                if let risorsa, metodo != "GET", metodo != "HEAD",
+                   let visto = VersioniRisorse.condivise.leggi(server: indirizzo, risorsa: risorsa) {
+                    r.setValue(visto, forHTTPHeaderField: "If-Match")
+                }
                 let (dati, risposta) = try await sessione.data(for: r)
                 if let risorsa, let h = risposta as? HTTPURLResponse, let nuovo = h.value(forHTTPHeaderField: "ETag") {
                     VersioniRisorse.condivise.imposta(nuovo, server: indirizzo, risorsa: risorsa)
                 }
-                // 202: il server sta calcolando (formazione, scambi con gli account accesi). Si riprova da soli: la schermata
-                // intanto mostra il marchio che si muove.
+                // 202: il server sta calcolando (formazione, scambi con gli account accesi). Si riprova da soli: intanto sopra la
+                // barra c'è «Un attimo, mister: ci sto lavorando.» (`AvvisoCalcolo`), come la web; finiti i tentativi, la frase
+                // della web `comune.calcolo_lungo` (#931).
                 if let h = risposta as? HTTPURLResponse, h.statusCode == 202, !Self.eDiAccesso(percorso) {
                     tentativiDiCalcolo += 1
                     if tentativiDiCalcolo > massimoTentativiCalcolo {
-                        throw ErroreApi.server("Il calcolo sta durando più del solito. Riprova tra poco.")
+                        throw ErroreApi.server(Catalogo.Comune.calcoloLungo)
                     }
-                    let attesa = Self.secondi(h).map(TimeInterval.init) ?? attesaCalcolo
-                    try await Task.sleep(nanoseconds: UInt64(max(0, attesa) * 1_000_000_000))
+                    if !aspetto {
+                        aspetto = true
+                        await segnaAttesa(cominciata: true)
+                    }
+                    let pausa = Self.secondi(h).map(TimeInterval.init) ?? attesaCalcolo
+                    try await Task.sleep(nanoseconds: UInt64(max(0, pausa) * 1_000_000_000))
                     continue
+                }
+                if aspetto {
+                    aspetto = false
+                    await segnaAttesa(cominciata: false)
                 }
                 try controlla(risposta, dati, percorso: percorso, token: token)
                 return dati
             } catch {
+                if aspetto {
+                    aspetto = false
+                    await segnaAttesa(cominciata: false)
+                }
                 throw traduci(error)
             }
         }

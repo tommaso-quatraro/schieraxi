@@ -152,8 +152,9 @@ final class AccessoUITests: XCTestCase {
         XCTAssertEqual(tutti.label, "Esci da tutti i dispositivi")
         let sotto = tutti.frame.minY - esci.frame.maxY
         XCTAssertTrue(sotto > -1 && sotto < 20, "«Esci da tutti i dispositivi» deve seguire «Esci» nella stessa sezione (spazio: \(sotto))")
-        // il tocco chiede conferma (il tocco perso sul simulatore carico si ripete, al massimo 3 volte)
-        tocca(esci, finchéCompare: elemento("Esci da SchieraXI su questo telefono?"), "toccando «Esci» compare la conferma", entro: 5)
+        // il tocco chiede conferma con la frase della web (`account.esci_conferma`, #931; il tocco perso sul simulatore carico si
+        // ripete, al massimo 3 volte)
+        tocca(esci, finchéCompare: elemento("Esci da SchieraXI su questo dispositivo?"), "toccando «Esci» compare la conferma", entro: 5)
     }
 
     /// «Esci da tutti i dispositivi» chiede conferma con la frase della web (#765). Nella demo non si conferma: niente server.

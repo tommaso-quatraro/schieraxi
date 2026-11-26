@@ -1,12 +1,13 @@
 import SwiftUI
 
 /// La configurazione guidata («Primo avvio», come si chiama sulla web): un passo alla volta, tutti saltabili, con un riepilogo
-/// alla fine. I passi sono quelli dell'iPhone (la web ne ha altri): titolo, «Salta» e il riepilogo hanno le parole della web.
+/// alla fine. I passi sono quelli della web («Le rose», «La tua squadra», «I tempi della lega») più «Il widget» e «Gli avvisi»,
+/// che ha solo l'iPhone (#931); nomi, frasi, «Salta» e il riepilogo hanno le parole della web.
 /// Parte da sola se la lega non ha ancora le rose e non è mai stata iniziata (con gli account, se nemmeno la vecchia procedura è
 /// finita: #600), o si riprende se era stata lasciata prima delle rose (anche sulla web), come la web (#595); si apre anche dalla
-/// lista «Da fare» di Oggi. Salta i passi già fatti. Un passo che porta in un'altra schermata (rose, squadra, stemma, widget) la
-/// chiude e, lasciata quella, la guida si riapre da quel passo fino a «Tutto pronto» (#880, come la web, dove tutto succede
-/// dentro la guida).
+/// lista «Da fare» di Oggi. Salta i passi già fatti. Un passo che porta in un'altra schermata (rose, squadra, widget) la chiude e,
+/// lasciata quella, la guida si riapre da quel passo fino a «Tutto pronto» (#880, come la web, dove tutto succede dentro la
+/// guida); i tempi della lega si scelgono qui dentro, come sulla web.
 struct ConfigurazioneGuidataView: View {
     @StateObject private var vm: ConfigurazioneGuidataViewModel
     /// Cosa fare quando un passo porta in un'altra schermata (la guida si chiude prima).
@@ -32,7 +33,7 @@ struct ConfigurazioneGuidataView: View {
                 Sfondo()
                 switch vm.fase {
                 case .carica:
-                    ScrollView { Scheletro(schede: 1, righe: 3, testo: "Preparo la configurazione…").padding(Tema.margine) }
+                    ScrollView { Scheletro(schede: 1, righe: 3, testo: Catalogo.Comune.carico).padding(Tema.margine) }
                 case .errore(let messaggio):
                     ScrollView { ErroreVista(messaggio: messaggio) { Task { await vm.carica() } }.padding(Tema.margine) }
                 case .pronta:
@@ -60,14 +61,14 @@ struct ConfigurazioneGuidataView: View {
             .navigationTitle(Catalogo.Pav.primoAvvio)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(vm.eRiepilogo ? Catalogo.Shell.chiudi : "Più tardi") {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(vm.eRiepilogo ? Catalogo.Shell.chiudi : Catalogo.Pav.piuTardi) {
                         Task {
                             if vm.fase == .pronta && !vm.eRiepilogo { await vm.piuTardi() }
                             chiudi()
                         }
                     }
-                    .accessibilityHint(vm.eRiepilogo ? "" : "Esce e ti ricorda i passi da fare")
+                    .accessibilityHint(vm.eRiepilogo ? "" : Catalogo.Pav.piuTardiAiuto)
                 }
             }
             .task { await vm.carica() }
@@ -93,13 +94,15 @@ struct ConfigurazioneGuidataView: View {
                 .foregroundStyle(Color.verde)
                 .accessibilityHidden(true)
             Text(passo.titolo).font(.title2.bold()).multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
             Text(passo.spiegazione).font(.body).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
+            if passo == .tempi { domandeTempi }
             VStack(spacing: 10) {
                 principale(passo)
-                if passo == .widget || passo == .avvisi {
+                if passo.siSegnaAMano {
                     Button { Task { await vm.segnaFatto(passo) } } label: {
-                        Label("L'ho già fatto", systemImage: "checkmark.circle").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
+                        Label(Catalogo.Pav.giaFatto, systemImage: "checkmark.circle").frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                     }
                     .pulsanteVetro()
                 }
@@ -110,6 +113,10 @@ struct ConfigurazioneGuidataView: View {
                 .foregroundStyle(Color.testoSecondario)
             }
         }
+        // i tempi salvati della lega si leggono quando il passo compare, come `paTempiCarica` della web
+        .task(id: passo) {
+            if passo == .tempi, !vm.tempiLetti { await vm.caricaTempi() }
+        }
     }
 
     private var puntini: some View {
@@ -119,6 +126,46 @@ struct ConfigurazioneGuidataView: View {
             }
         }
         .accessibilityHidden(true)
+    }
+
+    /// Le due domande dei tempi della lega, ognuna con il suo menu, come il passo della web; sotto, dove si cambiano dopo.
+    private var domandeTempi: some View {
+        Carta {
+            VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: 4) {
+                    domanda(Catalogo.Pav.scadDomanda)
+                    Picker(Catalogo.Pav.scadDomanda, selection: $vm.scadenza) {
+                        ForEach(vm.scadenzeScelte, id: \.self) { minuti in
+                            Text(TempiGuida.nomeScadenza(minuti)).tag(minuti)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(minHeight: Tema.areaTocco)
+                }
+                VStack(alignment: .leading, spacing: 4) {
+                    domanda(Catalogo.Pav.primaDomanda)
+                    Picker(Catalogo.Pav.primaDomanda, selection: $vm.prima) {
+                        ForEach(TempiGuida.giornate, id: \.self) { giornata in
+                            Text(TempiGuida.nomePrima(giornata)).tag(giornata)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(minHeight: Tema.areaTocco)
+                }
+                Text(Catalogo.Pav.tempiDove).font(.footnote).foregroundStyle(Color.testoSecondario)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .disabled(vm.inCorso)
+    }
+
+    /// La domanda sopra il suo menu; VoiceOver la legge già come nome del menu.
+    private func domanda(_ testo: String) -> some View {
+        Text(testo).font(.subheadline.weight(.semibold))
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityHidden(true)
     }
 
     @ViewBuilder
@@ -146,8 +193,8 @@ struct ConfigurazioneGuidataView: View {
             vai(.importaRose)
         case .squadra:
             await uscendo(.scegliSquadra)
-        case .stemma:
-            await uscendo(.stemma(nome: vm.stato.miaSquadra))
+        case .tempi:
+            await vm.salvaTempi()
         case .widget:
             await uscendo(.collegaWidget)
         }
@@ -171,24 +218,28 @@ struct ConfigurazioneGuidataView: View {
                 .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(Color.verde)
                 .accessibilityHidden(true)
-            // titolo e «Hai finito la configurazione.» come la web; dove ritrovare i passi saltati lo dice l'iPhone (si riprendono
-            // da «Da fare» in cima alla Formazione)
+            // come «Tutto pronto» della web: il titolo, la frase con i passi saltati per nome, i punteggi usati e dove sono stemma e
+            // avvisi, i passi con «(fatto)» e «(saltato)», «Vai alla Formazione»
             Text(Catalogo.Pav.tuttoProntoMister).font(.title2.bold()).multilineTextAlignment(.center)
-            Text(tuttoFatto ? Catalogo.Pav.haiFinito : "Quello che hai saltato lo trovi nella Formazione, nella lista «Da fare».")
+                .accessibilityAddTraits(.isHeader)
+            Text(vm.frasePronto)
                 .font(.body).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             regoleComuni
+            Text(Catalogo.Pav.ilResto)
+                .font(.footnote).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             Carta {
                 ForEach(PassoGuidato.allCases) { passo in
                     let esito = vm.esito(passo)
                     HStack(spacing: 10) {
                         Image(systemName: simbolo(esito)).foregroundStyle(colore(esito)).frame(width: 24).accessibilityHidden(true)
-                        Text(passo.titolo).font(.subheadline)
-                        Spacer(minLength: 8)
-                        Text(esito.testo).font(.caption).foregroundStyle(Color.testoSecondario)
+                        Text(passo.titolo + esito.suffisso).font(.subheadline)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
                     }
                     .frame(minHeight: 36)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(passo.titolo): \(esito.testo)")
+                    .accessibilityElement(children: .combine)
                 }
             }
             // come la web: «Vai alla Formazione» chiude la guida, finita, e apre la Formazione
@@ -236,8 +287,6 @@ struct ConfigurazioneGuidataView: View {
         chiudi()
         vai(dove)
     }
-
-    private var tuttoFatto: Bool { PassoGuidato.allCases.allSatisfy { vm.esito($0) == .fatto } }
 
     private func simbolo(_ e: EsitoPasso) -> String {
         switch e {
