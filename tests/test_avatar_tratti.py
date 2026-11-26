@@ -74,7 +74,10 @@ def test_api_avatar_e_campo_avatar_nei_giocatori(client):
 def test_il_web_usa_i_tratti_e_senza_di_loro_va_di_seme():
     js = codice_web.app()
     assert "stato.tratti[idAvatar(x)]" in js and 'api("/api/avatar")' in js and "x.avatar ||" in js
-    assert "catch { stato.tratti = null; }" in js                              # se non arrivano: tutto dal seme
+    # se non arrivano restano quelli dell'ultima lettura, copiati nel browser (collaudo del 26/11: la prima schermata non li aspetta
+    # più); senza nemmeno la copia stato.tratti resta vuoto e i volti vengono tutti dal seme. Il comportamento lo prova il browser
+    # (tests/browser/test_copie_e_rete.py).
+    assert 'leggiCache("tratti", true)' in js and "catch { /* resta la copia, o niente */ }" in js
 
 
 def disegna_testa(sfondo_testa, capelli=None, barba=None, larghi=0, lunghi=False):
