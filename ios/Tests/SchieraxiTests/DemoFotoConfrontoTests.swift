@@ -26,9 +26,10 @@ struct DemoFotoConfrontoTests {
         #expect(server.indirizzoFinto != FinteServer.demo.indirizzoFinto)
     }
 
-    /// La foto porta in fondo allo schermo il bordo basso del confronto (o, se la lista non trova la voce, dei Dettagli): sotto il
-    /// confronto non devono esserci il grafico, l'andamento, la riga su tutta la Serie A e le note, e la voce della squadra dev'essere
-    /// corta («–», senza numeri), che anche con il testo grande la fine del confronto resti a video (#842, foto della corsa 44826938210).
+    /// La foto porta in fondo allo schermo il bordo basso dei Dettagli (la voce del confronto sta dentro quella riga e la lista non la
+    /// trova): sotto il confronto non devono esserci il grafico, l'andamento, la riga su tutta la Serie A e le note, e la voce della
+    /// squadra dev'essere corta («–», senza numeri), che anche con il testo grande la fine del confronto resti a video (#842, foto
+    /// della corsa 44826938210).
     @Test("Sotto il confronto, nei Dettagli della foto, resta solo la voce corta dei punti della squadra")
     func sottoIlConfrontoSoloLaSquadra() async throws {
         let p = try await pagina()
@@ -48,5 +49,36 @@ struct DemoFotoConfrontoTests {
         let vm = GiornateViewModel(server: FinteServer.demo)
         vm.preparaFoto("giornate-confronto")
         #expect(vm.dettagliAperti)
+    }
+
+    /// La riga sotto il titolo (`GET /api/stato`, #863) arriva dopo le giornate e compare in cima alla lista: comparendo la riporta in
+    /// cima. La foto scorreva appena c'erano i Dettagli e, quando la riga arrivava dopo, lo scorrimento andava perso e la voce restava
+    /// sotto lo schermo (test `FotoUITests`, 3 corse su 6 il 25/11; nel registro della corsa 45668942279 la lista scorre a 284, poi
+    /// arriva la riga e torna a −116, la cima). Adesso la foto aspetta la cima completa: Dettagli e riga.
+    @MainActor
+    @Test("La foto aspetta la cima della pagina completa: i Dettagli e anche la riga sotto il titolo")
+    func cimaCompletaConDettagliERiga() async throws {
+        let server = try #require(FinteServer.demoFase("giornate-confronto"))
+        let vm = GiornateViewModel(server: server)
+        #expect(!vm.cimaCompleta, "senza dati")
+        await vm.caricatore.ricarica()
+        #expect(vm.pagina?.dettagli != nil, "le giornate con i Dettagli ci sono")
+        #expect(!vm.cimaCompleta, "manca la riga sotto il titolo: comparendo riporterebbe la lista in cima")
+        await vm.info.ricarica()
+        #expect(vm.rigaStato != nil)
+        #expect(vm.cimaCompleta)
+    }
+
+    /// Se `/api/stato` non risponde la riga c'è lo stesso («Server non raggiungibile»): la foto non aspetta per sempre.
+    @MainActor
+    @Test("Senza risposta da `/api/stato` la cima è completa lo stesso, con «Server non raggiungibile»")
+    func cimaCompletaSenzaStato() async throws {
+        var server = try #require(FinteServer.demoFase("giornate-confronto"))
+        server.errori = ["/api/stato": "server spento"]
+        server.indirizzoFinto = "https://finto-confronto-senza-stato.invalid"   // una copia salvata sua
+        let vm = GiornateViewModel(server: server)
+        await vm.carica()
+        #expect(vm.rigaStato?.testo == Catalogo.Testata.offline)
+        #expect(vm.cimaCompleta)
     }
 }

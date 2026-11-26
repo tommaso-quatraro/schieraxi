@@ -157,6 +157,10 @@ final class FotoUITests: XCTestCase {
         // lo scorrimento arriva dopo i dati: si aspetta che la fine della voce sia fra le barre (in alto: stato e titolo, circa 110 punti)
         XCTAssertTrue(aspetta(20) { voce.frame.maxY <= sotto && voce.frame.maxY >= finestra.minY + 160 },
                       "nella foto giornate-confronto la fine della voce del confronto deve essere a video (\(dove()))")
+        // e ci resta: il difetto di prima era la lista che scorreva e poi tornava in cima quando arrivava la riga sotto il titolo
+        Thread.sleep(forTimeInterval: 2)
+        XCTAssertTrue(voce.frame.maxY <= sotto && voce.frame.maxY >= finestra.minY + 160,
+                      "nella foto giornate-confronto la voce del confronto è uscita dallo schermo dopo lo scorrimento (\(dove()))")
         if testo != nil {
             XCTAssertGreaterThan(voce.frame.height, finestra.height / 2,
                                  "il testo grande non è arrivato all'app: la prova non dice niente (\(dove()))")

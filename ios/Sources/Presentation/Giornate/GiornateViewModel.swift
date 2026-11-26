@@ -42,6 +42,10 @@ final class GiornateViewModel: ViewModelBase {
     /// raggiungibile» se `/api/stato` non ha risposto. Nil prima della prima risposta (anche dalla copia del telefono).
     var rigaStato: RigaStato? { RigaStato(info: info.dato, nonRaggiungibile: info.errore != nil) }
 
+    /// La cima della pagina è completa: le giornate con i Dettagli e la riga sotto il titolo, che `carica()` legge dopo e che,
+    /// comparendo in cima alla lista, la riporta in cima. La foto `giornate-confronto` scorre solo da qui in poi (`ConfrontoDemo`).
+    var cimaCompleta: Bool { pagina?.dettagli != nil && rigaStato != nil }
+
     /// Rilegge le giornate e poi `/api/stato` per la riga sotto il titolo. Solo una risposta fresca del server chiude la richiesta
     /// di «Com'è andata», come la web: la copia del telefono, o una lettura non riuscita, possono essere di prima della giornata
     /// chiesta.
@@ -64,7 +68,7 @@ final class GiornateViewModel: ViewModelBase {
     private var piuRecenteDaAprire = false
 
     /// Le foto della demo: `giornate-aperta` apre la giornata più recente, `giornate-dettagli` apre «Dettagli»; anche
-    /// `giornate-confronto`, che poi scorre alla voce del confronto (#842).
+    /// `giornate-confronto`, che poi scorre fino al fondo dei Dettagli, dove sta il confronto (#842, `ConfrontoDemo`).
     func preparaFoto(_ nome: String) {
         switch nome {
         case "giornate-aperta":
