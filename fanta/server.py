@@ -2479,16 +2479,17 @@ def _stato_avvisi(ctx: Contesto, opzioni: dict) -> dict:
     iscrizioni = notifiche_web.iscrizioni(ctx.iscrizioni_push)
     ntfy = ctx.ntfy and notifiche.canale() is not None
     return {"impostazioni": opzioni, "canale": ntfy or bool(iscrizioni), "dispositivi": len(iscrizioni),
-            "promemoria_da": _promemoria_da(iscrizioni, ntfy and bool(opzioni.get("app_nativa")))}
+            "promemoria_da": _promemoria_da(iscrizioni, ntfy and bool(opzioni.get("app_nativa")), datetime.now())}
 
 
-def _promemoria_da(iscrizioni: list[dict], ntfy_app: bool) -> str:
-    """Da dove arrivano già i promemoria della scadenza a un iPhone o a un iPad (`promemoria_da` di GET /api/avvisi): `web` con le
-    notifiche della web accese su un dispositivo Apple (`notifiche_web.su_apple`), `ntfy` con «Avvisi anche per l'app nativa» e il
-    canale (`ntfy_app`: il tocco apre l'app), altrimenti `app`. Con `web` o `ntfy` l'app per iPhone non programma i suoi promemoria:
-    sullo stesso telefono lo stesso promemoria arriverebbe due volte. Le notifiche della web su un computer con Chrome, Firefox o
-    Edge non contano: senza i suoi promemoria il telefono resterebbe senza."""
-    if any(notifiche_web.su_apple(s["endpoint"]) for s in iscrizioni):
+def _promemoria_da(iscrizioni: list[dict], ntfy_app: bool, adesso: datetime) -> str:
+    """Da dove arrivano già i promemoria della scadenza all'iPhone (`promemoria_da` di GET /api/avvisi): `web` con un'iscrizione
+    alle notifiche della web nata su un iPhone e confermata da poco (`notifiche_web.su_iphone_viva`), `ntfy` con «Avvisi anche
+    per l'app nativa» e il canale (`ntfy_app`: il tocco apre l'app), altrimenti `app`. Con `web` o `ntfy` l'app per iPhone non
+    programma i suoi promemoria: sullo stesso telefono lo stesso promemoria arriverebbe due volte. Nel dubbio `app` (un promemoria
+    doppio è meglio di uno che non arriva): notifiche della web solo su un computer, un iPad o un Mac, iscrizioni di prima senza
+    il dato dell'iPhone, o non confermate negli ultimi giorni (web app tolta dalla Home, notifiche spente)."""
+    if any(notifiche_web.su_iphone_viva(s, adesso) for s in iscrizioni):
         return "web"
     return "ntfy" if ntfy_app else "app"
 
@@ -2534,6 +2535,7 @@ def avviso_di_prova(ctx: Contesto = Depends(lega_corrente)):
 class IscrizionePush(BaseModel):
     endpoint: str
     keys: dict[str, str]
+    iphone: bool = False            # la web gira su un iPhone (non iPad né Mac): vedi `promemoria_da` di GET /api/avvisi
 
 
 @app.get("/api/push/chiave")

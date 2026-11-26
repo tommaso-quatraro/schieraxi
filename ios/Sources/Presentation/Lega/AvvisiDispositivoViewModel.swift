@@ -16,7 +16,7 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
     @Published private(set) var appNativa: Bool?
     /// Il server ha spento le ore tranquille (inizio e fine alla stessa ora): si dice finché non si salva di nuovo.
     @Published private(set) var oreTranquilleSpente = false
-    /// I promemoria arrivano già dalla web app, con gli avvisi accesi su un dispositivo Apple (`promemoria_da` «web»): qui non si
+    /// I promemoria arrivano già dalla web app, con gli avvisi accesi su un iPhone (`promemoria_da` «web»): qui non si
     /// programmano, e la riga sotto «Avvisi su questo dispositivo» lo dice (`aiutoQui`).
     @Published private(set) var promemoriaDaWeb = false
     /// Cosa è successo all'ultimo tocco sull'interruttore del dispositivo (permesso negato, avvisi spenti).

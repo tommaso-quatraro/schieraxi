@@ -94,7 +94,7 @@ extension ImpostazioniAvvisi {
 struct StatoAvvisi: Decodable {
     /// Da dove arrivano già i promemoria della scadenza secondo il server (`promemoria_da`, 26/11/2026).
     enum PromemoriaDa: String, Sendable {
-        /// Le notifiche della web sono accese su un dispositivo Apple: la web app sulla Home di un iPhone o di un iPad, o Safari sul Mac.
+        /// Le notifiche della web sono accese sulla web app di un iPhone, che le ha confermate negli ultimi giorni.
         case web
         /// «Avvisi anche per l'app nativa» con il canale ntfy, il cui tocco apre questa app.
         case ntfy
@@ -127,9 +127,9 @@ struct StatoAvvisi: Decodable {
     }
 
     /// Il server manda già i promemoria della scadenza a questo telefono? Allora l'app non programma i suoi, che arriverebbero due
-    /// volte. Decide il server con `promemoria_da`: «web» (la web app sulla Home con gli avvisi accesi, il doppione sullo stesso
-    /// telefono) e «ntfy» sì, «app» no. Le notifiche della web su un computer con Chrome, Firefox o Edge non contano: il telefono
-    /// resterebbe senza promemoria. Senza il campo (server di prima) la regola di prima (#906): sì solo con «Avvisi anche per l'app
+    /// volte. Decide il server con `promemoria_da`: «web» (la web app di un iPhone con gli avvisi accesi, il doppione sullo stesso
+    /// telefono) e «ntfy» sì, «app» no. Nel dubbio il server dice «app»: notifiche della web su un computer, un iPad o un Mac, o non
+    /// confermate negli ultimi giorni. Senza il campo (server di prima) la regola di prima (#906): sì solo con «Avvisi anche per l'app
     /// nativa», un canale e nessun dispositivo con le notifiche della web, perché `canale` è vero anche con le sole notifiche della web.
     var mandaGiaIlServer: Bool {
         if let promemoriaDa { return promemoriaDa != .app }

@@ -1,12 +1,13 @@
 {
   "titolo": "Avvisi: un promemoria solo per telefono, all'ora giusta anche all'estero",
   "voci": [
-    "Se hai l'app per iPhone e anche la web app sulla schermata Home con gli avvisi accesi, il promemoria prima della scadenza arriva una volta sola, dalla web app. Nell'app, sotto «Avvisi su questo dispositivo», una riga lo dice.",
+    "Se hai l'app per iPhone e anche la web app sulla schermata Home dell'iPhone con gli avvisi accesi, il promemoria prima della scadenza arriva una volta sola, dalla web app, se l'hai aperta negli ultimi tre giorni. Nell'app, sotto «Avvisi su questo dispositivo», una riga lo dice. Se spegni gli avvisi della web app, l'app riprende i suoi promemoria alla prossima apertura.",
     "App per iPhone: i promemoria suonano un'ora e un quarto d'ora prima della scadenza anche se il telefono è in un altro fuso orario.",
     "Guida: la parte sugli avvisi dell'app per iPhone dice che l'app manda solo i promemoria; l'avviso quando cambia la formazione arriva dalla web app."
   ],
   "tecnico": [
-    "GET e PUT /api/avvisi: campo nuovo promemoria_da («web» con un'iscrizione alle notifiche della web del servizio di Apple, *.push.apple.com; «ntfy» con app_nativa e il canale, solo senza account; altrimenti «app»). push.su_apple riconosce le iscrizioni di Apple. Nessun campo tolto; docs/API.md aggiornato.",
+    "GET e PUT /api/avvisi: campo nuovo promemoria_da («web» con un'iscrizione alle notifiche della web nata su un iPhone, del servizio di Apple e confermata negli ultimi 3 giorni, push.su_iphone_viva; «ntfy» con app_nativa e il canale, solo senza account; altrimenti «app»). Nessun campo tolto; docs/API.md e docs/openapi.json aggiornati.",
+    "POST /api/push/iscrivi: campo facoltativo iphone (la web lo manda vero con «iPhone» nello user agent); l'iscrizione salvata ha iphone (solo se vero) e confermata (data e ora di arrivo). La web rimanda la sua iscrizione alla prima apertura di ogni giorno, se ha il permesso delle notifiche (avvisi-confermati in localStorage).",
     "iPhone: StatoAvvisi.promemoriaDa decide mandaGiaIlServer («web» e «ntfy»: l'app non programma i suoi promemoria; senza il campo la regola di prima); AvvisiDispositivoViewModel.aiutoQui sceglie la riga sotto l'interruttore; Notifiche.attivazione programma promemoria e avvisi con UNTimeIntervalNotificationTrigger (secondi da adesso, almeno 1) invece di UNCalendarNotificationTrigger con giorno, ora e minuto senza fuso.",
     "notifiche._invia_ntfy: se ntfy non prende l'avviso (errore di rete o risposta non ok) una riga «Avvisi: avviso non partito su ntfy (tag, motivo)» nel registro, senza canale, titolo né testo; il giro dei promemoria la scrive in dati/promemoria.log. Nelle ore tranquille invia non arriva a ntfy e non scrive niente.",
     "Catalogo: chiave nuova imp.avvisi_qui_aiuto_web (italiano e inglese); rigenerati fanta/web/testi.js e ios/Sources/Support/Catalogo/Catalogo+Imp.swift; docs/COERENZA-WEB-IPHONE.md rigenerato."

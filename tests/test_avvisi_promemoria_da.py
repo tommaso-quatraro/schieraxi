@@ -1,10 +1,17 @@
 """Un solo promemoria per telefono (26/11/2026). Chi ha l'app per iPhone e la web app sulla Home con gli avvisi accesi riceveva
 lo stesso promemoria due volte: quello locale dell'app e quello del server alla web. `GET /api/avvisi` dice ora da dove arrivano
-già i promemoria (`promemoria_da`): `web` se le notifiche della web sono accese su un dispositivo Apple (il servizio di notifica è
-quello di Apple: web app sulla Home di iPhone e iPad, Safari sul Mac), `ntfy` con «Avvisi anche per l'app nativa» e il canale,
-altrimenti `app`. Con `web` o `ntfy` l'app per iPhone non programma i suoi promemoria. Le notifiche della web su un computer con
-Chrome, Firefox o Edge non contano: lì il telefono resterebbe senza promemoria."""
+già i promemoria (`promemoria_da`): `web`, `ntfy` con «Avvisi anche per l'app nativa» e il canale, altrimenti `app`. Con `web` o
+`ntfy` l'app per iPhone non programma i suoi promemoria.
+
+Nel dubbio l'app manda il suo: un promemoria doppio è meglio di uno che non arriva. Per questo `web` vale solo per
+un'iscrizione che sicuramente arriva a un iPhone ed è viva:
+- nata su un iPhone (la web lo dice quando la manda, `iphone`); iPad e Mac si presentano come «Macintosh» e non contano, e
+  nemmeno le iscrizioni di prima, senza il dato;
+- del servizio di notifica di Apple;
+- confermata negli ultimi GIORNI_CONFERMA giorni (`confermata`: la scrive il server a ogni iscrizione, e la web rimanda la sua
+  una volta al giorno, finché ha il permesso). Una web app tolta dalla Home o con le notifiche spente smette di confermare."""
 import json
+from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,6 +22,16 @@ CHIAVI = {"p256dh": "chiave-finta", "auth": "segreto-finto"}
 APPLE = "https://web.push.apple.com/QGinventato123"
 CHROME = "https://fcm.googleapis.com/fcm/send/inventato456"
 FIREFOX = "https://updates.push.services.mozilla.com/wpush/v2/inventato789"
+ADESSO = datetime(2026, 11, 26, 9, 30)
+
+
+def _voce(ep, iphone=None, confermata=None):
+    v = {"endpoint": ep, "keys": CHIAVI}
+    if iphone is not None:
+        v["iphone"] = iphone
+    if confermata is not None:
+        v["confermata"] = confermata.isoformat(timespec="seconds") if isinstance(confermata, datetime) else confermata
+    return v
 
 
 @pytest.fixture
@@ -23,36 +40,67 @@ def c(dati_isolati, monkeypatch):
     return TestClient(server.app, headers={"X-Fanta": "1"})
 
 
-def _iscritti(dati_isolati, *indirizzi):
+def _iscritti(dati_isolati, *voci):
     (dati_isolati / "push.json").parent.mkdir(parents=True, exist_ok=True)
-    (dati_isolati / "push.json").write_text(json.dumps([{"endpoint": e, "keys": CHIAVI} for e in indirizzi]), encoding="utf-8")
+    (dati_isolati / "push.json").write_text(json.dumps(list(voci)), encoding="utf-8")
 
 
-@pytest.mark.parametrize(("indirizzi", "atteso"), [
+@pytest.mark.parametrize(("voci", "atteso"), [
     ((), "app"),
-    ((CHROME,), "app"),                    # notifiche della web solo sul computer: il telefono ha bisogno dei suoi promemoria
-    ((CHROME, FIREFOX), "app"),
-    ((APPLE,), "web"),                     # web app sulla Home di un iPhone o di un iPad (o Safari sul Mac)
-    ((CHROME, APPLE), "web"),
+    ((_voce(CHROME, True, ADESSO),), "app"),                       # notifiche della web solo sul computer
+    ((_voce(APPLE, True, ADESSO),), "web"),                        # web app sulla Home di un iPhone, confermata adesso
+    ((_voce(CHROME, None, ADESSO), _voce(APPLE, True, ADESSO)), "web"),
+    ((_voce(APPLE, False, ADESSO),), "app"),                       # iPad o Mac («Macintosh»): forse non è questo telefono
+    ((_voce(APPLE, None, ADESSO),), "app"),                        # iscrizione di prima, senza il dato
+    ((_voce(APPLE, "sì", ADESSO),), "app"),                        # dato strano
+    ((_voce(APPLE, True),), "app"),                                # mai confermata
+    ((_voce(APPLE, True, "ieri"),), "app"),                        # data illeggibile
+    ((_voce(APPLE, True, ADESSO - timedelta(days=3)),), "web"),    # al limite della finestra
+    ((_voce(APPLE, True, ADESSO - timedelta(days=3, minutes=1)),), "app"),   # scaduta o revocata senza che il server lo sappia
+    ((_voce(APPLE, True, ADESSO + timedelta(days=1)),), "app"),    # nel futuro: orologio sbagliato, non si sa
 ])
-def test_promemoria_da_segue_le_notifiche_della_web(c, dati_isolati, indirizzi, atteso):
-    _iscritti(dati_isolati, *indirizzi)
+def test_promemoria_da_conta_solo_iscrizioni_vive_di_un_iphone(voci, atteso):
+    assert server._promemoria_da(list(voci), False, ADESSO) == atteso
+
+
+def test_con_ntfy_per_l_app_nativa_i_promemoria_arrivano_da_ntfy():
+    assert server._promemoria_da([], True, ADESSO) == "ntfy"
+    assert server._promemoria_da([_voce(CHROME, None, ADESSO)], True, ADESSO) == "ntfy"     # il server manda anche a ntfy
+    assert server._promemoria_da([_voce(APPLE, True, ADESSO)], True, ADESSO) == "web"
+
+
+def test_la_rotta_dice_promemoria_da(c, dati_isolati, monkeypatch):
+    adesso = datetime.now()
+    assert c.get("/api/avvisi").json()["promemoria_da"] == "app"
+    _iscritti(dati_isolati, _voce(APPLE, True, adesso))
     stato = c.get("/api/avvisi").json()
-    assert stato["dispositivi"] == len(indirizzi)
-    assert stato["promemoria_da"] == atteso
-
-
-def test_con_ntfy_per_l_app_nativa_i_promemoria_arrivano_da_ntfy(c, dati_isolati, monkeypatch):
+    assert (stato["dispositivi"], stato["promemoria_da"]) == (1, "web")
+    _iscritti(dati_isolati, _voce(APPLE, True, adesso - timedelta(days=10)))
+    assert c.get("/api/avvisi").json()["promemoria_da"] == "app"
     monkeypatch.setattr(notifiche, "canale", lambda: "canale-finto")
-    assert c.get("/api/avvisi").json()["promemoria_da"] == "app"          # ntfy senza l'opzione dell'app nativa: non apre l'app
     assert c.put("/api/avvisi", json={"app_nativa": True}).json()["promemoria_da"] == "ntfy"
-    _iscritti(dati_isolati, CHROME)
-    assert c.get("/api/avvisi").json()["promemoria_da"] == "ntfy"         # il server manda anche a ntfy, non solo alla web
-    _iscritti(dati_isolati, APPLE)
+
+
+def test_l_iscrizione_tiene_l_iphone_e_la_data_della_conferma(c, dati_isolati):
+    """La web manda `iphone` insieme all'iscrizione; il server lo tiene solo se è vero, e segna quando l'ha ricevuta. Rimandata
+    (la conferma di ogni giorno) la data si aggiorna e l'iscrizione resta una."""
+    prima = datetime.now().replace(microsecond=0)
+    assert c.post("/api/push/iscrivi", json={"endpoint": APPLE, "keys": CHIAVI, "iphone": True}).json() == {"dispositivi": 1}
+    [salvata] = push.iscrizioni(dati_isolati / "push.json")
+    assert salvata["iphone"] is True
+    assert prima <= datetime.fromisoformat(salvata["confermata"]) <= datetime.now()
     assert c.get("/api/avvisi").json()["promemoria_da"] == "web"
-    monkeypatch.setattr(notifiche, "canale", lambda: None)
-    _iscritti(dati_isolati)
-    assert c.get("/api/avvisi").json()["promemoria_da"] == "app"          # senza canale ntfy non parte niente
+    assert c.post("/api/push/iscrivi", json={"endpoint": APPLE, "keys": CHIAVI}).json() == {"dispositivi": 1}
+    [rimandata] = push.iscrizioni(dati_isolati / "push.json")
+    assert "iphone" not in rimandata                                    # senza il dato (web di prima): non conta più
+    assert c.get("/api/avvisi").json()["promemoria_da"] == "app"
+    c.post("/api/push/iscrivi", json={"endpoint": CHROME, "keys": CHIAVI, "iphone": "sì"})
+    assert all("iphone" not in s for s in push.iscrizioni(dati_isolati / "push.json"))
+
+
+def test_conferma_scritta_con_l_ora_passata(tmp_path):
+    lista = push.iscrivi({"endpoint": APPLE, "keys": CHIAVI, "iphone": True}, tmp_path / "push.json", adesso=ADESSO)
+    assert lista == [{"endpoint": APPLE, "keys": CHIAVI, "iphone": True, "confermata": "2026-11-26T09:30:00"}]
 
 
 @pytest.mark.parametrize(("indirizzo", "atteso"), [

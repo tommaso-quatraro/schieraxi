@@ -6,8 +6,8 @@ import Testing
 /// così come sono, niente frasi composte nell'app (niente più «modulo consigliato», anche quando il modulo l'ha scelto l'utente);
 /// lista vuota, nessun promemoria; server di prima, o testo di un'ora prima letto troppo presto, il promemoria minimo del catalogo
 /// con l'ora della scadenza (`oggi.prossima_chiude`). Se il server manda già i promemoria a questo telefono (`promemoria_da`: ntfy
-/// per l'app nativa o la web su un dispositivo Apple) l'app non programma i suoi; con le notifiche della web solo su un computer
-/// sì. I promemoria del certificato rispettano le ore tranquille.
+/// per l'app nativa o la web app di un iPhone) l'app non programma i suoi; nel dubbio sì. I promemoria del certificato rispettano
+/// le ore tranquille.
 @Suite("Promemoria con i testi del server")
 struct PromemoriaTestiDelServerTests {
     private let nome = NomeGiornata(serieA: 11, lega: 8)
@@ -131,7 +131,7 @@ struct PromemoriaTestiDelServerTests {
     }
 
     /// Un solo promemoria per telefono (26/11/2026): il server dice da dove arrivano già i promemoria (`promemoria_da`). «web»: le
-    /// notifiche della web sono accese su un dispositivo Apple (la web app sulla Home dello stesso telefono, il caso del doppione);
+    /// notifiche della web sono accese sulla web app di un iPhone (di solito lo stesso telefono, il caso del doppione);
     /// «ntfy»: ntfy per l'app nativa, anche con dispositivi della web; «app»: l'app programma i suoi. Un valore che l'app non
     /// conosce, o il campo assente (server di prima), lascia la regola di prima.
     @Test("Con `promemoria_da` decide il server; con un valore sconosciuto o senza il campo vale la regola di prima",

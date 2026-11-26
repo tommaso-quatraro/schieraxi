@@ -24,7 +24,7 @@ import re
 import threading
 import time
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from .blocco import BloccoFile
@@ -33,6 +33,7 @@ from .percorsi import RADICE, DatabaseAccountNonRisponde, ricontrolla_dopo_la_sc
 FILE_VAPID = RADICE / "dati" / "vapid.json"
 FILE_ISCRIZIONI = RADICE / "dati" / "push.json"
 MASSIMO_DISPOSITIVI = 8
+GIORNI_CONFERMA = 3     # un'iscrizione dell'iPhone tace i promemoria dell'app per iPhone solo se confermata da al massimo tanti giorni
 CONTATTO = "mailto:schieraxi@users.noreply.github.com"      # richiesto dal protocollo (deve essere un mailto:): un recapito di chi manda le notifiche; qui uno neutro
 # Tempo di vita: per quanto il servizio delle notifiche tiene un avviso per un telefono spento o senza rete (#652). Gli avvisi che
 # non parlano della formazione (oggi solo quello di prova) aspettano il telefono qualche ora; quelli sulla formazione (promemoria,
@@ -318,7 +319,10 @@ def _valida(sub: dict) -> dict:
         raise ValueError("Iscrizione non valida") from None
     if not isinstance(k.get("p256dh"), str) or not isinstance(k.get("auth"), str) or len(k["p256dh"]) > 200 or len(k["auth"]) > 100:
         raise ValueError("Iscrizione non valida")
-    return {"endpoint": ep, "keys": {"p256dh": k["p256dh"], "auth": k["auth"]}}
+    valida = {"endpoint": ep, "keys": {"p256dh": k["p256dh"], "auth": k["auth"]}}
+    if sub.get("iphone") is True:          # la web gira su un iPhone (iPad e Mac si presentano come «Macintosh»): su_iphone_viva
+        valida["iphone"] = True
+    return valida
 
 
 _blocco_iscrizioni = threading.Lock()          # leggere-modificare-scrivere una alla volta: due iscrizioni insieme non si perdono
@@ -356,14 +360,17 @@ class NonPiuValida(Exception):
     niente scritto."""
 
 
-def iscrivi(sub: dict, percorso: Path | None = None, ancora_valida=None) -> list[dict]:
-    """Aggiunge l'iscrizione (gli ultimi MASSIMO_DISPOSITIVI restano). `ancora_valida`: se c'è, si richiama dentro il blocco, subito
+def iscrivi(sub: dict, percorso: Path | None = None, ancora_valida=None, adesso: datetime | None = None) -> list[dict]:
+    """Aggiunge l'iscrizione (gli ultimi MASSIMO_DISPOSITIVI restano), con `confermata`: quando è arrivata (`adesso`, di base
+    l'ora vera). La web la rimanda una volta al giorno finché ha il permesso: la data dice che è ancora viva (`su_iphone_viva`).
+    `iphone` resta solo se la web l'ha mandato vero. `ancora_valida`: se c'è, si richiama dentro il blocco, subito
     prima di scrivere; se dice no (per esempio la sessione si è chiusa mentre si controllava il nome) non si scrive niente e
     alza NonPiuValida. Chi toglie le iscrizioni (`tieni_solo`) prende lo stesso blocco: o arriva prima e il controllo dice no,
     o arriva dopo e toglie anche questa. Lo stesso blocco vale tra processi (`_scrittura_iscrizioni`).
     Account eliminato: NonPiuValida prima di prendere il blocco, così il suo file non fa rinascere la cartella; se il database
     degli account non risponde, `percorsi.DatabaseAccountNonRisponde` (riprova). File occupato: Occupato."""
     nuova = _valida(sub)                       # (rete) fuori dal blocco
+    nuova["confermata"] = (adesso or datetime.now()).isoformat(timespec="seconds")
     p = percorso or FILE_ISCRIZIONI
     if not scrittura_permessa(p):
         raise NonPiuValida()
@@ -451,13 +458,28 @@ def maschera(ep: str) -> str:
 def su_apple(ep: str) -> bool:
     """L'iscrizione è di un dispositivo Apple? Lo dice il servizio di notifica, quello di Apple (`web.push.apple.com`): la web app
     sulla Home di un iPhone o di un iPad, oppure Safari sul Mac. Chrome, Firefox ed Edge usano i servizi di Google, Mozilla e
-    Microsoft. Serve a `promemoria_da` di GET /api/avvisi (un solo promemoria per telefono)."""
+    Microsoft. Serve a `su_iphone_viva` (un solo promemoria per telefono)."""
     from urllib.parse import urlsplit
     try:
         host = (urlsplit(ep).hostname or "") if ep.startswith("https://") else ""
     except ValueError:
         return False
     return host.endswith(".push.apple.com")
+
+
+def su_iphone_viva(s: dict, adesso: datetime, giorni: int = GIORNI_CONFERMA) -> bool:
+    """L'iscrizione arriva di sicuro a un iPhone ed è viva? Nata su un iPhone (`iphone`, lo dice la web), del servizio di Apple e
+    confermata negli ultimi `giorni` giorni (`confermata`). Serve a `promemoria_da` di GET /api/avvisi: solo allora l'app per
+    iPhone non programma i suoi promemoria. Nel dubbio no (un promemoria doppio è meglio di uno che non arriva): un'iscrizione di
+    prima senza i dati, di un iPad o di un Mac, mai confermata, con una data illeggibile o nel futuro. Una web app tolta dalla
+    Home o con le notifiche spente smette di confermare: il server non lo sa finché un invio non fallisce, ma dopo `giorni`
+    giorni non la conta più."""
+    if s.get("iphone") is not True or not su_apple(str(s.get("endpoint") or "")):
+        return False
+    try:
+        return timedelta(0) <= adesso - datetime.fromisoformat(str(s.get("confermata"))) <= timedelta(days=giorni)
+    except (ValueError, TypeError):        # TypeError: una data con il fuso, che non si confronta con l'ora del server
+        return False
 
 
 def _annota(testo: str) -> None:

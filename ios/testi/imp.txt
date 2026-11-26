@@ -5,7 +5,7 @@ imp.avvisi_qui
 # la riga sotto «Avvisi su questo dispositivo»: sull'iPhone accende solo i promemoria dell'app (#906), quindi non la riga della
 # web (imp.avvisi_qui_aiuto), che dice anche dell'avviso quando cambia la formazione
 imp.avvisi_qui_aiuto_app
-# al suo posto quando i promemoria arrivano già dalla web app su un dispositivo Apple (promemoria_da «web»)
+# al suo posto quando i promemoria arrivano già dalla web app di un iPhone (promemoria_da «web»)
 imp.avvisi_qui_aiuto_web
 imp.ore_tranquille_aiuto
 imp.ore_tranquille_spente
