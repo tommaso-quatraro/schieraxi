@@ -667,11 +667,12 @@ def _contesti() -> list[tuple[str, Any]]:
     return [(f"utente {i}", c) for i, c in ((i, Contesto.per_utente(i)) for i in ids) if c.rose.exists()]
 
 
-def leggi_live(file: Path = FILE_LIVE):
+def leggi_live(file: Path | None = None):
     """Un raccoglitore FERMO (non chiede niente a nessuno) con la cache letta dalla copia su file del servizio:
     {"aggiornato_il", "fonte", "partite": [partita come in /api/live]} (le partite possono stare anche in un dizionario).
     None se il file non c'è o non si legge: allora si usa il solo calendario, come il servizio senza diretta."""
     from . import live
+    file = file or FILE_LIVE              # letto a ogni chiamata: le prove lo spostano (#934)
     try:
         d = json.loads(file.read_text(encoding="utf-8"))
         partite = d.get("partite") or []
@@ -833,7 +834,8 @@ def registra(db: sqlite3.Connection, esito: dict, quando: str | None = None) -> 
 
 
 # ---------------------------------------------------------------- avvisi (una volta sola, niente raffiche)
-def leggi_stato(file: Path = FILE_STATO) -> dict:
+def leggi_stato(file: Path | None = None) -> dict:
+    file = file or FILE_STATO
     try:
         d = json.loads(file.read_text(encoding="utf-8"))
         return d if isinstance(d, dict) else {}
@@ -920,13 +922,14 @@ def aggiungi_giro(giri, voce: dict) -> list[dict]:
     return tenute + [voce]
 
 
-def giri_sentinella(dal: datetime, al: datetime, file: Path = FILE_STATO) -> list[dict]:
+def giri_sentinella(dal: datetime, al: datetime, file: Path | None = None) -> list[dict]:
     """I giri del server con `dal <= quando <= al`, dal più vecchio: [{quando, rotte, inviato}] (solo ore e nomi di invarianti).
     `dal` e `al` vogliono il fuso: la storia ha l'ora con il fuso, e un confronto con un'ora senza fuso sarebbe sbagliato.
     Il file che manca vale «nessun giro»; un file che c'è ma non si legge è un errore (ValueError), mai una lista vuota: la
     «giornata senza errori» non deve risultare verde per omissione. Il file di stato di prima, senza `giri`, vale lista vuota."""
     if dal.utcoffset() is None or al.utcoffset() is None:
         raise ValueError("dal e al vogliono data e ora col fuso (esempio: 2026-11-15T20:00:00+01:00 o 2026-11-15T19:00:00Z)")
+    file = file or FILE_STATO
     try:
         stato = json.loads(file.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -973,13 +976,14 @@ def manda_ntfy(titolo: str, testo: str, *, priorita: int = 4, tag: str = "mag") 
         return False
 
 
-def giro(minuti: float = 15, manda: Callable[[str, str], bool] | None = manda_ntfy, file_stato: Path = FILE_STATO,
+def giro(minuti: float = 15, manda: Callable[[str, str], bool] | None = manda_ntfy, file_stato: Path | None = None,
          adesso: datetime | None = None, scrivi: Callable[[str], None] = print, db_percorso: Path | None = None) -> dict:
     """Il comando del cron: controlla, scrive la tabella `controlli`, avvisa le rotture nuove e aggiunge il giro alla storia
     (`giri`). Con `manda=None` (--senza-invio) stampa l'avviso invece di mandarlo e non tocca il file di stato: le prove a mano non
     consumano gli avvisi e non entrano nella storia (non coprono il buco di un cron fermo)."""
     from . import archivio
     adesso = adesso or datetime.now()
+    file_stato = file_stato or FILE_STATO
     stato = leggi_stato(file_stato)
     db = archivio.apri(db_percorso) if db_percorso else archivio.apri()
     try:

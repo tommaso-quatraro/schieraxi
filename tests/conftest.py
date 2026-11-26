@@ -130,19 +130,28 @@ def pytest_configure(config):
 
 
 DATI_DEL_REPOSITORY = Path(__file__).resolve().parent.parent / "dati"     # sul PC di chi usa l'app c'è l'archivio vero
-_dati_all_inizio: set[str] | None = None
-_dati_nuovi: list[str] = []
+_dati_all_inizio: dict[str, tuple[int, int]] | None = None
+_dati_cambiati: list[str] = []
 
 
-def _voci_in_dati() -> set[str]:
+def _voci_in_dati() -> dict[str, tuple[int, int]]:
+    """Ogni voce di `dati/` con dimensione e ora di modifica: un file nuovo (anche `-wal` e `-shm`) o cambiato si vede."""
     if not DATI_DEL_REPOSITORY.is_dir():
-        return set()
-    return {"dati"} | {"dati/" + p.relative_to(DATI_DEL_REPOSITORY).as_posix() for p in DATI_DEL_REPOSITORY.rglob("*")}
+        return {}
+    voci = {"dati": (0, 0)}
+    for p in DATI_DEL_REPOSITORY.rglob("*"):
+        try:
+            s = p.stat()
+        except OSError:                # sparito mentre si guardava
+            continue
+        voci["dati/" + p.relative_to(DATI_DEL_REPOSITORY).as_posix()] = (0, 0) if p.is_dir() else (s.st_size, s.st_mtime_ns)
+    return voci
 
 
 def pytest_sessionstart(session):
-    """Controllo a fine sessione (#582): nessun test scrive nella `dati/` del repository. Qui si annota cosa c'è all'inizio;
-    con pytest-xdist lo fa solo il processo principale, che guarda di nuovo quando tutti i test sono finiti."""
+    """Controllo a fine sessione (#582, #934): nessun test crea o cambia file nella `dati/` del repository, nemmeno da un
+    sottoprocesso. Qui si annota cosa c'è all'inizio; con pytest-xdist lo fa solo il processo principale, che guarda di nuovo
+    quando tutti i test sono finiti."""
     global _dati_all_inizio
     if not hasattr(session.config, "workerinput"):
         _dati_all_inizio = _voci_in_dati()
@@ -151,16 +160,100 @@ def pytest_sessionstart(session):
 def pytest_sessionfinish(session, exitstatus):
     if _dati_all_inizio is None:
         return
-    _dati_nuovi[:] = sorted(_voci_in_dati() - _dati_all_inizio)
-    if _dati_nuovi and session.exitstatus == pytest.ExitCode.OK:
+    adesso = _voci_in_dati()
+    _dati_cambiati[:] = sorted(k for k, v in adesso.items() if _dati_all_inizio.get(k) != v)
+    if _dati_cambiati and session.exitstatus == pytest.ExitCode.OK:
         session.exitstatus = pytest.ExitCode.TESTS_FAILED
 
 
 def pytest_terminal_summary(terminalreporter):
-    if _dati_nuovi:
-        terminalreporter.section("file nuovi nella dati/ del repository", red=True)
+    if _dati_cambiati:
+        terminalreporter.section("file nuovi o cambiati nella dati/ del repository", red=True)
         terminalreporter.write_line("Un test ha scritto qui invece che in una cartella temporanea (fixture dati_isolati o tmp_path): "
-                                    + ", ".join(_dati_nuovi), red=True)
+                                    + ", ".join(_dati_cambiati), red=True)
+
+
+# Un test non apre nemmeno in lettura i file di `dati/` (#934): sul PC di chi usa l'app c'è l'archivio vero, e un test che lo
+# legge dà esiti diversi da PC a PC (e in WAL lascia `-wal` e `-shm`). Il controllo ascolta gli eventi di Python «open» e
+# «sqlite3.connect» di questo processo: l'apertura fallisce (PermissionError) e il test che l'ha chiesta fallisce.
+_RADICE_DATI = os.path.normcase(os.path.abspath(DATI_DEL_REPOSITORY))
+_aperture_in_dati: list[str] = []
+
+
+def _percorso_aperto(evento: str, args: tuple) -> str | None:
+    if evento == "open":
+        file = args[0]
+    elif evento == "sqlite3.connect":
+        file = args[0]
+        if isinstance(file, str) and file.startswith("file:"):
+            from urllib.parse import unquote, urlsplit
+            file = unquote(urlsplit(file).path)
+            if len(file) > 2 and file[0] == "/" and file[2] == ":":      # file:///C:/... su Windows
+                file = file[1:]
+    else:
+        return None
+    if isinstance(file, int) or file is None:
+        return None
+    try:
+        file = os.fsdecode(os.fspath(file))
+    except TypeError:
+        return None
+    if not file or file == ":memory:":
+        return None
+    if evento == "open" and len(args) > 1 and args[1] is None and not os.path.isabs(file):
+        return None      # os.open con un nome relativo, forse a una cartella (dir_fd): su Linux shutil.rmtree apre così le sottocartelle
+    return os.path.normcase(os.path.abspath(file))
+
+
+def _spia_dati(evento: str, args: tuple) -> None:
+    if evento not in ("open", "sqlite3.connect"):
+        return
+    file = _percorso_aperto(evento, args)
+    if file and (file == _RADICE_DATI or file.startswith(_RADICE_DATI + os.sep)):
+        _aperture_in_dati.append(file)
+        raise PermissionError(f"un test ha aperto {file}: nei test i dati stanno in una cartella temporanea (#934)")
+
+
+sys.addaudithook(_spia_dati)
+
+
+def _dentro_dati(valore) -> bool:
+    if not isinstance(valore, Path):
+        return False
+    s = os.path.normcase(os.path.abspath(valore))
+    return s == _RADICE_DATI or s.startswith(_RADICE_DATI + os.sep)
+
+
+@pytest.fixture(autouse=True)
+def _file_di_dati_in_cartella_finta(request, tmp_path, monkeypatch):
+    """Ogni percorso di `dati/` scritto in una costante di un modulo di `fanta` (l'archivio `archivio.FILE`, `live.json`,
+    `sentinella.json`, le impostazioni degli avvisi...) nei test punta alla stessa voce di una cartella temporanea (#934); così
+    anche il canale degli avvisi, che si legge da `<radice>/dati/canale-avvisi.txt`. L'archivio va allo stesso percorso di
+    `dati_isolati` e `listone_in_archivio`. Le fixture più specifiche e i singoli test possono poi spostarli altrove."""
+    if request.node.get_closest_marker("percorsi_veri"):
+        return
+    finta = tmp_path / "dati-repository-finta"
+    for nome, modulo in list(sys.modules.items()):
+        if modulo is None or not (nome == "fanta" or nome.startswith("fanta.")):
+            continue
+        for attributo, valore in list(vars(modulo).items()):
+            if _dentro_dati(valore):
+                relativo = Path(os.path.relpath(valore, DATI_DEL_REPOSITORY))
+                monkeypatch.setattr(modulo, attributo, finta / relativo)
+    from fanta import archivio, notifiche
+    monkeypatch.setattr(archivio, "FILE", tmp_path / "archivio-finto" / "fanta.sqlite")
+    monkeypatch.setattr(notifiche, "RADICE", tmp_path / "radice-finta")
+
+
+@pytest.fixture(autouse=True)
+def _nessun_file_aperto_in_dati():
+    """Fallisce il test che ha aperto un file di `dati/`, anche se il codice ha preso l'errore e proseguito."""
+    _aperture_in_dati.clear()
+    yield
+    aperti = sorted(set(_aperture_in_dati))
+    _aperture_in_dati.clear()
+    if aperti:
+        pytest.fail("Il test ha aperto file della dati/ del repository invece di una cartella temporanea: " + ", ".join(aperti))
 
 
 @pytest.fixture(autouse=True)
