@@ -104,7 +104,7 @@ def test_uscita_da_tutti_i_dispositivi_dice_di_chi(marco):
 
 
 # ---------------------------------------------------------------- chi entra solo con Google
-def test_controlla_per_chi_entra_solo_con_google_vuole_la_riconferma(scena):
+def test_controlla_per_chi_entra_solo_con_google_vuole_la_riconferma(scena):  # noqa: F811
     """Senza password vale la conferma recente con Google: prima 403 con `serve_riconferma` (la web e l'iPhone mostrano «Conferma
     con Google»), dopo la riconferma 200, e il controllo non elimina niente."""
     s = _solo_google(scena)
