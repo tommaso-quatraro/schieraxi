@@ -34,7 +34,9 @@ def _prev(stato: str) -> pd.DataFrame:
     return pd.DataFrame(righe, index=[1, 2] + list(ALTRI))
 
 
-def _scena(monkeypatch, stato="infortunato", con_alternativa=True):
+def _scena(monkeypatch, stato="infortunato", con_alternativa=True, differenza=5.2):
+    """`differenza`: i punti attesi della formazione in più con il cambio, come li scrive «Da fare» nella voce (None = la voce non
+    li ha, come quella di un server di prima)."""
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: ST)
     monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
     monkeypatch.setattr(consigli, "formazione", lambda *a, **k: {
@@ -44,6 +46,8 @@ def _scena(monkeypatch, stato="infortunato", con_alternativa=True):
     voce = {"giocatore": {"id": 1, "nome": "Castro"}}
     if con_alternativa:
         voce["alternativa"] = {"id": 2, "nome": "Bonny", "ruolo": "A", "punti_attesi": 6.2}
+        if differenza is not None:
+            voce["differenza"] = differenza
     monkeypatch.setattr(da_fare, "_dubbi", lambda *a, **k: [voce])
     mandati = []
     manda = lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo, tag)) or True    # noqa: E731
@@ -60,6 +64,17 @@ def test_titolare_fuori_avvisa_con_il_sostituto_e_non_si_ripete(tmp_path, monkey
     assert "Il tuo Castro è infortunato. Meglio Bonny (+5,2 punti attesi)." in testo
     notifiche.cambi(db, Regole(), ROSE, ADESSO, f, manda, file_scelte=tmp_path / "s.json")
     assert len(mandati) == 1                                                          # stesso cambio: una notifica sola
+
+
+def test_i_punti_in_piu_sono_quelli_della_formazione(tmp_path, monkeypatch):
+    """Il collaudo del 26/11: il numero di un cambio è quanto cambiano i punti attesi della FORMAZIONE (`differenza` della voce di
+    «Da fare»), non la differenza fra i due giocatori (qui 6,2 − 1,0 = +5,2): la panchina copre già in parte chi non gioca."""
+    prev, mandati, manda = _scena(monkeypatch, differenza=1.4)
+    notifiche.cambi(_db(), Regole(), ROSE, ADESSO, tmp_path / "n.json", manda, file_scelte=tmp_path / "s.json")
+    assert "Il tuo Castro è infortunato. Meglio Bonny (+1,4 punti attesi)." in mandati[0][1]
+    prev, mandati, manda = _scena(monkeypatch, differenza=None)              # senza il numero della formazione: nessun numero
+    notifiche.cambi(_db(), Regole(), ROSE, ADESSO, tmp_path / "m.json", manda, file_scelte=tmp_path / "s.json")
+    assert "Il tuo Castro è infortunato. Meglio Bonny." in mandati[0][1] and "punti" not in mandati[0][1]
 
 
 def test_dopo_il_primo_controllo_il_cambio_pronto_parte_da_solo(tmp_path, monkeypatch):
@@ -120,6 +135,9 @@ def _scena_vera(monkeypatch, stato, consigliata, panchina):
     monkeypatch.setattr(consigli, "scheda_previsione", lambda i, x: {"id": int(i), "nome": x["nome"], "ruolo": x["ruolo"], "stato": x["stato"],
                                                                      "dubbio": bool(x["dubbio"]), "p_voto": float(x["p_voto"]),
                                                                      "punti_attesi": float(x["atteso"])})
+    # la valutazione della formazione (quella vera è consigli.valuta): gioca × punti attesi di ogni titolare, senza panchina
+    monkeypatch.setattr(consigli, "valuta", lambda db, regole, rose, titolari, *a, **k: {
+        "punteggio_atteso": float(sum(prev.at[i, "p_voto"] * prev.at[i, "atteso"] for i in titolari))})
     mandati = []
     return mandati, lambda titolo, testo, priorita=3, tag="x", **k: mandati.append((titolo, testo)) or True     # noqa: E731
 
@@ -132,6 +150,35 @@ def test_cambio_pronto_con_il_vero_dubbi_quando_la_consigliata_lo_toglie(tmp_pat
     notifiche.cambi(_db(), Regole(), ROSE, ADESSO, tmp_path / "n.json", manda, file_scelte=fs)
     assert len(mandati) == 1 and mandati[0][0] == "SchieraXI · cambio pronto"
     assert "Il tuo Castro parte dalla panchina. Meglio Bonny" in mandati[0][1]
+
+
+def _formazione_che_vale(monkeypatch, con_castro: float, con_bonny: float) -> None:
+    """La valutazione della formazione con Castro o con Bonny fra i titolari (gli altri 10 uguali)."""
+    monkeypatch.setattr(consigli, "valuta", lambda db, regole, rose, titolari, *a, **k: {
+        "punteggio_atteso": con_bonny if 2 in titolari else con_castro})
+
+
+def test_infortunato_o_squalificato_cambio_pronto_anche_per_pochi_decimi(tmp_path, monkeypatch):
+    """Decisione del coordinatore sulla #928: per un titolare infortunato o squalificato l'avviso parte come prima anche se la
+    panchina lo copre quasi del tutto, con il numero vero della formazione (+0,3). La soglia di un punto vale solo per chi va in
+    panchina o è in dubbio."""
+    for stato, frase in (("infortunato", "è infortunato"), ("squalificato", "è squalificato")):
+        mandati, manda = _scena_vera(monkeypatch, stato, consigliata=[2], panchina=[1])
+        _formazione_che_vale(monkeypatch, con_castro=65.0, con_bonny=65.3)
+        fs = tmp_path / f"{stato}.json"
+        scelte.salva(ST, 9, CON_CASTRO, "4-4-2", fs)
+        notifiche.cambi(_db(), Regole(), ROSE, ADESSO, tmp_path / f"n-{stato}.json", manda, file_scelte=fs)
+        assert len(mandati) == 1 and f"Il tuo Castro {frase}. Meglio Bonny (+0,3 punti attesi)." in mandati[0][1], mandati
+
+
+def test_in_panchina_per_pochi_decimi_niente_cambio_pronto(tmp_path, monkeypatch):
+    """Chi parte dalla panchina nelle probabili: sotto un punto atteso per la formazione il cambio non si propone."""
+    mandati, manda = _scena_vera(monkeypatch, "panchina", consigliata=[2], panchina=[1])
+    _formazione_che_vale(monkeypatch, con_castro=65.0, con_bonny=65.3)
+    fs = tmp_path / "s.json"
+    scelte.salva(ST, 9, CON_CASTRO, "4-4-2", fs)
+    notifiche.cambi(_db(), Regole(), ROSE, ADESSO, tmp_path / "n.json", manda, file_scelte=fs)
+    assert not [m for m in mandati if m[0] == "SchieraXI · cambio pronto"]
 
 
 def test_niente_cambio_pronto_se_la_consigliata_lo_tiene(tmp_path, monkeypatch):

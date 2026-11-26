@@ -48,12 +48,11 @@ enum Decisioni {
         }
     }
 
-    /// «+0,9 punti attesi.»: quanto vale in più, da solo, il sostituto proposto rispetto al titolare (i punti attesi sono quelli del
-    /// server), come `guadagno` della web. Niente sotto 0,05 o senza i due numeri.
-    static func guadagno(_ v: DaFareVoce, puntiTitolare: Double?) -> String? {
-        guard v.tipo == "dubbio", let entra = v.alternativa?.puntiAttesi, let esce = puntiTitolare else { return nil }
-        let d = entra - esce
-        guard d.isFinite, d >= 0.05 else { return nil }
+    /// «+1,3 punti attesi.»: quanto guadagna la formazione con il cambio proposto, la `differenza` della voce (numero del server:
+    /// fatto il cambio, i punti attesi accanto al modulo cambiano di tanto), come `guadagno` della web. Non la differenza fra i due
+    /// giocatori, che non tornava (collaudo del 26/11). Niente sotto 0,05 o senza il numero del server.
+    static func guadagno(_ v: DaFareVoce) -> String? {
+        guard v.tipo == "dubbio", v.alternativa != nil, let d = v.differenza, d.isFinite, d >= 0.05 else { return nil }
         return Catalogo.Formazione.decisionePunti(d: Formato.conSegno(d))
     }
 }

@@ -6,9 +6,6 @@ salvataggio che ne sposta uno si rifiuta (400, `codice: "giocatore_bloccato"`), 
 «Cominciato» è la regola della consigliata (`consigli._anticipi_iniziati`, #368): calendario e orario.
 Rosa, squadre e calendario inventati; file in cartelle temporanee."""
 # ruff: noqa: F811  (la fixture `client` importata da test_server arriva come parametro con lo stesso nome: è il modo di pytest)
-import json
-import shutil
-import subprocess
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -21,7 +18,6 @@ from test_da_fare import mondo as mondo_da_fare  # noqa: F401  (fixture di «Da 
 from test_da_fare import vai as vai_da_fare
 from test_da_fare_consigliata_salvata import _cambia, _salva_la_consigliata
 from test_server import client  # noqa: F401  (fixture del server)
-import codice_web
 
 ST = "2026-27"
 GIORNATA = 10
@@ -212,27 +208,8 @@ def test_a_formazione_chiusa_niente_campo(mondo):
     assert f["iniziata"] is True and "bloccati" not in f
 
 
-# ---------------------------------------------------------------- web: i bloccati non si sostituiscono
-APP = codice_web.app()
-NODE = shutil.which("node")
-
-
-def _sostituti(f: dict, uscente: int, titolari: list[int]) -> list[int]:
-    """`sostituti` di app.js (chi può prendere il posto di un titolare, in «Sostituisci»), eseguita con node."""
-    funz = APP[APP.index("const giocatoriFermi"):APP.index("// La Formazione si ridisegna")]
-    prova = (f"{funz}\nconst f = {json.dumps(f)};\n"
-             f"console.log(JSON.stringify(sostituti(f, f.schede['{uscente}'], new Set({titolari})).map(x => x.id)));")
-    r = subprocess.run([NODE, "-e", prova], capture_output=True, text=True, encoding="utf-8", timeout=60)
-    assert r.returncode == 0, r.stderr
-    return json.loads(r.stdout)
-
-
-@pytest.mark.skipif(NODE is None, reason="node non installato")
-def test_web_chi_e_bloccato_non_esce_e_non_entra():
-    f = CONSIGLIATA_F | {"bloccati": BLOCCATI}
-    assert _sostituti(f, 5, CONSIGLIATA) == []                          # il 5 (anticipo cominciato) non si sostituisce
-    assert 16 not in _sostituti(f, 4, CONSIGLIATA) and 12 in _sostituti(f, 4, CONSIGLIATA)    # il 16 non entra, il 12 sì
-    assert set(_sostituti(CONSIGLIATA_F, 4, CONSIGLIATA)) == {12, 16}   # senza il campo (server vecchio, niente anticipi): come prima
+# Chi può prendere il posto di un titolare in «Sostituisci» lo dice il server dal 26/11 (POST /api/formazione/sostituisci): i
+# bloccati non escono e non entrano, provato in tests/test_sostituisci.py (prima qui con la funzione `sostituti` della web, tolta).
 
 
 # ---------------------------------------------------------------- «Da fare»: nessun cambio su chi è bloccato

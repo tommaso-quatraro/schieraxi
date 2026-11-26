@@ -18,7 +18,7 @@ import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from . import avvisi, consigli, live
+from . import archivio, avvisi, consigli, live
 from .percorsi import CARTELLA_LEGA, RADICE
 from .regole import Regole
 
@@ -102,7 +102,7 @@ def leghe_attive() -> list[Regole]:
 
 def _apri_db() -> sqlite3.Connection:
     """L'archivio in sola lettura (mai crearlo né scriverci da qui)."""
-    return sqlite3.connect(f"{(RADICE / 'dati' / 'fanta.sqlite').as_uri()}?mode=ro", uri=True, timeout=10)
+    return sqlite3.connect(f"{Path(archivio.FILE).resolve().as_uri()}?mode=ro", uri=True, timeout=10)
 
 
 def main(adesso: datetime | None = None) -> int:

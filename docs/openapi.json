@@ -202,6 +202,44 @@
     "title": "CodiceEmail",
     "type": "object"
    },
+   "Commento": {
+    "properties": {
+     "schermata": {
+      "anyOf": [
+       {
+        "maxLength": 100,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Schermata"
+     },
+     "testo": {
+      "maxLength": 4000,
+      "title": "Testo",
+      "type": "string"
+     },
+     "versione": {
+      "anyOf": [
+       {
+        "maxLength": 100,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Versione"
+     }
+    },
+    "required": [
+     "testo"
+    ],
+    "title": "Commento",
+    "type": "object"
+   },
    "CompletaSocial": {
     "properties": {
      "accetto_termini": {
@@ -1253,6 +1291,43 @@
     "title": "SoloPassword",
     "type": "object"
    },
+   "Sostituisci": {
+    "properties": {
+     "esce": {
+      "maximum": 2147483647.0,
+      "minimum": 1.0,
+      "title": "Esce",
+      "type": "integer"
+     },
+     "giornata": {
+      "anyOf": [
+       {
+        "maximum": 100.0,
+        "minimum": 1.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Giornata"
+     },
+     "titolari": {
+      "items": {
+       "type": "integer"
+      },
+      "maxItems": 40,
+      "title": "Titolari",
+      "type": "array"
+     }
+    },
+    "required": [
+     "esce",
+     "titolari"
+    ],
+    "title": "Sostituisci",
+    "type": "object"
+   },
    "TestoRegole": {
     "properties": {
      "testo": {
@@ -2238,6 +2313,60 @@
     "summary": "Crea Token Widget"
    }
   },
+  "/api/admin/feedback": {
+   "get": {
+    "description": "Gli ultimi commenti (feedback.MAX_ELENCO), il più recente in alto, e quanti di QUESTI sono ancora da leggere: segnandoli\ntutti letti il numero torna a zero anche quando i commenti sono di più.",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Commenti Degli Utenti"
+   }
+  },
+  "/api/admin/feedback/{commento_id}/letto": {
+   "post": {
+    "parameters": [
+     {
+      "in": "path",
+      "name": "commento_id",
+      "required": true,
+      "schema": {
+       "maximum": 2147483647,
+       "minimum": 1,
+       "title": "Commento Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Segna Letto"
+   }
+  },
   "/api/admin/fonti": {
    "get": {
     "description": "Le fonti di dati esterne con l'interruttore di ognuna (acceso, da dove viene la scelta, messaggio se spenta).",
@@ -3028,6 +3157,42 @@
     "summary": "Diario Schierata"
    }
   },
+  "/api/feedback": {
+   "post": {
+    "description": "Salva il commento (prima si controlla il testo: uno vuoto o troppo lungo non consuma il tetto del giorno) e, dopo la\nrisposta, avvisa il titolare. `{ok, id}`.",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Commento"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Manda Commento"
+   }
+  },
   "/api/formazione": {
    "get": {
     "parameters": [
@@ -3123,6 +3288,42 @@
      }
     },
     "summary": "Metti In Campo"
+   }
+  },
+  "/api/formazione/sostituisci": {
+   "post": {
+    "description": "«Sostituisci»: chi può prendere il posto di `esce`, uno dei `titolari` in pagina. I compagni dello stesso ruolo che non sono\ntitolari; per ognuno i punti attesi della formazione dopo il cambio e la differenza da quella di adesso. Non scrive niente: il\ncambio scelto si salva con POST /api/formazione/valuta.",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Sostituisci"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Sostituisci"
    }
   },
   "/api/formazione/testo": {

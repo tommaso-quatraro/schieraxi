@@ -1,25 +1,24 @@
 import SwiftUI
 
-/// «Sostituisci» (dalla scheda di un titolare), come `apriSostituzione` della web (#616): i compagni dello stesso ruolo che non sono
-/// titolari, il migliore in cima, ognuno con i punti attesi in più o in meno rispetto a lui (è già il confronto, in una riga) e il
-/// suo fantavoto atteso. Un tocco fa il cambio, che si salva da solo (`FormazioneViewModel.sostituisciTitolare`).
+/// «Sostituisci» (dalla scheda di un titolare), come `apriSostituzione` della web: i compagni dello stesso ruolo che non sono
+/// titolari, nell'ordine del server (dal cambio che rende di più). Il numero grande è la `differenza` del server: i punti attesi
+/// della formazione dopo il cambio meno quelli di adesso, verde se positiva (prima era la differenza fra i due giocatori, che non
+/// tornava con la formazione dopo il cambio); sotto il nome le etichette della web; a destra il fantavoto atteso. Mentre il server
+/// risponde «Carico…»; nessun compagno: la frase della web; `giocatore_bloccato`: la frase del server al posto dell'elenco, come
+/// informazione; un altro errore: il motivo. Un tocco su una riga fa il cambio, che si salva da solo
+/// (`FormazioneViewModel.scegliSostituto`).
 struct SceltaSostituto: View {
-    let uscente: Giocatore
-    let candidati: [Giocatore]
+    let elenco: ElencoSostituti
     let scelto: (Int) -> Void
     @Environment(\.dismiss) private var chiudi
+
+    private var uscente: Giocatore { elenco.uscente }
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    ForEach(candidati) { g in
-                        Button { scelto(g.id) } label: { riga(g) }
-                            .buttonStyle(.plain)
-                    }
-                    if candidati.isEmpty {
-                        Text(Catalogo.Formazione.nessunAltroGiocatore).foregroundStyle(Color.testoSecondario)
-                    }
+                    contenuto
                 } header: {
                     Text(Catalogo.Formazione.sostSpiega(nome: uscente.nome))
                         .font(.footnote).textCase(nil)
@@ -34,16 +33,37 @@ struct SceltaSostituto: View {
         }
     }
 
-    /// I punti attesi in più o in meno rispetto a chi esce: «+0,9», «−0,4», «0,0».
-    static func differenza(_ g: Giocatore, rispetto a: Giocatore) -> String {
-        Formato.conSegno((g.puntiAttesi ?? 0) - (a.puntiAttesi ?? 0))
+    @ViewBuilder
+    private var contenuto: some View {
+        switch elenco.stato {
+        case .carico:
+            Text(Catalogo.Comune.carico).foregroundStyle(Color.testoSecondario)
+        case .entrate(let righe):
+            if righe.isEmpty {
+                Text(Catalogo.Formazione.nessunAltroGiocatore).foregroundStyle(Color.testoSecondario)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                ForEach(righe) { r in
+                    Button { scelto(r.entra.id) } label: { riga(r) }
+                        .buttonStyle(.plain)
+                }
+            }
+        case .informazione(let frase):
+            // non è un guasto (la sua partita è cominciata): una frase, che VoiceOver legge quando compare
+            Text(frase).foregroundStyle(Color.testoSecondario)
+                .fixedSize(horizontal: false, vertical: true)
+                .onAppear { AccessibilityNotification.Announcement(frase).post() }
+        case .errore(let motivo):
+            Label(motivo, systemImage: "exclamationmark.triangle")
+                .fixedSize(horizontal: false, vertical: true)
+                .onAppear { AccessibilityNotification.Announcement(motivo).post() }
+        }
     }
 
-    /// Un sostituto: i punti attesi in più o in meno rispetto a chi esce, verdi da +0,05, e il suo fantavoto atteso (`RigaCambio`).
-    private func riga(_ g: Giocatore) -> some View {
-        RigaCambio(giocatore: g, numero: Self.differenza(g, rispetto: uscente),
-                   positivo: (g.puntiAttesi ?? 0) - (uscente.puntiAttesi ?? 0) > 0.04,
+    /// Un compagno che può entrare: la differenza del server con il segno («+0,9», «−0,4», «0,0»), verde se positiva.
+    private func riga(_ r: ElencoSostituti.Riga) -> some View {
+        RigaCambio(giocatore: r.entra, numero: r.differenza.map { Formato.conSegno($0) }, positivo: (r.differenza ?? 0) > 0,
                    voceNumero: Catalogo.Formazione.puntiRispetto(nome: uscente.nome),
-                   suggerimento: "Mette \(g.nome) al posto di \(uscente.nome)")
+                   suggerimento: "Mette \(r.entra.nome) al posto di \(uscente.nome)")
     }
 }

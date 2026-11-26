@@ -79,7 +79,9 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
   - Risultati in diretta: `live.py` (un solo raccoglitore, cache in memoria e in `dati/live.json` che sopravvive ai riavvii; il risultato ufficiale vince). Rotta `GET /api/live`, vedi `docs/LIVE.md`. Risultati e voti la sera stessa: `pianificatore.giro_risultati`.
   - Avvisi: `notifiche.py` (titolo e testo sono `Frase`: `invia` li scrive nella lingua `lingua` delle impostazioni degli avvisi; l'inglese sta in `frasi_avvisi.py`, chiavi `n.*`), `push.py` (Web Push), `avvisi.py` (quando si chiude la formazione: prima partita che conta e regola della lega), `avvisi_utenti.py`, `pianificatore.py`, `riscaldamento.py`. Copia della consigliata alla scadenza per ogni utente (copia automatica in `scelte` mai sopra una scelta vera + istantanea del Diario, negli ultimi 10 minuti, una volta sola, anche senza aprire l'app; `FANTA_COPIA_SCADENZA=0` la spegne): `copia_scadenza.py`, thread del servizio.
   - Account e posta: `account.py` (database sqlite, sessioni, inviti), `account_email.py`, `posta.py`, `social.py` (accesso
-    con Google), `onboarding.py`, `limiti.py`, `importa_sicuro.py`, `gestione.py`.
+    con Google), `onboarding.py`, `limiti.py`, `importa_sicuro.py`, `gestione.py`. «Scrivici» (26/11/2026): `feedback.py` (commenti degli
+    utenti nella tabella `feedback` di `account.sqlite`, avviso al titolare sul canale della sentinella senza testo né nome, comando
+    `python -m fanta feedback --ultimi N`) e `rotte_feedback.py` (`POST /api/feedback`, `GET /api/admin/feedback`).
   - Varie: `backup.py`, `controlli.py` (coerenza dei dati), `sentinella.py` (ogni ora: rifà in sola lettura le risposte di Oggi,
     Formazione, Scelta, Diario, widget e Live per ogni utente e controlla le invarianti di `INVARIANTI`; esito nella tabella
     `controlli`, avviso al proprietario alla prima rottura confermata; `script/server/sentinella.sh`; storia dei giri nel campo
@@ -284,7 +286,8 @@ Client: la web app, l'app per iPhone e il widget. Dettagli in `docs/API.md`. Non
   `dati/utenti/<id>/`, database `dati/account.sqlite`.
 - L'id utente viene solo dalla sessione, mai da un parametro. Ogni rotta personale usa `contesto.py` e va coperta da
   `tests/test_isolamento.py`.
-- Tetti per utente in `fanta/limiti.py`: importazioni di rose, ricerche di scambi (`FANTA_MAX_SCAMBI`), immagini da indirizzo web;
+- Tetti per utente in `fanta/limiti.py`: importazioni di rose, ricerche di scambi (`FANTA_MAX_SCAMBI`), immagini da indirizzo web,
+  commenti di «Scrivici» (`MAX_COMMENTI_AL_GIORNO`, 5);
   calcoli in coda e memoria dei risultati per utente, consigliate ricordate, azioni pesanti all'ora; importazione delle rose con lo
   stesso tetto di celle per ogni formato (`MAX_CELLE_IMPORTAZIONE`) e un tempo massimo per riconoscere i giocatori
   (`MAX_SECONDI_RICONOSCIMENTO`); avvisi con un tempo massimo per ogni invio (`MAX_SECONDI_INVIO`, vale sempre) e un tetto di prove
