@@ -7,6 +7,9 @@ struct ElencoSostituti: Identifiable {
     let id: Int
     /// Chi esce: la sua scheda nella Formazione.
     let uscente: Giocatore
+    /// Gli 11 in campo quando l'elenco si è aperto: se una rilettura ne porta altri, l'elenco si chiude
+    /// (`FormazioneViewModel.chiudiElenchiSuperati`, come `chiudiSostituzione` della web).
+    var titolari: [Int] = []
     var stato: Stato = .carico
 
     enum Stato {
@@ -20,11 +23,13 @@ struct ElencoSostituti: Identifiable {
         case errore(String)
     }
 
-    /// Una riga: chi entra (la sua scheda nella Formazione) e il numero del server per quel cambio.
+    /// Una riga: chi entra (la sua scheda nella Formazione), il numero del server per quel cambio e dove sta adesso.
     struct Riga: Identifiable {
         let entra: Giocatore
         /// I punti attesi della formazione dopo il cambio meno quelli di adesso; nil se il server non li manda (niente numero).
         let differenza: Double?
+        /// Dove sta chi entra nella formazione in campo: «Panchina 2», «Non schierato» (`PostoInFormazione`, come la web).
+        var posto: String? = nil
 
         var id: Int { entra.id }
     }

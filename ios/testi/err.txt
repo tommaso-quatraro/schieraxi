@@ -17,3 +17,7 @@ err.p_regola_voto_ufficio_rinviate
 
 # La Formazione senza la tua squadra e senza l'elenco delle squadre (SceltaSquadraFormazione), come mostraSenzaSquadra della web
 err.indica_squadra
+
+# La Formazione chiusa sopra le righe spente di «Sostituisci» e «Metti in campo» e sotto il campo (FormazioneViewModel.motivoCambiSpenti):
+# la frase della web e del 409 del server, revisione della #946
+err.formazione_chiusa

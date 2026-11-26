@@ -1,0 +1,6 @@
+# Testi della web (fanta/testi/scambi.json) che l'iPhone mostra: una chiave per riga.
+# Dopo una modifica: python script/testi.py --scrivi
+
+# Il titolo della panchina nella Formazione (FormazioneView) e la riga della panchina nel testo da copiare per l'app della lega
+# (TestoFormazione), come `testoFormazione` e la carta `#panchina` della web
+scambi.panchina

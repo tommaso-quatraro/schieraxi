@@ -104,6 +104,9 @@ final class PartiteRinviateTests: XCTestCase {
         XCTAssertNil(corpi.last?["modo"])
         XCTAssertNil(vm.erroreRinvio)
         XCTAssertFalse(vm.rinvioInCorso)
+        // la conferma della web («Fatto: consigli aggiornati per questa giornata», `oggi.rinvio_salvato`, collaudo del 26/11)
+        XCTAssertEqual(vm.confermaRinvio, TestiRinvio.salvato)
+        XCTAssertEqual(TestiRinvio.salvato, Catalogo.Oggi.rinvioSalvato)
     }
 
     @MainActor
@@ -111,5 +114,29 @@ final class PartiteRinviateTests: XCTestCase {
         let vm = OggiViewModel(server: ServerDiProva.chePrecipita(), conPromemoria: false)
         await vm.cambiaRinvio(SceltaRinvio(giornata: 10, modo: ModoRinvio.aspetta, predefinito: ModoRinvio.aspetta), modo: ModoRinvio.senzaVoto)
         XCTAssertNotNil(vm.erroreRinvio)
+        XCTAssertNil(vm.confermaRinvio, "niente conferma per una scelta che non si è salvata")
+    }
+
+    /// Collaudo del 26/11: l'errore di una scelta sul rinvio restava sotto il menu per sempre, anche a problema passato. Ora se ne
+    /// va alla prima lettura riuscita della giornata (all'apertura, «Aggiorna», dopo un salvataggio).
+    @MainActor
+    func testLErroreSeNeVaAllaPrimaLetturaRiuscita() async throws {
+        let rotto = Scatola<Bool>()
+        rotto.valore = true
+        let giornata = try Fixture.dati("oggi")
+        let server = ServerDiProva { _, percorso, _ in
+            if percorso.hasPrefix("/api/regole/rinvio") {
+                if rotto.valore == true { throw ErroreApi.server("Il server ha un guasto") }
+                return Data(#"{"giornata": 10, "modo": "senza_voto", "eccezione": true}"#.utf8)
+            }
+            if percorso.hasPrefix("/api/oggi") { return giornata }
+            throw ErroreApi.server("nessuna risposta per \(percorso)")
+        }
+        let vm = OggiViewModel(server: server, conPromemoria: false)
+        await vm.cambiaRinvio(SceltaRinvio(giornata: 10, modo: ModoRinvio.aspetta, predefinito: ModoRinvio.aspetta), modo: ModoRinvio.senzaVoto)
+        XCTAssertNotNil(vm.erroreRinvio)
+        await vm.carica()
+        XCTAssertNotNil(vm.oggi, "la giornata è arrivata dal server")
+        XCTAssertNil(vm.erroreRinvio, "a lettura riuscita l'errore vecchio non si mostra più")
     }
 }

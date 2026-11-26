@@ -170,5 +170,16 @@ extension Catalogo {
         static func stagionePrec(a: String, g: String, m: String, s: String, xa: String, xg: String) -> String {
             "Stagione \(s): \(m)' · \(g) gol (\(xg) attesi) · \(a) assist (\(xa) attesi)"
         }
+
+        /// `mercato.posto_titolare`
+        static let postoTitolare = "Titolare"
+
+        /// `mercato.panchina_n`
+        static func panchinaN(n: String) -> String {
+            "Panchina \(n)"
+        }
+
+        /// `mercato.posto_fuori`
+        static let postoFuori = "Non schierato"
     }
 }
