@@ -1385,14 +1385,19 @@ def diario_schierata(dati: SchierataDiario, request: Request, response: Response
 @app.get("/api/diario")
 def leggi_diario(ctx: Contesto = Depends(lega_corrente)):
     """Giornata per giornata: la formazione che hai schierato contro quella consigliata, con punti attesi e fatti."""
-    r = diario.elenco(ctx.diario, _regole(ctx))
-    r["precisione"] = precisione.riassunto(r["giornate"])          # «Quanto ci abbiamo preso» (campo nuovo: i client vecchi lo ignorano)
-    r["precisione"]["serie_a"] = None
     try:
         db = _db()
-    except sqlite3.Error:                                          # archivio occupato o assente: il Diario si apre lo stesso, senza la riga
-        return r
+    except sqlite3.Error as e:
+        # archivio occupato o assente: il Diario si apre lo stesso, senza la riga su tutta la Serie A e senza sapere quali voci
+        # sono sospese (diario.sospesa: giornata riaperta da una regola dei rinvii cambiata), quindi le mostra tutte
+        logging.getLogger("uvicorn.error").warning("Diario: archivio non aperto (%s), le voci si mostrano tutte", type(e).__name__)
+        db = None
     try:
+        r = diario.elenco(ctx.diario, _regole(ctx), db)
+        r["precisione"] = precisione.riassunto(r["giornate"])      # «Quanto ci abbiamo preso» (campo nuovo: i client vecchi lo ignorano)
+        r["precisione"]["serie_a"] = None
+        if db is None:
+            return r
         try:
             r["precisione"]["serie_a"] = precisione.serie_a(db)    # la riga su tutta la Serie A, dal registro delle giornate (#374)
         except sqlite3.Error:
@@ -1400,7 +1405,8 @@ def leggi_diario(ctx: Contesto = Depends(lega_corrente)):
         if not r["giornate"]:
             r["motivo_vuoto"] = diario.motivo_vuoto(db, _regole(ctx), _rose(ctx))          # campo facoltativo: i client vecchi lo ignorano
     finally:
-        db.close()
+        if db is not None:
+            db.close()
     return r
 
 

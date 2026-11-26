@@ -149,7 +149,7 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
         if breve:
             corpo["in_corso"] |= {"situazione_breve": breve, "situazione_breve_frase": breve.json()}
 
-    corpo["diario"] = _diario(file_diario, regole)
+    corpo["diario"] = _diario(file_diario, regole, db)
 
     ossv = []
     for i in osservati.leggi(file_osservati)[:MAX_OSSERVATI]:
@@ -181,11 +181,11 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
     return corpo
 
 
-def _diario(file_diario, regole: Regole) -> list[dict]:
+def _diario(file_diario, regole: Regole, db: sqlite3.Connection) -> list[dict]:
     """Punti attesi contro punti fatti nelle ultime giornate (dal diario; con la formazione schierata se c'è, altrimenti la
     consigliata). `giornata_lega` e `stagione` come in /api/diario: il widget scrive lo stesso numero dell'app (null fuori dalla
-    stagione in corso)."""
-    voci = diario.elenco(file_diario, regole)["giornate"][:MAX_DIARIO]
+    stagione in corso), e non ha le voci che l'app non mostra (`diario.sospesa`)."""
+    voci = diario.elenco(file_diario, regole, db)["giornate"][:MAX_DIARIO]
     return [{"giornata": v["giornata"], "giornata_lega": v.get("giornata_lega"), "stagione": v["stagione"],
              "attesi": (v.get("schierata") or v["consigliata"])["atteso"],
              "fatti": (v.get("schierata") or v["consigliata"])["reale"],
@@ -207,7 +207,7 @@ def _campionato_finito(db: sqlite3.Connection, regole: Regole, rose: Rose, o: di
              "avvisi": [], "rosa": [], "squalificati": [], "diffidati": [], "rigoristi": [],
              "campionato_finito": o["campionato_finito"]}
     corpo |= {k: o[k] for k in CAMPI_FASE if o.get(k) is not None}
-    corpo["diario"] = _diario(file_diario, regole)
+    corpo["diario"] = _diario(file_diario, regole, db)
     corpo["osservati"] = []
     corpo["dati"] = _dati(db)
     return corpo

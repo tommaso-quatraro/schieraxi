@@ -1200,15 +1200,35 @@ def motivo_vuoto(db: sqlite3.Connection, regole: Regole, rose: Rose | None) -> s
     return "calcolo"
 
 
-def elenco(percorso: Path | None = None, regole: Regole | None = None) -> dict:
+def sospesa(db: sqlite3.Connection, regole: Regole, voce: dict) -> bool:
+    """Vero se la voce non va mostrata, né nel Diario né nel riepilogo di Oggi: la sua giornata (della stagione in corso) per la
+    lega non è più finita e la voce è stata calcolata con regole diverse da quelle di adesso (`impronta_regole`). Succede quando
+    la regola delle partite rinviate di quella giornata torna ad «aspetta» dopo il calcolo: i punti della voce (con il voto
+    d'ufficio o senza voto) non sono più quelli della lega, che aspetta il recupero. Quando la giornata si richiude `aggiorna` la
+    rifà, perché l'impronta è cambiata. L'archivio si legge solo se l'impronta della voce non è quella di adesso."""
+    stagione = consigli.stagione_corrente()
+    g, fatta = voce.get("giornata"), voce.get("regole")
+    if voce.get("stagione") != stagione or not isinstance(g, int) or not isinstance(fatta, str):
+        return False                    # un'altra stagione, o una voce senza l'impronta delle regole: non si sa, resta
+    if fatta == impronta_regole(regole, stagione, g, False) == impronta_regole(regole, stagione, g, True):
+        return False                    # le stesse regole, con o senza partite fuori dal turno
+    if g in rinvii.giornate_chiuse(db, stagione, regole):
+        return False
+    return fatta != impronta_regole(regole, stagione, g, rinvii.ha_fuori_turno(db, stagione, g))
+
+
+def elenco(percorso: Path | None = None, regole: Regole | None = None, db: sqlite3.Connection | None = None) -> dict:
     """Le voci dalla più recente, con la sintesi: quello che mostra l'app. Con le regole della lega, la stagione in corso conta solo
-    dalla prima giornata della lega e ogni voce porta anche `giornata_lega` (il numero nel calendario della lega)."""
+    dalla prima giornata della lega e ogni voce porta anche `giornata_lega` (il numero nel calendario della lega). Con le regole e
+    l'archivio `db` non ci sono le voci sospese (`sospesa`), nemmeno nei conti in cima."""
     d = carica(percorso)
     istantanee = d["istantanee"] if isinstance(d.get("istantanee"), dict) else {}
     voci = [per_i_client(v) for v in sorted(d["giornate"].values(), key=lambda v: (v["stagione"], v["giornata"]), reverse=True)]
     corrente = consigli.stagione_corrente()
     if regole is not None:
         voci = [v for v in voci if v["stagione"] != corrente or v["giornata"] >= regole.prima_giornata_lega]
+        if db is not None:
+            voci = [v for v in voci if not sospesa(db, regole, v)]
         for v in voci:
             v["giornata_lega"] = serie_a_a_lega(v["giornata"], regole) if v["stagione"] == corrente else None
     for v in voci:

@@ -466,7 +466,8 @@ def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, fil
             "recuperi": mancano if r_rinvio["modo"] == "aspetta" else [],
             "rinvio": _rinvio_del_riepilogo(db, regole, rose, stagione, giornata, mancano) if mancano else None}
     voce = (diario.carica(file_diario).get("giornate") or {}).get(f"{stagione}/{giornata}") if file_diario else None
-    if isinstance(voce, dict) and isinstance(voce.get("consigliata"), dict):
+    # una voce calcolata con un'altra regola dei rinvii per una giornata che ora aspetta il recupero non vale (diario.sospesa)
+    if isinstance(voce, dict) and isinstance(voce.get("consigliata"), dict) and not diario.sospesa(db, regole, voce):
         mia = voce.get("schierata") or voce.get("automatica") or voce["consigliata"]
         cons = voce["consigliata"]
         return base | {"formazione_di": "tua" if voce.get("schierata") else "consigliata", "nel_diario": True,
