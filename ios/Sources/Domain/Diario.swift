@@ -15,6 +15,23 @@ struct DiarioRisposta: Decodable {
     /// Perché `giornate` è vuoto (`squadra`, `giornate` o `calcolo`): la pagina Giornate lo dice. Facoltativo (server vecchio: la
     /// frase generica).
     let motivoVuoto: String?
+    /// Le giornate finite che ora aspettano il recupero e non hanno la loro riga (revisione di #947), con la frase del server.
+    /// Facoltativo: i server più vecchi non lo mandano.
+    let inAttesa: [AttesaRecupero]?
+}
+
+/// Una giornata di `in_attesa` di `GET /api/diario`: «Giornata 9 · 12ª di Serie A: in attesa del recupero, i punti arrivano
+/// dopo.» (`testo`, scritto dal server). Tollerante: senza un testo vale «niente da mostrare».
+struct AttesaRecupero: Decodable, Equatable {
+    var testo: String?
+
+    private enum Chiavi: String, CodingKey { case testo }
+
+    init(from decoder: Decoder) throws {
+        guard let k = try? decoder.container(keyedBy: Chiavi.self) else { return }
+        let frase = (try? k.decodeIfPresent(String.self, forKey: .testo)) ?? nil
+        testo = frase?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? frase : nil
+    }
 }
 
 struct VoceDiario: Decodable, Identifiable {

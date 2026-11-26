@@ -28,7 +28,7 @@ from . import indicatori_consiglio as ic
 from . import verifica_consiglio as vc
 from . import formazione as fz
 from .blocco import BloccoFile
-from .frasi import F, ConSegno, elenco as elenco_frasi
+from .frasi import F, ConSegno, elenco as elenco_frasi, nome_giornata
 from .lega import Rose
 from .modello import Dati, Parametri, previsioni
 from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
@@ -1269,15 +1269,24 @@ def sospesa(db: sqlite3.Connection, regole: Regole, voce: dict) -> bool:
 def elenco(percorso: Path | None = None, regole: Regole | None = None, db: sqlite3.Connection | None = None) -> dict:
     """Le voci dalla più recente, con la sintesi: quello che mostra l'app. Con le regole della lega, la stagione in corso conta solo
     dalla prima giornata della lega e ogni voce porta anche `giornata_lega` (il numero nel calendario della lega). Con le regole e
-    l'archivio `db` non ci sono le voci sospese (`sospesa`), nemmeno nei conti in cima."""
+    l'archivio `db` non ci sono le voci sospese (`sospesa`), nemmeno nei conti in cima: le loro giornate stanno in `in_attesa`
+    (dalla più recente, {stagione, giornata, giornata_lega, testo, frase}, «Giornata 5 · 8ª di Serie A: in attesa del recupero, i
+    punti arrivano dopo.»), che web e iPhone mostrano così com'è (revisione di #947: prima la giornata spariva senza spiegazione)."""
     d = carica(percorso)
     istantanee = d["istantanee"] if isinstance(d.get("istantanee"), dict) else {}
     voci = [per_i_client(v) for v in sorted(d["giornate"].values(), key=lambda v: (v["stagione"], v["giornata"]), reverse=True)]
     corrente = consigli.stagione_corrente()
+    in_attesa = []
     if regole is not None:
         voci = [v for v in voci if v["stagione"] != corrente or v["giornata"] >= regole.prima_giornata_lega]
         if db is not None:
-            voci = [v for v in voci if not sospesa(db, regole, v)]
+            sospese = [v for v in voci if sospesa(db, regole, v)]
+            voci = [v for v in voci if v not in sospese]
+            for v in sospese:
+                lega = serie_a_a_lega(v["giornata"], regole)
+                frase = F("diario.in_attesa_recupero", giornata=nome_giornata(v["giornata"], lega))
+                in_attesa.append({"stagione": v["stagione"], "giornata": v["giornata"], "giornata_lega": lega, "testo": str(frase),
+                                  "frase": frase.json()})
         for v in voci:
             v["giornata_lega"] = serie_a_a_lega(v["giornata"], regole) if v["stagione"] == corrente else None
     for v in voci:
@@ -1300,4 +1309,5 @@ def elenco(percorso: Path | None = None, regole: Regole | None = None, db: sqlit
         v["spiegazione_punti"] = spiegazione_punti(v)                # #900: perché i punti non sono la somma dei voti degli 11
         v["consigliata_di_allora"] = consigliata_di_allora(v)        # #674: perché c'è, o non c'è, il confronto
         v.update(nota_consigliata(v))
-    return {"giornate": voci, "sintesi": sintesi(voci), "scelte_tue": scelte_tue(voci), "affidabilita": affidabilita(voci)}
+    return {"giornate": voci, "sintesi": sintesi(voci), "scelte_tue": scelte_tue(voci), "affidabilita": affidabilita(voci),
+            "in_attesa": in_attesa}

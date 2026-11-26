@@ -1112,6 +1112,10 @@
     "it": "Hai schierato gli stessi undici della consigliata in tutte le giornate che si possono confrontare. {fuori}",
     "en": "You fielded the same eleven as the recommended lineup in every matchday that can be compared. {fuori}"
   },
+  "frase.diario.in_attesa_recupero": {
+    "it": "{giornata}: in attesa del recupero, i punti arrivano dopo.",
+    "en": "{giornata}: waiting for the make-up game, the points will come later."
+  },
   "frase.diario.senza_confronto": {
     "it": "Qui il confronto con la consigliata non c'è: {perche}.",
     "en": "No comparison with the recommended lineup here: {perche}."

@@ -103,7 +103,8 @@ def test_la_rotta_del_diario_e_il_widget_non_mostrano_la_voce_sospesa(mondo, mon
     assert [v["giornata"] for v in c.get("/api/diario").json()["giornate"]] == [1]
     assert [v["fatti"] for v in widget._diario(mondo.file, UFFICIO, mondo.db)] == [66.0]
     regole.salva(aspetta, tmp_path / "regole.json")
-    assert c.get("/api/diario").json()["giornate"] == []
+    r = c.get("/api/diario").json()
+    assert r["giornate"] == [] and [x["testo"] for x in r["in_attesa"]] == [ATTESA_1]
     assert widget._diario(mondo.file, aspetta, mondo.db) == []
 
 
@@ -111,6 +112,23 @@ def test_con_le_stesse_regole_la_voce_resta(mondo):
     """Solo la voce calcolata con regole diverse da quelle di adesso si nasconde: con il voto d'ufficio la giornata resta finita."""
     mondo.aggiorna(UFFICIO)
     assert mondo.riepilogo(UFFICIO)["nel_diario"] is True and mondo.riepilogo(UFFICIO)["punti_fatti"] == 66.0
+
+
+ATTESA_1 = "Giornata 1 · 1ª di Serie A: in attesa del recupero, i punti arrivano dopo."
+
+
+def test_la_giornata_sospesa_ha_una_riga_che_lo_dice(mondo):
+    """Revisione di #947: la giornata nascosta perché aspetta il recupero non sparisce senza spiegazione. `in_attesa` la elenca
+    con la frase del server (web e iPhone la mostrano così com'è); vuoto quando non c'è niente da aspettare."""
+    mondo.aggiorna(UFFICIO)
+    assert diario.elenco(mondo.file, UFFICIO, mondo.db)["in_attesa"] == []
+    aspetta = rinvii.con_eccezione(UFFICIO, ST, 1, "aspetta", ST)
+    attesa = diario.elenco(mondo.file, aspetta, mondo.db)["in_attesa"]
+    assert [(x["stagione"], x["giornata"], x["giornata_lega"], x["testo"]) for x in attesa] == [(ST, 1, 1, ATTESA_1)]
+    assert attesa[0]["frase"]["chiave"] == "diario.in_attesa_recupero"
+    mondo.recupero(TUTTI_SEI)
+    mondo.aggiorna(aspetta)
+    assert diario.elenco(mondo.file, aspetta, mondo.db)["in_attesa"] == []
 
 
 def test_con_le_regole_di_adesso_il_diario_non_legge_l_archivio(mondo):

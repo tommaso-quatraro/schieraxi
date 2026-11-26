@@ -312,6 +312,17 @@ struct GiornateTests {
         #expect(try pagina("diario-giornate").vuoto == nil)
     }
 
+    @Test("Una giornata che aspetta il recupero (`in_attesa`, revisione di #947): la frase del server, anche al posto della pagina vuota")
+    func inAttesaDelRecupero() throws {
+        let frase = "Giornata 9 · 12ª di Serie A: in attesa del recupero, i punti arrivano dopo."
+        let json = #"{"giornate": [], "motivo_vuoto": "calcolo", "in_attesa": [{"stagione": "2026-27", "giornata": 12, "giornata_lega": 9, "testo": "\#(frase)", "frase": {"chiave": "diario.in_attesa_recupero"}}, {"giornata": 3, "testo": " "}]}"#
+        let p = PaginaGiornate(try Decodifica.decodifica(Data(json.utf8)))
+        #expect(p.inAttesa == [frase])
+        #expect(p.vuoto == nil)
+        #expect(PaginaGiornate(try Decodifica.decodifica(Data(#"{"giornate": []}"#.utf8))).inAttesa.isEmpty)
+        #expect(try pagina("diario-giornate").inAttesa.isEmpty)
+    }
+
     // MARK: la giornata da aprire
 
     @Test("«Com'è andata» apre la giornata della stagione in corso, la più recente con quel numero")

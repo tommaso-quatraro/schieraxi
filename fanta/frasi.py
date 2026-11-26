@@ -338,6 +338,8 @@ CATALOGO: dict[str, str] = {
     "diario.confronto_non_valutabili.one": "{n} giornata non entra nel confronto: la consigliata di allora non si può più valutare con la rosa e le regole di oggi.",
     "diario.confronto_non_valutabili.other": "{n} giornate non entrano nel confronto: la consigliata di allora non si può più valutare con la rosa e le regole di oggi.",
     "diario.confronto_stessa_confrontabili": "Hai schierato gli stessi undici della consigliata in tutte le giornate che si possono confrontare. {fuori}",
+    # Giornate, una giornata finita che ora aspetta il recupero e non si mostra (revisione di #947, diario.elenco `in_attesa`)
+    "diario.in_attesa_recupero": "{giornata}: in attesa del recupero, i punti arrivano dopo.",
     # Giornate, una giornata senza la consigliata mostrata (#674, diario.nota_consigliata): {perche} = una `diario.allora_*`
     "diario.senza_confronto": "Qui il confronto con la consigliata non c'è: {perche}.",
     "diario.rifatta": "Questa è rifatta con i dati di allora: {perche}.",

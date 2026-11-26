@@ -109,7 +109,8 @@ def test_file_mancante_o_rovinato(tmp_path):
                                                                  "senza_istantanea": 0, "stessi_titolari": 0, "nota": None,
                                                                  "nota_frase": None},
                                                   "affidabilita": {"giornate": 0, "giudizio": "pochi_dati", "pochi_dati": True,
-                                                                   "giornate_minime": diario.POCHI_DATI, "senza_istantanea": 0}}
+                                                                   "giornate_minime": diario.POCHI_DATI, "senza_istantanea": 0},
+                                                  "in_attesa": []}
 
 
 def _voce(g, tue, loro, punti_tua, punti_loro):

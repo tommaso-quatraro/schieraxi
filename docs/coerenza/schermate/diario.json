@@ -71,6 +71,15 @@
       "forma": "server (`spiegazione_punti.righe` di ogni voce di `GET /api/diario`, così com'è; `null` o assente: niente)",
       "chi": "server e web con #900; l'iPhone da fare (#900)",
       "stato": "da-fare"
+    },
+    {
+      "id": 110,
+      "schermata": "Giornate, giornata finita che ora aspetta il recupero",
+      "web": "in cima, sotto la precisione e «Dettagli», una riga piccola e grigia per giornata: «Giornata 9 · 12ª di Serie A: in attesa del recupero, i punti arrivano dopo.»; la giornata non ha la sua riga finché il recupero non è giocato e i suoi voti non sono arrivati; senza altre giornate la frase prende il posto di «Ancora niente…»",
+      "iphone": "uguale alla web, sul telefono e sull'iPad (`PaginaGiornate.inAttesa`, `GiornateView.attese`)",
+      "forma": "server (`in_attesa[].testo` di `GET /api/diario`, così com'è; assente o vuoto: niente)",
+      "chi": "**fatto** (revisione di #947): server, web e iPhone insieme; prova `GiornateTests.inAttesaDelRecupero`",
+      "stato": "fatto"
     }
   ]
 }

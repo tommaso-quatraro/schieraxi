@@ -203,7 +203,7 @@ L'app per iPhone installata con SideStore scade dopo 7 giorni e va rinnovata. Se
 
 ## 5. Dopo la giornata: Giornate
 
-**Giornate** è la seconda scheda della barra. In cima una riga dice quanto sbaglia finora il fantavoto atteso, in media, per giocatore; **Dettagli** apre i numeri descritti qui sotto.
+**Giornate** è la seconda scheda della barra. In cima una riga dice quanto sbaglia finora il fantavoto atteso, in media, per giocatore; **Dettagli** apre i numeri descritti qui sotto. Se una giornata già finita ora aspetta il recupero di una partita rinviata, sotto c'è una riga piccola, per esempio «Giornata 9 · 12ª di Serie A: in attesa del recupero, i punti arrivano dopo.»: quella giornata torna nell'elenco quando il recupero è giocato e i suoi voti sono usciti.
 
 Poi una riga per ogni giornata finita, la più recente in cima: i punti fatti, grandi, con quelli attesi e di quanto sono andati sopra o sotto (per esempio «+9,2 sul previsto»), e sotto di chi sono i punti:
 
@@ -268,7 +268,7 @@ Sulla schermata Home, a schermo intero, senza store:
 
 **Perché la formazione è diversa da ieri?** Sono cambiate probabili, infortuni o squalifiche. Se l'hai cambiata tu o hai spuntato **L'ho messa**, la tua non cambia da sola.
 
-**Una partita è stata rinviata: schiero i suoi giocatori?** Dipende dalla tua lega. Se aspetta il recupero, il loro voto arriverà con il recupero e restano schierabili; se restano senza voto, SchieraXI mette chi gioca davvero; con il voto d'ufficio contano con quel voto. Scegli la regola in Impostazioni › Regole e scadenza › Modifica i valori e, per una sola giornata, da **Partita rinviata** nella Formazione. Se una giornata già finita passa ad aspettare il recupero, la pagina Giornate non la mostra finché il recupero non si gioca: poi torna, con i punti del recupero.
+**Una partita è stata rinviata: schiero i suoi giocatori?** Dipende dalla tua lega. Se aspetta il recupero, il loro voto arriverà con il recupero e restano schierabili; se restano senza voto, SchieraXI mette chi gioca davvero; con il voto d'ufficio contano con quel voto. Scegli la regola in Impostazioni › Regole e scadenza › Modifica i valori e, per una sola giornata, da **Partita rinviata** nella Formazione. Se una giornata già finita passa ad aspettare il recupero, la pagina Giornate al posto della sua riga scrive «in attesa del recupero, i punti arrivano dopo»: la giornata torna, con i punti del recupero, quando il recupero è giocato e i suoi voti sono usciti.
 
 **Più telefoni?** Sì, con lo stesso account. Se un altro telefono ha cambiato i dati, l'app te lo dice e ricarica.
 

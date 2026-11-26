@@ -813,8 +813,13 @@ Dove si vede (tutti campi aggiunti, i client vecchi li ignorano):
   recupero; con `aspetta` solo a recupero giocato. Se dopo il calcolo la regola di quella giornata torna ad `aspetta` e il
   recupero non si è ancora giocato, la giornata non è più finita: dal 26/11/2026 la sua voce non c'è in `GET /api/diario`
   (nemmeno nei conti in cima e in `diario` di `GET /api/widget`) e il `riepilogo` di Oggi non la usa (`nel_diario: false`, i
-  punti dai voti, con `recuperi`); giocato il recupero la voce si rifà. Prima restava la voce vecchia, con i punti e la frase del
-  voto d'ufficio accanto a «Manca il recupero».
+  punti dai voti, con `recuperi`). Resta così anche a recupero giocato finché i suoi voti non sono arrivati (il riepilogo è
+  `null`, con `voti_in_arrivo`); arrivati i voti la voce si rifà, anche se la giornata non è più fra le ultime 12 del Diario.
+  Prima restava la voce vecchia, con i punti e la frase del voto d'ufficio accanto a «Manca il recupero». Al posto della voce
+  `GET /api/diario` ha in cima il campo nuovo `in_attesa` (lista, sempre presente, vuota se non c'è niente; dalla più recente):
+  `[{stagione, giornata, giornata_lega, testo, frase}]`, con `testo` = «Giornata 9 · 12ª di Serie A: in attesa del recupero, i
+  punti arrivano dopo.» (chiave `diario.in_attesa_recupero`, parametro `giornata`). Web e iPhone (pagina Giornate) mostrano
+  `testo` così com'è, in cima sotto la precisione; senza altre giornate al posto della frase della pagina vuota.
 
 Cosa devono fare iOS e Android: nel pannello delle regole, «Partite rinviate» con le tre scelte e il voto d'ufficio (solo se il
 server manda `partite_rinviate`); in Oggi, se `rinvio` non è `null`, un riquadro «Partita rinviata» con le partite, i tuoi
