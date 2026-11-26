@@ -27,6 +27,7 @@ def url_stagione(stagione: str) -> str:
 
 UA = {"User-Agent": _AGENTE}
 FILE_CACHE = CACHE / "listone.json"
+RUOLI = ("P", "D", "C", "A")    # i ruoli del gioco classico: ogni giocatore del listone ne ha uno
 
 
 @dataclass(frozen=True)
@@ -71,6 +72,11 @@ def analizza_html(html: str) -> list[Calciatore]:
         ))
     if len(calciatori) < 300:
         raise ValueError(f"Listone: trovati solo {len(calciatori)} giocatori, la pagina forse è cambiata")
+    # attributo del ruolo rinominato o valori scritti in un altro modo: prima tutti i giocatori con ruolo vuoto, senza errore
+    strani = [c.ruolo for c in calciatori if c.ruolo not in RUOLI]
+    if strani:
+        raise ValueError(f"Listone: {len(strani)} giocatori senza ruolo P, D, C o A (per esempio {strani[0]!r}), "
+                         "la pagina forse è cambiata")
     return calciatori
 
 

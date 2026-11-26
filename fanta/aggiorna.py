@@ -188,7 +188,29 @@ class Aggiornamento:
              "qi": c.quotazione_iniziale, "qa": c.quotazione, "fvm": c.fvm} for c in calciatori])
         self.scrivi(f"  quotazioni {stagione.codice}: {len(calciatori)} calciatori")
 
+    def _controlla_partite(self, partite: list[dict], st: Stagione) -> None:
+        """Una pagina del calendario cambiata (classe o attributo rinominati) si legge lo stesso, ma senza squadre o senza date: prima
+        il passo riusciva e scriveva None sopra i dati buoni. Qui si ferma, con un errore che nomina il calendario, prima di scrivere.
+        Squadra mancante: sempre un guasto. Data: una partita che la perde è un rinvio (rinvii.py), ma se nessuna partita della
+        giornata ha più il giorno (o l'ora) che l'archivio aveva, è la pagina a essere cambiata."""
+        if not partite:
+            return
+        g = partite[0]["giornata"]
+        dove = f"calendario {st.codice} giornata {g}"
+        senza = sum(1 for p in partite if not p["casa"] or not p["trasferta"])
+        if senza:
+            raise ValueError(f"{dove}: {senza} partite senza squadra, la pagina forse è cambiata (tenuti i dati di prima)")
+        salvate = [r[0] for r in self.db.execute("SELECT data FROM partite WHERE stagione = ? AND giornata = ?", (st.codice, g))]
+        nuove = [p["data"] for p in partite]
+        def con_ora(d):
+            return bool(d) and len(d) > 10                          # «2026-08-22 18:30»; solo il giorno è «2026-08-22»
+        if any(salvate) and not any(nuove):
+            raise ValueError(f"{dove}: nessuna partita ha più la data, la pagina forse è cambiata (tenuti i dati di prima)")
+        if any(map(con_ora, salvate)) and not any(map(con_ora, nuove)):
+            raise ValueError(f"{dove}: nessuna partita ha più l'ora, la pagina forse è cambiata (tenuti i dati di prima)")
+
     def _salva_partite(self, partite: list[dict], st: Stagione) -> int:
+        self._controlla_partite(partite, st)
         for p in partite:
             p["stagione"] = st.codice
             vecchia = self.db.execute("SELECT understat_id FROM partite WHERE id = ?", (p["id"],)).fetchone()
