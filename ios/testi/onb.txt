@@ -1,0 +1,9 @@
+# Testi della vecchia procedura guidata della web (fanta/testi/onb.json) che l'iPhone mostra (#931). Poi: python script/testi.py --scrivi
+
+# Primo avvio, passo «Gli avvisi»: il pulsante di «Tutto pronto» della web
+onb.attiva_gli_avvisi_b
+
+# Aggiorna le rose, i giocatori rimasti senza codice (ImportaRoseView): le frasi del passo «La tua squadra» della web
+onb.non_trovati_nel
+onb.cerca_giocatore_giusto
+onb.tutti_giocatori_sono

@@ -17,6 +17,12 @@ extension Catalogo {
         /// `account.esci`
         static let esci = "Esci"
 
+        /// `account.esci_conferma`
+        static let esciConferma = "Esci da SchieraXI su questo dispositivo?"
+
+        /// `account.esci_conferma_spiega`
+        static let esciConfermaSpiega = "I dati salvati qui vengono cancellati: quelli sul server restano tuoi."
+
         /// `account.esci_no`
         static func esciNo(motivo: String) -> String {
             "Non riesco a farti uscire. \(motivo)"

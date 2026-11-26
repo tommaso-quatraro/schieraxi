@@ -1,6 +1,6 @@
 # Primo avvio (ConfigurazioneGuidataView e il suo ViewModel): i testi che la guida dell'iPhone ha in comune con la web.
-# I passi dell'iPhone (stemma, widget) non ci sono sulla web: i loro testi restano in Swift. Quello degli avvisi dice cosa fanno i
-# promemoria dell'app, con le parole di imp.avvisi_qui_aiuto_app (#906). Poi: python script/testi.py --scrivi
+# I passi dell'iPhone che la web non ha (widget, avvisi) hanno chiavi loro, con la nota «solo iPhone» (#931). Quello degli avvisi
+# dice cosa fanno i promemoria dell'app, con le parole di imp.avvisi_qui_aiuto_app (#906). Poi: python script/testi.py --scrivi
 pav.primo_avvio
 pav.salta
 pav.tutto_pronto_mister
@@ -12,6 +12,39 @@ pav.permesso_negato_abilita
 pav.regole_comuni
 pav.vai_formazione
 pav.avvisi_spiega
+# I passi come la web (#931): i nomi, «Le rose», «La tua squadra», «I tempi della lega» con le due domande, e dopo quelli
+# dell'iPhone «Il widget» e «Gli avvisi»; «Tutto pronto» con i passi saltati per nome e dove sono stemma e avvisi
+pav.n_rose
+pav.n_squadra
+pav.n_tempi
+pav.n_widget
+pav.n_avvisi
+pav.passo_di
+pav.piu_tardi
+pav.piu_tardi_aiuto
+pav.gia_fatto
+pav.rose_spiega
+pav.quale_squadra_tua
+pav.scegli_squadra
+pav.tempi_spiega
+pav.scad_domanda
+pav.scad_inizio
+pav.scad_minuti
+pav.prima_domanda
+pav.prima_uno
+pav.prima_n
+pav.tempi_dove
+pav.tempi_salva
+pav.tempi_non_letti
+pav.widget_spiega
+pav.collega_widget
+pav.fatto_par
+pav.saltato_par
+pav.hai_saltato
+pav.hai_saltato_senza_rose
+pav.il_resto
+# Aggiorna le rose, i giocatori rimasti senza codice (ImportaRoseView), come il passo «La tua squadra» della web
+pav.da_sistemare
 # Il pulsante del file di Importa le rose (ImportaRoseView), come il passo «Le rose» della web e Squadra › Aggiorna le rose.
 pav.scegli_file
 # Importa le rose al primo caricamento, senza rose salvate (ImportaExcelViewModel): la frase del passo «Le rose» della web (#880)

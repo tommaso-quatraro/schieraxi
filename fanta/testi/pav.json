@@ -55,7 +55,57 @@
   "pav.avvisi_spiega": {
     "it": "Un promemoria prima della scadenza, se non hai spuntato «L'ho messa».",
     "en": "A reminder before the deadline, if you haven't ticked «I've entered it».",
-    "nota": "iPhone, passo «Attiva gli avvisi» del primo avvio: cosa fanno i promemoria dell'app, come imp.avvisi_qui_aiuto_app (#906)"
+    "nota": "iPhone, passo «Gli avvisi» del primo avvio: cosa fanno i promemoria dell'app, come imp.avvisi_qui_aiuto_app (#906)"
+  },
+  "pav.passo_di": {
+    "it": "Passo {n} di {tot}",
+    "en": "Step {n} of {tot}",
+    "nota": "solo iPhone: sopra i puntini dei passi del primo avvio (la web scrive i nomi dei passi, che sull'iPhone non ci stanno in una riga) (#931)"
+  },
+  "pav.piu_tardi": {
+    "it": "Più tardi",
+    "en": "Later",
+    "nota": "solo iPhone: chiude il primo avvio a metà; i passi rimasti diventano saltati, come la ✕ della web (#931)"
+  },
+  "pav.piu_tardi_aiuto": {
+    "it": "Chiude e ti ricorda i passi da fare",
+    "en": "Closes and reminds you of the steps left",
+    "nota": "solo iPhone: suggerimento di VoiceOver su pav.piu_tardi (#931)"
+  },
+  "pav.gia_fatto": {
+    "it": "L'ho già fatto",
+    "en": "I've already done it",
+    "nota": "solo iPhone: nei passi «Il widget» e «Gli avvisi», che l'app non sa se sono già fatti (#931)"
+  },
+  "pav.rose_spiega": {
+    "it": "Esporta le rose da Leghe (Excel, CSV o testo copiato), poi incollale o scegli il file. Per cominciare basta anche solo la tua squadra.",
+    "en": "Export the rosters from Leghe (Excel, CSV or copied text), then paste them or choose the file. To get started, your own team alone is enough.",
+    "nota": "solo iPhone: passo «Le rose» del primo avvio, prima di aprire Importa le rose (dove c'è pav.incolla_testo_delle, come sulla web) (#931)"
+  },
+  "pav.scegli_squadra": {
+    "it": "Scegli la squadra",
+    "en": "Choose the team",
+    "nota": "solo iPhone: pulsante del passo «La tua squadra», che apre la scelta della squadra (sulla web la scelta sta dentro il passo) (#931)"
+  },
+  "pav.n_widget": {
+    "it": "Il widget",
+    "en": "The widget",
+    "nota": "solo iPhone: passo del primo avvio dopo i tre della web (#931)"
+  },
+  "pav.widget_spiega": {
+    "it": "Tieni premuto sulla Home, tocca + e cerca SchieraXI. Il widget si collega da solo: se dice «Tocca per collegare», toccalo.",
+    "en": "Press and hold on the Home Screen, tap + and search for SchieraXI. The widget links by itself: if it says «Tap to link», tap it.",
+    "nota": "solo iPhone: passo «Il widget» del primo avvio (#931)"
+  },
+  "pav.collega_widget": {
+    "it": "Collega il widget",
+    "en": "Link the widget",
+    "nota": "solo iPhone: pulsante del passo «Il widget», che apre «Collega il widget» (#931)"
+  },
+  "pav.n_avvisi": {
+    "it": "Gli avvisi",
+    "en": "Alerts",
+    "nota": "solo iPhone: passo del primo avvio dopo i tre della web; il pulsante è onb.attiva_gli_avvisi_b, come in «Tutto pronto» della web (#931)"
   },
   "pav.n_rose": {
     "it": "Le rose",
