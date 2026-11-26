@@ -20,7 +20,8 @@ final class CollegaWidgetModello {
     struct Servizi {
         /// L'indirizzo del server di adesso.
         var indirizzo: @MainActor () -> String
-        /// Il token del widget per quell'indirizzo; con un account (secondo valore) lo chiede al server se manca.
+        /// Il token del widget per quell'indirizzo; con un account (secondo valore) ne chiede SEMPRE uno nuovo al server (quello che il
+        /// telefono ha può essere stato rifiutato senza che l'app lo sappia) e dà nil se il server non lo dà.
         var token: @MainActor (_ indirizzo: String, _ conAccount: Bool) async -> String?
         /// Passa indirizzo e token al widget (App Group e Keychain condiviso): true se almeno uno dei due funziona.
         var canale: @MainActor () -> Bool
@@ -29,9 +30,7 @@ final class CollegaWidgetModello {
         static var veri: Servizi {
             Servizi(indirizzo: { IndirizzoServer.attuale },
                     token: { indirizzo, conAccount in
-                        if conAccount, TokenWidget.leggi(server: indirizzo) == nil {
-                            await TokenWidget.assicura(server: ServerCorrente.condiviso)
-                        }
+                        if conAccount { return await TokenWidget.nuovo(server: ServerCorrente.condiviso) }
                         return TokenWidget.leggi(server: indirizzo)
                     },
                     canale: { Accesso.sincronizzaConIlWidget() },
@@ -59,7 +58,7 @@ final class CollegaWidgetModello {
         self.adesso = adesso
     }
 
-    /// Il tocco su «Collega» (e su «Copia di nuovo» o «Riprova»). Con un account si assicura il token del widget, poi prova il
+    /// Il tocco su «Collega» (e su «Copia di nuovo» o «Riprova»). Con un account chiede un token del widget nuovo, poi prova il
     /// collegamento automatico; solo se non va mette il codice negli appunti di QUESTO telefono per `CollegamentoWidget.durataAppunti`.
     /// Se il lavoro viene annullato («Annulla» o foglio chiuso) mentre si aspetta il token, non collega e non copia niente.
     func collega(conAccount: Bool) async {

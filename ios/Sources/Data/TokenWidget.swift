@@ -1,7 +1,8 @@
 import Foundation
 
 /// Il token del widget (`fw_...`): un token a scopo limitato, emesso dal server (`POST /api/account/token-widget`), valido 90 giorni,
-/// uno per utente, che permette SOLO di leggere `/api/oggi`, `/api/widget` e la diretta (live). È l'unica cosa che l'app dà al widget (nel file condiviso
+/// uno per dispositivo (legato alla sessione che lo chiede: iPhone e iPad dello stesso account hanno ognuno il suo, dal 26/11/2026),
+/// che permette SOLO di leggere `/api/oggi`, `/api/widget` e la diretta (live). È l'unica cosa che l'app dà al widget (nel file condiviso
 /// dell'App Group e nel codice di collegamento): il token della SESSIONE non esce mai dal Keychain dell'app.
 enum TokenWidget {
     static let servizio = "it.schieraxi.app.widget"
@@ -34,6 +35,20 @@ enum TokenWidget {
 
     static func leggi(server indirizzo: String) -> String? {
         leggi(server: indirizzo, in: archivio)
+    }
+
+    /// Il token del widget per questo indirizzo, solo se il widget non ha segnalato che il server lo rifiuta (`rifiutato`): è quello
+    /// che dice se il widget è collegato (Impostazioni > App).
+    static func accettato(server indirizzo: String, cartella: URL? = Condiviso.cartella()) -> String? {
+        guard let t = leggi(server: indirizzo), !rifiutato(t, indirizzo: indirizzo, cartella: cartella) else { return nil }
+        return t
+    }
+
+    /// Il widget ha segnalato (`SegnaleWidget`) che il server gli ha rifiutato proprio questo token (401)? Il segnale porta solo
+    /// l'impronta del collegamento: si confronta con quella di indirizzo e token. Senza gruppo, senza segnale o senza token: no.
+    static func rifiutato(_ token: String?, indirizzo: String, cartella: URL?) -> Bool {
+        guard let token, let segnale = SegnaleWidget.leggi(cartella: cartella) else { return false }
+        return segnale.chi == MemoriaWidget.impronta(indirizzo: indirizzo, token: token)
     }
 
     private static func leggi(server indirizzo: String, in archivio: any ArchivioToken) -> String? {
@@ -81,48 +96,58 @@ enum TokenWidget {
         return luoghi
     }
 
-    /// Con una sessione valida: si assicura che il widget abbia il suo token (lo chiede se manca o sta per scadere) e lo mette nel
-    /// file condiviso. Con un server senza account (nessuna sessione) non fa niente. Mai un errore all'utente: il widget ha il suo ripiego.
+    /// Con una sessione valida: si assicura che il widget abbia il suo token (lo chiede se manca, se sta per scadere o se il widget ha
+    /// segnalato che il server lo rifiuta) e lo mette nel file condiviso. Con un server senza account (nessuna sessione) non fa
+    /// niente. Mai un errore all'utente: il widget ha il suo ripiego.
     static func assicura(server: any ServerClient, memoria: UserDefaults = .standard) async {
         await assicura(server: server, luoghi: sistema(memoria: memoria), sessione: Accesso.archivio)
     }
 
     /// Come sopra, con i luoghi e l'archivio della sessione di chi chiede. Il token arriva dopo un'attesa: se nel frattempo la
     /// sessione è cambiata (uscita, un altro accesso) o il lavoro è stato annullato, non si tiene. Revocarlo non si può (la sessione
-    /// che l'ha chiesto non c'è più): resta sul server senza che nessuno lo abbia, finché non lo sostituisce il prossimo token
-    /// dello stesso utente (il server ne tiene uno solo) o non scade.
+    /// che l'ha chiesto non c'è più): resta sul server senza che nessuno lo abbia, finché non scade.
     static func assicura(server: any ServerClient, luoghi: Luoghi, sessione: any ArchivioToken) async {
-        if Demo.attivo { return }
+        _ = await chiedi(server: server, luoghi: luoghi, sessione: sessione, sempre: false)
+    }
+
+    /// «Collega» (26/11/2026): chiede SEMPRE un token nuovo, perché quello che il telefono ha può essere stato rifiutato dal server
+    /// senza che l'app lo sappia (prima «Collega» diceva «collegato» e teneva il token vecchio). Restituisce il token nuovo, già
+    /// passato al widget, o nil se il server non l'ha dato (allora resta quello di prima).
+    static func nuovo(server: any ServerClient, memoria: UserDefaults = .standard) async -> String? {
+        await nuovo(server: server, luoghi: sistema(memoria: memoria), sessione: Accesso.archivio)
+    }
+
+    static func nuovo(server: any ServerClient, luoghi: Luoghi, sessione: any ArchivioToken) async -> String? {
+        await chiedi(server: server, luoghi: luoghi, sessione: sessione, sempre: true)
+    }
+
+    /// Il lavoro di `assicura` e `nuovo`. Prima il segnale del widget (`SegnaleWidget`): se il server ha rifiutato proprio il token di
+    /// adesso, il telefono lo dimentica e ne chiede un altro; il segnale letto si toglie sempre (uno per un altro token, per esempio
+    /// di un codice incollato o già sostituito, non serve più). `sempre`: il token si chiede anche se quello di adesso va bene.
+    /// Restituisce il token che il widget ha dopo il lavoro, o nil se serviva e il server non l'ha dato.
+    private static func chiedi(server: any ServerClient, luoghi: Luoghi, sessione: any ArchivioToken, sempre: Bool) async -> String? {
+        if Demo.attivo { return nil }
         let indirizzo = server.indirizzo
-        let esistente = leggi(server: indirizzo, in: luoghi.archivio)
+        let cartella = luoghi.cartella()
+        var esistente = leggi(server: indirizzo, in: luoghi.archivio)
+        if rifiutato(esistente, indirizzo: indirizzo, cartella: cartella) {
+            dimenticaToken(indirizzo: indirizzo, luoghi: luoghi)
+            esistente = nil
+        }
+        SegnaleWidget.cancella(cartella: cartella)
         let scade = luoghi.memoria.string(forKey: chiaveScadenza + "|" + indirizzo)
-        if daRinnovare(token: esistente, scade: scade) {
+        var tenuto = esistente
+        if sempre || daRinnovare(token: esistente, scade: scade) {
             let impronta = sessione.leggi(server: indirizzo)
             guard let dati = try? await server.corpoJSON("POST", "/api/account/token-widget", [String: String]()),
-                  let r: Risposta = try? Decodifica.decodifica(dati), let nuovo = r.token, valido(nuovo) else { return }
-            guard !Task.isCancelled, sessione.leggi(server: indirizzo) == impronta else { return }
-            luoghi.archivio.salva(nuovo, server: indirizzo)
+                  let r: Risposta = try? Decodifica.decodifica(dati), let ricevuto = r.token, valido(ricevuto) else { return nil }
+            guard !Task.isCancelled, sessione.leggi(server: indirizzo) == impronta else { return nil }
+            luoghi.archivio.salva(ricevuto, server: indirizzo)
             luoghi.memoria.set(r.scade ?? "", forKey: chiaveScadenza + "|" + indirizzo)
+            tenuto = ricevuto
         }
         luoghi.sincronizza()
-    }
-
-    /// All'uscita: il server toglie il token (serve ancora la sessione, quindi PRIMA di chiuderla) e il telefono lo dimentica.
-    static func revoca(server: any ServerClient, memoria: UserDefaults = .standard) async {
-        await revoca(server: server, luoghi: sistema(memoria: memoria))
-    }
-
-    static func revoca(server: any ServerClient, luoghi: Luoghi) async {
-        if Demo.attivo { return }
-        _ = await revocaSulServer(server)
-        pulisciLocale(indirizzo: server.indirizzo, luoghi: luoghi)
-    }
-
-    /// Solo la parte del server: toglie il token del widget (serve ancora la sessione) e dice se c'è riuscito. Il telefono non
-    /// cambia: «Esci» lo dimentica solo a uscita riuscita, così se l'uscita non riesce il widget resta collegato (#809).
-    static func revocaSulServer(_ server: any ServerClient) async -> Bool {
-        if Demo.attivo { return false }
-        return (try? await server.richiesta("DELETE", "/api/account/token-widget", corpo: nil)) != nil
+        return tenuto
     }
 
     /// Via il token dal telefono (Keychain e file condiviso), senza chiamare il server (sessione già finita o server cambiato).

@@ -27,18 +27,28 @@ enum Aggiornamento {
     static func esegui() async {
         if Demo.attivo { return }
         programma()   // prima di tutto: riprogramma il prossimo risveglio
+        await tokenDelWidget()
         await aggiornaAvvisiDelServer()   // ore tranquille e avvisi del server, per i promemoria qui sotto
         await riprogrammaScadenza()
         await NuovaVersione.controllaEAvvisa()
-        let repository = OggiRepository(server: ServerCorrente.condiviso)
+        let server = ServerCorrente.condiviso
+        let repository = OggiRepository(server: server)
         let chiesta = Date()
+        let chi = ChiLegge.adesso(indirizzo: server.indirizzo)
         guard let oggi = try? await repository.aggiornato() else {
             if let salvato = await repository.salvatoConData() {
                 await programmaPromemoria(salvato.oggi, lettura: .nonRiuscita, salvataIl: salvato.il)
             }
             return
         }
-        await elabora(oggi, chiestaIl: chiesta)
+        await elabora(oggi, chiestaIl: chiesta, di: chi)
+    }
+
+    /// Con una sessione su questo telefono, il token del widget (`TokenWidget.assicura`): se il widget ha segnalato che il server
+    /// glielo rifiuta (401, `SegnaleWidget`), se manca o se sta per scadere, se ne chiede uno nuovo anche senza aprire l'app.
+    static func tokenDelWidget(server: any ServerClient = ServerCorrente.condiviso, sessione: any ArchivioToken = Accesso.archivio) async {
+        guard sessione.leggi(server: server.indirizzo) != nil else { return }
+        await TokenWidget.assicura(server: server, luoghi: .sistema, sessione: sessione)
     }
 
     /// Riempie in anticipo la copia di `/api/widget` (con If-None-Match), così i widget mostrano subito dati freschi.
@@ -128,14 +138,24 @@ enum Aggiornamento {
         await programmaPromemoria(salvato.oggi, lettura: lettura, salvataIl: salvato.il)
     }
 
-    /// Promemoria e widget dopo una lettura fresca della giornata. `chiestaIl`: quando è partita la lettura dal server.
+    /// Promemoria e widget dopo una lettura fresca della giornata. `chiestaIl`: quando è partita la lettura dal server; `chi`: di
+    /// chi era la lettura (server e sessione di quel momento). Se nel frattempo la sessione è cambiata (un «Esci» o un altro accesso
+    /// mentre la lettura era in viaggio, 26/11/2026), la giornata è dell'account di prima: niente promemoria e niente riassunto nel file
+    /// condiviso, dove riscriverebbe i dati di chi è uscito. Si controlla anche subito prima di scrivere, dopo i promemoria.
     /// «Cambio di modulo» ed «Escono le probabili» non partono più dal telefono (#906): annunciavano come notizia anche il modulo
-    /// salvato dall'utente, e il server li ha tolti con #676.
-    static func elabora(_ oggi: Oggi, chiestaIl: Date) async {
+    /// salvato dall'utente, e il server li ha tolti con #676. `sessione`, `cartella` e `promemoria`: i test ne passano di loro (i
+    /// promemoria veri passano dal centro delle notifiche di iOS, che nei test non si tocca).
+    static func elabora(_ oggi: Oggi, chiestaIl: Date, di chi: ChiLegge, sessione: any ArchivioToken = Accesso.archivio,
+                        cartella: URL? = Condiviso.cartella(),
+                        promemoria: (Oggi, Date) async -> Void = { oggi, chiestaIl in
+                            await Aggiornamento.programmaPromemoria(oggi, lettura: .fresca(chiestaIl: chiestaIl))
+                        }) async {
         if Demo.attivo { return }   // demo: niente promemoria né widget
-        await programmaPromemoria(oggi, lettura: .fresca(chiestaIl: chiestaIl))
+        guard chi.ancoraLui(sessione) else { return }
+        await promemoria(oggi, chiestaIl)
+        guard chi.ancoraLui(sessione) else { return }
         // Il widget trova subito l'ultima giornata (senza aspettare il suo scarico) e si ridisegna.
-        Condiviso.salvaRiassunto(RiassuntoOggi(oggi: oggi))
+        Condiviso.aggiorna(cartella: cartella) { $0.riassunto = RiassuntoOggi(oggi: oggi) }
         await precaricaWidget()
         WidgetCenter.shared.reloadAllTimelines()
     }
@@ -143,6 +163,24 @@ enum Aggiornamento {
     /// La giornata di oggi per Siri e Comandi: dal server, o dalla cache se non risponde.
     static func leggiOggi() async -> (oggi: Oggi, salvato: Bool)? {
         await OggiRepository(server: ServerCorrente.condiviso).ultimo()
+    }
+}
+
+/// Di chi è una lettura della giornata: il server e il token della sessione di quando è partita (nil senza account). Serve a
+/// `Aggiornamento.elabora` per non scrivere i dati di un account da cui nel frattempo si è usciti (come `TokenWidget.assicura` con il
+/// token del widget). Resta solo in memoria.
+struct ChiLegge: Equatable, Sendable {
+    let indirizzo: String
+    let sessione: String?
+
+    /// Chi legge adesso da questo server.
+    static func adesso(indirizzo: String, sessione: any ArchivioToken = Accesso.archivio) -> ChiLegge {
+        ChiLegge(indirizzo: indirizzo, sessione: sessione.leggi(server: indirizzo))
+    }
+
+    /// La sessione per questo server è ancora la stessa di quando è partita la lettura?
+    func ancoraLui(_ archivio: any ArchivioToken = Accesso.archivio) -> Bool {
+        archivio.leggi(server: indirizzo) == sessione
     }
 }
 
