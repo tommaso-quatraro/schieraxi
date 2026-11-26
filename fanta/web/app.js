@@ -4273,8 +4273,14 @@ function schedaAmministratore() {
     <div class="debole piccolo">${t("admin.reset_spiega")}</div>
     <label class="accesso-campo"><span class="debole piccolo">${t("accesso.nome_utente")}</span><input class="campo-testo" id="adm-nome" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off"></label>
     <div class="pulsanti"><button class="bottone secondario" id="adm-reset">${t("admin.genera_codice")}</button></div><div id="adm-esito-reset"></div>
-    <h3>${t("admin.utenti_titolo")}</h3><div id="adm-utenti" class="debole piccolo">${t("admin.carico")}</div></div>` : "";
+    <h3 id="adm-utenti-titolo" tabindex="-1">${t("admin.utenti_titolo")}</h3><div id="adm-utenti"><p class="debole piccolo">${t("admin.carico")}</p></div></div>` : "";
 }
+// Gestione › Utenti: i testi di ogni azione su un account (pulsante, nome per i lettori di schermo, conferma, esito, errore)
+const AZIONI_UTENTE = {
+  blocca: { nome: "admin.blocca", per: "admin.blocca_per", conferma: "admin.blocca_conferma", fatto: "admin.blocca_fatto", no: "admin.blocca_no" },
+  sblocca: { nome: "admin.sblocca", per: "admin.sblocca_per", conferma: "admin.sblocca_conferma", fatto: "admin.sblocca_fatto", no: "admin.sblocca_no" },
+  elimina: { nome: "admin.elimina", per: "admin.elimina_per", conferma: "admin.elimina_conferma", fatto: "admin.elimina_fatto", no: "admin.elimina_no" },
+};
 // «Errori recenti», accanto agli strumenti da 1100 px (paginaGestione).
 function schedaErrori() {
   return gestisceAccount() ? `<div class="carta" id="scheda-errori"><h3>${t("errori.titolo")}</h3>
@@ -4411,15 +4417,44 @@ function collegaAmministratore() {
     mostraCodice("#adm-esito-reset", r.codice);
     $("#adm-esito-reset").insertAdjacentHTML("afterbegin", `<div class="debole piccolo">${t("admin.reset_esito", { ore: r.valido_ore })}</div>`);
   }));
+  // Utenti: quanti sono e, per ognuno, il nome, la frase del server (iscrizione e ultimo accesso) e, se è bloccato, da quando.
+  // Sugli altri account «Blocca» (o «Sblocca») ed «Elimina»; il proprio non ha pulsanti («Sei tu»): si elimina da Il tuo account.
+  // Nemmeno quelli degli altri amministratori: si gestiscono solo sul server, dalla riga di comando (il server rifiuta con 403).
   const caricaUtenti = async () => {
+    const dove = $("#adm-utenti");
+    if (!dove) return;
     try {
       const r = await api("/api/admin/utenti");
-      if (!$("#adm-utenti")) return;
+      if (!document.body.contains(dove)) return;
       avvisoPosti(r);
-      const elenco = r.utenti.map(u => esc(u.nome_visualizzato || u.nome_utente) + (u.ruolo === "amministratore" ? t("admin.admin_breve") : "")).join(", ");
-      $("#adm-utenti").innerHTML = tp("admin.utenti_riepilogo", r.utenti.length, { massimo: r.massimo, elenco });
-    } catch (e) { if ($("#adm-utenti")) $("#adm-utenti").textContent = e.message; }
+      const io = stato.account && stato.account.id;
+      const riga = u => {
+        const nome = u.nome_visualizzato || u.nome_utente, mio = u.id === io;
+        const pulsante = azione => `<button class="azione-testo${azione === "elimina" ? " distruttiva" : ""}" type="button" data-utente="${Number(u.id)}" data-azione="${azione}"
+          aria-label="${esc(t(AZIONI_UTENTE[azione].per, { nome }))}">${t(AZIONI_UTENTE[azione].nome)}</button>`;
+        return `<li class="riga"><div><div>${esc(nome)}${u.ruolo === "amministratore" ? t("admin.admin_breve") : ""}</div>
+          ${u.bloccato && u.blocco ? `<div class="piccolo">${esc(testoDi(u, "blocco"))}</div>` : ""}
+          ${u.dettaglio ? `<div class="debole piccolo">${esc(testoDi(u, "dettaglio"))}</div>` : ""}</div>
+          ${mio ? `<span class="debole piccolo">${t("admin.tu")}</span>` : u.ruolo === "amministratore" ? ""
+            : `<div class="adm-azioni">${pulsante(u.bloccato ? "sblocca" : "blocca")}${pulsante("elimina")}</div>`}</li>`;
+      };
+      dove.innerHTML = `<p class="debole piccolo">${tp("admin.utenti_conteggio", r.utenti.length, { massimo: r.massimo })}</p>
+        <ul class="elenco adm-utenti" aria-labelledby="adm-utenti-titolo">${r.utenti.map(riga).join("")}</ul>`;
+      for (const b of dove.querySelectorAll("[data-utente]"))
+        b.addEventListener("click", () => azioneUtente(b.dataset.azione, r.utenti.find(u => Number(u.id) === Number(b.dataset.utente))));
+    } catch (e) { if (document.body.contains(dove)) dove.textContent = e.message; }
   };
+  // Blocca, sblocca, elimina: prima la conferma con il nome (l'eliminazione non si annulla), poi l'elenco si rilegge e il focus va
+  // sul titolo «Utenti» (il pulsante premuto non c'è più)
+  const azioneUtente = (azione, u) => u && AZIONI_UTENTE[azione] && provaCosi(t(AZIONI_UTENTE[azione].no), async () => {
+    if (!confirm(t(AZIONI_UTENTE[azione].conferma, { nome: u.nome_visualizzato || u.nome_utente }))) return;
+    const id = Number(u.id);
+    if (azione === "elimina") await api(`/api/admin/utenti/${id}`, { method: "DELETE" });
+    else await api(`/api/admin/utenti/${id}/${azione}`, { method: "POST" });
+    avviso(t(AZIONI_UTENTE[azione].fatto), 4000);
+    await caricaUtenti();
+    if ($("#adm-utenti-titolo")) $("#adm-utenti-titolo").focus();
+  });
   caricaUtenti();
   // inviti aperti (#894): il nome, la frase del server (creato, scade, posti liberi) e «Annulla»; gli inviti chiusi (usati,
   // scaduti, annullati) non si mostrano. Annullare chiede prima (il link dell'amico smette di valere), toglie il link appena creato
