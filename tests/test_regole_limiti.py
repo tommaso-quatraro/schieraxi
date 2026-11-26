@@ -105,6 +105,17 @@ def test_i_valori_assurdi_si_rifiutano_con_una_frase_chiara(client, cambi, frase
     assert client.get("/api/regole").json() == prima
 
 
+@pytest.mark.parametrize("cambi", [{"bonus__ammonizione": -0.5}, {"bonus__ammonizione": -0.25, "bonus__espulsione": -1.5, "bonus__autogol": -20}])
+def test_i_malus_scritti_col_meno_vero_si_salvano_come_sono(client, cambi):
+    """Collaudo del 26/11: la pagina Regole ora legge «−0,5» scritto con il meno vero (U+2212) e manda il numero −0,5, come per «-0,5».
+    Il server lo salva così com'è (dentro i limiti dei malus, da −20 a 0) e lo rimanda uguale."""
+    prima = client.get("/api/regole").json()
+    r = client.put("/api/regole", json=_con(prima, **cambi))
+    assert r.status_code == 200, r.text
+    bonus = client.get("/api/regole").json()["bonus"]
+    assert {k: bonus[k.split("__")[1]] for k in cambi} == cambi, bonus
+
+
 def test_difensori_minimi_che_nessun_modulo_ammesso_ha():
     """Con il modificatore acceso, almeno un modulo ammesso deve avere i difensori minimi: altrimenti non si applica mai."""
     base = asdict(Regole())

@@ -73,7 +73,7 @@
       "stato": "fatto"
     },
     {
-      "id": 113,
+      "id": 115,
       "schermata": "Un calcolo del server che dura, risposta 202 (#931)",
       "web": "mentre si aspetta, sopra la barra il marchio che si muove e «Un attimo, mister: ci sto lavorando.» (`mostraCalcolo`, `comune.calcolo_attesa`); finiti i tentativi «Il calcolo sta durando più del previsto: riprova tra poco.» (`comune.calcolo_lungo`)",
       "iphone": "prima: nessuna frase mentre si aspettava (solo il caricamento della schermata) e alla fine «Il calcolo sta durando più del solito. Riprova tra poco.» scritto a mano. Ora come la web: sopra la barra il marchio e la frase d'attesa, letta da VoiceOver (`AttesaCalcolo`, `AvvisoCalcolo`), e alla fine la frase del catalogo (`ServerHTTP.richiesta`)",

@@ -64,9 +64,6 @@ extension Catalogo {
         /// `pav.rose_spiega`
         static let roseSpiega = "Esporta le rose da Leghe (Excel, CSV o testo copiato), poi incollale o scegli il file. Per cominciare basta anche solo la tua squadra."
 
-        /// `pav.quale_squadra_tua`
-        static let qualeSquadraTua = "Quale squadra è la tua?"
-
         /// `pav.scegli_squadra`
         static let scegliSquadra = "Scegli la squadra"
 
@@ -139,5 +136,11 @@ extension Catalogo {
 
         /// `pav.incolla_testo_delle`
         static let incollaTestoDelle = "Esporta le rose da Leghe (Excel, CSV o testo copiato), poi incolla qui il testo o scegli il file. Per cominciare basta anche solo la tua squadra."
+
+        /// `pav.quale_squadra_tua`
+        static let qualeSquadraTua = "Quale squadra è la tua?"
+
+        /// `pav.questa_mia`
+        static let questaMia = "Questa è la mia"
     }
 }

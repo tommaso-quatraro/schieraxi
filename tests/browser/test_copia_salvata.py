@@ -110,6 +110,43 @@ def test_se_solo_lo_stato_non_arriva_la_riga_di_stato_lo_dice(web, larghezza):
     assert web.pagina.locator("main").get_by_text("Server non raggiungibile").is_visible()
 
 
+# ---------------------------------------------------------------- la riga sotto il titolo dopo una ricarica (collaudo del 26/11)
+def _sotto_il_titolo(web) -> str:
+    """Il testo del capo della pagina come si vede: il titolo e, sotto, la riga con giornata, squadra e ora dei dati."""
+    return " ".join(web.pagina.locator("main header").first.inner_text().split())
+
+
+@pytest.mark.parametrize("larghezza", [390, 1440])
+def test_dopo_una_ricarica_col_server_giu_la_riga_sotto_il_titolo_viene_dalla_copia(web, larghezza):
+    """Giornate con il server irraggiungibile dopo una ricarica: la copia salvata c'era, la riga sotto il titolo (giornata ·
+    squadra · ora dei dati) no, mentre c'era se la rete cadeva senza ricaricare. Ora anche lei viene dalla copia salvata, uguale a
+    prima; che il server non risponde lo dice la nota con «Riprova», una volta. (La Formazione questa riga non ce l'ha: la giornata
+    la dice la sua testa.)"""
+    _solo_prima(web)
+    web.orologio(OTTO)
+    web.apri(GIORNATE, larghezza=larghezza)
+    prima = _sotto_il_titolo(web)
+    assert "Squadra Demo" in prima and "dati del" in prima, prima
+    web.orologio(DOPO)
+    _server_giu(web, "rifiuto")
+    web.apri(GIORNATE, larghezza=larghezza)
+    web.pagina.locator(NOTA).get_by_role("button").wait_for(timeout=10000)
+    assert _sotto_il_titolo(web) == prima
+    assert "Server non raggiungibile" not in web.testo_principale(), web.testo_principale()[:300]
+
+
+def test_dopo_una_ricarica_senza_nota_la_riga_dice_anche_che_il_server_non_risponde(web):
+    """Dove la pagina non dice da sé che il server non risponde (qui solo lo stato d'avvio non arriva, Giornate sì), la riga sotto
+    il titolo continua a dirlo, sopra i dati della copia salvata."""
+    _solo_prima(web)
+    web.apri(GIORNATE)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/stato", lambda r: r.abort("connectionrefused"))
+    web.apri(GIORNATE)
+    assert web.pagina.locator(NOTA).count() == 0 and web.errori_mostrati() == [], "i dati di Giornate arrivano"
+    testo = _sotto_il_titolo(web)
+    assert "Server non raggiungibile" in testo and "Squadra Demo" in testo, testo
+
+
 @pytest.mark.parametrize("vista", ["/", GIORNATE])
 def test_senza_copia_e_con_il_server_giu_l_errore_si_dice_una_volta(web, vista):
     """Senza una copia salvata e con il server giù la pagina è l'errore con «Riprova» («Il server non risponde: riprova fra

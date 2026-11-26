@@ -111,10 +111,10 @@
     {
       "id": 60,
       "schermata": "Oggi, benvenuto",
-      "web": "senza rose «Benvenuto in SchieraXI», «Per cominciare importa le rose della tua lega: poi ti dico ogni giornata chi schierare.» e «Importa le rose» (`mostraSenzaRose`)",
-      "iphone": "«Importa la tua rosa per cominciare: per darti i consigli servono le rose della tua lega, poi ti guido nei passi successivi.»",
+      "web": "senza rose «Benvenuto in SchieraXI», «Per cominciare importa le rose della tua lega: poi ti dico ogni giornata chi schierare.» e «Importa le rose» (`mostraSenzaRose`). Con le rose ma senza la tua squadra (collaudo del 26/11) non chiede Oggi né Formazione (risponderebbero 400) e mostra «Quale squadra è la tua?» (`pav.quale_squadra_tua`), il menu delle squadre e «Questa è la mia» (`pav.questa_mia`); senza l'elenco delle squadre «Indica la tua squadra in «La mia squadra»» (`err.indica_squadra`); se lo stato non si rilegge, la nota o l'errore con «Riprova» (`mostraSenzaSquadra`, `caricaGiornata`)",
+      "iphone": "«Importa la tua rosa per cominciare: per darti i consigli servono le rose della tua lega, poi ti guido nei passi successivi.» Senza la tua squadra: prima l'errore del 400 con «Riprova»; ora la stessa domanda della web con gli stessi testi del catalogo e «Questa è la mia» (`SquadraDaScegliere`, `SceltaSquadraFormazione`); lo stato si legge con giornata e formazione e, quando dice già che la squadra manca, si rilegge prima e giornata e formazione non si chiedono",
       "forma": "web",
-      "chi": "fatto sull'iPhone (#494): `OggiView` con `Catalogo.Oggi.benvenutoSchieraxi`, `Catalogo.Oggi.perCominciareImporta` e `Catalogo.Comune.importaRose`",
+      "chi": "fatto sull'iPhone (#494): `OggiView` con `Catalogo.Oggi.benvenutoSchieraxi`, `Catalogo.Oggi.perCominciareImporta` e `Catalogo.Comune.importaRose`; senza la tua squadra **fatto** (collaudo del 26/11): prova `FormazioneSenzaSquadraTests`, foto `formazione-senza-squadra`",
       "stato": "fatto"
     }
   ]
