@@ -109,10 +109,28 @@ extension View {
     /// Solo in demo con `-DEMO_FONDO`: la schermata parte scorsa in fondo, per vedere anche la parte sotto la piega.
     @ViewBuilder
     func demoInFondo() -> some View {
-        if Demo.attivo, Demo.argomento("DEMO_FONDO") != nil, #available(iOS 17, *) {
-            self.defaultScrollAnchor(.bottom)
+        if Demo.attivo, Demo.argomento("DEMO_FONDO") != nil {
+            modifier(InFondoDemo())
         } else {
             self
+        }
+    }
+}
+
+/// Le foto «-fondo» (`demoInFondo`). Sull'iPad una pagina può essere più corta dello schermo: con l'ancora in fondo anche per
+/// l'allineamento la pagina corta finiva in basso, con una fascia vuota sotto il titolo (circa 320 pixel nelle foto, #896).
+/// Lì l'ancora in fondo vale solo per la partenza e per i dati che arrivano dopo; la pagina corta resta in alto. Sull'iPhone
+/// come prima.
+private struct InFondoDemo: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var classe
+
+    func body(content: Content) -> some View {
+        if classe == .regular {
+            content
+                .defaultScrollAnchor(.bottom, for: .initialOffset)
+                .defaultScrollAnchor(.bottom, for: .sizeChanges)
+        } else {
+            content.defaultScrollAnchor(.bottom)
         }
     }
 }
@@ -231,16 +249,21 @@ extension Demo {
         }
     }
 
-    /// La foto `formazione-sostituisci` (#673): la scelta del sostituto, come dopo «Sostituisci» nella scheda, per un titolare che
-    /// gioca sotto l'80% (se non c'è, il primo titolare).
+    /// La foto `formazione-sostituisci` (#673): la scelta del sostituto, come dopo «Sostituisci» nella scheda, per il titolare a cui
+    /// risponde il server finto (`FinteServer.esceSostituisci`, che gioca sotto l'80%), con i numeri della formazione. «Sostituisci»
+    /// c'è a comandi accesi: la Formazione si legge anche da sé (la sua `task`), quindi si aspetta che abbia finito (al massimo 5
+    /// secondi), come per «Metti in campo».
     private static func apriSostituzione(_ modello: AppModel) {
         Task {
             let vm = modello.formazione
             await vm.carica()
             try? await Task.sleep(nanoseconds: 400_000_000)
-            guard let f = vm.formazione else { return }
-            let titolari = vm.vista(f).titolari
-            vm.daSostituire = titolari.first { SogliaGioca.daMostrare($0.pVoto) } ?? titolari.first
+            var attese = 0
+            while vm.comandiSpenti, attese < 25 {
+                try? await Task.sleep(nanoseconds: 200_000_000)
+                attese += 1
+            }
+            await vm.sostituisci(FinteServer.esceSostituisci)
         }
     }
 

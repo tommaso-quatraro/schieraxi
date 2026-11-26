@@ -51,7 +51,7 @@
       "web": "in «Modifica a mano» i `bloccati` non si sostituiscono né entrano, riga `formazione.bloccati`; rifiuto del server con la sua frase",
       "iphone": "uguale alla web: nella scheda di un titolare fermo la frase di `formazione.bloccati` al posto di «Sostituisci»; i fermi non compaiono fra i sostituti; 400 `giocatore_bloccato` mostra la frase del server",
       "forma": "server (`bloccati`, 400 `giocatore_bloccato`)",
-      "chi": "fatto sull'iPhone con il passo 1b di #673 (Formazione unica): `FormazioneViewModel.fermo`, `sostituti`; prova `AnticipiBloccatiTests`. Prima: fatto con #373",
+      "chi": "fatto sull'iPhone con il passo 1b di #673 (Formazione unica): `FormazioneViewModel.fermo`; dal 26/11/2026 i sostituti li dice il server (`POST /api/formazione/sostituisci`, senza i fermi); prova `AnticipiBloccatiTests`. Prima: fatto con #373",
       "stato": "fatto"
     },
     {
@@ -115,6 +115,15 @@
       "iphone": "prima: il voto d'ufficio restava l'atteso con «Rinviata» (`EsitoPartita`), il «Senza voto» mostrava l'atteso (`LetturaPedina`), «Hanno giocato tutti: mancano solo i voti ufficiali.» a ogni zero (`FasiGiornata.ancora`, `TestaFormazione`, widget), il menu del rinvio della giornata finita in fondo senza titolo (`FormazioneView.menuRinvioRiepilogo`), l'andamento calcolato in casa (`Forma.calcola`), niente `voti_in_arrivo`. Ora come la web: il voto d'ufficio è un voto preso con la parola del server (`EsitoPartita.parola`: pedina, riga, scheda), «Senza voto» con la lineetta (`Giocatore.rimastoSenzaVoto`), sotto i punti `in_corso.situazione` (`TestiFase.situazione`, `RiassuntoOggi.situazione` del widget), il riquadro del rinvio sotto i punti della giornata finita con titolo, partita, nota e menu (`TestaFormazione.Rinvio`, `CartaPartitaRinviata` con `titolo` e `nota`), l'andamento del server (`Forma.di`, `SchedaGiocatore.codiceAndamento`), «Giornata 5 · 8ª di Serie A: finita» con la frase di `voti_in_arrivo` (`Oggi.votiInArrivoGiornata`), «atteso» sotto l'atteso nelle righe a giornata in corso (`RigaGiocatore.sottoNumero(_:dalVivo:)`)",
       "forma": "web (campi del server: etichetta `voto_ufficio`, `in_corso.situazione`, `riepilogo.rinvio.partite`/`miei`, `voti_in_arrivo`, `andamento`); sull'iPhone le righe non hanno i nomi delle colonne: «atteso» e «fantavoto» stanno sotto il numero. Con un server di prima restano le parole di sempre, tranne l'andamento, che senza il campo non si mostra (come la web)",
       "chi": "**fatto** (#900): web e server con #895, iPhone con #900; prove `BordiGiornataComeLaWebTests` (viste fallire prima), `RestiDalCatalogoTests`",
+      "stato": "fatto"
+    },
+    {
+      "id": 107,
+      "schermata": "Formazione: i numeri di «Sostituisci» e del cambio proposto in cima (collaudo del 26/11)",
+      "web": "il numero grande di ogni sostituto è la `differenza` di `POST /api/formazione/sostituisci` (i punti attesi della formazione dopo il cambio meno quelli di adesso; l'ordine è quello del server, dal cambio che rende di più); accanto al cambio proposto in cima «+1,3 punti attesi.» è la `differenza` della voce `dubbio` di Da fare; il server propone il cambio di un titolare in dubbio o in panchina solo da 1 punto atteso in su, quello di un infortunato o squalificato sempre",
+      "iphone": "uguale alla web: `SceltaSostituto` chiede a `POST /api/formazione/sostituisci` con gli 11 in campo («Carico…», poi le righe del server; `giocatore_bloccato` come informazione, `formazione_chiusa` chiude e rilegge); `Decisioni.guadagno` mostra la `differenza` della voce. Prima: la differenza fra i due giocatori (`puntiAttesi`), che non tornava con la formazione dopo il cambio",
+      "forma": "web (numeri del server; testi `formazione.sost_spiega`, `formazione.punti_rispetto`, `formazione.decisione_punti`)",
+      "chi": "**fatto** (numeri-sostituisci): server `scelte.chi_prende_il_posto` e `da_fare._dubbi`, web `apriSostituzione` e `guadagno`, iPhone `FormazioneViewModel.sostituisci` e `Decisioni.guadagno`; prove `tests/test_sostituisci.py`, `tests/test_da_fare.py`, `tests/browser/test_formazione_unica.py`, `SostituisciTests`, `DecisioniTests`",
       "stato": "fatto"
     }
   ]

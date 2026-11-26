@@ -44,7 +44,7 @@ from . import avvisi as avvisi_pronta
 from . import avvisi_utenti
 from . import fasi, live
 from . import scambi_multi
-from . import copia_scadenza, pianificatore, rotte_account, riscaldamento, social
+from . import copia_scadenza, pianificatore, rotte_account, rotte_feedback, riscaldamento, social
 from . import blocco, percorsi, registro, scarica_immagine, testi_legali
 from .contesto import Contesto
 from . import stagione as cambio_stagione
@@ -108,11 +108,14 @@ SICUREZZA = {
 }
 LIMITE_ACCOUNT = 8 * 1024                  # byte: le richieste di accesso, registrazione e amministrazione sono piccolissime
 LIMITE_ROSE_AMICO = 600 * 1024             # byte: le rose incollate dal proprietario per un amico (il testo vale al massimo 200 mila caratteri)
+LIMITE_FEEDBACK = 16 * 1024                # byte: un commento di «Scrivici» (2000 caratteri anche tutti di 4 byte, con il resto del corpo)
 
 
 def _tetto_corpo(percorso: str) -> int:
     if percorso.startswith("/api/admin/utenti/") and percorso.endswith("/rose"):
         return LIMITE_ROSE_AMICO
+    if percorso == "/api/feedback":
+        return LIMITE_FEEDBACK
     return LIMITE_ACCOUNT if percorso.startswith(("/api/account/", "/api/admin/")) else LIMITE_RICHIESTA
 
 
@@ -564,6 +567,7 @@ app.add_exception_handler(account.ErroreAccount, rotte_account.errore_account)
 app.add_exception_handler(RequestValidationError, _dati_non_validi)
 app.add_exception_handler(Exception, _errore_imprevisto)
 app.include_router(rotte_account.router)          # /api/account/... e /api/admin/... (attivi solo con FANTA_MULTIUTENTE=1; "me" risponde sempre)
+app.include_router(rotte_feedback.router)         # «Scrivici»: /api/feedback e /api/admin/feedback (solo con gli account)
 try:                                              # le foto dei calciatori esistono solo nelle copie private e sono spente di norma; il repository pubblico non ha questo modulo
     from . import rotte_foto
     app.include_router(rotte_foto.router)
@@ -1107,6 +1111,51 @@ def metti_in_campo(dati: MettiInCampo, ctx: Contesto = Depends(lega_corrente)):
                                   {int(k): x.get("nome") for k, x in schede.items() if isinstance(x, dict)})
         uscite = scelte.chi_lascia_il_posto(dati.entra, dati.titolari, schede, regole_, fermi, punti)
         return {"giornata": giornata, "entra": dati.entra, "punteggio_atteso": punti(dati.titolari), "uscite": uscite}
+    finally:
+        db.close()
+
+
+class Sostituisci(BaseModel):
+    esce: int = Field(ge=1, le=MAX_ID_CALCIATORE)
+    titolari: list[int] = Field(max_length=limiti.MAX_GIOCATORI_SQUADRA)
+    giornata: int | None = Field(None, ge=1, le=MAX_GIORNATA)
+
+
+@app.post("/api/formazione/sostituisci")
+def sostituisci(dati: Sostituisci, ctx: Contesto = Depends(lega_corrente)):
+    """«Sostituisci»: chi può prendere il posto di `esce`, uno dei `titolari` in pagina. I compagni dello stesso ruolo che non sono
+    titolari; per ognuno i punti attesi della formazione dopo il cambio e la differenza da quella di adesso. Non scrive niente: il
+    cambio scelto si salva con POST /api/formazione/valuta."""
+    # Il contrario di «Metti in campo» (#643), con le stesse schede, gli stessi `bloccati` e la stessa valutazione
+    # (consigli.valuta, una decina di ms per formazione); la regola è scelte.chi_prende_il_posto. Prima la web scriveva la
+    # differenza fra i due giocatori, che non torna con la formazione dopo il cambio (collaudo del 26/11).
+    # Dopo la scadenza 409 `formazione_chiusa`, come il salvataggio.
+    db = _db()
+    try:
+        regole_, rose_ = _regole(ctx), _rose_da_schierare(ctx)
+        f = consigli.formazione(db, regole_, rose_, None, dati.giornata)
+        giornata = f.get("giornata")
+        chiusa = _formazione_chiusa(db, ctx, giornata)
+        if chiusa is not None:
+            return chiusa
+        schede = f.get("schede") or {}
+        motivo = scelte.motivo_non_valida(dati.titolari, {int(k): x.get("ruolo") for k, x in schede.items() if isinstance(x, dict)}, regole_)
+        if motivo:
+            raise consigli.FormazioneNonValida(motivo)
+        valutate: dict[frozenset, float] = {}
+
+        def punti(ids) -> float:
+            chiave = frozenset(int(i) for i in ids)
+            if chiave not in valutate:
+                valutate[chiave] = consigli.valuta(db, regole_, rose_, list(ids), None, giornata)["punteggio_atteso"]
+            return valutate[chiave]
+        fermi = _con_bloccati(db, f).get("bloccati") or []
+        # chi esce gioca un anticipo già cominciato (anche se la pagina non lo sapeva ancora): 400 `giocatore_bloccato` con la frase
+        # del salvataggio (scelte.controlla_bloccati), invece di un elenco vuoto
+        scelte.controlla_bloccati(fermi, dati.titolari, [i for i in dati.titolari if int(i) != dati.esce],
+                                  {int(k): x.get("nome") for k, x in schede.items() if isinstance(x, dict)})
+        entrate = scelte.chi_prende_il_posto(dati.esce, dati.titolari, schede, fermi, punti)
+        return {"giornata": giornata, "esce": dati.esce, "punteggio_atteso": punti(dati.titolari), "entrate": entrate}
     finally:
         db.close()
 
@@ -1665,7 +1714,7 @@ def giocatore(calciatore_id: int = FPath(ge=1, le=MAX_ID_CALCIATORE), ctx: Conte
     db = _db()
     try:
         r = _regole(ctx)
-        s = scheda.scheda(db, calciatore_id, consigli.stagione_corrente(), r.fonte_voto)
+        s = scheda.scheda(db, calciatore_id, consigli.stagione_corrente(), r)      # fantavoti con i bonus della lega
         try:
             prev, giornata, _ = consigli.previsioni(db, r)
             if calciatore_id in prev.index:

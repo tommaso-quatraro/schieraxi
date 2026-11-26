@@ -55,7 +55,7 @@
       "stato": "fatto"
     },
     {
-      "id": 107,
+      "id": 110,
       "schermata": "Registrazione aperta, senza invito (26/11/2026)",
       "web": "con `registrazione: \"aperta\"` (il modo predefinito del server) la scheda «Registrati» dice «Scegli un nome utente e una password.» (`accesso.registrazione_aperta`) e ha nome utente, «Email (facoltativa)» con sotto «Serve a recuperare la password.» (senza il campo se le email del server sono spente), password e la casella; niente campo dell'invito; un campo trappola nascosto che una persona non vede (`accesso.sito_web`, `CAMPO_TRAPPOLA`); posti finiti: il messaggio del server «Iscrizioni chiuse: siamo al completo» e la password scritta resta; «Password dimenticata» parte dal codice di recupero (dall'email solo con il modo `email`); creato l'account, il codice di recupero e poi il primo avvio. Gestione: «Iscrizioni» con «Le iscrizioni sono aperte: chi vuole si registra da solo dalla schermata d'accesso, finché ci sono posti.» (`admin.iscrizioni_aperte`) e l'avviso del server dei posti pieni (`admin.posti_pieni_aperta`) al posto di «Nuovo invito» e «Inviti aperti» (`schedaAmministratore`, modo da `GET /api/account/me`).",
       "iphone": "come la web: con `.aperta` gli stessi campi nello stesso ordine e la stessa frase (`Catalogo.Accesso.registrazioneAperta`), l'email facoltativa (`ModalitaRegistrazione.chiedeEmail` vale solo per `.email`), con la posta spenta niente email, «Password dimenticata» dal codice di recupero (`MetodoRecupero.iniziale`); il messaggio dei posti finiti arriva dal server. Niente campo trappola: il modulo dell'app non è una pagina che un programma trova e compila da solo. La gestione degli inviti sull'iPhone non c'è, come prima.",
@@ -151,6 +151,15 @@
       "iphone": "prima: titolo «Squadre e rose», in cima di nuovo la carta «La mia squadra» (che ha già la sua riga in Impostazioni), in fondo «Tocca una squadra per vedere la rosa.» e «È la mia» scorrendo una riga. Ora come la web: «Le altre squadre» con il solo elenco (`SquadreView`); «Non è la tua squadra?» in cima alla rosa della mia squadra (`RosaView`); «La mia squadra» non ancora scelta apre la pagina della scelta (`SceltaSquadraView`), anche dal passo «La tua squadra» della configurazione guidata; scelta la squadra, al posto della pagina c'è la sua rosa",
       "forma": "web",
       "chi": "**fatto** (#863): `SquadreView`, `SceltaSquadraView`, `SelettoreMiaSquadra`, `LegaViewModel.scegliMiaSquadra`, `VociImpostazioni.lega`; prove `SceltaMiaSquadraTests`, `ImpostazioniComeLaWebTests`, `SquadreComeLaWebTests`, `TitoloUnaVoltaUITests`",
+      "stato": "fatto"
+    },
+    {
+      "id": 109,
+      "schermata": "Impostazioni › Scrivici; Gestione › Commenti degli utenti (26/11/2026)",
+      "web": "con un account, la riga «Scrivici» («Un'idea, un problema, un dubbio») fra Informazioni e Gestione apre la pagina «Scrivici»: «Scrivi cosa non va o cosa ti piacerebbe trovare: lo legge chi gestisce SchieraXI.», la casella «Il tuo commento» (al massimo 2000 caratteri, va a capo) e «Invia», spento finché la casella è vuota; inviato: la casella si svuota e sotto «Grazie, l'abbiamo ricevuto.»; non inviato: il messaggio del server (per esempio il limite di 5 al giorno) e il testo resta (`paginaScrivici` in `impostazioni.js`, testi `scrivici.*`). In Gestione, per chi gestisce il server, «Commenti degli utenti»: il più recente in alto, chi · quando (ora italiana) · da dove e versione, il testo intero come testo semplice e «Segna come letto» (`schedaCommenti`, `caricaCommenti`)",
+      "iphone": "la stessa riga, solo con un account, e la stessa pagina con gli stessi testi del catalogo (`VociImpostazioni.informazioni(gestisce:scrivici:)`, `ScriviciPagina`, `ScriviciViewModel`): manda a `POST /api/feedback` testo e versione dell'app, la piattaforma la dice l'intestazione `X-Schieraxi-Client: ios`. L'elenco «Commenti degli utenti» non c'è: la Gestione dell'iPhone non ha gli strumenti degli account (inviti, utenti, errori), che sono della web",
+      "forma": "web; il contratto in docs/API.md («Scrivici»)",
+      "chi": "**fatto** (26/11/2026): server, web e iPhone insieme; prove `tests/test_feedback.py`, `tests/browser/test_scrivici.py`, `ScriviciComeLaWebTests`",
       "stato": "fatto"
     }
   ]

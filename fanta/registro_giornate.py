@@ -29,7 +29,7 @@ import pandas as pd
 from . import archivio, avvisi, consigli, fasi, frasi, incertezza
 from . import formazione as fz
 from .frasi import F
-from .punteggio import COLONNA_VOTO, fantavoto
+from .punteggio import BONUS_E_MALUS, COLONNA_VOTO, fantavoto
 from .regole import Regole
 
 ANTICIPO = timedelta(minutes=10)        # si salva negli ultimi 10 minuti prima della prima partita (dopo l'ultimo giro delle probabili)
@@ -59,8 +59,6 @@ SOGLIE = {"I1": 0.01, "I2_calibrazione": 0.05, "I2_brier": 0.15, "I3_minimo": 0.
 # il ruolo di #614. Le giornate senza segno sono state misurate prima e si rimisurano una volta (`rimisura_avversario`)
 AVVERSARIO = "fantamedia_tirata"
 LOG = logging.getLogger(__name__)
-BONUS_E_MALUS = ("gol", "gol_subiti", "autogol", "rig_segnati", "rig_sbagliati", "rig_parati", "assist", "mvp", "ammonizioni",
-                 "espulsioni")
 # colonne di `consigli.previsioni` che il registro legge: senza le essenziali non si salva niente (e il motivo va nel log); senza
 # una facoltativa si salva vuota, con un avviso nel log
 ESSENZIALI = ("partita", "ruolo", "p_voto", "mu")

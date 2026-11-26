@@ -1,0 +1,9 @@
+# Scrivici (26/11/2026, come paginaScrivici della web): la riga in Impostazioni (VociImpostazioni) e la sua pagina (ScriviciPagina).
+# L'elenco «Commenti degli utenti» è solo della web (Gestione). Poi: python script/testi.py --scrivi
+scrivici.voce
+scrivici.voce_sub
+scrivici.spiega
+scrivici.campo
+scrivici.invia
+scrivici.grazie
+scrivici.non_inviato

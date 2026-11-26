@@ -10,7 +10,7 @@ from datetime import datetime
 
 import pandas as pd
 
-from . import avvisi, buon_senso, calcolo, consigli, etichette, fasi, frasi, modello, rinvii, scambi, scelte
+from . import avvisi, buon_senso, calcolo, consigli, etichette, fasi, frasi, modello, registro_giornate, rinvii, scambi, scelte
 from .avvisi import prima_partita       # in `oggi` il nome `avvisi` è anche la lista degli avvisi
 from .frasi import F
 from .lega import Rose
@@ -388,7 +388,9 @@ def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | 
     mie = [{"id": int(i), "nome": prev.at[i, "nome"], "ruolo": prev.at[i, "ruolo"], "squadra": prev.at[i, "squadra"]} for i in mie_ids]
     try:
         corpo["rinvio"] = rinvii.blocco_oggi(regole, stagione, giornata, corpo.get("partite") or [], mie)
-    except Exception:                                   # noqa: BLE001  (Oggi si apre comunque)
+    except Exception as e:                              # noqa: BLE001  (Oggi si apre comunque; il guasto va nel registro)
+        logging.getLogger(__name__).warning("Oggi: blocco delle partite rinviate non calcolato (%s) in %s", type(e).__name__,
+                                            registro_giornate._dove(e))
         corpo["rinvio"] = None
     if not scadenza_mostrata(corpo):                    # la giornata da preparare non ha ancora le date (#552)
         testo = F("giornata.senza_data")

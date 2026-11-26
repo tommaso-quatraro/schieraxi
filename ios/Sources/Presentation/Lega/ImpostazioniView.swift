@@ -26,7 +26,7 @@ extension EnvironmentValues {
 
 /// Impostazioni, la terza voce della barra: una pagina sola come la web (#673 passo 3, web #675). In ordine: Avvisi («Avvisi su
 /// questo dispositivo», «Ore tranquille»), La mia lega (Aggiorna le rose, La mia squadra, Regole e scadenza, Le altre squadre),
-/// Il tuo account, Aspetto, e le righe di Informazioni e di Gestione (solo per chi gestisce il server). Restano solo dell'iPhone il
+/// Il tuo account, Aspetto, e le righe di Informazioni, Scrivici (con un account) e Gestione (solo per chi gestisce il server). Restano solo dell'iPhone il
 /// widget, «C'è una versione nuova», la prova con dati di esempio e «Animazioni ridotte». La pila delle pagine vive in
 /// `LegaViewModel.percorso`, così un indirizzo o la Formazione possono aprire una pagina (`LegaViewModel.apri`).
 struct ImpostazioniView: View {
@@ -60,11 +60,13 @@ struct ImpostazioniView: View {
                     Section { RigaCollegamentoWidget() }
                     NuovaVersioneSezione()
                     Section {
-                        ForEach(VociImpostazioni.informazioni(gestisce: sessione.puoAmministrare)) { voce in
+                        ForEach(VociImpostazioni.informazioni(gestisce: sessione.puoAmministrare, scrivici: nomeAccount != nil)) { voce in
                             RigaVoceImpostazioni(voce: voce).id("imp-\(voce.id)")
                         }
                     }
                 }
+                // sull'iPad una colonna larga come quella della web: interruttori e valori vicini al loro nome (#896)
+                .colonnaPagina()
                 .scrollContentBackground(.hidden)
                 .contentMargins(.bottom, 24, for: .scrollContent)
                 .background(Sfondo())
@@ -90,7 +92,8 @@ struct ImpostazioniView: View {
                 .onChange(of: nav.parteImpostazioni) { _, _ in portaInVista(proxy) }
             }
             .titoloPagina(Catalogo.Shell.impostazioni)
-            .navigationDestination(for: PaginaImpostazioni.self) { destinazione($0) }
+            // anche le pagine interne in una colonna larga come quella della web (#896)
+            .navigationDestination(for: PaginaImpostazioni.self) { destinazione($0).colonnaPagina() }
             .task { await vm.carica() }
             .task { await avvisi.carica() }
         }
@@ -160,6 +163,7 @@ struct ImpostazioniView: View {
         case .stagione: StagioneView(server: vm.server)
         case .account: AccountPagina()
         case .informazioni: InformazioniPagina(server: vm.server)
+        case .scrivici: ScriviciPagina(server: vm.server)
         case .gestione: GestionePagina(vm: vm, avvisi: avvisi)
         case .stato: StatoDatiView(server: vm.server, aggiornamento: vm.aggiornamento)
         case .crediti: CreditiEFontiView()
