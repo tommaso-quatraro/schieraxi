@@ -377,6 +377,53 @@ def test_a_guida_chiusa_la_formazione_chiede_la_tua_squadra(web, larghezza):
     assert not senza_400(web) and not web.errori_console and not web.errori_mostrati()
 
 
+def squadra_chiusa(web) -> list[str]:
+    """Rose salvate, squadra non scelta, guida chiusa: torna l'elenco delle squadre scelte, come `rose_senza_la_tua_squadra`."""
+    lega = account_senza_rose(web)
+    lega["salvate"] = True
+    lega["primo"].update({"fatti": ["server", "accesso", "rose"], "saltati": ["squadra", "tempi"], "chiuso": True})
+    return rose_senza_la_tua_squadra(web, lega)
+
+
+def test_la_domanda_della_squadra_non_resta_nella_copia_del_telefono(web):
+    """Revisione della #929: la domanda «Quale squadra è la tua?» finiva nella copia salvata della Formazione e, riaperta la pagina
+    senza server, tornava con la nota dei dati salvati, come se fosse un dato. Non si salva: senza server e senza copia la pagina
+    dice che non riesce a collegarsi, con «Riprova»."""
+    solo_prima(web)
+    squadra_chiusa(web)
+    web.apri("/")
+    assert "Quale squadra è la tua?" in web.testo_principale(), web.testo_principale()[:300]
+    web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/"), lambda r: r.abort("internetdisconnected"))
+    web.apri("/")
+    principale = web.pagina.locator("main")
+    assert "Quale squadra è la tua?" not in web.testo_principale(), web.testo_principale()[:300]
+    assert principale.get_by_role("button", name="Riprova").first.is_visible()
+
+
+def test_se_lo_stato_non_si_rilegge_la_formazione_dice_riprova_non_la_domanda(web):
+    """Revisione della #929: con la squadra non scelta all'avvio, la Formazione rilegge lo stato prima di chiedere la domanda. Se la
+    rilettura non riesce non si sa se la squadra c'è: niente domanda (e niente Oggi né Formazione, che risponderebbero 400), ma la
+    pagina che dice che non riesce a collegarsi, con «Riprova» (come Giornate senza rose)."""
+    solo_prima(web)
+    squadra_chiusa(web)
+    stato, letture = web.registrata("/api/stato"), []
+
+    def stato_una_volta(route):                              # l'avvio legge lo stato; la rilettura della Formazione non arriva
+        letture.append(1)
+        if len(letture) == 1:
+            _rispondi(route, {**stato, "mia_squadra": None})
+        else:
+            route.abort("internetdisconnected")
+
+    web.pagina.route(_rotta("/api/stato"), stato_una_volta)
+    web.apri("/")
+    principale = web.pagina.locator("main")
+    assert len(letture) >= 2, letture
+    assert "Quale squadra è la tua?" not in web.testo_principale(), web.testo_principale()[:300]
+    assert principale.get_by_role("button", name="Riprova").first.is_visible(), web.testo_principale()[:300]
+    assert not senza_400(web), senza_400(web)
+
+
 # ---------------------------------------------------------------- ore tranquille
 def riga_ore_tranquille(web):
     return web.pagina.locator("label", has=web.pagina.locator("#av_silenzio"))

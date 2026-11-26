@@ -344,7 +344,9 @@ function alRitornoDellaRete(riprova) {
 // Formazione tiene spenti i comandi che scrivono finché non lo sa); `sola()` dice se quei comandi sono spenti.
 // Se i dati nuovi non arrivano resta la copia: la nota dice perché non si può cambiare niente e ha «Riprova»; se è caduta la rete,
 // quando il browser dice che è tornata si riprova da soli, una volta. Restituisce se i dati nuovi sono arrivati in pagina.
-async function caricaConCache(chiave, percorso, mostra, testo) {
+// `daSalvare(dati)` (facoltativo): false per una risposta che non è un dato da ritrovare senza rete (la domanda della squadra della
+// Formazione, revisione della #929): non si salva, e la copia di prima, che non vale più, si toglie.
+async function caricaConCache(chiave, percorso, mostra, testo, { daSalvare = () => true } = {}) {
   const mia = nuovaRichiesta();
   alRitornoDellaRete(null);
   let salvata = leggiCache(chiave), vista = null;
@@ -356,7 +358,7 @@ async function caricaConCache(chiave, percorso, mostra, testo) {
     try {
       const dati = typeof percorso === "function" ? await percorso() : await api(percorso);
       if (!ancoraValida(mia)) return false;
-      salvaCache(chiave, dati);
+      if (daSalvare(dati)) salvaCache(chiave, dati); else rimuoviCache(chiave);
       if (!salvata || JSON.stringify(salvata.dati) !== JSON.stringify(dati)) { mostra(dati, { sostituisce: !!salvata }); return true; }
       const b = $("#nota-cache");
       if (b && b.contains(document.activeElement)) $("#titolo-pagina").focus({ preventScroll: true });   // il fuoco era su «Riprova», che sparisce
@@ -826,7 +828,9 @@ function pezziRigaStato(i) {
     dati: (quandoAgg ? elidiGiorno(t("testata.dati_del", { data: fData(quandoAgg), ora: fOra(quandoAgg) })) : t("testata.mai")).replace(/^\s*·\s*/, ""),
   };
 }
+// Restituisce l'errore della lettura, o null se /api/stato è arrivato (la Formazione senza squadra lo guarda, revisione della #929).
 async function caricaInfo() {
+  let errore = null;
   try {
     stato.info = await api("/api/stato");
     const i = stato.info;
@@ -842,8 +846,10 @@ async function caricaInfo() {
     const copia = leggiCache("stato", true);
     stato.rigaStato = { ...(copia ? pezziRigaStato(copia.dati) : {}), offline: true };
     segnaAvvioDaRileggere(e);
+    errore = e;
   }
   aggiornaRigaStato();
+  return errore;
 }
 // La schermata in pagina, di nuovo, dal suo indirizzo (anche una pagina dentro Impostazioni): «Riprova», dati nuovi.
 function vaiQui(opz = {}) {
@@ -1128,7 +1134,9 @@ function vistaFormazione() {
     return caricaConCache("formazione-" + squadra, async () => ({ o: null, f: await api(`/api/formazione?squadra=${encodeURIComponent(squadra)}`) }),
       (b, opz) => mostraFormazione(b, squadra, opz), t("formazione.calcolo"));
   }
-  return caricaConCache("giornata", caricaGiornata, (b, opz) => mostraFormazione(b, null, opz), t("formazione.calcolo"));
+  // la domanda della squadra non è un dato da ritrovare senza rete: non va nella copia (revisione della #929)
+  return caricaConCache("giornata", caricaGiornata, (b, opz) => mostraFormazione(b, null, opz), t("formazione.calcolo"),
+    { daSalvare: b => !b.senza_squadra });
 }
 
 // Tutto ciò che serve alla schermata, in una volta: la giornata (/api/oggi), la formazione, la scelta salvata e, se gli 11 salvati non
@@ -1143,10 +1151,13 @@ async function caricaGiornata() {
   // /api/formazione risponderebbe 409 (#656); d'estate, senza calendario, è /api/oggi a dire che il calendario non c'è ancora.
   // Con le rose ma senza la tua squadra (primo avvio a metà) le due rotte rispondono 400 («Indica la tua squadra…»): due errori nel
   // browser e una pagina d'errore con «Riprova» (collaudo del 26/11). Lo stato letto all'avvio può essere vecchio (squadra scelta
-  // dall'iPhone o da un'altra scheda): si rilegge; se la squadra manca ancora non si chiede niente e la pagina la chiede lei.
+  // dall'iPhone o da un'altra scheda): si rilegge; se la squadra manca ancora non si chiede niente e la pagina la chiede lei. Se la
+  // rilettura non riesce non si sa se la squadra c'è: l'errore va a caricaConCache, che mostra la copia con la nota e «Riprova» (o
+  // l'errore con «Riprova»), non la domanda (revisione della #929; come Giornate senza rose).
   const senzaSquadra = () => !!stato.info && stato.info.rose_importate === true && !stato.info.mia_squadra;
   if (senzaSquadra()) {
-    await caricaInfo();
+    const errore = await caricaInfo();
+    if (errore) throw errore;
     if (senzaSquadra()) return { senza_squadra: true };
   }
   const senzaRose = !!stato.info && stato.info.rose_importate === false;
@@ -3459,7 +3470,8 @@ async function vistaRegole() {
     if (!testo) return t("regole.campo_vuoto", { campo: nome });
     const v = Number(testo);
     if (!Number.isFinite(v)) return t("regole.non_numero", { campo: nome });
-    if (s.dataset.dec === "0" && !Number.isInteger(v)) return t("regole.intero", { campo: nome });
+    // in un campo di numeri interi punto e virgola non valgono: «1.000» crediti si leggeva 1 (revisione della #929)
+    if (s.dataset.dec === "0" && (!Number.isInteger(v) || testo.includes("."))) return t("regole.intero", { campo: nome });
     const min = Number(s.dataset.min), max = Number(s.dataset.max);
     return v < min || v > max ? t("regole.fuori_limiti", { campo: nome, min: cifraLimite(min), max: cifraLimite(max) }) : "";
   };

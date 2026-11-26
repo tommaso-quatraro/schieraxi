@@ -253,3 +253,16 @@ def test_un_valore_che_non_e_un_numero_dice_quale_campo(web):
     assert avviso(web) == "«Ammonizione» non è un numero: correggilo prima di salvare"
     assert salvate == []
     assert campo(web, "Ammonizione").evaluate("e => e === document.activeElement")
+
+
+@pytest.mark.parametrize("scritto", ["1.000", "1,000"])
+def test_in_un_campo_intero_il_punto_delle_migliaia_non_diventa_1(web, scritto):
+    """Revisione della #929: «1.000» o «1,000» nei crediti iniziali si leggevano 1 (il punto e la virgola sono il separatore dei
+    decimali) e partivano senza avviso. In un campo di numeri interi punto e virgola non valgono: l'avviso dice quale campo."""
+    solo_prima(web)
+    salvate = scritture(web)
+    apri_valori(web, "Rosa e crediti")
+    campo(web, "Crediti iniziali").fill(scritto)
+    tocca(web, principale(web).get_by_role("button", name="Salva le regole"))
+    assert avviso(web) == "«Crediti iniziali» deve essere un numero intero"
+    assert salvate == []
