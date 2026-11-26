@@ -191,6 +191,19 @@
     "it": "Account eliminato",
     "en": "Account deleted"
   },
+  "errori.evento_account_bloccato": {
+    "it": "Account bloccato",
+    "en": "Account blocked",
+    "nota": "da Gestione › Utenti (campo da = chi gestisce) o da python -m fanta utente-blocca (via=comando)"
+  },
+  "errori.evento_account_sbloccato": {
+    "it": "Account sbloccato",
+    "en": "Account unblocked"
+  },
+  "errori.evento_accesso_negato_bloccato": {
+    "it": "Accesso negato: account bloccato",
+    "en": "Sign-in refused: account blocked"
+  },
   "errori.evento_password_cambiata": {
     "it": "Password cambiata",
     "en": "Password changed"
