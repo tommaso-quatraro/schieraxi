@@ -1,4 +1,6 @@
 """Pagine Privacy e Termini: pubbliche (anche con gli account accesi), testi in un solo posto, contatto protetto."""
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -29,6 +31,21 @@ def test_privacy_dice_le_cose_importanti():
 def test_privacy_dice_import_per_conto_di_e_copie_delle_rose():
     t = tl.pagina("privacy").lower()
     assert "importare le tue rose al posto tuo" in t and "5 copie" in t and "cancellano insieme al tuo account" in t
+
+
+@pytest.mark.parametrize("lingua,scambi,vecchie,nuove", [
+    ("it", r"scamb", ("Oggi", "Diario"), "(Formazione, Giornate, widget, risultati in diretta)"),
+    ("en", r"\btrades?\b", ("Today", "Diary"), "(Lineup, Matchdays, widget, live scores)"),
+])
+def test_privacy_e_termini_parlano_dell_app_di_oggi(lingua, scambi, vecchie, nuove):
+    """L'app non analizza più scambi e non ne salva sul dispositivo; le schermate sono Formazione e Giornate (Oggi e Diario
+    non ci sono più): Privacy e Termini usano i nomi che l'utente vede."""
+    for quale in ("privacy", "termini"):
+        t = tl.pagina(quale, lingua)
+        assert not re.search(scambi, t, re.I), (quale, re.search(scambi, t, re.I))
+        for nome in vecchie:
+            assert not re.search(rf"\b{nome}\b", t), (quale, nome)
+    assert nuove in tl.pagina("privacy", lingua)
 
 
 def test_termini_dicono_che_i_dati_non_sono_ufficiali():
