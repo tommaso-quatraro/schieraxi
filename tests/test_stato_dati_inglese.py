@@ -66,24 +66,27 @@ def test_le_righe_degli_aggiornamenti_hanno_la_frase(db):
     assert righe["passo-nuovo"]["etichetta_frase"] is None
 
 
-def test_la_fonte_delle_foto_ha_il_nome_con_la_frase():
+def test_la_fonte_delle_foto_ha_il_nome_con_la_frase(monkeypatch):
+    """La riga delle foto c'è solo nelle copie con il loro modulo (`fonti_attive.disponibile`): qui si fa finta che ci sia."""
+    monkeypatch.setattr(fonti_attive, "disponibile", lambda fonte: True)
     righe = {f["id"]: f for f in fonti_attive.stato()}
     assert righe["foto"]["nome"] == "Foto dei giocatori"
     assert righe["foto"]["nome_frase"] == {"chiave": "fonte.nome_foto", "param": {}}
     assert righe["understat"]["nome"] == "Understat" and righe["understat"]["nome_frase"] is None      # i nomi propri restano
 
 
-def test_i_conteggi_d_uso_hanno_un_nome_e_non_il_codice():
+def test_i_conteggi_d_uso_hanno_il_nome_con_la_frase():
+    """Il nome di ogni funzione contata è quello di `funzioni.FUNZIONI`, parola per parola, con la sua frase per tradurlo."""
+    from fanta import funzioni
     uso.conta("GET", "/api/diario", 200)
     uso.conta("GET", "/api/novita", 200)
-    uso.conta("GET", "/api/asta", 200)
     per_funzione = {f["funzione"]: f for f in uso.riepilogo()["per_funzione"]}
-    assert per_funzione["diario"]["etichetta"] == "Giornate"
-    assert per_funzione["diario"]["etichetta_frase"] == {"chiave": "uso.diario", "param": {}}
-    assert per_funzione["novita"]["etichetta"] == "Novità" and per_funzione["asta"]["etichetta"] == "Asta e riparazione"
-    for funzione in set(uso.FUNZIONE_DI_ROTTA.values()):                  # ogni funzione contata ha il suo nome
-        assert isinstance(uso.etichetta(funzione), frasi.Frase), funzione
-    assert uso.etichetta("vecchia_funzione") == "vecchia_funzione"         # un nome di prima, rimasto nel file: com'è
+    assert per_funzione["diario"]["etichetta"] == "Diario delle giornate"
+    assert per_funzione["diario"]["etichetta_frase"] == {"chiave": "uso.funzione_diario", "param": {}}
+    assert per_funzione["novita"]["etichetta"] == "Novità"
+    for funzione in set(uso.FUNZIONE_DI_ROTTA.values()):                  # ogni funzione contata ha la frase, con lo stesso nome
+        _ha_la_frase(uso.nome_funzione(funzione), funzioni.FUNZIONI[funzione][0])
+    assert uso.nome_funzione("vecchia_funzione") == "vecchia funzione"     # un nome di prima, rimasto nel file: senza frase
 
 
 def test_i_controlli_sui_dati_hanno_la_frase(db):

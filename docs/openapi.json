@@ -2394,7 +2394,7 @@
     "summary": "Fonti Dati"
    },
    "put": {
-    "description": "Accende o spegne una fonte. Accendere una fonte significa assumersi il rispetto delle condizioni d'uso del sito.\nLe richieste già in corso finiscono; i risultati in diretta (ESPN) si riavviano al prossimo avvio del servizio.",
+    "description": "Accende o spegne una fonte. Accendere una fonte significa assumersi il rispetto delle condizioni d'uso del sito.\nLe richieste già in corso finiscono; i risultati in diretta (ESPN) seguono la scelta dal giro dopo (entro 15 secondi), senza riavvio.",
     "requestBody": {
      "content": {
       "application/json": {
@@ -2568,7 +2568,7 @@
   },
   "/api/admin/registro": {
    "get": {
-    "description": "Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà).",
+    "description": "Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà).\nOgni errore e ogni richiesta lenta ha accanto il nome della parte dell'app (`parte`, `parte_frase`).",
     "responses": {
      "200": {
       "content": {

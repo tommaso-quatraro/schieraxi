@@ -126,10 +126,13 @@ di recupero e in **Il tuo account** non si può collegare un'email.
 - **Aggiorna i dati** scarica subito dalle fonti; di solito il server lo fa da solo. Se all'apertura dell'app il server è già
   occupato con un aggiornamento (dei dati o di una versione nuova), il pulsante è spento con una frase che lo dice e si riaccende
   da sé quando ha finito; se l'aggiornamento parte con l'app già aperta, il pulsante premuto risponde «Aggiornamento già in
-  corso». Con tutte le fonti spente lo dice e non parte.
+  corso». Con tutte le fonti spente lo dice e non parte. Fra un giro e il successivo passano almeno 10 minuti: premuto prima, dice
+  fra quanto riprovare («I dati sono stati aggiornati da poco: riprova fra 9 minuti.») e non parte.
 - **Stato dei dati** (**Apri lo stato dei dati**): da dove arrivano i dati, se qualche fonte ha dato errore e quanto è affidabile
   il modello. Le fonti si accendono e si spengono da qui: sotto ogni fonte spenta c'è cosa non arriva, e una volta sola sotto
-  l'elenco cosa fa l'app senza e le condizioni d'uso.
+  l'elenco cosa fa l'app senza e le condizioni d'uso. La scelta vale subito, anche per i risultati in diretta (ESPN e la
+  funzione «Risultati in diretta»): non serve riavviare il server. **Quanto si usa l'app** conta le richieste delle ultime 4
+  settimane per funzione e, sotto **Le schermate più usate**, per parte dell'app (per esempio «Formazione», «La mia lega»).
 - Quando i dati non si aggiornano da giorni, chi gestisce vede in cima alla Formazione la decisione «I dati delle partite non
   si aggiornano da N giorni.» con **Controlla**, che apre **Impostazioni › Gestione**: lì **Apri lo stato dei dati** dice quale
   fonte si è fermata. Gli altri utenti non la vedono.
@@ -169,8 +172,12 @@ Le misure dello **Stato dei dati**:
 - **Funzioni dietro un interruttore.** Alcune parti sono spente di norma, per esempio **Squadre della lega** (le rose delle
   altre squadre: senza, in **La mia lega** la voce **Le altre squadre** non c'è) e **Immagini da indirizzo web** (stemma e maglia
   da un indirizzo `https://` e, sulla web, dal menu Condividi del telefono; sull'iPhone il menu Condividi funziona anche senza) e **Widget aggiuntivi** (`widget_extra`: il widget **Da controllare**;
-  spento, dice «Widget spento»). Si accendono con il file `dati/funzioni.json` o con la variabile
-  `FANTA_FUNZIONE_<NOME>` (`1` acceso, `0` spento); l'elenco con i nomi è in `fanta/funzioni.py`.
+  spento, dice «Widget spento»). Si accendono con il file `dati/funzioni.json`, per esempio
+  `{"squadre_altrui": true, "widget_extra": false}` (`true` acceso, `false` spento; valgono anche `1` e `0`), o con la
+  variabile `FANTA_FUNZIONE_<NOME>` (`1` acceso, `0` spento); l'elenco con i nomi è in `fanta/funzioni.py`. Se il file è
+  scritto male (per esempio una virgola di troppo) nessuna delle sue scelte vale: il registro del servizio lo dice con il nome
+  del file, e dall'app gli interruttori non si cambiano finché non lo correggi o lo togli. Lo stesso vale per `dati/fonti.json`,
+  il file delle fonti.
 - **Server senza account.** In **Gestione** c'è anche **Avvisi anche per l'app nativa**: gli avvisi arrivano anche con ntfy,
   e il tocco sulla notifica apre l'app per iPhone.
 

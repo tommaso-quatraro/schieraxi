@@ -1461,47 +1461,101 @@
     "it": "Sentinella: risposte dell'app",
     "en": "Watchdog: app responses"
   },
-  "frase.uso.live": {
-    "it": "Risultati in diretta",
-    "en": "Live results"
+  "frase.uso.parte_formazione": {
+    "it": "Formazione",
+    "en": "Lineup",
+    "nota": "nomi delle parti dell'app (fanta/uso.py, PARTI, la sola tabella): in «Quanto si usa l'app» (per_parte) e accanto alle rotte di «Errori recenti» (parte di GET /api/admin/registro)"
   },
-  "frase.uso.asta": {
-    "it": "Asta e riparazione",
-    "en": "Auction and repair"
-  },
-  "frase.uso.confronto": {
-    "it": "Confronto tra due giocatori",
-    "en": "Comparison between two players"
-  },
-  "frase.uso.scambi_trova": {
-    "it": "Scambi: trova per me",
-    "en": "Trades: find for me"
-  },
-  "frase.uso.scambi_valuta_o_costruisci": {
-    "it": "Scambi: valuta o costruisci",
-    "en": "Trades: evaluate or build"
-  },
-  "frase.uso.immagini_web": {
-    "it": "Immagini da indirizzo web",
-    "en": "Images from a web address"
-  },
-  "frase.uso.elenco_giocatori": {
-    "it": "Elenco dei giocatori",
-    "en": "Player list"
-  },
-  "frase.uso.seguiti": {
-    "it": "Seguiti",
-    "en": "Followed players"
-  },
-  "frase.uso.diario": {
+  "frase.uso.parte_giornate": {
     "it": "Giornate",
     "en": "Matchdays"
   },
-  "frase.uso.backup": {
+  "frase.uso.parte_lega": {
+    "it": "La mia lega",
+    "en": "My league"
+  },
+  "frase.uso.parte_account": {
+    "it": "Il tuo account",
+    "en": "Your account"
+  },
+  "frase.uso.parte_avvisi": {
+    "it": "Avvisi",
+    "en": "Alerts"
+  },
+  "frase.uso.parte_aspetto": {
+    "it": "Aspetto",
+    "en": "Appearance"
+  },
+  "frase.uso.parte_gestione": {
+    "it": "Gestione",
+    "en": "Management"
+  },
+  "frase.uso.parte_informazioni": {
+    "it": "Informazioni",
+    "en": "About"
+  },
+  "frase.uso.parte_scrivici": {
+    "it": "Scrivici",
+    "en": "Write to us"
+  },
+  "frase.uso.parte_avvio": {
+    "it": "Apertura dell'app",
+    "en": "App start"
+  },
+  "frase.uso.parte_widget": {
+    "it": "Widget dell'iPhone",
+    "en": "iPhone widget"
+  },
+  "frase.uso.parte_controllo": {
+    "it": "Controllo del server",
+    "en": "Server check"
+  },
+  "frase.uso.parte_altro": {
+    "it": "Altre richieste",
+    "en": "Other requests"
+  },
+  "frase.uso.funzione_live": {
+    "it": "Risultati in diretta",
+    "en": "Live results",
+    "nota": "nome di una funzione contata in «Quanto si usa l'app» (fanta/uso.py, nome_funzione): lo stesso di funzioni.FUNZIONI (#949)"
+  },
+  "frase.uso.funzione_asta": {
+    "it": "Asta e riparazione",
+    "en": "Auction and repair"
+  },
+  "frase.uso.funzione_confronto": {
+    "it": "Confronto tra due giocatori",
+    "en": "Comparison between two players"
+  },
+  "frase.uso.funzione_scambi_trova": {
+    "it": "Scambi: trova per me",
+    "en": "Trades: find for me"
+  },
+  "frase.uso.funzione_scambi_costruisci": {
+    "it": "Scambi: costruisci",
+    "en": "Trades: build"
+  },
+  "frase.uso.funzione_immagini_web": {
+    "it": "Immagini da indirizzo web",
+    "en": "Images from a web address"
+  },
+  "frase.uso.funzione_elenco_giocatori": {
+    "it": "Elenco dei giocatori",
+    "en": "Player list"
+  },
+  "frase.uso.funzione_seguiti": {
+    "it": "Seguiti",
+    "en": "Followed players"
+  },
+  "frase.uso.funzione_diario": {
+    "it": "Diario delle giornate",
+    "en": "Matchdays"
+  },
+  "frase.uso.funzione_backup": {
     "it": "Copia di sicurezza",
     "en": "Backup"
   },
-  "frase.uso.novita": {
+  "frase.uso.funzione_novita": {
     "it": "Novità",
     "en": "What's new"
   }

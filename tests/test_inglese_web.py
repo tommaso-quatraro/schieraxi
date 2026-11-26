@@ -49,7 +49,7 @@ def test_i_nomi_di_stato_dei_dati_si_traducono():
             'traduciFrase({ chiave: "aggiornamento.aggiornamento", param: {} }, "Aggiornamento generale")',
             'traduciFrase({ chiave: "aggiornamento.calendario_stagione", param: { stagione: "2026-27" } }, "Calendario completo 2026-27")',
             'traduciFrase({ chiave: "fonte.nome_foto", param: {} }, "Foto dei giocatori")',
-            'traduciFrase({ chiave: "uso.diario", param: {} }, "Giornate")',
+            'traduciFrase({ chiave: "uso.funzione_diario", param: {} }, "Diario delle giornate")',
             'traduciFrase({ chiave: "controllo.titolari_per_squadra", param: {} }, "11 titolari per squadra")',
             'traduciFrase(null, "vecchia_funzione")']
     assert _node("en", casi) == ["Starter 90-100%", "Bench below 20%", "Full data refresh", "Full fixtures 2026-27", "Player photos",
