@@ -64,7 +64,7 @@ Un Apple ID gratuito firma l'app per 7 giorni. Dopo, SideStore la rinnova.
 
 ### Il Comando automatico (da impostare una volta)
 
-La guida dentro l'app (sezione **Rinnovo automatico (SideStore)**) ha gli stessi passi. Riassunto:
+Chi gestisce l'app trova gli stessi passi anche dentro l'app, in **Impostazioni › Gestione › Rinnovo automatico (SideStore)**. Riassunto:
 
 1. Nell'app **Comandi** crea un comando con l'azione di SideStore **Refresh All Apps** (in italiano può comparire come «Aggiorna tutte le app»).
 2. Vai su **Automazione**, tocca **+**, scegli **Ora del giorno**, imposta **3:00** e ripeti ogni giorno.
@@ -76,7 +76,7 @@ Il rinnovo richiede il Wi-Fi: con la sola rete mobile dà l'errore «No wifi int
 
 ### Promemoria dentro l'app
 
-L'app mostra quanti giorni mancano alla scadenza del certificato («Scade tra N giorni»). Quando mancano pochi giorni, il messaggio diventa più evidente, e l'app manda promemoria locali prima della scadenza. Nella scheda **Oggi**, in **Da fare**, compare una voce quando il certificato sta per scadere.
+Se gli avvisi dell'app sono permessi, 24 ore e 6 ore prima della scadenza arriva il promemoria «SchieraXI · Da rinnovare». Chi gestisce l'app vede anche quanti giorni mancano in **Impostazioni › Gestione › Certificato dell'app** («Scade tra N giorni») e, in cima alla Formazione, la decisione «L'app sul telefono scade tra N giorni: rinnovala.» con **Rinnova**.
 
 Se il rinnovo non è partito e la scadenza si avvicina:
 

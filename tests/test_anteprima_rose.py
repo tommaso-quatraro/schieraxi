@@ -168,7 +168,7 @@ def test_anteprima_di_un_excel(ambiente, tmp_path):
 def test_anteprima_errori_chiari(ambiente):
     a, _ = nuovo_utente("utentea")
     r = a.post("/api/rose/anteprima", json={"testo": "Pos,Punti\n1,30\n"})
-    assert r.status_code == 400 and "rosters" in r.json()["detail"]
+    assert r.status_code == 400 and r.json()["detail"] == rose.NESSUNA_ROSA      # quale file serve, in parole semplici (#883)
     assert a.post("/api/rose/anteprima", json={"testo": "x" * 300_000}).status_code == 400
     assert a.post("/api/rose/anteprima", json={"testo": "a\n" * 2000}).status_code == 400
     assert a.post("/api/rose/anteprima/file", files={"file": ("vuoto.csv", b" \n", "text/csv")}).status_code == 400

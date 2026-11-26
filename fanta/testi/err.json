@@ -562,8 +562,8 @@
     "en": "The CSV cannot be read: there are quotation marks opened and never closed, or a huge cell. Export it again from Excel as “CSV UTF-8”."
   },
   "err.rose_non_trovate": {
-    "it": "Non ho trovato rose nel file. Leggo l'esportazione «rosters» di Leghe (righe come «Real Esempio,7627,12», con «$,$,$» tra una squadra e l'altra) oppure un Excel, un CSV o un testo con il nome di ogni squadra e sotto i suoi calciatori (come «P;Sommer;10»).",
-    "en": "I found no rosters in the file. I read the Leghe “rosters” export (rows like “Real Esempio,7627,12”, with “$,$,$” between one team and the next) or an Excel, CSV or text file with the name of each team and its players below it (like “P;Sommer;10”)."
+    "it": "Non ho trovato rose nel file. Serve il file delle rose esportato da Leghe (Excel o CSV), oppure un testo con il nome di ogni squadra e sotto i suoi giocatori, uno per riga.",
+    "en": "I found no rosters in the file. Use the rosters file exported from Leghe (Excel or CSV), or a text with the name of each team and its players below it, one per line."
   },
   "err.fogli_saltati": {
     "it": "Nel file non ho trovato rose. Ho saltato i fogli che sono listone, calendario o classifica: {1}. Carica il file delle rose esportato dalla lega.",
