@@ -59,6 +59,33 @@ def test_tre_fasi_come_in_oggi(widget_vero):
     assert c["riepilogo"] == o["riepilogo"] and c["riepilogo"]["punti_fatti"] == 70.5 and c["prossima"] == o["prossima"]
 
 
+@pytest.mark.parametrize("voti_usciti,chiave,coda", [
+    (True, "in_corso.recupero", "."),                                    # voti di domenica usciti: manca solo il recupero
+    (False, "in_corso.voti_e_recupero", "; mancano i voti ufficiali."),  # roma-lazio finita senza voti: mancano anche quelli
+], ids=["recupero", "voti_e_recupero"])
+def test_con_il_recupero_la_frase_breve_accanto_a_quella_di_oggi(widget_vero, voti_usciti, chiave, coda):
+    """#911: con una partita rinviata che la lega aspetta, `in_corso` del widget ha la riga di Oggi così com'è (con i nomi) e in
+    più la sua forma breve per il widget medio (`situazione_breve`, il numero al posto dei nomi), anche quando mancano i voti
+    ufficiali. In /api/oggi la breve non c'è."""
+    from test_fasi import VOTI_DOMENICA, _napoli_juve_rinviata, _voti
+    a, costruisci = widget_vero
+    _napoli_juve_rinviata(a)
+    if voti_usciti:
+        _voti(a, VOTI_DOMENICA)
+    adesso, live = datetime(2026, 11, 8, 22, 40), {("roma", "lazio"): {"stato": "finita"}}
+    c, o = costruisci(adesso, live_partite=live), _oggi(a, adesso, live_partite=live)
+    lunga = o["in_corso"]["situazione_frase"]
+    assert lunga["chiave"] == chiave and lunga["param"]["n"] >= 1
+    n = lunga["param"]["n"]
+    assert (c["in_corso"]["situazione"], c["in_corso"]["situazione_frase"]) == (o["in_corso"]["situazione"], lunga)
+    soggetto = f"{n} giocatori aspettano il recupero" if n > 1 else "1 giocatore aspetta il recupero"
+    assert c["in_corso"]["situazione_breve"] == soggetto + coda
+    assert c["in_corso"]["situazione_breve_frase"] == {"chiave": chiave + "_breve", "param": {"n": n}}
+    assert "situazione_breve" not in o["in_corso"]
+    assert {k: v for k, v in c["in_corso"].items() if not k.startswith("situazione_breve")} == \
+        {k: v for k, v in o["in_corso"].items() if k not in ("giocatori", "sostituzioni")}
+
+
 def test_l_etag_non_cambia_solo_perche_passa_il_tempo(widget_vero):
     """#651: `ore_mancanti` (decimi d'ora) e `prossima.prepara_da` (l'ora di adesso quando si può già preparare) cambiano con
     l'orologio e il client li ricava da `scadenza` e `con_probabili`: restano nel corpo ma non nell'ETag, che prima cambiava ogni
