@@ -6,6 +6,10 @@ from functools import lru_cache
 from .regole import Regole, modulo_in_numeri
 
 COLONNA_VOTO = {"redazione": "voto_red", "statistico": "voto_stat", "italia": "voto_ita"}
+# le colonne della tabella voti con i bonus e i malus che `fantavoto` legge: chi passa una riga dell'archivio mette 0 dove mancano
+# (elenco unico per la scheda e il registro delle giornate)
+BONUS_E_MALUS = ("gol", "gol_subiti", "autogol", "rig_segnati", "rig_sbagliati", "rig_parati", "assist", "mvp", "ammonizioni",
+                 "espulsioni")
 
 
 def fantavoto(r: dict, ruolo: str, regole: Regole) -> float | None:
