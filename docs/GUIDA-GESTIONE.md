@@ -6,7 +6,8 @@ l'aggiornamento automatico in `script/server/LEGGIMI.md`, il ripristino in [RIPR
 Nei comandi qui sotto l'indirizzo del server si scrive `<indirizzo-del-server>`.
 
 Tutto quello che segue sta in **Impostazioni › Gestione**, che compare solo a chi gestisce l'app (nell'elenco degli utenti ha
-accanto «amministratore»).
+accanto «amministratore»). Sull'iPhone la Gestione ha solo i dati, **Collegamento** e **Certificato**: inviti, password, utenti,
+errori e commenti si gestiscono solo dalla web.
 
 ## 1. Inviti
 
@@ -32,7 +33,25 @@ Chi è già entrato con quell'invito tiene il suo account. Gli inviti usati, sca
 
 - **Password dimenticata**: se qualcuno ha perso password e codice di recupero, **Genera il codice** crea un codice che vale
   24 ore, una volta sola. Si dà di persona: con quel codice l'amico sceglie una nuova password.
-- **Utenti**: chi ha un account; chi gestisce ha accanto «amministratore».
+- **Utenti**: chi ha un account, con quando si è iscritto e l'ultimo accesso (per esempio «Iscrizione gio 1 ott, ultimo accesso
+  mar 24 nov.»); chi gestisce ha accanto «amministratore», e sulla propria riga c'è «Sei tu». Sugli account degli utenti (non
+  degli altri amministratori, che si gestiscono solo sul server) due pulsanti, ognuno dopo una conferma che dice il nome (solo
+  sulla web: la Gestione dell'iPhone non ha gli strumenti degli account):
+  - **Blocca**: l'account non entra più, né con la password né con Google, e le sue sessioni (web, iPhone, widget) e le sue
+    notifiche si chiudono subito. I suoi dati restano. Sulla riga compare «Bloccato mer 25 nov: non può entrare.» e al posto di
+    **Blocca** c'è **Sblocca**, che lo fa rientrare con la sua password. Chi è bloccato, se prova a entrare con la password
+    giusta, legge «Questo account è bloccato: chiedi a chi gestisce SchieraXI.»; lo stesso se prova a cambiare la password
+    con il codice di recupero o con l'email. Non riceve avvisi. Sbloccato, rientra con la sua password (le sessioni di prima
+    restano chiuse).
+  - **Elimina**: l'account e tutti i suoi dati spariscono, come quando lo elimina lui da **Il tuo account**. Non si può
+    annullare.
+
+  Il proprio account non si blocca e da qui non si elimina (si elimina da **Il tuo account**, con la password); un altro
+  amministratore si blocca o si elimina solo con i comandi qui sotto. L'ultimo amministratore che non è bloccato non si blocca,
+  non si elimina e non si declassa. Ogni blocco, sblocco ed eliminazione lascia una riga negli eventi di sicurezza di
+  **Errori recenti** («Account bloccato · luca»); nel registro di sicurezza del server la riga dice anche chi l'ha fatto.
+  Sul server, via ssh, dalla cartella dell'app, gli stessi passi con la conferma del nome (anche per gli amministratori):
+  `.venv/bin/python -m fanta utente-blocca <nome>`, `utente-sblocca <nome>` e `utente-elimina <nome>`.
 - **Errori recenti**: le richieste dall'ultimo riavvio con le rifiutate e gli errori del server, tempo medio e massimo, gli
   eventi di sicurezza con il loro nome in parole, le richieste più lente con accanto al percorso tecnico il nome della parte
   (per esempio «Formazione (/api/oggi)»). Ore nell'ora italiana. Le richieste senza nessun accesso verso le parti dell'app (di
@@ -45,7 +64,7 @@ Chi è già entrato con quell'invito tiene il suo account. Gli inviti usati, sca
   mostrati). A ogni commento nuovo arriva un avviso sul canale ntfy del server (lo stesso della sentinella e degli script,
   `~/.config/schieraxi/canale`): «SchieraXI · un commento nuovo», senza il testo e senza il nome, che restano sul server. Al
   massimo 6 avvisi all'ora per tutto il server: oltre, i commenti si salvano senza avviso. Senza quel file l'avviso non parte,
-  il commento si salva lo stesso. Ognuno ne manda al massimo 5 al giorno (sul server si cambia con `FANTA_MAX_COMMENTI_AL_GIORNO`); con l'account
+  il commento si salva lo stesso. Ognuno ne manda al massimo 5 al giorno (sul server si cambia con `FANTA_MAX_COMMENTI_AL_GIORNO`), tranne chi gestisce l'app, che non ha limite; con l'account
   eliminato se ne vanno anche i suoi commenti. Sul server, via ssh, gli ultimi 20 con il testo intero:
   `.venv/bin/python -m fanta feedback --ultimi 20` (dalla cartella dell'app, sola lettura).
 
@@ -102,7 +121,8 @@ Le misure dello **Stato dei dati**:
   `{"dal": "AAAA-MM-GG", "al": "AAAA-MM-GG"}`) e `finestre_scambio` (un elenco di periodi).
 - **Funzioni dietro un interruttore.** Alcune parti sono spente di norma, per esempio **Squadre della lega** (le rose delle
   altre squadre: senza, in **La mia lega** la voce **Le altre squadre** non c'è) e **Immagini da indirizzo web** (stemma e maglia
-  da un indirizzo `https://` e, sulla web, dal menu Condividi del telefono; sull'iPhone il menu Condividi funziona anche senza). Si accendono con il file `dati/funzioni.json` o con la variabile
+  da un indirizzo `https://` e, sulla web, dal menu Condividi del telefono; sull'iPhone il menu Condividi funziona anche senza) e **Widget aggiuntivi** (`widget_extra`: il widget **Da controllare**;
+  spento, dice «Widget spento»). Si accendono con il file `dati/funzioni.json` o con la variabile
   `FANTA_FUNZIONE_<NOME>` (`1` acceso, `0` spento); l'elenco con i nomi è in `fanta/funzioni.py`.
 - **Server senza account.** In **Gestione** c'è anche **Avvisi anche per l'app nativa**: gli avvisi arrivano anche con ntfy,
   e il tocco sulla notifica apre l'app per iPhone.
@@ -119,5 +139,5 @@ Le misure dello **Stato dei dati**:
   (gli stessi di [INSTALLAZIONE-IPHONE.md](INSTALLAZIONE-IPHONE.md), sezione 5). Chi gestisce vede anche, in cima alla
   Formazione, la decisione «L'app sul telefono scade tra N giorni: rinnovala.» con **Rinnova**. Tutti gli utenti dell'app per
   iPhone ricevono invece, se gli avvisi sono permessi, il promemoria «SchieraXI · Da rinnovare» 24 ore e 6 ore prima della
-  scadenza.
+  scadenza, mai nelle ore tranquille: se ci cadono, arrivano un minuto prima che comincino.
 - **Codice d'invito.** Chi usa l'app per iPhone si registra con il codice scritto sotto il link dell'invito (sezione 1).

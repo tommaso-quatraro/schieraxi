@@ -244,15 +244,22 @@ def leggi_ripiego(html: str, giornata: int, stagione: str) -> list[dict]:
             stato = "da_giocare"
         else:
             stato = "in_corso"
+        prima = stato == "da_giocare"                            # niente «0-0» per chi non ha ancora giocato, come leggi_espn
         risultato.append({"casa": p["casa"], "trasferta": p["trasferta"], "data": (p["data"] or "")[:16] or None, "stato": stato,
-                          "minuto": None, "gol_casa": int(testo(gc)) if stato != "da_giocare" else 0,
-                          "gol_trasferta": int(testo(gt)) if stato != "da_giocare" else 0, "eventi": []})
+                          "minuto": None, "gol_casa": None if prima else int(testo(gc)),
+                          "gol_trasferta": None if prima else int(testo(gt)), "eventi": []})
     return risultato
 
 
 # ---------------------------------------------------------------- la cache condivisa e il raccoglitore
 def _scarica_http(url: str) -> str:
-    fonti_attive.richiedi("espn")
+    """Ogni fonte con il suo interruttore. Il ripiego (Fantacalcio.it) passa da `rete.scarica`, con la pausa delle altre richieste
+    allo stesso sito, ma con un tentativo solo: le pause dopo un errore le decide il raccoglitore (al massimo una al minuto)."""
+    from .fonti import fantacalcio as fc
+    if url.startswith(fc.BASE + "/"):
+        fonti_attive.richiedi(FONTE_RIPIEGO)
+        return rete.scarica(url, headers={"Accept": "text/html"}, timeout=10, tentativi=1).text
+    fonti_attive.richiedi(FONTE_ESPN)
     r = requests.get(url, headers={"User-Agent": UA, "Accept": "application/json, text/html"}, timeout=10)
     r.raise_for_status()
     return r.text
@@ -316,8 +323,8 @@ class Raccoglitore:
                     "partite": {f"{k[0]}|{k[1]}": p | {"visto": self._visto.get(k)} for k, p in self._partite.items()}}
         try:
             scrivi_sicuro(self.file, json.dumps(dati, ensure_ascii=False, separators=(",", ":")))
-        except OSError:
-            pass
+        except OSError as e:                              # solo il tipo: il messaggio contiene il percorso
+            LOG.warning("diretta: cache su file non salvata (%s), un riavvio la perderebbe", type(e).__name__)
 
     # ---- lettura (le richieste degli utenti)
     def istantanea(self) -> dict:
@@ -370,7 +377,8 @@ class Raccoglitore:
         solo_dopo = not any(in_finestra(p["data"], adesso) for p in da_seguire)
         normale = INTERVALLO_DOPO if solo_dopo else INTERVALLO
         self.prossima = ora + normale                    # mai due richieste a meno di un minuto (5 minuti dopo la finestra)
-        usa_ripiego = ora < self.ripiego_fino
+        ripiego_acceso = fonti_attive.acceso(FONTE_RIPIEGO)   # Fantacalcio.it spenta: nessun ripiego, si riprova solo ESPN
+        usa_ripiego = ora < self.ripiego_fino and ripiego_acceso
         fonte = FONTE_RIPIEGO if usa_ripiego else FONTE_ESPN
         slug_noti = {p["casa"] for p in calendario} | {p["trasferta"] for p in calendario}
         seguite = {(p["casa"], p["trasferta"]) for p in da_seguire}
@@ -392,7 +400,7 @@ class Raccoglitore:
             LOG.warning("diretta: lettura di %s non riuscita (%s), %d di fila", fonte, motivo, self.errori)
             # la pausa dopo un errore non è mai più corta di quella normale (dopo la finestra: 5 minuti, anche verso il ripiego)
             self.prossima = ora + max(normale, min(INTERVALLO * 2 ** (self.errori - 1), ATTESA_MASSIMA))
-            if not usa_ripiego and self.errori >= ERRORI_PER_RIPIEGO:
+            if not usa_ripiego and self.errori >= ERRORI_PER_RIPIEGO and ripiego_acceso:
                 self.ripiego_fino = ora + DURATA_RIPIEGO
                 self.prossima = ora + normale
             return "errore"
@@ -407,7 +415,8 @@ class Raccoglitore:
             for p in nuove:
                 vecchia = self._partite.get((p["casa"], p["trasferta"]))
                 if fonte == FONTE_RIPIEGO and vecchia and vecchia["eventi"] and p["stato"] != "finita":
-                    p = p | {"eventi": vecchia["eventi"], "minuto": vecchia["minuto"]}      # il ripiego non cancella i marcatori già noti
+                    # il ripiego non cancella i marcatori già noti; il minuto no: quello vecchio resterebbe fermo per dieci minuti
+                    p = p | {"eventi": vecchia["eventi"]}
                 self._partite[(p["casa"], p["trasferta"])] = p
                 if fonte == FONTE_RIPIEGO and p["stato"] == "da_giocare":
                     # il ripiego scrive «da giocare» anche a partita cominciata senza punteggio: non conferma un ritardo (#901)
@@ -432,8 +441,8 @@ def sorveglia(raccoglitore: Raccoglitore, fermo: threading.Event, pausa: float =
     while not fermo.is_set():
         try:
             raccoglitore.passo()
-        except Exception:
-            pass                                          # il raccoglitore non deve mai far cadere il servizio
+        except Exception as e:  # noqa: BLE001 - il raccoglitore non deve mai far cadere il servizio, ma il guasto si vede
+            LOG.warning("diretta: giro del raccoglitore non riuscito (%s)", type(e).__name__)
         fermo.wait(pausa)
 
 
