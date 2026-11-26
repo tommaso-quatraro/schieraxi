@@ -74,9 +74,9 @@ def test_lo_stato_e_quello_del_token_di_questo_dispositivo(due_utenti):  # noqa:
     assert a.get("/api/account/token-widget").json()["presente"] is True
 
 
-def test_un_token_senza_legame_resta_valido_finche_scade(due_utenti):  # noqa: F811
-    """Le app già installate: un token nato quando il server ne teneva uno per utente (senza legame) vale fino alla sua scadenza,
-    anche dopo che un altro dispositivo ne ha chiesto uno o è uscito."""
+def test_un_token_senza_legame_resta_finche_non_si_esce(due_utenti):  # noqa: F811
+    """Le app già installate: un token nato quando il server ne teneva uno per utente (senza legame) vale ancora, anche dopo che un
+    altro dispositivo ne ha chiesto uno o ha mandato il DELETE delle app di prima."""
     a, _ = due_utenti
     vecchio = token_di(a)
     with contextlib.closing(account.apri()) as db:
@@ -86,8 +86,63 @@ def test_un_token_senza_legame_resta_valido_finche_scade(due_utenti):  # noqa: F
     nuovo = token_di(altro)
     assert _vale(vecchio) and _vale(nuovo)
     assert altro.delete("/api/account/token-widget").json() == {"revocato": True}
-    assert altro.post("/api/account/esci").status_code == 200
     assert _vale(vecchio)
+
+
+def test_l_uscita_toglie_anche_i_token_senza_legame(due_utenti):  # noqa: F811
+    """Un token senza legame (nato prima del 20/11/2026) non si sa di quale dispositivo sia: «Esci» da qualsiasi sessione
+    dell'account lo toglie, se no resterebbe valido per mesi dopo l'uscita. Il dispositivo che lo usava prende un 401, lascia il
+    segnale e la sua app ne chiede uno nuovo; il token legato all'altro dispositivo resta."""
+    a, b = due_utenti
+    vecchio = token_di(a)
+    with contextlib.closing(account.apri()) as db:
+        db.execute("UPDATE token_widget SET sessione_id = NULL")
+        db.commit()
+    altro = _altro_dispositivo()
+    ipad, di_bruno = token_di(altro), token_di(b)
+    assert a.post("/api/account/esci").status_code == 200
+    assert not _vale(vecchio), "dopo «Esci» il token senza legame non vale più"
+    assert _vale(ipad), "quello legato all'altro dispositivo resta"
+    assert _vale(di_bruno), "e quello di un altro account non si tocca"
+
+
+def test_un_nuovo_token_toglie_quelli_di_sessioni_chiuse_o_scadute(multiutente, dati_isolati):
+    """Al POST del token si tolgono i token dell'utente legati a sessioni revocate (un nuovo accesso sullo stesso dispositivo chiude
+    la sessione di prima senza toccare il suo widget) o scadute: nessuno li userà più. Quelli di sessioni aperte restano."""
+    adesso = datetime(2026, 11, 26, 10, 0, tzinfo=timezone.utc)
+    with contextlib.closing(account.apri()) as db:
+        db.execute("INSERT INTO utenti (nome_utente, password_hash, recupero_hash, creato) VALUES ('x', 'h', 'r', '2026-01-01T00:00:00')")
+        db.commit()
+        chiusa = account._apri_sessione(db, 1, "iphone", adesso)
+        t_chiusa, _ = account.crea_token_widget(db, 1, adesso, sessione=chiusa)
+        account.esci(db, chiusa)                                   # come il nuovo accesso sullo stesso dispositivo
+        scaduta = account._apri_sessione(db, 1, "ipad", adesso - timedelta(days=40))
+        t_scaduta, _ = account.crea_token_widget(db, 1, adesso - timedelta(days=40), sessione=scaduta)
+        aperta = account._apri_sessione(db, 1, "mac", adesso)
+        t_aperta, _ = account.crea_token_widget(db, 1, adesso, sessione=aperta)
+        nuova = account._apri_sessione(db, 1, "iphone", adesso)
+        t_nuova, _ = account.crea_token_widget(db, 1, adesso, sessione=nuova)
+        assert account.utente_da_token_widget(db, t_chiusa, adesso) is None
+        assert account.utente_da_token_widget(db, t_scaduta, adesso) is None
+        assert account.utente_da_token_widget(db, t_aperta, adesso) is not None
+        assert account.utente_da_token_widget(db, t_nuova, adesso) is not None
+        assert db.execute("SELECT COUNT(*) FROM token_widget").fetchone()[0] == 2
+
+
+def test_al_massimo_dieci_token_per_utente(multiutente, dati_isolati):
+    """Un tetto di 10 token per utente: oltre, se ne va quello usato meno di recente."""
+    adesso = datetime(2026, 11, 26, 10, 0, tzinfo=timezone.utc)
+    with contextlib.closing(account.apri()) as db:
+        db.execute("INSERT INTO utenti (nome_utente, password_hash, recupero_hash, creato) VALUES ('x', 'h', 'r', '2026-01-01T00:00:00')")
+        db.commit()
+        token = []
+        for i in range(12):
+            quando = adesso + timedelta(minutes=i)
+            sessione = account._apri_sessione(db, 1, f"dispositivo {i}", quando)
+            token.append(account.crea_token_widget(db, 1, quando, sessione=sessione)[0])
+        dopo = adesso + timedelta(minutes=30)
+        assert db.execute("SELECT COUNT(*) FROM token_widget").fetchone()[0] == account.MAX_TOKEN_WIDGET == 10
+        assert [account.utente_da_token_widget(db, t, dopo) is not None for t in token] == [False, False] + [True] * 10
 
 
 def test_esci_da_tutti_chiude_i_widget_di_tutti_i_dispositivi(due_utenti):  # noqa: F811

@@ -104,7 +104,7 @@ def test_i_token_del_widget_di_prima_restano_e_ora_sono_uno_per_dispositivo(tmp_
     """26/11/2026: i token del widget passano da uno per utente a uno per sessione (iPhone e iPad dello stesso account). Un archivio
     di prima tiene i suoi token, con e senza legame, che valgono come prima; dopo, due sessioni dello stesso utente hanno due token
     e l'eliminazione dell'account li toglie ancora tutti."""
-    indice = next(n for n, v in enumerate(account.MIGRAZIONI) if isinstance(v, str) and "token_widget_nuova" in v)
+    indice = account.MIGRAZIONI.index(account._token_widget_per_sessione)
     f = tmp_path / "account.sqlite"
     db = sqlite3.connect(f)
     for n, voce in enumerate(account.MIGRAZIONI[:indice]):
@@ -138,6 +138,55 @@ def test_i_token_del_widget_di_prima_restano_e_ora_sono_uno_per_dispositivo(tmp_
         db.commit()
         assert db.execute("SELECT COUNT(*) FROM token_widget WHERE utente_id = 1").fetchone()[0] == 0
     assert list((tmp_path / "backup").glob("*prima-della-migrazione-*"))
+
+
+# Le voci di MIGRAZIONI in ordine, come sono su main con questa pull request: per una stringa un pezzo del suo testo, per una
+# funzione il suo nome. Una voce nuova va IN FONDO a MIGRAZIONI (e in fondo qui): messa in mezzo, su un server già installato non
+# verrebbe mai applicata, perché `user_version` ha già superato il suo posto (successo con «Scrivici» e i token del widget, 26/11/2026).
+ORDINE = [
+    "CREATE TABLE utenti",
+    "CREATE TABLE contatori",
+    "CREATE TABLE leghe",
+    "CREATE TABLE tentativi",
+    "ALTER TABLE utenti ADD COLUMN email",
+    "ADD COLUMN nome_visualizzato",
+    "CREATE TABLE token_widget (",
+    "ADD COLUMN usi_max",
+    "CREATE TABLE IF NOT EXISTS identita_esterne",
+    "ADD COLUMN termini_accettati",
+    "_riparazione_sessione_hash",
+    "token_widget ADD COLUMN sessione_id",
+    "CREATE TABLE IF NOT EXISTS feedback",
+    "_token_widget_per_sessione",
+]
+
+
+def test_le_voci_gia_scritte_restano_al_loro_posto():
+    assert len(account.MIGRAZIONI) >= len(ORDINE)
+    for numero, (voce, segno) in enumerate(zip(account.MIGRAZIONI, ORDINE)):
+        if callable(voce):
+            assert voce.__name__ == segno, f"voce {numero}: attesa «{segno}», trovata la funzione {voce.__name__}"
+        else:
+            assert segno in voce, f"voce {numero}: attesa «{segno}»"
+
+
+def test_la_voce_dei_token_per_sessione_si_puo_ripetere(tmp_path):
+    """È una funzione che esce subito se la tabella ha già la colonna `id`: una seconda passata (migrazioni unite in un altro ordine,
+    una tabella già sistemata) non tocca i token e non ferma il database."""
+    with contextlib.closing(account.apri(tmp_path / "account.sqlite")) as db:
+        db.execute("INSERT INTO utenti (nome_utente, password_hash, recupero_hash, creato) VALUES ('uno', 'h', 'r', '2026-01-01T00:00:00+00:00')")
+        db.commit()
+        adesso = datetime(2026, 11, 26, tzinfo=timezone.utc)
+        sessione = account._apri_sessione(db, 1, "iphone", adesso)
+        token, _ = account.crea_token_widget(db, 1, adesso, sessione=sessione)
+        prima = [tuple(r) for r in db.execute("SELECT * FROM token_widget")]
+        db.execute("BEGIN IMMEDIATE")
+        account._token_widget_per_sessione(db)
+        db.execute("COMMIT")
+        assert [tuple(r) for r in db.execute("SELECT * FROM token_widget")] == prima
+        assert account.utente_da_token_widget(db, token, adesso).nome_utente == "uno"
+        indici = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'token_widget'")}
+        assert {"token_widget_utente", "token_widget_sessione"} <= indici
 
 
 def test_google_inizia_su_un_database_migrato_passo_per_passo(scena):     # noqa: F811

@@ -374,8 +374,9 @@ def test_il_token_di_un_altro_dispositivo_segue_quel_dispositivo(due_utenti):
     assert c.get("/api/oggi", headers=h).status_code == 401
 
 
-def test_un_token_senza_legame_resta_dopo_l_uscita(due_utenti):
-    """I token nati prima del legame con la sessione (sessione_id vuoto) restano validi fino al rinnovo: l'uscita non li tocca."""
+def test_un_token_senza_legame_si_toglie_con_l_uscita(due_utenti):
+    """I token nati prima del legame con la sessione (sessione_id vuoto) non si sa di chi siano: dal 26/11/2026 «Esci» li toglie,
+    se no resterebbero validi per mesi dopo l'uscita (il dispositivo che li usava ne chiede uno nuovo dopo il 401)."""
     a, _ = due_utenti
     t = token_di(a)
     with contextlib.closing(account.apri()) as db:
@@ -383,7 +384,7 @@ def test_un_token_senza_legame_resta_dopo_l_uscita(due_utenti):
         db.commit()
     assert a.post("/api/account/esci").status_code == 200
     c, h = widget(t)
-    assert c.get("/api/oggi", headers=h).status_code == 200
+    assert c.get("/api/oggi", headers=h).status_code == 401
 
 
 def test_con_l_intestazione_bearer_come_l_iphone(due_utenti):
