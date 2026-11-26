@@ -100,6 +100,46 @@ def test_i_token_del_widget_di_prima_restano_senza_legame(tmp_path):
     assert list((tmp_path / "backup").glob("*prima-della-migrazione-*"))
 
 
+def test_i_token_del_widget_di_prima_restano_e_ora_sono_uno_per_dispositivo(tmp_path):
+    """26/11/2026: i token del widget passano da uno per utente a uno per sessione (iPhone e iPad dello stesso account). Un archivio
+    di prima tiene i suoi token, con e senza legame, che valgono come prima; dopo, due sessioni dello stesso utente hanno due token
+    e l'eliminazione dell'account li toglie ancora tutti."""
+    indice = next(n for n, v in enumerate(account.MIGRAZIONI) if isinstance(v, str) and "token_widget_nuova" in v)
+    f = tmp_path / "account.sqlite"
+    db = sqlite3.connect(f)
+    for n, voce in enumerate(account.MIGRAZIONI[:indice]):
+        _applica(db, voce, n)
+    legato, libero = account.PREFISSO_TOKEN_WIDGET + "a" * 43, account.PREFISSO_TOKEN_WIDGET + "b" * 43
+    date = ("2026-11-01T00:00:00+00:00", "2027-01-30T00:00:00+00:00", "2026-11-01T00:00:00+00:00")
+    for nome in ("uno", "due"):
+        db.execute("INSERT INTO utenti (nome_utente, password_hash, recupero_hash, creato) VALUES (?, 'h', 'r', '2026-01-01T00:00:00+00:00')",
+                   (nome,))
+    db.execute("INSERT INTO sessioni (utente_id, token_hash, creata, scade, ultimo_uso) VALUES (1, 'sessione-finta', ?, ?, ?)", date)
+    db.execute("INSERT INTO token_widget (utente_id, token_hash, creato, scade, ultimo_uso, sessione_id) VALUES (1, ?, ?, ?, ?, 1)",
+               (account._hash_token(legato), *date))
+    db.execute("INSERT INTO token_widget (utente_id, token_hash, creato, scade, ultimo_uso) VALUES (2, ?, ?, ?, ?)",
+               (account._hash_token(libero), *date))
+    db.commit()
+    db.close()
+    adesso = datetime(2026, 11, 26, tzinfo=timezone.utc)
+    with contextlib.closing(account.apri(f)) as db, contextlib.closing(_riferimento(tmp_path / "ref.sqlite")) as ref:
+        assert db.execute("PRAGMA user_version").fetchone()[0] == len(account.MIGRAZIONI)
+        assert _schema(db) == _schema(ref)
+        assert sorted(tuple(r) for r in db.execute("SELECT utente_id, sessione_id FROM token_widget")) == [(1, 1), (2, None)]
+        assert account.utente_da_token_widget(db, legato, adesso).nome_utente == "uno"
+        assert account.utente_da_token_widget(db, libero, adesso).nome_utente == "due"
+        iphone = account._apri_sessione(db, 1, "iphone", adesso)
+        ipad = account._apri_sessione(db, 1, "ipad", adesso)
+        t1, _ = account.crea_token_widget(db, 1, adesso, sessione=iphone)
+        t2, _ = account.crea_token_widget(db, 1, adesso, sessione=ipad)
+        for t in (legato, t1, t2):
+            assert account.utente_da_token_widget(db, t, adesso).nome_utente == "uno"
+        db.execute("DELETE FROM utenti WHERE id = 1")
+        db.commit()
+        assert db.execute("SELECT COUNT(*) FROM token_widget WHERE utente_id = 1").fetchone()[0] == 0
+    assert list((tmp_path / "backup").glob("*prima-della-migrazione-*"))
+
+
 def test_google_inizia_su_un_database_migrato_passo_per_passo(scena):     # noqa: F811
     _server_prima_del_tampone(percorsi.cartella_account() / "account.sqlite")
     c = cliente()
