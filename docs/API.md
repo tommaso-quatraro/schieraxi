@@ -438,7 +438,12 @@ sulle scelte senza `riga`: i client mandano una scelta per riga. Senza `riga` (a
 `testo` che non sono `sicuro` (per tutte, se lo sono tutte), e se l'`id` è già la proposta di una di loro solo per quelle: due omonimi con
 proposte diverse restano tutti e due.
 Se due righe finiscono sullo stesso giocatore resta la prima, con l'avviso «compare due volte».
-Il giocatore scelto entra con il ruolo e la squadra del listone e `riconosciuto: "manuale"`.
+Il giocatore scelto entra con il ruolo e la squadra del listone e `riconosciuto: "manuale"`; se il nome scritto nel file è diverso da quello del
+listone, la rosa salvata lo tiene in `testo` (campo nuovo e facoltativo dei `giocatori[]` di `GET /api/rosa`, dal 26/11/2026: `null` se è
+uguale a `nome`; lo tiene anche `POST /api/rose/correggi`). Dal 26/11/2026 le scelte già salvate tornano da sole: in anteprima e importazione
+un giocatore non `sicuro` che nella rosa salvata della stessa squadra era stato scelto a mano per lo stesso nome scritto (`testo`, o `nome`
+se manca) diventa di nuovo quel giocatore, `sicuro` con `metodo: "manuale"`, senza `correzioni` (non se il file gli dà un altro ruolo o se non
+è più nel listone). Le `correzioni` mandate vincono.
 Nel multipart il campo `correzioni` è lo stesso elenco scritto come testo JSON (JSON non valido: `422`). Una scelta che non corrisponde più al
 testo, o un `id` fuori listone: `400` con il messaggio, e niente si salva. `mia_squadra` che non c'è tra le rose: `400`.
 Si può cominciare con la sola propria rosa: una squadra sola non è un errore (solo un avviso, testo `lega.UNA_SQUADRA`: «Con una sola squadra funzionano formazione e consigli; le rose degli altri servono a guardare le altre squadre: puoi aggiungerle quando vuoi.»).

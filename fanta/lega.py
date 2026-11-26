@@ -31,8 +31,11 @@ class GiocatoreRosa:
     ruolo: str | None
     squadra: str | None     # squadra di Serie A (sigla)
     costo: int | None = None
-    riconosciuto: str = "esatto"   # come è stato abbinato al listone: esatto, abbreviato, simile, ambiguo, non trovato
+    riconosciuto: str = "esatto"   # come è stato abbinato al listone: esatto, abbreviato, simile, ambiguo, non trovato, manuale
     avviso: str = ""
+    # il nome com'era scritto nel file, se diverso da `nome` («Pellegrini» per «Pellegrini Lu.»): alla prossima importazione
+    # dello stesso file la scelta fatta su quel nome torna già risolta (anteprima_rose.riusa_scelte)
+    testo: str | None = None
 
 
 @dataclass
@@ -90,14 +93,16 @@ def da_import(lette: list[SquadraLetta], precedenti: Rose | None = None, sostitu
             avviso = r.esito.avviso
             if r.esito.metodo == "ambiguo":
                 avviso = F("rose.potrebbe_essere", elenco=", ".join(f"{a.nome} ({a.ruolo}, {a.squadra})" for a in r.esito.alternative))
+            nome = c.nome if c else r.testo
             giocatori.append(GiocatoreRosa(
                 id=c.id if c else None,
-                nome=c.nome if c else r.testo,
+                nome=nome,
                 ruolo=r.ruolo or (c.ruolo if c else None),
                 squadra=c.squadra if c else r.squadra,
                 costo=r.costo,
                 riconosciuto=r.esito.metodo,
                 avviso=avviso,
+                testo=r.testo if r.testo != nome else None,
             ))
         # se il file non ha i crediti, restano quelli già inseriti a mano
         vecchia = next((x for x in precedenti.squadre if x.nome == s.nome), None) if precedenti else None
@@ -189,7 +194,8 @@ def _codice(v: object) -> bool:
 
 # il tipo di ogni campo di un giocatore, come lo scrive l'app (i campi che mancano prendono il valore di base)
 _TIPI_GIOCATORE = {"id": _codice, "nome": lambda v: isinstance(v, str), "ruolo": _testo_o_niente, "squadra": _testo_o_niente,
-                   "costo": _numero_o_niente, "riconosciuto": lambda v: isinstance(v, str), "avviso": lambda v: isinstance(v, str)}
+                   "costo": _numero_o_niente, "riconosciuto": lambda v: isinstance(v, str), "avviso": lambda v: isinstance(v, str),
+                   "testo": _testo_o_niente}
 
 
 def _giocatore(g: dict) -> GiocatoreRosa:

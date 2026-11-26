@@ -18,7 +18,7 @@ from collections import Counter
 from . import frasi, lega, movimenti
 from .frasi import F
 from .listone import Calciatore
-from .nomi import Esito
+from .nomi import Esito, normalizza
 from .regole import RUOLI, Regole
 from .rose import SquadraLetta
 
@@ -137,6 +137,35 @@ def applica_correzioni(lette: list[SquadraLetta], correzioni: list[dict] | None,
             r.esito, r.ruolo, r.squadra = Esito(c, MANUALE), c.ruolo, c.squadra
             tenute.append(r)
         s.righe = tenute
+
+
+def riusa_scelte(lette: list[SquadraLetta], prima: lega.Rose | None, calciatori: list[Calciatore]) -> None:
+    """Le scelte già salvate tornano risolte (collaudo del 26/11): ricaricando lo stesso file, un dubbio che nella rosa salvata
+    della stessa squadra era stato scelto a mano (nell'anteprima o in «Giocatori da sistemare») per lo stesso nome scritto
+    diventa di nuovo quel giocatore, senza chiederlo un'altra volta e senza movimenti finti in «Cosa cambia». Con lo stesso
+    nome scritto più volte, le scelte si usano nell'ordine. Non vale se il giocatore non è più nel listone o se il file gli dà un
+    altro ruolo (la squadra di Serie A diversa no: l'utente l'aveva scelto lo stesso). Da chiamare dopo `lega.nomi_rinominati`, prima delle scelte di questa volta
+    (`applica_correzioni`), che vincono."""
+    if not prima:
+        return
+    per_id = {c.id: c for c in calciatori}
+    salvate = {s.nome: s for s in prima.squadre}
+    for s in lette:
+        vecchia = salvate.get(s.nome)
+        if vecchia is None:
+            continue
+        scelte: dict[str, list[Calciatore]] = {}
+        for g in vecchia.giocatori:
+            if g.riconosciuto == MANUALE and g.id in per_id:
+                scelte.setdefault(normalizza(g.testo or g.nome), []).append(per_id[g.id])
+        for r in s.righe:
+            coda = scelte.get(normalizza(r.testo))
+            if not coda or stato(r.esito) == SICURO:
+                continue
+            c = coda.pop(0)
+            if r.ruolo and r.ruolo != c.ruolo:                  # nel file è un altro ruolo: forse un altro giocatore
+                continue
+            r.esito, r.ruolo, r.squadra = Esito(c, MANUALE), c.ruolo, c.squadra
 
 
 def scegli_mia(rose: lega.Rose, nome: str | None) -> None:

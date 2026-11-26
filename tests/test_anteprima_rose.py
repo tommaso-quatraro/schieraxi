@@ -99,6 +99,47 @@ def test_nel_testo_uno_per_riga_le_squadre_gia_salvate_sono_titoli(ambiente):
     assert [s["nome"] for s in r.json()["squadre"]] == ["Alfa", "Beta"]
 
 
+def test_ricaricando_lo_stesso_testo_le_scelte_di_prima_restano(ambiente):
+    """Collaudo del 26/11: ricaricando lo stesso file le scelte fatte sui dubbi si perdevano («Cosa cambia» mostrava movimenti
+    finti e si salvavano come non riconosciuti). La scelta salvata per lo stesso nome scritto, nella stessa squadra, torna
+    già risolta; quelli lasciati non trovati restano così."""
+    a, _ = nuovo_utente("utentea")
+    testo = TESTO.replace("Altra\n", "D\tPellegrini\t3\nAltra\n")      # «Pellegrini» è «Pellegrini Lu.» nel listone
+    righe = {g["testo"]: g["riga"] for g in per_testo(a.post("/api/rose/anteprima", json={"testo": testo}).json()).values()}
+    corr = [{"squadra": "Mia", "testo": "Rossi", "id": 15, "riga": righe["Rossi"]},
+            {"squadra": "Mia", "testo": "Pellegrini", "id": 17, "riga": righe["Pellegrini"]}]
+    assert a.post("/api/rose/testo", json={"testo": testo, "correzioni": corr, "mia_squadra": "Mia"}).status_code == 200
+    pellegrini = next(g for g in a.get("/api/rosa").json()["giocatori"] if g["id"] == 17)
+    assert (pellegrini["nome"], pellegrini["testo"]) == ("Pellegrini Lu.", "Pellegrini")      # il nome scritto resta salvato
+
+    r = a.post("/api/rose/anteprima", json={"testo": testo}).json()
+    g = per_testo(r)
+    assert (g["Rossi"]["stato"], g["Rossi"]["id"]) == ("sicuro", 15)
+    assert (g["Pellegrini"]["stato"], g["Pellegrini"]["id"]) == ("sicuro", 17)
+    assert g["Pinco Pallino"]["stato"] == "non_trovato"
+    assert r["differenze"]["nessuna_differenza"] is True, r["differenze"]
+    assert a.post("/api/rose/testo", json={"testo": testo}).status_code == 200            # salvato di nuovo senza scelte
+    ids = {x["id"] for x in a.get("/api/rosa").json()["giocatori"]}
+    assert {15, 17} <= ids
+
+
+def test_anche_le_scelte_fatte_dopo_in_giocatori_da_sistemare_restano(ambiente):
+    a, _ = nuovo_utente("utentea")
+    assert importa(a, TESTO).status_code == 200
+    corr = a.post("/api/rose/correggi", json={"squadra": "Mia", "nome": "Pinco Pallino", "id": 12})
+    assert corr.status_code == 200, corr.text
+    g = per_testo(a.post("/api/rose/anteprima", json={"testo": TESTO}).json())
+    assert (g["Pinco Pallino"]["stato"], g["Pinco Pallino"]["id"]) == ("sicuro", 12)          # Barella, centrocampista come nel file
+
+
+def test_le_scelte_di_prima_valgono_solo_nella_stessa_squadra(ambiente):
+    a, _ = nuovo_utente("utentea")
+    corr = [{"squadra": "Mia", "testo": "Rossi", "id": 15}]
+    assert a.post("/api/rose/testo", json={"testo": "Mia\nP\tSommer\t1\nRossi\t7\n", "correzioni": corr}).status_code == 200
+    g = per_testo(a.post("/api/rose/anteprima", json={"testo": "Altra\nP\tSommer\t1\nRossi\t7\n"}).json(), "Altra")
+    assert g["Rossi"]["stato"] == "da_controllare"
+
+
 def test_correzione_su_chi_ce_gia_non_crea_un_doppione(ambiente):
     a, _ = nuovo_utente("utentea")
     corr = [{"squadra": "Mia", "testo": "Rossi", "id": 2}]                      # Sommer, già nella stessa rosa

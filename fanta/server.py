@@ -2110,6 +2110,7 @@ def _leggi_rose(lette: _Riconosciute, correzioni: list[dict] | None = None, prim
     (lega.nomi_rinominati)."""
     squadre, avvisi = lette.squadre, list(lette.avvisi)
     lega.nomi_rinominati(squadre, prima)
+    anteprima_rose.riusa_scelte(squadre, prima, lette.calciatori)    # le scelte già salvate sugli stessi nomi tornano risolte
     anteprima_rose.applica_correzioni(squadre, correzioni, lette.calciatori)
     rose.togli_doppioni(squadre, avvisi)               # una correzione può indicare chi c'è già nella stessa rosa
     return squadre, avvisi
@@ -2704,6 +2705,7 @@ def correggi_giocatore(dati: CorrezioneGiocatore, request: Request, response: Re
         g = next((x for x in s.giocatori if x.nome == dati.nome and x.riconosciuto not in ("esatto", "manuale")), None) if s else None
         if g is None:
             raise HTTPException(404, "Quel giocatore non c'è più nella rosa: ricarica la pagina")
+        g.testo = g.testo or (g.nome if g.nome != c.nome else None)        # il nome scritto nel file: alla prossima importazione
         g.id, g.nome, g.ruolo, g.squadra, g.riconosciuto, g.avviso = c.id, c.nome, c.ruolo, c.squadra, "manuale", ""
         lega.salva(r, ctx.rose)
         response.headers["ETag"] = versioni.etag_file(ctx.rose)
