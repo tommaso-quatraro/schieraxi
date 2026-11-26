@@ -24,10 +24,8 @@ struct PrecisioneView: View {
                     .accessibilityElement(children: .combine)
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: min(larghezzaVoce, 420)), spacing: 10, alignment: .top)], alignment: .leading, spacing: 10) {
-                ForEach(Array(testo.voci.enumerated()), id: \.offset) { i, voce in
+                ForEach(Array(testo.voci.enumerated()), id: \.offset) { _, voce in
                     VocePrecisione(voce: voce)
-                        // dove arriva la foto `giornate-confronto` (solo demo, #842); le altre voci tengono il loro posto
-                        .id(voce == testo.confronto ? ConfrontoDemo.idConfronto : "voce-\(i)")
                 }
             }
             if let riga = testo.serieA {

@@ -199,7 +199,7 @@ extension Demo {
         case "lega-stato":
             apriLega(nav, modello, [.gestione, .stato])
         // la pagina Giornate (#673 passo 2): le righe chiuse (sull'iPad la più recente a destra), la più recente aperta, «Dettagli»,
-        // «Dettagli» scorsi alla voce del confronto con 1,0 punti (#842, il diario di `FinteServer.demoFase`)
+        // «Dettagli» scorsi fino al confronto con 1,0 punti in fondo allo schermo (#842, il diario di `FinteServer.demoFase`)
         case "giornate", "giornate-aperta", "giornate-dettagli", "giornate-confronto":
             nav.sezione = .giornate
             modello.giornate.preparaFoto(nome)

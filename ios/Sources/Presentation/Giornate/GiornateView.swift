@@ -64,7 +64,7 @@ struct GiornateView: View {
                 .avvisoDatiSalvati(vm.caricatore)
                 .titoloPagina(Catalogo.Nav.giornate)
                 .refreshable { await vm.carica() }
-                .demoScorriAlConfronto(proxy: proxy, pronto: vm.pagina?.dettagli != nil)   // foto `giornate-confronto` (#842)
+                .demoScorriAlConfronto(proxy: proxy, pronto: vm.cimaCompleta)   // foto `giornate-confronto` (#842)
             }
         }
     }
@@ -107,7 +107,7 @@ struct GiornateView: View {
                 .avvisoDatiSalvati(vm.caricatore)
                 .titoloPagina(Catalogo.Nav.giornate)
                 .refreshable { await vm.carica() }
-                .demoScorriAlConfronto(proxy: proxy, pronto: vm.pagina?.dettagli != nil)   // foto `giornate-confronto` (#842)
+                .demoScorriAlConfronto(proxy: proxy, pronto: vm.cimaCompleta)   // foto `giornate-confronto` (#842)
             }
         } detail: {
             NavigationStack {
