@@ -230,15 +230,15 @@ def test_avvisi_delle_rose_e_dell_anteprima_hanno_la_frase(calciatori):
     avvisi = lega.controlla(lega.da_import(lette, None), r)
     assert avvisi and all(frasi.di(a) for a in avvisi)                       # ogni avviso dei controlli è una frase con la sua chiave
     inglese = _in_node("en", [[frasi.di(a), str(a)] for a in avvisi])
-    assert "Mia: 'Pinco Pallino' not recognised with certainty (transferred or different name?)" in inglese
-    assert any(e.startswith("Mia: roster differs from the rules (P 1/3") for e in inglese), inglese
+    assert "Mia: I don't know who “Pinco Pallino” is: maybe transferred, or listed under another name." in inglese
+    assert "Mia: 2 goalkeepers, 7 defenders, 6 midfielders and 5 forwards missing." in inglese, inglese
     assert not [e for e in inglese if "non " in e or " di " in e], inglese       # niente italiano rimasto
     a = leggi(TESTO, calciatori)
     kean = per_testo(a)["Kean"]                                               # squadra diversa da quella del listone
-    assert kean["avviso"] == "squadra diversa: indicata JUV, nel listone FIO"
-    assert kean["avviso_frase"] == {"chiave": "nomi.squadra_diversa", "param": {"indicata": "JUV", "listone": "FIO"}}
+    assert kean["avviso"] == "squadra diversa: nel file JUV, nel listone Fiorentina"
+    assert kean["avviso_frase"] == {"chiave": "nomi.squadra_diversa", "param": {"indicata": "JUV", "listone": "Fiorentina"}}
     assert len(a["avvisi_frasi"]) == len(a["avvisi"])                         # in parallelo; i riepiloghi per squadra sono testo semplice (l'app li legge dai numeri)
-    assert _in_node("en", [[kean["avviso_frase"], kean["avviso"]]]) == ["different team: given JUV, in the player list FIO"]
+    assert _in_node("en", [[kean["avviso_frase"], kean["avviso"]]]) == ["different team: JUV in the file, Fiorentina in the player list"]
 
 
 # ---------------------------------------------------------------- il codice del web che mostra le frasi (node)

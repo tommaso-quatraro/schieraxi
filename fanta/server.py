@@ -2096,7 +2096,7 @@ def _riconosci(griglie, ctx: Contesto, excel: bool = False) -> _Riconosciute:
     avvisi: list[str] = []
     indice = nomi.Indice(calciatori, listone.nomi_completi(), scaduto=limiti.tempo_riconoscimento(ctx))
     try:
-        lette = rose.estrai(griglie, indice, _regole(ctx).rosa, avvisi)
+        lette = rose.estrai(griglie, indice, _regole(ctx).rosa, avvisi, _squadre_salvate(ctx))
     except nomi.TempoScaduto:
         raise ValueError(importa_sicuro.riconoscimento_lungo(excel)) from None
     if not lette:
@@ -2107,12 +2107,22 @@ def _riconosci(griglie, ctx: Contesto, excel: bool = False) -> _Riconosciute:
     return _Riconosciute(lette, avvisi, calciatori, griglie)
 
 
+def _squadre_salvate(ctx: Contesto) -> set[str]:
+    """I nomi delle squadre già salvate (anche quello di Leghe di una squadra rinominata): in un testo con un nome per riga sono
+    titoli di squadra, non giocatori (rose.estrai). Niente se le rose non si leggono o sono solo gli esempi."""
+    prima, _, _ = _rose_di_prima(ctx)
+    if prima is None:
+        return set()
+    return {s.nome for s in prima.squadre} | {s.nome_importato for s in prima.squadre if s.nome_importato}
+
+
 def _leggi_rose(lette: _Riconosciute, correzioni: list[dict] | None = None, prima: lega.Rose | None = None):
     """Le squadre lette (con le scelte dell'utente sui dubbi già applicate) e gli avvisi della lettura. Veloce: si fa dentro il
     blocco delle rose, dopo `_riconosci`. `prima` (le rose salvate): le squadre rinominate nell'app prendono il nome dell'app
     (lega.nomi_rinominati)."""
     squadre, avvisi = lette.squadre, list(lette.avvisi)
     lega.nomi_rinominati(squadre, prima)
+    anteprima_rose.riusa_scelte(squadre, prima, lette.calciatori)    # le scelte già salvate sugli stessi nomi tornano risolte
     anteprima_rose.applica_correzioni(squadre, correzioni, lette.calciatori)
     rose.togli_doppioni(squadre, avvisi)               # una correzione può indicare chi c'è già nella stessa rosa
     return squadre, avvisi
@@ -2213,7 +2223,7 @@ def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto
     if prima and any(s.giocatori for s in prima.squadre):      # dopo il passaggio di stagione le rose partono vuote: non sono "acquisti"
         movimenti.registra(ctx.movimenti, diff)
     threading.Thread(target=_scalda, args=(ctx,), daemon=True).start()     # le rose sono cambiate: la nuova formazione si prepara subito
-    avvisi += lega.controlla(nuove, r)
+    avvisi += lega.controlla(nuove, r, {s.nome for s in lette})      # solo le squadre del file (collaudo del 26/11)
     return {"squadre_importate": [s.nome for s in lette], "totale_squadre": len(nuove.squadre),
             "avvisi": avvisi, "avvisi_frasi": frasi.lista(avvisi), "mia_squadra": nuove.mia_squadra,   # come l'anteprima (#723)
             "differenze": diff, "riepilogo": diff["testo"]}
@@ -2259,7 +2269,7 @@ def importa_testo(dati: TestoRose, request: Request, response: Response, ctx: Co
     griglie = [("testo", rose.griglia_da_testo(dati.testo))]
     if ctx.utente_id is not None:
         importa_sicuro.controlla_griglie(griglie)
-    # i testi rifiutati per dimensione o righe non consumano un'importazione; dopo l'anteprima dello stesso testo non conta
+    # i testi rifiutati non consumano un'importazione (vedi _buono_dell_anteprima); dopo l'anteprima dello stesso testo non conta
     with _buono_dell_anteprima(ctx, _impronta(dati.testo)):
         riconosciute = _riconosci(griglie, ctx)           # fuori dal blocco: le scritture degli altri non aspettano
         with _scrittura_rose:                            # due importazioni insieme (o con l'importazione per conto di) una alla volta
@@ -2271,25 +2281,49 @@ def importa_testo(dati: TestoRose, request: Request, response: Response, ctx: Co
 
 @contextlib.contextmanager
 def _buono_dell_anteprima(ctx: Contesto, impronta: str):
-    """Conta l'importazione (o usa il buono dell'anteprima dello stesso contenuto). Se l'importazione pagata dal buono fallisce
-    (scelte non valide, rose cambiate nel frattempo, tetti), il buono torna: riprovare non costa un'altra importazione.
-    Un'importazione contata normalmente resta contata anche se fallisce, come sempre.
-    Il buono torna al massimo una volta al giorno per lo stesso contenuto (vedi `limiti.restituisci_buono`). Se il server era
-    occupato a leggere un altro Excel (503, il lavoro non è cominciato) non conta niente: né il buono né l'importazione.
-    Si restituisce sempre nel giorno del conteggio (a cavallo della mezzanotte non diventa gratis un tentativo di domani)."""
+    """Conta l'importazione (o usa il buono dell'anteprima dello stesso contenuto). Conta solo un'importazione riuscita (collaudo
+    del 26/11, come l'anteprima: `_conta_se_riesce`): se fallisce (file rifiutato, scelte non valide, rose cambiate nel
+    frattempo, tetti) torna il posto, oppure il buono se l'aveva pagata lui. Il buono torna al massimo una volta al giorno per
+    lo stesso contenuto (vedi `limiti.restituisci_buono`). Un'importazione senza buono prende anche un posto delle letture
+    all'ora (`limiti.MAX_ANTEPRIME_ALL_ORA`, le stesse dell'anteprima), che resta anche se fallisce: così un file sbagliato non
+    si può mandare all'infinito. Se il server era occupato a leggere un altro Excel (503, il lavoro non è cominciato) non conta
+    niente. Si restituisce sempre nel giorno del conteggio (a cavallo della mezzanotte non diventa gratis un tentativo di domani)."""
     giorno = limiti.oggi()
     buono = limiti.conta_importazione(ctx, impronta, giorno)
+    lettura = None
+    if not buono:
+        try:
+            lettura = limiti.prenota_ora(ctx, "anteprime_rose", massimo=limiti.MAX_ANTEPRIME_ALL_ORA)
+        except BaseException:
+            limiti.rimetti_importazione(ctx, giorno)
+            raise
     try:
         yield
-    except ExcelOccupato:
+    except BaseException as errore:
         if buono:
-            limiti.restituisci_buono(ctx, impronta, una_volta=False, giorno=giorno)
+            limiti.restituisci_buono(ctx, impronta, una_volta=not isinstance(errore, ExcelOccupato), giorno=giorno)
         else:
             limiti.rimetti_importazione(ctx, giorno)
+            if isinstance(errore, ExcelOccupato) and lettura is not None:
+                lettura.annulla()
         raise
-    except BaseException:
-        if buono:
-            limiti.restituisci_buono(ctx, impronta, giorno=giorno)
+
+
+@contextlib.contextmanager
+def _conta_se_riesce(presi: list):
+    """L'anteprima conta tra le importazioni del giorno solo se riesce (collaudo del 26/11): un file rifiutato (un calendario, una
+    lega oltre i tetti, un Excel rovinato) restituisce il posto del giorno, non quello dell'ora (`limiti.conta_anteprima`).
+    Se il server era occupato a leggere un altro Excel (503) tornano tutti e due: il lavoro non è cominciato. Il posto del giorno
+    non torna se intanto un salvataggio dello stesso contenuto ha usato il buono di questa anteprima (`limiti.restituisci_anteprima`,
+    revisione della #939: due richieste insieme non aggirano il tetto)."""
+    try:
+        yield
+    except BaseException as errore:
+        for p in presi:
+            if p.cosa == "importazioni":
+                limiti.restituisci_anteprima(p)
+            elif isinstance(errore, ExcelOccupato):
+                p.annulla()
         raise
 
 
@@ -2326,8 +2360,8 @@ def anteprima_testo(dati: AnteprimaRose, response: Response, ctx: Contesto = Dep
     importa_sicuro.controlla_testo(dati.testo)                   # sempre, anche senza account: non scrive niente ma legge tutto
     griglie = [("testo", rose.griglia_da_testo(dati.testo))]
     importa_sicuro.controlla_griglie(griglie)
-    limiti.conta_anteprima(ctx, _impronta(dati.testo))
-    return _anteprima(griglie, dati.sostituisci_tutto, _scelte(dati.correzioni), response, ctx)
+    with _conta_se_riesce(limiti.conta_anteprima(ctx, _impronta(dati.testo))):
+        return _anteprima(griglie, dati.sostituisci_tutto, _scelte(dati.correzioni), response, ctx)
 
 
 class RoseDiUnAmico(BaseModel):
@@ -2451,9 +2485,9 @@ def importa_file(file: UploadFile, request: Request, response: Response, sostitu
     versioni.controlla(request, versioni.etag_file(ctx.rose))
     scelte = _correzioni_da_modulo(correzioni)
     contenuto, estensione = _leggi_file(file, ctx)
-    # da qui il file costa lavoro (zip, processo separato, lettura): conta come un'importazione anche se poi viene rifiutato,
-    # così non si possono mandare file sbagliati all'infinito. I rifiuti immediati (vuoto, troppo grande, .xlsm) non contano.
-    # Dopo l'anteprima dello stesso file non conta di nuovo.
+    # da qui il file costa lavoro (zip, processo separato, lettura): conta come un'importazione solo se riesce, ma prende un posto
+    # delle letture all'ora anche se viene rifiutato (niente file sbagliati all'infinito, vedi _buono_dell_anteprima). I rifiuti
+    # immediati (vuoto, troppo grande, .xlsm) non contano. Dopo l'anteprima dello stesso file non conta di nuovo.
     # Il file si legge e i giocatori si riconoscono PRIMA di prendere il lucchetto delle rose (un Excel può richiedere fino a
     # 30 s, il riconoscimento fino a 20: gli altri non aspettano).
     with _buono_dell_anteprima(ctx, _impronta(contenuto)):
@@ -2472,14 +2506,9 @@ def anteprima_file(file: UploadFile, response: Response, sostituisci_tutto: bool
     """Come /api/rose/anteprima, per un file (gli stessi formati di /api/rose/file). Non salva niente."""
     scelte = _correzioni_da_modulo(correzioni)
     contenuto, estensione = _leggi_file(file, ctx)
-    presi = limiti.conta_anteprima(ctx, _impronta(contenuto))
-    try:
+    with _conta_se_riesce(limiti.conta_anteprima(ctx, _impronta(contenuto))):
         griglie = _griglie_del_file(contenuto, estensione, ctx)
-    except ExcelOccupato:                        # il lavoro non è cominciato: l'anteprima non conta (posti restituiti)
-        for p in presi:
-            p.annulla()
-        raise
-    return _anteprima(griglie, sostituisci_tutto, scelte, response, ctx, _e_excel(contenuto))
+        return _anteprima(griglie, sostituisci_tutto, scelte, response, ctx, _e_excel(contenuto))
 
 
 def _e_excel(contenuto: bytes) -> bool:
@@ -2510,7 +2539,7 @@ def _griglie_dell_excel(contenuto: bytes, estensione: str, ctx: Contesto):
             f.write(contenuto)
             temporaneo = Path(f.name)
         try:
-            # (l'importazione è già contata prima dei controlli: anche un Excel rifiutato conta)
+            # (la lettura è già contata prima dei controlli: un Excel rifiutato prende un posto delle letture all'ora)
             if ctx.utente_id is not None:
                 importa_sicuro.controlla_zip(temporaneo)
             return _griglie_excel(temporaneo, ctx)
@@ -2708,7 +2737,9 @@ class CorrezioneGiocatore(BaseModel):
 
 @app.post("/api/rose/correggi")
 def correggi_giocatore(dati: CorrezioneGiocatore, request: Request, response: Response, ctx: Contesto = Depends(lega_corrente)):
-    """Un giocatore che l'importazione non ha riconosciuto (o ha riconosciuto per somiglianza): lo si abbina a mano a quello del listone."""
+    """Un giocatore che l'importazione non ha riconosciuto (o ha riconosciuto per somiglianza, o che l'utente aveva scelto a mano):
+    lo si abbina a mano a quello del listone. Si può cambiare anche una scelta fatta prima (revisione della #939); non un
+    giocatore riconosciuto con certezza."""
     calciatori, _ = listone.carica()
     c = next((x for x in calciatori if x.id == dati.id), None)
     if c is None:
@@ -2717,9 +2748,10 @@ def correggi_giocatore(dati: CorrezioneGiocatore, request: Request, response: Re
         versioni.controlla(request, versioni.etag_file(ctx.rose))
         r = _rose(ctx)
         s = r.squadra(dati.squadra)
-        g = next((x for x in s.giocatori if x.nome == dati.nome and x.riconosciuto not in ("esatto", "manuale")), None) if s else None
+        g = next((x for x in s.giocatori if x.nome == dati.nome and x.riconosciuto != "esatto"), None) if s else None
         if g is None:
             raise HTTPException(404, "Quel giocatore non c'è più nella rosa: ricarica la pagina")
+        g.testo = g.testo or (g.nome if g.nome != c.nome else None)        # il nome scritto nel file: alla prossima importazione
         g.id, g.nome, g.ruolo, g.squadra, g.riconosciuto, g.avviso = c.id, c.nome, c.ruolo, c.squadra, "manuale", ""
         lega.salva(r, ctx.rose)
         response.headers["ETag"] = versioni.etag_file(ctx.rose)

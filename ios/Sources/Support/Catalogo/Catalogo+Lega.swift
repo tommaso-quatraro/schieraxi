@@ -64,7 +64,7 @@ extension Catalogo {
         static let togliSquadreChe = "Togli le squadre che non sono nel file"
 
         /// `lega.importa_testo`
-        static let importaTesto = "Controlla il testo"
+        static let importaTesto = "Controlla le rose"
 
         /// `lega.incolla_testo_delle`
         static let incollaTestoDelle = "Incolla il testo delle rose"

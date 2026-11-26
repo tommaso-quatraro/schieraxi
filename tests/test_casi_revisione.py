@@ -61,13 +61,13 @@ def test_somiglianza_segnalata_nei_controlli(indice):
     r = lega.da_import(lette)
     g = r.squadra("Alfa").giocatori[0]
     assert g.id == 17 and g.riconosciuto == "simile"
-    assert any("Pellegrini Lu." in a and "somiglianza" in a for a in lega.controlla(r, Regole()))
+    assert "Alfa: ho riconosciuto Pellegrini Lu. dal nome scritto in modo simile: controlla che sia lui." in lega.controlla(r, Regole())
 
 
 def test_ambiguo_segnalato_con_alternative(indice):
     r = lega.da_import(rose.estrai([("ROSE", [["Alfa", "costo"], ["Rossi", 3]])], indice))
     g = r.squadra("Alfa").giocatori[0]
-    assert g.id is None and "Rossi (D, GEN)" in g.avviso and "Rossi (A, LEC)" in g.avviso
+    assert g.id is None and g.avviso == "potrebbe essere uno fra Rossi (difensore, Genoa) e Rossi (attaccante, Lecce)"
 
 
 # 3. giocatore non riconosciuto nel testo "un valore per riga"

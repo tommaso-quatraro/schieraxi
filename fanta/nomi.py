@@ -22,7 +22,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from .frasi import F, elenco
+from .frasi import F, elenco, nome_club, nome_ruolo
 from .listone import Calciatore
 
 
@@ -91,8 +91,15 @@ def _iniziali_diverse(a: str, b: str) -> bool:
 
 
 def _propri_compatibili(iniziali: list[str], propri: list[str]) -> bool:
-    """Le iniziali del listone (['l'], ['jo'], ['f', 'p']) sono l'inizio dei nomi propri scritti per esteso, in ordine."""
-    return 0 < len(iniziali) <= len(propri) and all(p.startswith(i) for i, p in zip(iniziali, propri))
+    """Le iniziali del listone (['l'], ['jo'], ['f', 'p']) sono l'inizio dei nomi propri scritti per esteso, in ordine. Chi ne
+    scrive solo uno può scrivere anche il secondo: «Pio Esposito» per «Esposito F.P.» (Francesco Pio). Ogni nome scritto deve
+    cominciare con un'iniziale diversa, nello stesso ordine del listone."""
+    if not iniziali or not propri:
+        return False
+    if len(iniziali) <= len(propri) and all(p.startswith(i) for i, p in zip(iniziali, propri)):
+        return True
+    resto = iter(iniziali)                                   # ogni nome scritto prende la prima iniziale libera che gli va bene
+    return len(propri) < len(iniziali) and all(any(p.startswith(i) for i in resto) for p in propri)
 
 
 # pulizia delle celle copiate e incollate
@@ -388,6 +395,7 @@ class Indice:
             # nome abbreviato, ma ruolo E squadra indicati sono i suoi e nessun altro va bene: è lui
             metodo = "esatto"
         avviso = elenco([
-            F("nomi.ruolo_diverso", indicato=ruolo, listone=c.ruolo) if d == "ruolo"
-            else F("nomi.squadra_diversa", indicata=squadra, listone=c.squadra) for d in discordanze], sep="; ")
+            F("nomi.ruolo_diverso", indicato=nome_ruolo(ruolo), listone=nome_ruolo(c.ruolo)) if d == "ruolo"
+            else F("nomi.squadra_diversa", indicata=squadra, listone=nome_club(c.squadra, c.squadra_slug)) for d in discordanze],
+            sep="; ")
         return Esito(c, metodo, avviso=avviso)
