@@ -60,11 +60,15 @@ struct FormazioneView: View {
                 // la striscia vale per la Formazione e per la giornata (`/api/oggi`): anche una sola delle due può essere vecchia
                 .avvisoDatiSalvati(vm.striscia?.data, motivo: vm.striscia?.motivo)
                 .bordiMorbidi()
+                // Girando l'iPhone la pagina che scorre si rifà e riparte dall'alto, sotto la barra. Quella aperta in verticale
+                // teneva in orizzontale lo scorrimento del titolo grande, e «Giornata 8» e «Si chiude …» restavano sfocate dietro
+                // il titolo (foto `iphone_scuro_orizz_formazione` del 26/11: le foto aprono l'app in verticale e la girano; Giornate
+                // e Impostazioni, che sono elenchi, non lo fanno). Sull'iPad l'altezza resta regolare: lì non cambia niente.
+                .id(classeVerticale)
             }
             .navigationTitle(Catalogo.Nav.formazione)
-            // iPhone in orizzontale: il titolo piccolo e fermo nella barra, come Cerca e la scheda del giocatore. Con quello grande
-            // (che lì iOS non mostra) all'apertura la pagina partiva sotto la barra, e «Giornata 8» e «Si chiude …» restavano
-            // sfocate dietro il titolo (foto `iphone_scuro_orizz_formazione` del 26/11). In verticale e sull'iPad come prima.
+            // iPhone in orizzontale: il titolo piccolo e fermo nella barra, come Cerca e la scheda del giocatore, che lì partono
+            // sotto la barra. In verticale e sull'iPad il titolo grande di sempre.
             .toolbarTitleDisplayMode(Self.titoloPiccolo(verticale: classeVerticale) ? .inline : .automatic)
             // «Sostituisci» nella scheda: chi può prendere il posto del titolare, con i numeri del server; un tocco chiude l'elenco
             // e fa il cambio. Finché il cambio non si può fare le righe sono spente con il perché; un cambio che non parte lo dice
