@@ -416,10 +416,64 @@ def test_dopo_esci_da_tutti_l_accesso_dice_che_l_uscita_e_riuscita(web):
     assert USCITO_OVUNQUE not in accesso.inner_text()
 
 
+ESCI_CONFERMA = "Esci da SchieraXI su questo dispositivo?"
+ESCI_CONFERMA_SPIEGA = "I dati salvati qui vengono cancellati: quelli sul server restano tuoi."
+
+
+def test_esci_chiede_conferma_ed_esce(web):
+    """«Esci» chiede conferma come sull'iPhone, con le stesse parole del catalogo (#931): la domanda e cosa succede ai dati
+    salvati qui. Confermato, si esce come prima: la richiesta parte una volta e si torna all'accesso."""
+    solo(web, "prima")
+    da_utente(web)
+    web.apri("/?vista=impostazioni&gruppo=account")
+    uscito = []
+    web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/") and urlsplit(u).path != "/api/account/esci",
+                     lambda route: json_200(route, SENZA_SESSIONE, 401) if uscito else route.fallback())
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci", lambda route: uscito.append(1) or json_200(route, {"ok": True}))
+    domande = []
+
+    def rispondi(dialogo):
+        domande.append(dialogo.message)
+        dialogo.accept()
+
+    web.pagina.on("dialog", rispondi)
+    with web.pagina.expect_navigation(wait_until="load"):            # la ricarica dopo l'uscita
+        principale(web).get_by_role("button", name="Esci", exact=True).click(timeout=10000)
+    web.pagina.get_by_role("dialog", name=re.compile("Accesso|SchieraXI")).get_by_role("button", name="Accedi").first.wait_for(timeout=10000)
+    assert len(domande) == 1, domande
+    assert ESCI_CONFERMA in domande[0] and ESCI_CONFERMA_SPIEGA in domande[0], domande
+    assert uscito == [1]
+
+
+def test_esci_annullato_non_fa_niente(web):
+    """Annullata la conferma di «Esci» non parte niente: si resta in «Il tuo account», con le copie dei dati nel browser."""
+    solo(web, "prima")
+    da_utente(web)
+    web.apri("/")                                              # la Formazione lascia nel browser le sue copie
+    web.apri("/?vista=impostazioni&gruppo=account")
+    prima = chiavi_salvate(web)
+    arrivate = []
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci",
+                     lambda route: arrivate.append(route.request.method) or json_200(route, {"ok": True}))
+    domande = []
+
+    def rispondi(dialogo):
+        domande.append(dialogo.message)
+        dialogo.dismiss()
+
+    web.pagina.on("dialog", rispondi)
+    tocca(web, principale(web).get_by_role("button", name="Esci", exact=True))
+    assert len(domande) == 1 and ESCI_CONFERMA in domande[0], domande
+    assert arrivate == []
+    assert titolo(web) == "Il tuo account"
+    assert chiavi_salvate(web) == prima
+
+
 def test_dopo_esci_normale_niente_frase_di_esci_da_tutti(web):
     solo(web, "prima")
     da_utente(web)
     web.apri("/?vista=impostazioni&gruppo=account")
+    web.pagina.on("dialog", lambda dialogo: dialogo.accept())          # la conferma di «Esci» (#931)
     uscito = []
     web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci",
                      lambda route: uscito.append(1) or route.fulfill(status=200, content_type="application/json", body='{"ok": true}'))
@@ -1310,6 +1364,7 @@ def test_esci_non_riuscito_lo_dice_e_resta_dentro(web, stato):
             json_200(route, {"detail": "Il server non risponde"} if stato == 502 else {}, stato)
 
     web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci", esci)
+    web.pagina.on("dialog", lambda dialogo: dialogo.accept())          # la conferma di «Esci» (#931)
     ricariche = []
     web.pagina.on("framenavigated", lambda f: f == web.pagina.main_frame and ricariche.append(f.url))
     with web.pagina.expect_request(iscrizione_mandata):
@@ -1337,6 +1392,7 @@ def test_esci_riuscito_toglie_gli_avvisi_di_questo_dispositivo(web):
     web.pagina.route(lambda u: urlsplit(u).path.startswith("/api/") and urlsplit(u).path != "/api/account/esci",
                      lambda route: json_200(route, SENZA_SESSIONE, 401) if uscito else route.fallback())
     web.pagina.route(lambda u: urlsplit(u).path == "/api/account/esci", lambda route: uscito.append(1) or json_200(route, {"ok": True}))
+    web.pagina.on("dialog", lambda dialogo: dialogo.accept())          # la conferma di «Esci» (#931)
     with web.pagina.expect_navigation(wait_until="load"):            # la ricarica dopo l'uscita
         principale(web).get_by_role("button", name="Esci", exact=True).click(timeout=10000)
     web.pagina.get_by_role("dialog", name=re.compile("Accesso|SchieraXI")).get_by_role("button", name="Accedi").first.wait_for(timeout=10000)
@@ -1555,6 +1611,7 @@ def test_esci_con_la_sessione_gia_finita_esce_senza_avviso(web):
     web.pagina.evaluate("""() => new MutationObserver(() => { const a = document.querySelector('#avviso');
         if (a && a.textContent.trim()) window.__avvisoDiProva(a.textContent); })
       .observe(document.body, { subtree: true, childList: true, characterData: true })""")
+    web.pagina.on("dialog", lambda dialogo: dialogo.accept())          # la conferma di «Esci» (#931)
     with web.pagina.expect_navigation(wait_until="load"):           # la ricarica dopo l'uscita
         principale(web).get_by_role("button", name="Esci", exact=True).click(timeout=10000)
     web.pagina.get_by_role("dialog", name=re.compile("Accesso|SchieraXI")).get_by_role("button", name="Accedi").first.wait_for(timeout=10000)

@@ -1227,7 +1227,8 @@ private extension LegaDemo {
             "/api/formazione/sostituisci": sostituisci(),
             "/api/scelta": "null",   // nessuna scelta salvata: si vede la consigliata
             "/api/formazione": formazione(adesso: adesso),
-            "/api/primo-avvio": json(["primo_avvio": NSNull(), "passi": ["server", "accesso", "rose", "squadra", "stemma", "pwa", "widget", "avvisi"]]),
+            // i passi del server (`stato_utente.PASSI`), con «tempi» (#931)
+            "/api/primo-avvio": json(["primo_avvio": NSNull(), "passi": ["server", "accesso", "rose", "stemma", "squadra", "tempi", "pwa", "widget", "avvisi"]]),
             "/api/oggi": oggi(adesso: adesso),
             "/api/regole": regole(),
             "/api/avvisi": avvisi(),

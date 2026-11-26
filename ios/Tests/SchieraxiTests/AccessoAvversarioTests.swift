@@ -248,7 +248,9 @@ final class ServerHTTPOstileTests: XCTestCase {
         ProtocolloFinto.gestore = { [unowned self] r in (risposta(r, 202, ["Retry-After": "0"]), Data("{}".utf8)) }
         let inizio = Date()
         do { _ = try await server.grezzo("/api/formazione"); XCTFail() } catch {
-            XCTAssertTrue(error.localizedDescription.contains("Riprova"))
+            // la frase della web (`comune.calcolo_lungo`, #931), con l'invito a riprovare
+            XCTAssertEqual(error.localizedDescription, Catalogo.Comune.calcoloLungo)
+            XCTAssertTrue(error.localizedDescription.localizedCaseInsensitiveContains("riprova"))
         }
         XCTAssertLessThan(Date().timeIntervalSince(inizio), 5)
     }

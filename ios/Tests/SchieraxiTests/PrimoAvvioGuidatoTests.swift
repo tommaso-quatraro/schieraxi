@@ -7,14 +7,14 @@ final class PrimoAvvioGuidatoTests: XCTestCase {
         try Decodifica.decodifica(Data(json.utf8))
     }
 
-    private let tuttiIPassi = #""passi": ["server", "accesso", "rose", "squadra", "stemma", "pwa", "widget", "avvisi"]"#
+    private let tuttiIPassi = #""passi": ["server", "accesso", "rose", "stemma", "squadra", "tempi", "pwa", "widget", "avvisi"]"#
 
     // MARK: lettura
 
     func testNonIniziatoEIniziato() throws {
         let nuovo = try leggi("{\"primo_avvio\": null, \(tuttiIPassi)}")
         XCTAssertNil(nuovo.primoAvvio)
-        XCTAssertEqual(nuovo.passi.count, 8)
+        XCTAssertEqual(nuovo.passi.count, 9)
         let iniziato = try leggi("""
         {"primo_avvio": {"fatti": ["rose"], "saltati": ["widget"], "chiuso": false, "aggiornato": "2026-10-30T12:00:00", "campo_nuovo": 1}, \(tuttiIPassi)}
         """)
@@ -51,14 +51,16 @@ final class PrimoAvvioGuidatoTests: XCTestCase {
     // MARK: quali passi
 
     func testSaltaIPassiGiaFatti() {
-        let stato = StatoConfigurazione(roseImportate: true, miaSquadra: "Schiera FC", stemmaEMaglia: false)
-        XCTAssertEqual(PrimoAvvioLogica.daFare(nil, stato: stato), [.stemma, .widget, .avvisi])
+        let stato = StatoConfigurazione(roseImportate: true, miaSquadra: "Schiera FC")
+        XCTAssertEqual(PrimoAvvioLogica.daFare(nil, stato: stato), [.tempi, .widget, .avvisi])
         let avanz = AvanzamentoPrimoAvvio(fatti: ["widget"], saltati: ["avvisi"])
-        XCTAssertEqual(PrimoAvvioLogica.daFare(avanz, stato: stato), [.stemma, .avvisi], "i saltati si riproporranno")
+        XCTAssertEqual(PrimoAvvioLogica.daFare(avanz, stato: stato), [.tempi, .avvisi], "i saltati si riproporranno")
         let nulla = StatoConfigurazione()
         XCTAssertEqual(PrimoAvvioLogica.daFare(nil, stato: nulla), PassoGuidato.allCases)
-        let tutto = StatoConfigurazione(roseImportate: true, miaSquadra: "A", stemmaEMaglia: true)
-        XCTAssertEqual(PrimoAvvioLogica.daFare(AvanzamentoPrimoAvvio(fatti: ["widget", "avvisi"]), stato: tutto), [])
+        let tutto = StatoConfigurazione(roseImportate: true, miaSquadra: "A")
+        XCTAssertEqual(PrimoAvvioLogica.daFare(AvanzamentoPrimoAvvio(fatti: ["tempi", "widget", "avvisi"]), stato: tutto), [])
+        // lo stemma non è più un passo della guida (#931): ricordato dal server o no, non cambia i passi da fare
+        XCTAssertEqual(PrimoAvvioLogica.daFare(AvanzamentoPrimoAvvio(fatti: ["stemma"]), stato: stato), [.tempi, .widget, .avvisi])
     }
 
     func testEsitoPerIlRiepilogo() {
@@ -83,8 +85,8 @@ final class PrimoAvvioGuidatoTests: XCTestCase {
 
     func testIlCorpoNonManda_nomiSconosciutiNeTroppeVoci() {
         let prima = AvanzamentoPrimoAvvio(fatti: ["passo_nuovo", "rose"])
-        let corpo = PrimoAvvioLogica.corpo(precedente: prima, passiAmmessi: ["rose", "squadra"], fatti: [.stemma], saltati: [], chiuso: true)
-        XCTAssertEqual(corpo.fatti, ["rose"], "«stemma» e «passo_nuovo» il server non li ammette: non si mandano")
+        let corpo = PrimoAvvioLogica.corpo(precedente: prima, passiAmmessi: ["rose", "squadra"], fatti: [.tempi], saltati: [], chiuso: true)
+        XCTAssertEqual(corpo.fatti, ["rose"], "«tempi» e «passo_nuovo» questo server non li ammette: non si mandano")
         XCTAssertTrue(corpo.chiuso)
         let molti = PrimoAvvioLogica.corpo(precedente: AvanzamentoPrimoAvvio(fatti: (0..<20).map { "p\($0)" }),
                                            passiAmmessi: (0..<20).map { "p\($0)" }, fatti: [], saltati: [], chiuso: false)
@@ -92,8 +94,8 @@ final class PrimoAvvioGuidatoTests: XCTestCase {
     }
 
     func testSenzaElencoDelServerSiUsanoIPassiNoti() {
-        let corpo = PrimoAvvioLogica.corpo(precedente: nil, passiAmmessi: [], fatti: [.rose, .avvisi], saltati: [.widget], chiuso: false)
-        XCTAssertEqual(corpo.fatti, ["rose", "avvisi"])
+        let corpo = PrimoAvvioLogica.corpo(precedente: nil, passiAmmessi: [], fatti: [.rose, .tempi, .avvisi], saltati: [.widget], chiuso: false)
+        XCTAssertEqual(corpo.fatti, ["rose", "tempi", "avvisi"], "«tempi» è un passo che il server conosce (#931)")
         XCTAssertEqual(corpo.saltati, ["widget"])
     }
 
@@ -107,13 +109,10 @@ final class PrimoAvvioGuidatoTests: XCTestCase {
                     if putRiuscito { return Data("{}".utf8) }
                     throw ErroreApi.server("no")
                 }
-                return Data("{\"primo_avvio\": \(avanzamento), \"passi\": [\"server\",\"accesso\",\"rose\",\"squadra\",\"stemma\",\"pwa\",\"widget\",\"avvisi\"]}".utf8)
+                return Data("{\"primo_avvio\": \(avanzamento), \"passi\": [\"server\",\"accesso\",\"rose\",\"stemma\",\"squadra\",\"tempi\",\"pwa\",\"widget\",\"avvisi\"]}".utf8)
             }
             if percorso.hasPrefix("/api/stato") {
                 return Data("{\"rose_importate\": \(roseImportate), \"mia_squadra\": \(squadra)}".utf8)
-            }
-            if percorso.hasPrefix("/api/squadre") {
-                return Data(#"[{"nome": "Squadra di prova", "mia": true, "immagini": {"stemma": true, "maglia": false}}]"#.utf8)
             }
             throw ErroreApi.server("nessuna risposta per \(percorso)")
         }
@@ -134,7 +133,7 @@ final class PrimoAvvioGuidatoTests: XCTestCase {
         XCTAssertFalse(nonParte)
         let vm2 = ConfigurazioneGuidataViewModel(server: conRose)
         await vm2.carica()
-        XCTAssertEqual(vm2.passi, [.stemma, .widget, .avvisi], "rose e squadra già fatte, la maglia manca")
+        XCTAssertEqual(vm2.passi, [.tempi, .widget, .avvisi], "rose e squadra già fatte, i tempi no")
     }
 
     @MainActor
@@ -142,18 +141,18 @@ final class PrimoAvvioGuidatoTests: XCTestCase {
         let s = server(roseImportate: true)
         let vm = ConfigurazioneGuidataViewModel(server: s)
         await vm.carica()
-        await vm.segnaFatto(.stemma)
+        await vm.segnaFatto(.tempi)
         await vm.salta(.widget)
         XCTAssertEqual(vm.passoCorrente, .avvisi)
         await vm.segnaFatto(.avvisi)
         XCTAssertTrue(vm.eRiepilogo)
-        XCTAssertEqual(vm.esito(.stemma), .fatto)
+        XCTAssertEqual(vm.esito(.tempi), .fatto)
         XCTAssertEqual(vm.esito(.widget), .saltato)
         await vm.termina()
         let ultimo = try XCTUnwrap(s.corpiInviati(a: "/api/primo-avvio").last)
         let corpo = try JSONDecoder().decode(CorpoPrimoAvvio.self, from: ultimo)
         XCTAssertEqual(corpo.saltati, ["widget"])
-        XCTAssertTrue(corpo.fatti.contains("stemma") && corpo.fatti.contains("avvisi"))
+        XCTAssertTrue(corpo.fatti.contains("tempi") && corpo.fatti.contains("avvisi"))
         XCTAssertTrue(corpo.chiuso)
         XCTAssertEqual(s.quante("PUT /api/primo-avvio"), 4, "uno per ogni passo e uno alla fine")
     }
@@ -163,7 +162,7 @@ final class PrimoAvvioGuidatoTests: XCTestCase {
         let s = server(roseImportate: true)
         let vm = ConfigurazioneGuidataViewModel(server: s)
         await vm.carica()
-        await vm.segnaFatto(.stemma)
+        await vm.segnaFatto(.tempi)
         await vm.piuTardi()
         let corpo = try JSONDecoder().decode(CorpoPrimoAvvio.self, from: try XCTUnwrap(s.corpiInviati(a: "/api/primo-avvio").last))
         XCTAssertEqual(corpo.saltati, ["widget", "avvisi"])
@@ -175,7 +174,7 @@ final class PrimoAvvioGuidatoTests: XCTestCase {
         let s = server(roseImportate: true, putRiuscito: false)
         let vm = ConfigurazioneGuidataViewModel(server: s)
         await vm.carica()
-        await vm.segnaFatto(.stemma)
+        await vm.segnaFatto(.tempi)
         XCTAssertEqual(vm.passoCorrente, .widget, "si va avanti lo stesso")
         XCTAssertEqual(vm.avviso, ConfigurazioneGuidataViewModel.erroreSalvataggio)
     }

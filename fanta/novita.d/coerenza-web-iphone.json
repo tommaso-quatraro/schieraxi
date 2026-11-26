@@ -1,0 +1,13 @@
+{
+  "titolo": "Web e iPhone più uguali: «Esci» chiede conferma, primo avvio con i tempi della lega",
+  "voci": [
+    "Impostazioni, Il tuo account: «Esci» ora chiede conferma prima di farti uscire, sulla web come sull'iPhone.",
+    "Sull'iPhone il primo avvio ha gli stessi passi della web: le rose, la tua squadra e i tempi della lega (quando si chiude la formazione e da quale giornata è partita la lega), poi widget e avvisi.",
+    "Sull'iPhone, quando il server sta ancora calcolando, compare «Un attimo, mister: ci sto lavorando.» come sulla web; Informazioni mostra la versione del server e quella dell'app."
+  ],
+  "tecnico": [
+    "#931: le 9 differenze web-iPhone non registrate. Web: conferma di «Esci» con account.esci_conferma e account.esci_conferma_spiega (prove in tests/browser/test_impostazioni.py).",
+    "iPhone: PassoGuidato con i passi della web (rose, squadra, tempi) più widget e avvisi, senza stemma; TempiGuida per le due domande; AttesaCalcolo e AvvisoCalcolo per la frase d'attesa del 202, comune.calcolo_lungo alla fine dei tentativi; Aggiorna i dati segue l'aggiornamento senza limite come la web; testi dal catalogo (pav.*, onb.*, info.*, avv.*, scambio.*).",
+    "Differenze ammesse nuove in docs/coerenza/ammesse.json e righe 112-118 di «Differenze di oggi»; riga 106 con le colonne «Forma giusta» e «Chi la sistema» sistemate."
+  ]
+}
