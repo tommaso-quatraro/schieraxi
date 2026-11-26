@@ -289,6 +289,94 @@ def test_giornate_rilegge_lo_stato_se_le_rose_arrivano_da_un_altro_dispositivo(w
     assert not web.errori_mostrati() and not web.errori_console
 
 
+# ---------------------------------------------------------------- rose salvate, la tua squadra non ancora (collaudo del 26/11)
+INDICA_SQUADRA = {"detail": "Indica la tua squadra in «La mia squadra»"}
+
+
+def rose_senza_la_tua_squadra(web, lega: dict) -> list[str]:
+    """Dopo `account_senza_rose`: confermate le rose, il server le ha ma non sa qual è la tua squadra (`lega["mia"]` vuoto) e
+    Oggi e Formazione rispondono 400 come lui; scelta la squadra (PUT /api/mia-squadra) tutto risponde come lo scenario. Torna
+    l'elenco delle squadre scelte, man mano."""
+    stato, squadre = web.registrata("/api/stato"), web.registrata("/api/squadre")
+    lega["mia"], scelte = None, []
+
+    def stato_ora(route):
+        if not lega["salvate"]:
+            _rispondi(route, {**stato, "rose_importate": False, "mia_squadra": None})
+        else:
+            _rispondi(route, {**stato, "mia_squadra": lega["mia"]})
+
+    def squadre_ora(route):
+        _rispondi(route, [{**s, "mia": s["nome"] == lega["mia"]} for s in squadre] if lega["salvate"] else [])
+
+    def senza_squadra(route):
+        if lega["salvate"] and not lega["mia"]:
+            _rispondi(route, INDICA_SQUADRA, 400)
+        else:
+            route.fallback()
+
+    def scegli(route):
+        lega["mia"] = json.loads(route.request.post_data)["nome"]
+        scelte.append(lega["mia"])
+        _rispondi(route, {"mia_squadra": lega["mia"]})
+
+    web.pagina.route(_rotta("/api/stato"), stato_ora)
+    web.pagina.route(_rotta("/api/squadre"), squadre_ora)
+    web.pagina.route(_rotta("/api/oggi"), senza_squadra)
+    web.pagina.route(_rotta("/api/formazione"), senza_squadra)
+    web.pagina.route(_rotta("/api/mia-squadra"), scegli)
+    return scelte
+
+
+def senza_400(web) -> list[str]:
+    return [r for r in web.richieste_fallite if "/api/oggi" in r or "/api/formazione" in r]
+
+
+def test_rose_salvate_senza_la_tua_squadra_dietro_la_guida_niente_errori(web):
+    """Rose confermate senza dire qual è la tua squadra: dietro il passo «La tua squadra» la Formazione chiedeva Oggi e
+    Formazione, che rispondono 400 («Indica la tua squadra…», due errori nella console), e mostrava l'errore con un «Riprova» che
+    non serviva. Ora non le chiede finché la squadra non c'è; scelta nella guida, la Formazione arriva."""
+    solo_prima(web)
+    lega = account_senza_rose(web)
+    anteprima_finta(web, lega, 2)
+    scelte = rose_senza_la_tua_squadra(web, lega)
+    web.apri("/", larghezza=390)
+    titolo_della_guida(web, "Le rose")
+    controlla_le_rose(web)
+    guida(web).get_by_role("button", name="Conferma e salva").click(timeout=10000)        # senza scegliere la tua squadra
+    titolo_della_guida(web, "La tua squadra")
+    web.aspetta()
+    assert not senza_400(web), senza_400(web)
+    assert not web.errori_console, web.errori_console
+    assert not web.errori_mostrati() and "Riprova" not in web.testo_principale(), web.testo_principale()[:300]
+    guida(web).get_by_role("button", name="Questa è la mia").click(timeout=10000)
+    titolo_della_guida(web, "I tempi della lega")
+    web.aspetta()
+    assert scelte and "/api/formazione" in web.richieste, web.richieste
+    assert not senza_400(web) and not web.errori_console and not web.errori_mostrati()
+
+
+@pytest.mark.parametrize("larghezza", [390, 1440])
+def test_a_guida_chiusa_la_formazione_chiede_la_tua_squadra(web, larghezza):
+    """Rose salvate e guida chiusa senza scegliere la squadra: la Formazione non è un errore con «Riprova» ma la domanda della guida,
+    «Quale squadra è la tua?», con «Questa è la mia» (vale anche la prima dell'elenco, già in vista). Scelta, la Formazione arriva."""
+    solo_prima(web)
+    lega = account_senza_rose(web)
+    lega["salvate"] = True
+    lega["primo"].update({"fatti": ["server", "accesso", "rose"], "saltati": ["squadra", "tempi"], "chiuso": True})
+    scelte = rose_senza_la_tua_squadra(web, lega)
+    web.apri("/", larghezza=larghezza)
+    principale = web.pagina.locator("main")
+    assert principale.get_by_role("heading", name="Quale squadra è la tua?").is_visible(), web.testo_principale()[:300]
+    assert not senza_400(web) and not web.errori_console and not web.errori_mostrati(), (web.richieste_fallite, web.errori_console)
+    prima = principale.get_by_role("combobox", name="La tua squadra").input_value()
+    principale.get_by_role("button", name="Questa è la mia").click(timeout=10000)
+    web.aspetta()
+    assert scelte == [prima], scelte
+    assert "/api/formazione" in web.richieste and "Quale squadra è la tua?" not in web.testo_principale()
+    assert not senza_400(web) and not web.errori_console and not web.errori_mostrati()
+
+
 # ---------------------------------------------------------------- ore tranquille
 def riga_ore_tranquille(web):
     return web.pagina.locator("label", has=web.pagina.locator("#av_silenzio"))

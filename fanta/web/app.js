@@ -933,6 +933,30 @@ function testoConto(o) {
   return { chiude: t("formazione.si_chiude", { quando: quando(quandoChiude) }), manca: t("formazione.fra", { tempo }) };
 }
 
+// Rose importate, la tua squadra non ancora scelta (primo avvio lasciato al passo «La tua squadra», collaudo del 26/11): al posto
+// dell'errore «Indica la tua squadra…» con un «Riprova» che non serviva, la domanda della guida, con le stesse parole e lo stesso
+// pulsante (un menu che salva al cambio non farebbe scegliere la prima squadra, già in vista). Scelta, la Formazione si ricarica.
+// Senza l'elenco delle squadre (non letto), il collegamento a La mia squadra.
+function mostraSenzaSquadra(opz) {
+  clearInterval(timerConto);
+  const squadre = stato.squadre || [];
+  pagina(`<div class="carta benvenuto"><h2>${t("pav.quale_squadra_tua")}</h2>
+    ${squadre.length ? `${sceltaMiaSquadra(squadre)}<div class="pulsanti"><button class="bottone" type="button" id="fz-mia-squadra">${t("pav.questa_mia")}</button></div>`
+      : `<p class="debole">${t("err.indica_squadra")}</p><div class="pulsanti"><button class="bottone" type="button" data-imp-gruppo="squadra">${t("lega.mia_squadra")}</button></div>`}</div>`,
+  { ...opz, stato: false });
+  const b = $("#fz-mia-squadra");
+  if (b) b.addEventListener("click", async () => {
+    b.disabled = true;
+    try {
+      await api("/api/mia-squadra", { method: "PUT", body: JSON.stringify({ nome: $("#mia-squadra").value }) });
+      svuotaCache(); stato.squadraVista = null;
+      avviso(t("lega.squadra_salvata"));
+      await Promise.all([caricaInfo(), caricaSquadre()]);
+      if (stato.vista === "formazione") vaiQui();
+    } catch (e) { avviso(e.message); b.disabled = false; }
+  });
+}
+
 // Account nuovo, senza rose: benvenuto e un solo pulsante. Il primo avvio guidato si apre da solo (una volta, vedi primoAvvioSeServe).
 function mostraSenzaRose(opz) {
   clearInterval(timerConto);
@@ -1117,6 +1141,14 @@ async function caricaGiornata() {
   // gli errori, quindi si chiede solo /api/oggi, che dà il benvenuto. Se le rose nel frattempo ci sono, la formazione si chiede dopo.
   // Lo stesso senza una giornata da giocare (`prossima_giornata` nullo): a campionato finito /api/oggi dice `campionato_finito` e
   // /api/formazione risponderebbe 409 (#656); d'estate, senza calendario, è /api/oggi a dire che il calendario non c'è ancora.
+  // Con le rose ma senza la tua squadra (primo avvio a metà) le due rotte rispondono 400 («Indica la tua squadra…»): due errori nel
+  // browser e una pagina d'errore con «Riprova» (collaudo del 26/11). Lo stato letto all'avvio può essere vecchio (squadra scelta
+  // dall'iPhone o da un'altra scheda): si rilegge; se la squadra manca ancora non si chiede niente e la pagina la chiede lei.
+  const senzaSquadra = () => !!stato.info && stato.info.rose_importate === true && !stato.info.mia_squadra;
+  if (senzaSquadra()) {
+    await caricaInfo();
+    if (senzaSquadra()) return { senza_squadra: true };
+  }
   const senzaRose = !!stato.info && stato.info.rose_importate === false;
   const senzaGiornata = !!stato.info && stato.info.prossima_giornata === null;
   const [o, letta] = await Promise.all([api("/api/oggi"), senzaRose || senzaGiornata ? null : api("/api/formazione").catch(e => e)]);
@@ -1197,6 +1229,7 @@ function cambiInCorso(c) {
 // `b`: ciò che caricaGiornata ha letto ({o, f, scelta, valutata, non_valida}); per un'altra squadra solo {f}.
 function mostraFormazione(b, squadra, opz = {}) {
   const { o, f } = b;
+  if (b.senza_squadra) { mostraSenzaSquadra(opz); return; }
   if (o && o.senza_rose) { mostraSenzaRose(opz); return; }
   if (o && o.campionato_finito) { mostraCampionatoFinito(o, opz); return; }
   const l = livelloBase(f);
