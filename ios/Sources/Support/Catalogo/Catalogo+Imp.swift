@@ -12,6 +12,9 @@ extension Catalogo {
         /// `imp.avvisi_qui_aiuto_app`
         static let avvisiQuiAiutoApp = "Un promemoria prima della scadenza, se non hai spuntato «L'ho messa»"
 
+        /// `imp.avvisi_qui_aiuto_web`
+        static let avvisiQuiAiutoWeb = "Il promemoria arriva già dalla web app, che ha gli avvisi accesi su un iPhone, un iPad o un Mac: qui non si ripete"
+
         /// `imp.ore_tranquille_aiuto`
         static func oreTranquilleAiuto(a: String, da: String) -> String {
             "Niente avvisi dalle \(da) alle \(a)"

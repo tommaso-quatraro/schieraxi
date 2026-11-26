@@ -64,8 +64,8 @@ enum Aggiornamento {
         }
     }
 
-    /// Ricorda sul telefono gli avvisi come li ha il server: le ore tranquille e se manda già i suoi avvisi a questa app
-    /// (`StatoAvvisi.mandaGiaIlServer`, ntfy per l'app nativa: allora l'app non programma i suoi promemoria). Dice se una delle due
+    /// Ricorda sul telefono gli avvisi come li ha il server: le ore tranquille e se manda già i promemoria a questo telefono
+    /// (`StatoAvvisi.mandaGiaIlServer`, web app o ntfy: allora l'app non programma i suoi promemoria). Dice se una delle due
     /// cose è cambiata rispetto a quello che il telefono sapeva: allora i promemoria vanno rimessi in programma.
     @discardableResult
     static func ricordaAvvisi(_ stato: StatoAvvisi, memoria: UserDefaults = .standard) -> Bool {

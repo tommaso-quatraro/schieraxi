@@ -36,6 +36,11 @@
     "en": "A reminder before the deadline, if you haven't ticked «I've entered it»",
     "nota": "iPhone, sotto «Avvisi su questo dispositivo»: l'interruttore accende solo i promemoria dell'app; l'avviso quando cambia la formazione lo manda il server alla web (#906). Stesse parole della prima parte di imp.avvisi_qui_aiuto"
   },
+  "imp.avvisi_qui_aiuto_web": {
+    "it": "Il promemoria arriva già dalla web app, che ha gli avvisi accesi su un iPhone, un iPad o un Mac: qui non si ripete",
+    "en": "The reminder already comes from the web app, which has alerts on for an iPhone, iPad or Mac: it isn't repeated here",
+    "nota": "iPhone, sotto «Avvisi su questo dispositivo» al posto di imp.avvisi_qui_aiuto_app quando il server manda già i promemoria alla web su un dispositivo Apple (promemoria_da «web» di GET /api/avvisi): l'app non programma i suoi, che arriverebbero due volte"
+  },
   "imp.avvisi_controllo": {
     "it": "Controllo gli avvisi di questo dispositivo…",
     "en": "Checking the alerts on this device…"

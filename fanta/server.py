@@ -2477,8 +2477,20 @@ class ImpostazioniAvvisi(BaseModel):
 
 def _stato_avvisi(ctx: Contesto, opzioni: dict) -> dict:
     iscrizioni = notifiche_web.iscrizioni(ctx.iscrizioni_push)
-    return {"impostazioni": opzioni, "canale": (ctx.ntfy and notifiche.canale() is not None) or bool(iscrizioni),
-            "dispositivi": len(iscrizioni)}
+    ntfy = ctx.ntfy and notifiche.canale() is not None
+    return {"impostazioni": opzioni, "canale": ntfy or bool(iscrizioni), "dispositivi": len(iscrizioni),
+            "promemoria_da": _promemoria_da(iscrizioni, ntfy and bool(opzioni.get("app_nativa")))}
+
+
+def _promemoria_da(iscrizioni: list[dict], ntfy_app: bool) -> str:
+    """Da dove arrivano già i promemoria della scadenza a un iPhone o a un iPad (`promemoria_da` di GET /api/avvisi): `web` con le
+    notifiche della web accese su un dispositivo Apple (`notifiche_web.su_apple`), `ntfy` con «Avvisi anche per l'app nativa» e il
+    canale (`ntfy_app`: il tocco apre l'app), altrimenti `app`. Con `web` o `ntfy` l'app per iPhone non programma i suoi promemoria:
+    sullo stesso telefono lo stesso promemoria arriverebbe due volte. Le notifiche della web su un computer con Chrome, Firefox o
+    Edge non contano: senza i suoi promemoria il telefono resterebbe senza."""
+    if any(notifiche_web.su_apple(s["endpoint"]) for s in iscrizioni):
+        return "web"
+    return "ntfy" if ntfy_app else "app"
 
 
 def _etag_avvisi(ctx: Contesto) -> str:

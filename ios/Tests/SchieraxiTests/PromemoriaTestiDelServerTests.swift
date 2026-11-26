@@ -5,9 +5,9 @@ import Testing
 /// I promemoria della scadenza sul telefono con i testi del server (#906, parte B): titolo e testo di `testi_promemoria` di Oggi
 /// così come sono, niente frasi composte nell'app (niente più «modulo consigliato», anche quando il modulo l'ha scelto l'utente);
 /// lista vuota, nessun promemoria; server di prima, o testo di un'ora prima letto troppo presto, il promemoria minimo del catalogo
-/// con l'ora della scadenza (`oggi.prossima_chiude`). Se il server manda già i suoi avvisi proprio a questa app (ntfy per l'app
-/// nativa) l'app non programma i suoi; con le sole notifiche della web sì, perché potrebbero essere sul computer. I promemoria del
-/// certificato rispettano le ore tranquille.
+/// con l'ora della scadenza (`oggi.prossima_chiude`). Se il server manda già i promemoria a questo telefono (`promemoria_da`: ntfy
+/// per l'app nativa o la web su un dispositivo Apple) l'app non programma i suoi; con le notifiche della web solo su un computer
+/// sì. I promemoria del certificato rispettano le ore tranquille.
 @Suite("Promemoria con i testi del server")
 struct PromemoriaTestiDelServerTests {
     private let nome = NomeGiornata(serieA: 11, lega: 8)
@@ -126,6 +126,24 @@ struct PromemoriaTestiDelServerTests {
             #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true}}"#,
           ], [false, false, true, false, false, false]))
     func dalServer(json: String, atteso: Bool) throws {
+        let stato: StatoAvvisi = try Decodifica.decodifica(Data(json.utf8), snake: false)
+        #expect(stato.mandaGiaIlServer == atteso)
+    }
+
+    /// Un solo promemoria per telefono (26/11/2026): il server dice da dove arrivano già i promemoria (`promemoria_da`). «web»: le
+    /// notifiche della web sono accese su un dispositivo Apple (la web app sulla Home dello stesso telefono, il caso del doppione);
+    /// «ntfy»: ntfy per l'app nativa, anche con dispositivi della web; «app»: l'app programma i suoi. Un valore che l'app non
+    /// conosce, o il campo assente (server di prima), lascia la regola di prima.
+    @Test("Con `promemoria_da` decide il server; con un valore sconosciuto o senza il campo vale la regola di prima",
+          arguments: zip([
+            #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "app_nativa": false}, "canale": true, "dispositivi": 1, "promemoria_da": "web"}"#,
+            #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "app_nativa": true}, "canale": true, "dispositivi": 1, "promemoria_da": "ntfy"}"#,
+            #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "app_nativa": true}, "canale": true, "dispositivi": 0, "promemoria_da": "app"}"#,
+            #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "app_nativa": true}, "canale": true, "dispositivi": 0, "promemoria_da": "piccione"}"#,
+            #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "app_nativa": false}, "canale": true, "dispositivi": 1, "promemoria_da": 7}"#,
+            #"{"impostazioni": {"cambi": true, "promemoria_60": true, "promemoria_15": true, "riepilogo": true, "app_nativa": false}, "canale": true, "dispositivi": 1, "promemoria_da": null}"#,
+          ], [true, true, false, true, false, false]))
+    func promemoriaDa(json: String, atteso: Bool) throws {
         let stato: StatoAvvisi = try Decodifica.decodifica(Data(json.utf8), snake: false)
         #expect(stato.mandaGiaIlServer == atteso)
     }

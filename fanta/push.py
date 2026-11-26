@@ -448,6 +448,18 @@ def maschera(ep: str) -> str:
     return f"{host}#{hashlib.sha256(ep.encode()).hexdigest()[:6]}"
 
 
+def su_apple(ep: str) -> bool:
+    """L'iscrizione è di un dispositivo Apple? Lo dice il servizio di notifica, quello di Apple (`web.push.apple.com`): la web app
+    sulla Home di un iPhone o di un iPad, oppure Safari sul Mac. Chrome, Firefox ed Edge usano i servizi di Google, Mozilla e
+    Microsoft. Serve a `promemoria_da` di GET /api/avvisi (un solo promemoria per telefono)."""
+    from urllib.parse import urlsplit
+    try:
+        host = (urlsplit(ep).hostname or "") if ep.startswith("https://") else ""
+    except ValueError:
+        return False
+    return host.endswith(".push.apple.com")
+
+
 def _annota(testo: str) -> None:
     """Gli errori dell'invio restano in dati/push.log: senza, una notifica che non parte sembrerebbe solo "arrivata da ntfy"."""
     try:

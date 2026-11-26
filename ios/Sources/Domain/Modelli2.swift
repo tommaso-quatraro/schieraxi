@@ -92,16 +92,29 @@ extension ImpostazioniAvvisi {
 }
 
 struct StatoAvvisi: Decodable {
+    /// Da dove arrivano già i promemoria della scadenza secondo il server (`promemoria_da`, 26/11/2026).
+    enum PromemoriaDa: String, Sendable {
+        /// Le notifiche della web sono accese su un dispositivo Apple: la web app sulla Home di un iPhone o di un iPad, o Safari sul Mac.
+        case web
+        /// «Avvisi anche per l'app nativa» con il canale ntfy, il cui tocco apre questa app.
+        case ntfy
+        /// Da nessuna delle due: l'app programma i suoi.
+        case app
+    }
+
     let impostazioni: ImpostazioniAvvisi
     let canale: Bool?
     let dispositivi: Int?
     /// Facoltativo: il server lo manda (a `true`) solo se le ore tranquille salvate avevano inizio = fine e le ha spente.
     /// Mancante, nullo o di tipo strano vale «niente da dire».
     let oreTranquilleSpente: Bool
+    /// Facoltativo: nil con un server di prima o con un valore che l'app non conosce.
+    let promemoriaDa: PromemoriaDa?
 
     private enum CodingKeys: String, CodingKey {
         case impostazioni, canale, dispositivi
         case oreTranquilleSpente = "ore_tranquille_spente"
+        case promemoriaDa = "promemoria_da"
     }
 
     init(from decoder: Decoder) throws {
@@ -110,16 +123,17 @@ struct StatoAvvisi: Decodable {
         canale = try? c.decodeIfPresent(Bool.self, forKey: .canale)
         dispositivi = try? c.decodeIfPresent(Int.self, forKey: .dispositivi)
         oreTranquilleSpente = (try? c.decodeIfPresent(Bool.self, forKey: .oreTranquilleSpente)) ?? false
+        promemoriaDa = (try? c.decodeIfPresent(String.self, forKey: .promemoriaDa)).flatMap(PromemoriaDa.init(rawValue:))
     }
 
-    /// Il server manda già i suoi avvisi proprio a questa app (#906)? Sì solo con «Avvisi anche per l'app nativa» acceso, un canale
-    /// e nessun dispositivo con le notifiche della web (`app_nativa`, `canale`, `dispositivi` 0): sul server `canale` è vero anche
-    /// con le sole notifiche della web, quindi vuol dire ntfy (il cui tocco apre questa app) solo senza dispositivi. Allora l'app non
-    /// programma i suoi promemoria della scadenza, che arriverebbero due volte. Con le notifiche della web accese li programma: l'app
-    /// non sa su quale dispositivo sono (con quelle del solo computer il telefono perderebbe i promemoria), e il doppione web e app
-    /// sullo stesso telefono resta possibile, come dice l'aiuto di quell'interruttore. Senza i campi (server di prima): no.
+    /// Il server manda già i promemoria della scadenza a questo telefono? Allora l'app non programma i suoi, che arriverebbero due
+    /// volte. Decide il server con `promemoria_da`: «web» (la web app sulla Home con gli avvisi accesi, il doppione sullo stesso
+    /// telefono) e «ntfy» sì, «app» no. Le notifiche della web su un computer con Chrome, Firefox o Edge non contano: il telefono
+    /// resterebbe senza promemoria. Senza il campo (server di prima) la regola di prima (#906): sì solo con «Avvisi anche per l'app
+    /// nativa», un canale e nessun dispositivo con le notifiche della web, perché `canale` è vero anche con le sole notifiche della web.
     var mandaGiaIlServer: Bool {
-        impostazioni.app_nativa == true && canale == true && (dispositivi ?? 0) == 0
+        if let promemoriaDa { return promemoriaDa != .app }
+        return impostazioni.app_nativa == true && canale == true && (dispositivi ?? 0) == 0
     }
 }
 
