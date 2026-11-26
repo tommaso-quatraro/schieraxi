@@ -1,5 +1,46 @@
 [
   {
+    "versione": "1.568",
+    "data": "2026-11-26T02:16:15",
+    "titolo": "Giornate: da dove vengono i punti",
+    "voci": [
+      "In Giornate, aprendo una giornata, sotto i tuoi 11 c'è scritto perché i punti non sono la somma dei loro voti: chi è entrato dalla panchina e al posto di chi, per chi non è entrato nessuno, il modificatore difesa e, con una partita rinviata, cosa ha deciso la tua lega.",
+      "Le giornate già passate ricevono le stesse righe da sole quando SchieraXI sa con certezza chi è entrato (per esempio dalla consigliata salvata prima della scadenza), senza che cambi nessun punto. Altrimenti, se i conti non tornano con i voti degli 11, una riga dice che il dettaglio manca."
+    ],
+    "tecnico": [
+      "GET /api/diario: in ogni voce `spiegazione_punti` ({formazione, righe, righe_frasi} o null) e in ogni formazione `dettaglio` (entrati, senza_sostituto, voto_senza_sostituto, modificatore, rinvio); nessun campo tolto o rinominato.",
+      "Il dettaglio si calcola dove si calcolano i punti (voce nuova, «Correggi», punti rifatti con i voti nuovi), leggendo le sostituzioni di formazione.chi_va_a_punteggio: i punti e il fantavoto atteso non cambiano (formazione.py non toccato).",
+      "Le voci di prima si completano una volta al giro del cron (rifai_i_punti con completa=True, senza indicatori né simulazioni) e prendono il dettaglio solo dove i punti rifatti sono uguali a quelli salvati, chi entra è fra i giocatori della voce e, se la panchina ha contato, la panchina di allora è nota intera (istantanea o scelta); altrove `dettaglio` null. Un errore lì va nel registro una volta (la voce resta con `dettaglio` null) e non ferma le giornate dopo.",
+      "L'iPhone non mostra ancora le righe (riga 106 di docs/COERENZA-WEB-IPHONE.md, #900)."
+    ]
+  },
+  {
+    "versione": "1.567",
+    "data": "2026-11-26T01:42:25",
+    "titolo": "Regole: frasi più chiare per la panchina e per i campi da correggere",
+    "voci": [
+      "Regolamento incollato: se la panchina letta non si può applicare, il perché dice di cambiare a mano i posti di ogni ruolo nei valori delle regole, e vale anche sull'iPhone.",
+      "Prima di salvare le regole, l'avviso distingue le righe con lo stesso nome: «Difensori della rosa» o «Posti in panchina per i difensori», e quale dei due voti d'ufficio."
+    ],
+    "tecnico": [
+      "Frasi regole.panchina_posti_fissi e regole.panchina_somma_posti (modello italiano in fanta/frasi.py, catalogo fanta/testi/frase.json, testi.js rigenerato): «… a mano i posti di ogni ruolo nei valori delle regole» al posto di «… in «Modifica i valori»», in italiano e in inglese (#889). Chiavi e parametri di motivo_frase invariati.",
+      "Pagina Regole della web: problemaCampo usa data-nome dello stepper quando c'è (rosa, posti fissi, voto senza sostituto, voto delle partite rinviate: nomi err.p_regola_*), come CampiRegole dell'iPhone; la riga e il suo aria-label non cambiano (#889)."
+    ]
+  },
+  {
+    "versione": "1.566",
+    "data": "2026-11-26T00:55:32",
+    "titolo": "Partita in ritardo: non è più rinviata",
+    "voci": [
+      "Oggi e risultati in diretta: una partita che comincia in ritardo resta «da giocare» finché non parte, poi è «in corso». Non risulta più rinviata e non prende il voto d'ufficio: prima poteva comparire come rinviata, con «conta il voto del recupero» o, nelle leghe che lo prevedono, con il voto d'ufficio contato tra i punti fatti."
+    ],
+    "tecnico": [
+      "live.leggi_espn: STATUS_DELAYED e STATUS_RAIN_DELAY non diventano più «sospesa» (che fasi e sentinella trattano come «rinviata»): da_giocare, oppure in_corso se la fonte la dà nel gruppo «in». STATUS_SUSPENDED e STATUS_ABANDONED restano «sospesa».",
+      "fasi.stato_partita: dopo l'orario previsto la partita resta da_giocare solo se la fonte ha confermato da_giocare dopo l'orario e al più 15 minuti fa (fasi.CONFERMA_RITARDO, campo visto dal nuovo live.Raccoglitore.stati, usato da server._stati_live); altrimenti vale l'orario come prima. Il ripiego che scrive da_giocare non lascia visto (nemmeno in dati/live.json): non conferma un ritardo.",
+      "Nessun campo né stato di /api/live o /api/oggi tolto o rinominato (visto non esce da /api/live); calcolo del fantavoto atteso non toccato."
+    ]
+  },
+  {
     "versione": "1.565",
     "data": "2026-11-26T00:46:37",
     "titolo": "Giornata in corso e finita: numeri e frasi che tornano",

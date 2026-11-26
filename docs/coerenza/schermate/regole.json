@@ -49,10 +49,19 @@
       "id": 103,
       "schermata": "Regole, importazione da Leghe: valori non applicabili e nomi in parole (#881)",
       "web": "dopo «Riconosci le regole» i valori di `non_applicabili` di `POST /api/regole/riconosci` stanno sotto «Non applicato» (`regole.non_applicato`), ognuno con «etichetta: valore», il perché (`motivo_frase`, per ora la frase `regole.panchina_posti_fissi`) e la riga da cui viene; non si salvano. L'ordine dei cambi si scrive «Per ruolo» o «Libera» (`regole.per_ruolo`, `regole.libera`) e i posti per ruolo «2 portieri, 3 difensori, 3 centrocampisti, 3 attaccanti» (frasi `rose.<ruolo>`) (`vistaRegole`)",
-      "iphone": "non legge `non_applicabili`: il valore che non si può salvare non compare (e non si salva più, perché il server non lo manda in `modifiche`; prima si vedeva 12 e si salvava 11). L'ordine dei cambi si legge «per_ruolo» e i posti per ruolo «A: 3, C: 3, D: 3, P: 2» (`RegoleLogica.descrivi`)",
+      "iphone": "prima: non leggeva `non_applicabili`, quindi il valore che non si può salvare non compariva (e non si salvava più, perché il server non lo manda in `modifiche`; prima si vedeva 12 e si salvava 11); l'ordine dei cambi si leggeva «per_ruolo» e i posti per ruolo «A: 3, C: 3, D: 3, P: 2» (`RegoleLogica.descrivi`). Ora sotto «Non applicato» (`regole.non_applicato`) ogni valore con «etichetta: valore», il perché del server (`motivo`, il testo italiano di `motivo_frase`) e la riga; «Applica ai campi» non lo mette nei campi e, senza valori riconosciuti, non c'è. «Per ruolo» o «Libera» e «2 portieri, 3 difensori, 3 centrocampisti, 3 attaccanti» (frasi `rose.<ruolo>`) (`AnteprimaRegolamento`, `RegoleEditorView.riconosciute`)",
       "forma": "web",
-      "chi": "web fatta (#881, prove in `tests/browser/test_impostazioni.py`); **da fare** sull'iPhone: «Non applicato» con `motivo` e i due valori scritti come la web",
-      "stato": "da-fare"
+      "chi": "web fatta (#881, prove in `tests/browser/test_impostazioni.py`); iPhone **fatto** (#889): prove `RegolamentoNonApplicatoTests`. Il perché è una frase del server: dal #889 non nomina più «Modifica i valori», il pulsante della web («… nei valori delle regole»), così vale anche sull'iPhone, dove i valori stanno nella stessa pagina",
+      "stato": "fatto"
+    },
+    {
+      "id": 104,
+      "schermata": "Regole: limiti dei numeri e campi controllati prima di salvare (#881, #889)",
+      "web": "i limiti di − e + e dei numeri scritti a mano vengono da `/limiti-regole.json`, lo stesso file con cui il server controlla le regole (`leggiLimitiRegole`, `stepper` con `lim`); prima di salvare un campo vuoto (««Assist» è vuoto: scrivi un numero», `regole.campo_vuoto`), con i decimali in un campo intero (`regole.intero`) o fuori dai limiti (««Autogol» deve essere tra −20 e 0», `regole.fuori_limiti`) ferma il salvataggio con il nome del campo (`problemaCampo` in `vistaRegole`); una fascia nuova non va oltre i limiti",
+      "iphone": "prima: limiti scritti nel codice, diversi da quelli del server (rosa 0–20, cambi 0–14, crediti 0–5.000, panchina 1–14, posti 0–8, medie delle fasce 4–9, difensori minimi fino a 6), e nessun controllo prima di salvare: un valore fuori dai limiti arrivava al server. Ora i limiti si leggono da `/limiti-regole.json` dopo le regole (con un server di prima, senza il file, quelli di riserva, uguali al file); prima di salvare gli stessi controlli e le stesse frasi della web, sui soli campi che si salvano, con il nome del campo del server dove due righe hanno lo stesso titolo («Difensori della rosa», «Posti in panchina per i difensori», i due «Voto d'ufficio»: `err.p_regola_*`; la web dice il titolo della riga e porta al campo); una fascia nuova non va oltre i limiti (`LimitiRegole`, `CampiRegole`, `RegoleEditorViewModel.salva`). Con − e + un campo vuoto o un decimale in un campo intero non si scrivono: il controllo vale per i valori arrivati così",
+      "forma": "web",
+      "chi": "**fatto** (#889): prove `RegoleLimitiComeLaWebTests`; i limiti di riserva uguali al file, `tests/test_limiti_regole_iphone.py`",
+      "stato": "fatto"
     }
   ]
 }

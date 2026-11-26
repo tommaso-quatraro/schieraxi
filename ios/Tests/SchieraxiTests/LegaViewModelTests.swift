@@ -389,7 +389,8 @@ final class LegaViewModelTests: XCTestCase {
     func testErroreDalServerNelSalvataggio() async {
         let vm = RegoleEditorViewModel(server: regole())   // il PUT risponde con un errore
         await vm.carica()
-        vm.numero("bonus.assist").wrappedValue = 99
+        // dentro i limiti: un numero fuori (99) lo ferma l'app prima del server, come la web (#889, RegoleLimitiComeLaWebTests)
+        vm.numero("bonus.assist").wrappedValue = 1.5
         await vm.salva()
         XCTAssertFalse(vm.esitoRiuscito)
         XCTAssertTrue(vm.esito?.contains("Regole non valide") == true, vm.esito ?? "")
