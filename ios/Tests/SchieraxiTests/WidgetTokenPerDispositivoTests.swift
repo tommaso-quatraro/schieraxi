@@ -195,8 +195,28 @@ struct LetturaPrimaDellUscitaTests {
         #expect(senzaAccount.ancoraLui(MemoriaToken()), "un server senza account: nessuna sessione, prima e dopo")
     }
 
-    /// Solo i casi in cui `elabora` si ferma prima dei promemoria: con la stessa sessione passerebbe dal centro delle notifiche di
-    /// iOS, che nei test non si tocca (che la stessa sessione vada avanti lo dice `chiLegge`).
+    @Test("Un «Esci» mentre si programmano i promemoria: la seconda guardia di `elabora` non scrive; con la stessa sessione sì")
+    func elaboraConLUscitaDuranteIPromemoria() async throws {
+        let cartella = FileManager.default.temporaryDirectory.appendingPathComponent("elabora-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: cartella, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: cartella) }
+        let oggi: Oggi = try Decodifica.decodifica(try Fixture.dati("oggi"))
+        let chiesta = Date(timeIntervalSince1970: 1_800_000_000)
+        let sessione = MemoriaToken()
+        sessione.salva("sessione-a", server: indirizzoProva)
+        let chi = ChiLegge.adesso(indirizzo: indirizzoProva, sessione: sessione)
+
+        // i promemoria finti al posto di quelli veri (il centro delle notifiche di iOS nei test non si tocca): «Esci» intanto
+        await Aggiornamento.elabora(oggi, chiestaIl: chiesta, di: chi, sessione: sessione, cartella: cartella,
+                                    promemoria: { _, _ in sessione.cancella(server: indirizzoProva) })
+        #expect(Condiviso.leggi(cartella: cartella).riassunto == nil, "uscito durante i promemoria: niente riassunto")
+
+        sessione.salva("sessione-a", server: indirizzoProva)
+        await Aggiornamento.elabora(oggi, chiestaIl: chiesta, di: chi, sessione: sessione, cartella: cartella, promemoria: { _, _ in })
+        #expect(Condiviso.leggi(cartella: cartella).riassunto?.giornata == oggi.giornata, "con la stessa sessione il riassunto c'è")
+    }
+
+    /// I casi in cui `elabora` si ferma già alla prima guardia, prima dei promemoria (quelli veri: non si arriva a chiamarli).
     @Test("Con la sessione cambiata `elabora` non scrive il riassunto nel file condiviso")
     func elaboraConLaSessioneCambiata() async throws {
         let cartella = FileManager.default.temporaryDirectory.appendingPathComponent("elabora-\(UUID().uuidString)", isDirectory: true)
