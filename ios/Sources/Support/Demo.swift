@@ -191,6 +191,12 @@ extension Demo {
         case "formazione", "formazione-in-corso", "formazione-finita", "formazione-rinvio", "formazione-chiusa", "formazione-cambiata",
              "formazione-campionato-finito", "formazione-finita-recupero", "oggi-finita-recupero":
             nav.sezione = .formazione
+        // collaudo del 26/11, con il server finto di `FinteServer.demoPrimoIngresso`: la Formazione con le rose e senza la tua
+        // squadra (la domanda della guida) e Giornate col server spento (la riga sotto il titolo dalla copia salvata)
+        case "formazione-senza-squadra":
+            nav.sezione = .formazione
+        case "giornate-senza-server":
+            nav.sezione = .giornate
         case "formazione-sostituisci":
             apriSostituzione(modello)
         case "formazione-metti-in-campo":

@@ -68,15 +68,24 @@ struct RigaStatoGiornateTests {
         #expect(riga.testo == "Nuvola Ovest · dati del 26 ott 23:55")
     }
 
-    @Test("Server che non risponde: solo «Server non raggiungibile», senza squadra né stemma, anche con dati di prima")
+    @Test("Server che non risponde e nessuna risposta di prima: solo «Server non raggiungibile», senza stemma")
     func nonRaggiungibile() throws {
-        let i = try info(#"{"prossima_giornata": 11, "prossima_giornata_lega": 8, "mia_squadra": "Nuvola Ovest"}"#)
-        for dato in [i, nil] {
-            let riga = try #require(RigaStato(info: dato, nonRaggiungibile: true))
-            #expect(riga.pezzi == [Catalogo.Testata.offline])
-            #expect(riga.voce == Catalogo.Testata.offline)
-            #expect(riga.squadra == nil)
-        }
+        let riga = try #require(RigaStato(info: nil, nonRaggiungibile: true))
+        #expect(riga.pezzi == [Catalogo.Testata.offline])
+        #expect(riga.voce == Catalogo.Testata.offline)
+        #expect(riga.squadra == nil)
+    }
+
+    @Test("Server che non risponde con la risposta di prima (o la copia salvata): «Server non raggiungibile» e poi giornata, squadra e ora, come la web (collaudo del 26/11)")
+    func nonRaggiungibileConLaCopia() throws {
+        let i = try info(#"""
+            {"prossima_giornata": 11, "prossima_giornata_lega": 8, "mia_squadra": "Nuvola Ovest",
+             "ultimo_aggiornamento": "2026-10-26T23:55:13"}
+            """#)
+        let riga = try #require(RigaStato(info: i, nonRaggiungibile: true))
+        #expect(riga.pezzi == [Catalogo.Testata.offline, "Giornata 8 · 11ª di Serie A", "Nuvola Ovest", "dati del 26 ott 23:55"])
+        #expect(riga.voce == "\(Catalogo.Testata.offline), Giornata 8, 11ª di Serie A, Nuvola Ovest, dati del 26 ott 23:55")
+        #expect(riga.squadra == nil, "senza server niente stemma, come la web dopo una ricarica")
     }
 
     @Test("Prima della prima risposta di /api/stato non c'è riga")
@@ -116,5 +125,29 @@ struct RigaStatoGiornateTests {
         await vm.carica()
         #expect(vm.rigaStato?.pezzi == [Catalogo.Testata.offline])
         #expect(vm.pagina != nil, "le giornate si vedono lo stesso")
+    }
+
+    @Test("Letto una volta, se poi /api/stato non risponde la riga tiene giornata, squadra e ora dopo «Server non raggiungibile»")
+    func paginaConLoStatoDiPrima() async throws {
+        let rotto = Rotto()
+        let srv = ServerDiProva { _, percorso, _ in
+            if percorso == "/api/stato" {
+                if await rotto.si { throw ErroreApi.server("guasto") }
+                return Data(#"{"prossima_giornata": 11, "prossima_giornata_lega": 8, "mia_squadra": "Nuvola Ovest", "ultimo_aggiornamento": "2026-10-26T23:55:13"}"#.utf8)
+            }
+            if percorso.hasPrefix("/api/diario") { return Data(#"{"giornate": []}"#.utf8) }
+            throw ErroreApi.server("nessuna risposta per \(percorso)")
+        }
+        let vm = GiornateViewModel(server: srv)
+        await vm.carica()
+        await rotto.rompi()
+        await vm.carica()
+        #expect(vm.rigaStato?.testo == "\(Catalogo.Testata.offline) · Giornata 8 · 11ª di Serie A · Nuvola Ovest · dati del 26 ott 23:55")
+    }
+
+    /// Il server che da un certo momento non risponde più a /api/stato.
+    private actor Rotto {
+        private(set) var si = false
+        func rompi() { si = true }
     }
 }

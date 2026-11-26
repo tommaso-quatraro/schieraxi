@@ -11,6 +11,9 @@ struct InfoServer: Decodable {
     let miaSquadra: String?
     let versione: String?
     let aggiornamentoInCorso: Bool?
+    /// Le rose ci sono (nil con un server di prima): con le rose e senza `miaSquadra` la Formazione chiede la squadra
+    /// (`SquadraDaScegliere`, come `caricaGiornata` della web).
+    let roseImportate: Bool?
 }
 
 struct Giocatore: Decodable, Identifiable {

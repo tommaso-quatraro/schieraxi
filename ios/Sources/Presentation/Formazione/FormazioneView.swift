@@ -116,10 +116,17 @@ struct FormazioneView: View {
     /// Senza la scheda Oggi la Formazione è l'unica schermata che legge la giornata: a ogni apertura e rilettura `/api/oggi`, che
     /// passa i dati freschi a widget e promemoria (`OggiViewModel.dopoLetturaFresca`), e insieme formazione e scelta. Statica per
     /// provarla senza disegnare la schermata (`OggiPerWidgetTests`).
-    static func ricarica(_ vm: FormazioneViewModel, oggi: OggiViewModel) async {
+    @MainActor static func ricarica(_ vm: FormazioneViewModel, oggi: OggiViewModel) async {
+        // Rose salvate ma squadra non scelta (collaudo del 26/11, come `caricaGiornata` della web): se l'ultima lettura lo diceva si
+        // rilegge lo stato prima, e se la squadra manca ancora giornata e formazione (400) non si chiedono. Altrimenti lo stato si
+        // legge insieme a loro, così la domanda arriva anche la prima volta.
+        let mia = vm.squadraVista == nil
+        if mia, oggi.squadra.manca, await oggi.squadra.controlla() { return }
+        let stato: Task<Bool, Never>? = mia ? Task { await oggi.squadra.controlla() } : nil
         let giornata = Task { await oggi.carica() }
         await vm.carica()
         await giornata.value
+        _ = await stato?.value
     }
 
     /// A giornata in corso: ogni 5 minuti la giornata e la formazione (lo stato di ogni partita), finché la fase resta quella.
@@ -139,6 +146,8 @@ struct FormazioneView: View {
     private var contenuto: some View {
         if vm.squadraVista == nil, oggi.oggi?.senzaRose == true {
             benvenuto
+        } else if vm.squadraVista == nil, oggi.squadra.manca {
+            SceltaSquadraFormazione(squadra: oggi.squadra)
         } else if vm.campionatoFinito {
             campionatoFinito
         } else if let f = vm.formazione {
