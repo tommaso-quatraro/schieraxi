@@ -14,6 +14,7 @@ import time
 from datetime import date, timedelta
 from pathlib import Path
 
+from . import frasi
 from .percorsi import RADICE, scrivi_sicuro
 
 FILE = RADICE / "dati" / "uso.json"
@@ -33,6 +34,13 @@ FUNZIONE_DI_ROTTA: dict[str, str] = {
     "/api/backup": "backup", "/api/backup/ripristina": "backup",
     "/api/novita": "novita",
 }
+# il nome di ogni funzione per chi legge «Stato dei dati» (`uso.<funzione>` in fanta/frasi.py, #949: prima si vedeva il codice)
+NOMI_FUNZIONI = {f: frasi.F("uso." + f) for f in sorted(set(FUNZIONE_DI_ROTTA.values()))}
+
+
+def etichetta(funzione: str) -> str:
+    """Il nome di una funzione contata (una `Frase`); un nome che non c'è più (rimasto nei giorni già scritti) torna com'è."""
+    return NOMI_FUNZIONI.get(funzione, funzione)
 
 _blocco = threading.Lock()
 _in_memoria: dict[str, dict[str, dict[str, int]]] = {}       # giorno -> {"rotte": {...}, "funzioni": {...}} (solo quello non ancora scritto)
@@ -139,7 +147,8 @@ def riepilogo(percorso: Path | None = None, massimo_rotte: int = 40) -> dict:
     ordinate = sorted(rotte.items(), key=lambda kv: kv[1], reverse=True)
     return {"giorni": GIORNI, "dal": min(giorni) if giorni else None, "al": max(giorni) if giorni else None,
             "richieste": sum(rotte.values()),
-            "per_funzione": [{"funzione": n, "richieste": c} for n, c in sorted(funzioni.items(), key=lambda kv: kv[1], reverse=True)],
+            "per_funzione": [{"funzione": n, "richieste": c, "etichetta": str(etichetta(n)), "etichetta_frase": frasi.di(etichetta(n))}
+                             for n, c in sorted(funzioni.items(), key=lambda kv: kv[1], reverse=True)],
             "per_rotta": [{"rotta": n, "richieste": c} for n, c in ordinate[:massimo_rotte]],
             "per_giorno": per_giorno,
             "nota": "Conteggi anonimi e aggregati: nessun utente, nessun indirizzo."}

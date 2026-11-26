@@ -104,13 +104,18 @@ def richiedi(fonte: str) -> None:
         raise FonteSpenta(messaggio_spenta(fonte))
 
 
+# Le fonti con un nome comune, che si traduce (`nome_frase`, #949); le altre hanno un nome proprio («Understat») e restano com'è
+NOMI_TRADUCIBILI = {"foto": "fonte.nome_foto"}
+
+
 def stato(percorso: Path | None = None) -> list[dict]:
     """Per «Stato dei dati»: una riga per fonte."""
     righe = []
     for k, (nome, serve, _) in FONTI.items():
         on, da = origine(k, percorso)
         manca = None if on else cosa_manca(k)
-        righe.append({"id": k, "nome": nome, "serve": serve, "acceso": on, "scelta_da": da,
+        righe.append({"id": k, "nome": nome, "nome_frase": frasi.di(frasi.F(NOMI_TRADUCIBILI[k])) if k in NOMI_TRADUCIBILI else None,
+                      "serve": serve, "acceso": on, "scelta_da": da,
                       "messaggio": str(manca) if manca else None, "messaggio_frase": frasi.di(manca)})
     return righe
 

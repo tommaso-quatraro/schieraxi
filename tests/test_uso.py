@@ -46,7 +46,7 @@ def test_file_rovinato_non_rompe_niente():
     uso.conta("GET", "/api/oggi", 200)
     assert uso.riepilogo()["richieste"] == 1
     uso.FILE.write_text(json.dumps({"giorni": {_giorno(): {"rotte": "boh", "funzioni": {"a": "x", "b": True, "c": -1, "d": 2}}}}), encoding="utf-8")
-    assert uso.riepilogo(percorso=uso.FILE)["per_funzione"] == [{"funzione": "d", "richieste": 2}]
+    assert uso.riepilogo(percorso=uso.FILE)["per_funzione"] == [{"funzione": "d", "richieste": 2, "etichetta": "d", "etichetta_frase": None}]
 
 
 def test_tetto_di_rotte_diverse_al_giorno(monkeypatch):

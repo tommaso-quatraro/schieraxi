@@ -424,6 +424,50 @@ CATALOGO: dict[str, str] = {
     "fonte.spenta_footballdata": "Non scarico risultati e statistiche di squadra delle partite giocate.",
     "fonte.spenta_espn": "Non scarico risultati in diretta.",
     "fonte.spenta_foto": "L'app usa i volti illustrati.",
+    # Stato dei dati (#949): i nomi che scrive il server arrivano con la frase, così la web in inglese li traduce.
+    # Il nome della fonte delle foto (le altre fonti hanno un nome proprio, che non si traduce: `fonti_attive.stato`)
+    "fonte.nome_foto": "Foto dei giocatori",
+    # le fasce delle probabili per la calibrazione (`stato_dati.nome_gruppo`, da `modello.GRUPPI_PROBABILI`): da {da} a {a} compreso
+    "fascia.titolare": "Titolare {da}-{a}%",
+    "fascia.titolare_sotto": "Titolare sotto {a}%",
+    "fascia.panchina": "Panchina {da}-{a}%",
+    "fascia.panchina_sotto": "Panchina sotto {a}%",
+    # una riga di `aggiornamenti` (`stato_dati.etichetta_aggiornamento`): la chiave è `cosa` con «_» al posto di «-»
+    "aggiornamento.aggiornamento": "Aggiornamento generale",
+    "aggiornamento.listone": "Listone e quotazioni",
+    "aggiornamento.calendario": "Calendario",
+    "aggiornamento.voti": "Voti e bonus",
+    "aggiornamento.probabili": "Probabili formazioni",
+    "aggiornamento.understat": "Statistiche avanzate",
+    "aggiornamento.dati_extra": "Statistiche di squadra",
+    "aggiornamento.controlli": "Controlli sui dati",
+    "aggiornamento.probabili_rapido": "Probabili vicino alla scadenza",
+    "aggiornamento.risultati_rapido": "Risultati la sera stessa",
+    "aggiornamento.taratura_probabili": "Taratura di «gioca N%»",
+    "aggiornamento.calendario_stagione": "Calendario completo {stagione}",
+    "aggiornamento.dati_extra_stagione": "Statistiche di squadra {stagione}",
+    # i controlli sui dati (`controlli.etichetta`): la chiave è il nome del controllo
+    "controllo.partite_per_giornata": "10 partite per giornata",
+    "controllo.voti_per_giornata": "Voti nelle giornate finite",
+    "controllo.somma_xg": "Gol attesi dei giocatori e della partita",
+    "controllo.titolari_per_squadra": "11 titolari per squadra",
+    "controllo.gol_dei_voti": "Gol dei voti uguali al risultato",
+    "controllo.gol_subiti_portieri": "Gol presi dai portieri uguali al risultato",
+    "controllo.partite_senza_statistiche": "Statistiche delle partite giocate",
+    "controllo.squalificati_cartellini": "Squalificati: cartellini e probabili",
+    "controllo.sentinella": "Sentinella: risposte dell'app",
+    # una funzione nei conteggi d'uso (`uso.etichetta`, i nomi di `funzioni.FUNZIONI` dove c'è): la chiave è il nome della funzione
+    "uso.live": "Risultati in diretta",
+    "uso.asta": "Asta e riparazione",
+    "uso.confronto": "Confronto tra due giocatori",
+    "uso.scambi_trova": "Scambi: trova per me",
+    "uso.scambi_valuta_o_costruisci": "Scambi: valuta o costruisci",
+    "uso.immagini_web": "Immagini da indirizzo web",
+    "uso.elenco_giocatori": "Elenco dei giocatori",
+    "uso.seguiti": "Seguiti",
+    "uso.diario": "Giornate",
+    "uso.backup": "Copia di sicurezza",
+    "uso.novita": "Novità",
 }
 
 
