@@ -4,7 +4,7 @@
     "Nessun cambiamento visibile: le prove automatiche dell'app non leggono più i dati veri del server."
   ],
   "tecnico": [
-    "archivio.apri() senza argomenti legge archivio.FILE a ogni chiamata (prima il percorso era fissato nella firma); così registro_copia.importa e libero._apri_db.",
+    "archivio.apri() senza argomenti legge archivio.FILE a ogni chiamata (prima il percorso era fissato nella firma); così registro_copia.importa, libero._apri_db, sentinella.leggi_live, leggi_stato, giri_sentinella e giro, notifiche.cambi, promemoria e avviso_scadenza.",
     "tests/conftest.py: ogni costante di fanta che punta in dati/ va in una cartella temporanea, e un ascoltatore degli eventi open e sqlite3.connect fa fallire il test che apre un file di dati/ (#934). Il controllo di fine sessione vede anche i file cambiati, non solo quelli nuovi."
   ]
 }
