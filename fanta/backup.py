@@ -208,7 +208,7 @@ def _rose(d: Any) -> None:
     r = lega.da_dict(d)
     giusti = (_corto(r.mia_squadra) and _corto(r.aggiornato)
               and all(_corto(s.nome) and _corto(s.nome_importato) for s in r.squadre)
-              and all(_corto(g.nome) and _corto(g.ruolo) and _corto(g.squadra) and _corto(g.riconosciuto)
+              and all(_corto(g.nome) and _corto(g.ruolo) and _corto(g.squadra) and _corto(g.riconosciuto) and _corto(g.testo)
                       and _corto(g.avviso, MAX_AVVISO_ROSE) for s in r.squadre for g in s.giocatori))
     if not giusti:
         raise ValueError("formato non riconosciuto")
@@ -293,6 +293,10 @@ COPIA_SERALE = re.compile(r"account-[0-9]{4}-[0-9]{2}-[0-9]{2}\.sqlite")      # 
 # più in là restano le copie notturne di script/server/backup-dati.sh (14, fuori dalla cartella dell'app).
 GIORNI_COPIE_MIGRAZIONE = 7
 COPIE_MIGRAZIONE = "account-prima-della-migrazione-*.sqlite"
+# Temporanei di una copia «prima della migrazione» interrotta di colpo (processo ucciso, corrente): account._copia_prima_di_migrare
+# li toglie da sé se la copia fallisce, ma non se il processo muore. Il giro serale toglie quelli con più di un giorno (uno più
+# recente può essere di una copia in corso).
+TEMPORANEI_MIGRAZIONE = ".account-prima-della-migrazione-*.tmp"
 
 
 def copia_account(cartella: Path, origine: Path, tieni: int = 7, *, adesso: datetime) -> Path | None:
@@ -322,6 +326,12 @@ def copia_account(cartella: Path, origine: Path, tieni: int = 7, *, adesso: date
                 copia.unlink()
         except FileNotFoundError:
             pass                                     # già tolta (da un altro giro): va bene
+    for temporaneo in cartella.glob(TEMPORANEI_MIGRAZIONE):
+        try:
+            if temporaneo.stat().st_mtime < (adesso - timedelta(days=1)).timestamp():
+                temporaneo.unlink()
+        except FileNotFoundError:
+            pass
     return destinazione
 
 

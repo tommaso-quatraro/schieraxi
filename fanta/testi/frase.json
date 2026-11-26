@@ -922,6 +922,14 @@
     "it": "{squadra}: {nome} compare due volte, l'ho tenuto una volta sola.",
     "en": "{squadra}: {nome} appears twice, I kept it only once."
   },
+  "frase.rose.forse_manca_riga_vuota.one": {
+    "it": "{squadra}: manca una riga vuota fra le squadre? {nomi} non è nel listone: se è il nome di una squadra, lascia una riga vuota prima e controlla di nuovo.",
+    "en": "{squadra}: is a blank line missing between the teams? {nomi} is not in the player list: if it is a team name, leave a blank line before it and check again."
+  },
+  "frase.rose.forse_manca_riga_vuota.other": {
+    "it": "{squadra}: manca una riga vuota fra le squadre? {nomi} non sono nel listone: se uno è il nome di una squadra, lascia una riga vuota prima e controlla di nuovo.",
+    "en": "{squadra}: is a blank line missing between the teams? {nomi} are not in the player list: if one is a team name, leave a blank line before it and check again."
+  },
   "frase.regole.panchina_posti_fissi": {
     "it": "La tua panchina ha posti fissi per ruolo, {n} in tutto: cambia a mano i posti di ogni ruolo nei valori delle regole.",
     "en": "Your bench has fixed spots per position, {n} in total: change the spots for each position by hand in the rule values.",
@@ -933,40 +941,56 @@
     "nota": "regolamento incollato: un numero della panchina diverso dalla somma dei posti per ruolo letti nello stesso testo (#881); senza il nome di un pulsante, vale per web e iPhone (#889)"
   },
   "frase.rose.codice_assente": {
-    "it": "codice {codice} non presente nel listone",
+    "it": "il codice {codice} non è nel listone",
     "en": "code {codice} is not in the player list"
   },
-  "frase.rose.diversa": {
-    "it": "{squadra}: rosa diversa dalle regole ({dettaglio})",
-    "en": "{squadra}: roster differs from the rules ({dettaglio})"
+  "frase.rose.mancano_in_squadra.one": {
+    "it": "{squadra}: manca {elenco}.",
+    "en": "{squadra}: {elenco} missing."
+  },
+  "frase.rose.mancano_in_squadra.other": {
+    "it": "{squadra}: mancano {elenco}.",
+    "en": "{squadra}: {elenco} missing."
+  },
+  "frase.rose.in_piu_in_squadra": {
+    "it": "{squadra}: {elenco} in più.",
+    "en": "{squadra}: {elenco} too many."
+  },
+  "frase.rose.senza_ruolo_in_squadra.one": {
+    "it": "{squadra}: {n} giocatore senza ruolo.",
+    "en": "{squadra}: {n} player without a role."
+  },
+  "frase.rose.senza_ruolo_in_squadra.other": {
+    "it": "{squadra}: {n} giocatori senza ruolo.",
+    "en": "{squadra}: {n} players without a role."
   },
   "frase.rose.doppione": {
     "it": "{squadra}: {nome} compare {volte} volte nella rosa: togli le righe in più",
     "en": "{squadra}: {nome} appears {volte} times in the roster: remove the extra rows"
   },
   "frase.rose.non_riconosciuto": {
-    "it": "{squadra}: '{nome}' non riconosciuto con certezza ({motivo})",
-    "en": "{squadra}: '{nome}' not recognised with certainty ({motivo})"
+    "it": "{squadra}: non so chi è «{nome}»: {motivo}.",
+    "en": "{squadra}: I don't know who “{nome}” is: {motivo}."
   },
   "frase.rose.motivo_ceduto": {
-    "it": "ceduto o nome diverso?",
-    "en": "transferred or different name?"
+    "it": "forse è stato ceduto o nel listone ha un altro nome",
+    "en": "maybe transferred, or listed under another name"
   },
   "frase.rose.somiglianza": {
-    "it": "{squadra}: '{nome}' riconosciuto per somiglianza ({come}), controlla che sia lui",
-    "en": "{squadra}: '{nome}' recognised by similarity ({come}), check it is the right player"
+    "it": "{squadra}: ho riconosciuto {nome} dal nome {come}: controlla che sia lui.",
+    "en": "{squadra}: I recognised {nome} from a name {come}: check it is the right player."
   },
   "frase.rose.come_abbreviato": {
-    "it": "abbreviato",
-    "en": "abbreviated"
+    "it": "scritto abbreviato",
+    "en": "written in short"
   },
   "frase.rose.come_simile": {
-    "it": "simile",
-    "en": "similar"
+    "it": "scritto in modo simile",
+    "en": "written in a similar way"
   },
   "frase.rose.avviso_giocatore": {
-    "it": "{squadra}: {nome}: {avviso}",
-    "en": "{squadra}: {nome}: {avviso}"
+    "it": "{squadra}: {nome}: {avviso}.",
+    "en": "{squadra}: {nome}: {avviso}."
   },
   "frase.rose.in_piu_squadre": {
     "it": "{nome} è in più squadre: {squadre}",
@@ -1033,16 +1057,44 @@
     "en": "{n} forwards"
   },
   "frase.rose.potrebbe_essere": {
-    "it": "potrebbe essere: {elenco}",
-    "en": "could be: {elenco}"
+    "it": "potrebbe essere {elenco}",
+    "en": "it could be {elenco}"
+  },
+  "frase.rose.scelta_precedente": {
+    "it": "scelto da te l'ultima volta",
+    "en": "you chose him last time"
+  },
+  "frase.rose.potrebbe_essere_uno_fra": {
+    "it": "potrebbe essere uno fra {elenco}",
+    "en": "it could be one of {elenco}"
+  },
+  "frase.rose.candidato": {
+    "it": "{nome} ({ruolo}, {squadra})",
+    "en": "{nome} ({ruolo}, {squadra})"
   },
   "frase.nomi.ruolo_diverso": {
-    "it": "ruolo diverso: indicato {indicato}, nel listone {listone}",
-    "en": "different role: given {indicato}, in the player list {listone}"
+    "it": "ruolo diverso: nel file {indicato}, nel listone {listone}",
+    "en": "different role: {indicato} in the file, {listone} in the player list"
   },
   "frase.nomi.squadra_diversa": {
-    "it": "squadra diversa: indicata {indicata}, nel listone {listone}",
-    "en": "different team: given {indicata}, in the player list {listone}"
+    "it": "squadra diversa: nel file {indicata}, nel listone {listone}",
+    "en": "different team: {indicata} in the file, {listone} in the player list"
+  },
+  "frase.nomi.ruolo_p": {
+    "it": "portiere",
+    "en": "goalkeeper"
+  },
+  "frase.nomi.ruolo_d": {
+    "it": "difensore",
+    "en": "defender"
+  },
+  "frase.nomi.ruolo_c": {
+    "it": "centrocampista",
+    "en": "midfielder"
+  },
+  "frase.nomi.ruolo_a": {
+    "it": "attaccante",
+    "en": "forward"
   },
   "frase.diario.serie_a": {
     "it": "Su tutta la Serie A, nelle ultime {n} giornate: {fv}; {gioca}.",
