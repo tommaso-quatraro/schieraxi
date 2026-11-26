@@ -3105,6 +3105,15 @@ const cifraLimite = v => (v < 0 ? "−" : "") + num(Math.abs(v), Number.isIntege
 // I decimali per scrivere un valore delle regole senza arrotondarlo, fino a due: 0 se è intero, 1 se basta, altrimenti 2 («−0,25»
 // e non «−0,3», #911). La stessa regola dell'iPhone (RegoleLogica.descrivi); la usano l'anteprima del regolamento e i campi.
 const decimaliRegola = v => (Number.isInteger(v) ? 0 : Number.isInteger(v * 10) ? 1 : 2);
+// Un numero scritto in un campo delle regole (collaudo del 26/11): il meno vero «−» (U+2212, quello che i campi stessi mostrano) o il
+// trattino «-», la virgola o il punto per i decimali. `testoNumero` lo porta alla forma che Number capisce; un campo vuoto resta vuoto
+// (lo dice problemaCampo, Number("") sarebbe 0).
+const testoNumero = s => String(s).trim().replace(/−/g, "-").replace(",", ".");
+const numeroScritto = s => Number(testoNumero(s));
+// Un valore delle regole nel suo campo: «−0,5» con il meno tipografico, come l'anteprima del regolamento e gli avvisi. Il campo resta un
+// campo di testo con la tastiera dei numeri (inputmode="decimal"): il meno è testo come le cifre e la virgola, la tastiera non cambia.
+// Arrotondato a zero, niente segno («0,0», non «−0,0»).
+const cifraCampo = (v, dec) => { const s = num(Math.abs(v), dec); return v < 0 && /[1-9]/.test(s) ? "−" + s : s; };
 // I nomi dei campi negli avvisi prima di salvare, dove due righe della pagina hanno lo stesso titolo (#889): «Difensori» nella rosa
 // e nei posti fissi in panchina, «Voto d'ufficio» due volte. Sono i nomi dei campi del server (err.p_regola_*), gli stessi
 // dell'iPhone; la riga e il suo nome per i lettori di schermo restano quelli della pagina.
@@ -3117,10 +3126,10 @@ function stepper(id, valore, { passo = 0.5, dec = 1, lim = "", min = -50, max = 
   if (lim) ({ min, max } = limitiRegole[lim]);
   return `<div class="stepper" data-passo="${passo}" data-min="${min}" data-max="${max}" data-dec="${dec}"${nome ? ` data-nome="${esc(nome)}"` : ""}>
     <button type="button" data-step="-1" aria-label="${t("regole.diminuisci")}">−</button>
-    <input id="${id}" inputmode="decimal" autocomplete="off" value="${num(valore, Math.max(dec, decimaliRegola(valore)))}">
+    <input id="${id}" inputmode="decimal" autocomplete="off" value="${cifraCampo(valore, Math.max(dec, decimaliRegola(valore)))}">
     <button type="button" data-step="1" aria-label="${t("regole.aumenta")}">+</button></div>`;
 }
-const leggiN = id => { const el = $("#" + id); return el ? Number(String(el.value).replace(",", ".")) : NaN; };
+const leggiN = id => { const el = $("#" + id); return el ? numeroScritto(el.value) : NaN; };
 const interruttore = (id, testo, acceso, aiuto = "") => `<label class="interruttore-ios"><span>${testo}${aiuto ? `<small>${aiuto}</small>` : ""}</span><input type="checkbox" id="${id}" ${acceso ? "checked" : ""}><i></i></label>`;
 // Il campo della riga prende come nome per i lettori di schermo il testo della riga (testo semplice, passato per esc): prima restava senza nome o
 // con il titolo della sezione («Gol» anche per l'assist).
@@ -3152,14 +3161,14 @@ document.addEventListener("click", ev => {
   if (!b) return;
   const s = b.closest(".stepper"), campo = $("input", s);
   const passo = Number(s.dataset.passo), dec = Number(s.dataset.dec);
-  let v = Number(String(campo.value).replace(",", "."));
+  let v = numeroScritto(campo.value);
   if (!Number.isFinite(v)) v = 0;
   // «+» va al primo multiplo del passo sopra il valore, «−» al primo sotto, come su un righello (#911): da −0,25 con i passi
   // da 0,5 «+» dà 0 e «−» −0,5, senza saltare valori; da un valore già sui passi ci si sposta di un passo, come prima.
   // Il margine assorbe gli errori della divisione con la virgola mobile.
   const q = v / passo, k = Number(b.dataset.step) > 0 ? Math.floor(q + 1e-9) + 1 : Math.ceil(q - 1e-9) - 1;
   v = Math.min(Number(s.dataset.max), Math.max(Number(s.dataset.min), k * passo));
-  campo.value = num(v, Math.max(dec, decimaliRegola(v)));
+  campo.value = cifraCampo(v, Math.max(dec, decimaliRegola(v)));
   campo.dispatchEvent(new Event("input", { bubbles: true }));
 });
 
@@ -3273,7 +3282,7 @@ async function vistaRegole() {
 
   // --- comportamenti
   const leggiFasce = () => [...document.querySelectorAll("#fasce .fascia")].map(f => [leggiN2($("input.f-media", f)), leggiN2($("input.f-bonus", f))]);
-  const leggiN2 = el => Number(String(el.value).replace(",", "."));
+  const leggiN2 = el => numeroScritto(el.value);
   const aggiornaProva = () => {
     const voti = [0, 1, 2, 3].map(k => leggiN("pv" + k));
     const media = voti.reduce((a, b) => a + b, 0) / 4;
@@ -3368,7 +3377,7 @@ async function vistaRegole() {
       $("#salva-riconosciute")?.addEventListener("click", () => { applicaModifiche(esito.modifiche); salva(); });
     } catch (e) { dove.innerHTML = errore(e); }
   });
-  const imposta = (id, valore, dec) => { const el = $("#" + id); if (el) { el.value = num(valore, dec ?? decimaliRegola(valore)); el.closest(".riga-regola")?.classList.add("evidenzia"); } };
+  const imposta = (id, valore, dec) => { const el = $("#" + id); if (el) { el.value = cifraCampo(valore, dec ?? decimaliRegola(valore)); el.closest(".riga-regola")?.classList.add("evidenzia"); } };
   const applicaModifiche = mods => {
     for (const m of mods) {
       const k = m.chiave, v = m.valore;
@@ -3396,12 +3405,13 @@ async function vistaRegole() {
   // Cosa non va in un campo che si salva (#881): vuoto (prima diventava 0), non un numero, con la virgola in un campo di numeri
   // interi (quelli senza decimali: portieri, panchina, cambi, crediti...), fuori dai limiti del server (gli stessi di − e +). Il
   // nome del campo è quello della riga, o quello del campo quando due righe hanno lo stesso titolo (data-nome, #889); "" se va bene.
+  // Anche «non è un numero» dice quale campo (collaudo del 26/11: «Ci sono valori non numerici» non diceva dove).
   const problemaCampo = campo => {
-    const s = campo.closest(".stepper"), testo = String(campo.value).trim().replace(",", "."),
+    const s = campo.closest(".stepper"), testo = testoNumero(campo.value),
       nome = s.dataset.nome || campo.getAttribute("aria-label") || "";
     if (!testo) return t("regole.campo_vuoto", { campo: nome });
     const v = Number(testo);
-    if (!Number.isFinite(v)) return t("regole.sono_valori_non");
+    if (!Number.isFinite(v)) return t("regole.non_numero", { campo: nome });
     if (s.dataset.dec === "0" && !Number.isInteger(v)) return t("regole.intero", { campo: nome });
     const min = Number(s.dataset.min), max = Number(s.dataset.max);
     return v < min || v > max ? t("regole.fuori_limiti", { campo: nome, min: cifraLimite(min), max: cifraLimite(max) }) : "";

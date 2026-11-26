@@ -204,3 +204,52 @@ def test_con_il_modificatore_spento_le_fasce_nascoste_non_si_controllano(web):
     md = corpi[-1]["modificatore_difesa"]
     assert md["attivo"] is False and md["soglie"] == salvate["soglie"] and md["min_difensori"] == salvate["min_difensori"]
     assert not web.errori_mostrati()
+
+
+# ---------------------------------------------------------------- il segno meno (collaudo del 26/11/2026)
+MENO = "−"          # il meno tipografico «−», quello dell'anteprima del regolamento e degli avvisi
+
+
+@pytest.mark.parametrize("scritto", [f"{MENO}0,5", "-0,5", f"{MENO}0.5"])
+def test_un_negativo_si_legge_con_il_meno_vero_o_con_il_trattino(web, scritto):
+    """«−0,5» scritto con il meno vero (U+2212, quello che la pagina stessa scrive nell'anteprima) non si leggeva: «Salva le regole»
+    diceva «Ci sono valori non numerici» senza dire quale campo. Ora valgono «−» e «-», la virgola e il punto, e parte −0,5."""
+    solo_prima(web)
+    corpi = corpi_scritti(web)
+    apri_valori(web)
+    campo(web, "Ammonizione").fill(scritto)
+    tocca(web, principale(web).get_by_role("button", name="Salva le regole"))
+    assert corpi, f"con «{scritto}» le regole non sono partite"
+    assert corpi[-1]["bonus"]["ammonizione"] == -0.5, corpi[-1]["bonus"]
+    assert not web.errori_mostrati()
+
+
+def test_nei_campi_i_negativi_hanno_il_meno_vero(web):
+    """I campi scrivevano «-0,5» con il trattino, mentre l'anteprima del regolamento e gli avvisi scrivono «−0,5». Ora anche i
+    campi, all'apertura e dopo − e +; lo zero resta senza segno."""
+    solo_prima(web)
+    regole = web.registrata("/api/regole")
+    regole["bonus"] |= {"ammonizione": -0.5}
+    web.risposta("/api/regole", regole)
+    apri_valori(web)
+    amm = campo(web, "Ammonizione")
+    assert amm.input_value() == f"{MENO}0,5"
+    riga = amm.locator("xpath=..")
+    tocca(web, riga.get_by_role("button", name="Diminuisci"))
+    assert amm.input_value() == f"{MENO}1,0"
+    tocca(web, riga.get_by_role("button", name="Aumenta"))
+    tocca(web, riga.get_by_role("button", name="Aumenta"))
+    assert amm.input_value() == "0,0"
+
+
+def test_un_valore_che_non_e_un_numero_dice_quale_campo(web):
+    """«Ci sono valori non numerici: correggili prima di salvare» non diceva dove: con circa 45 campi, molti chiusi, bisognava
+    cercarlo. Ora l'avviso dice il nome del campo, come per un campo vuoto o fuori dai limiti."""
+    solo_prima(web)
+    salvate = scritture(web)
+    apri_valori(web)
+    campo(web, "Ammonizione").fill("mezzo punto")
+    tocca(web, principale(web).get_by_role("button", name="Salva le regole"))
+    assert avviso(web) == "«Ammonizione» non è un numero: correggilo prima di salvare"
+    assert salvate == []
+    assert campo(web, "Ammonizione").evaluate("e => e === document.activeElement")
