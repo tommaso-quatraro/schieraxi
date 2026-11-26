@@ -91,8 +91,15 @@ def _iniziali_diverse(a: str, b: str) -> bool:
 
 
 def _propri_compatibili(iniziali: list[str], propri: list[str]) -> bool:
-    """Le iniziali del listone (['l'], ['jo'], ['f', 'p']) sono l'inizio dei nomi propri scritti per esteso, in ordine."""
-    return 0 < len(iniziali) <= len(propri) and all(p.startswith(i) for i, p in zip(iniziali, propri))
+    """Le iniziali del listone (['l'], ['jo'], ['f', 'p']) sono l'inizio dei nomi propri scritti per esteso, in ordine. Chi ne
+    scrive solo uno può scrivere anche il secondo: «Pio Esposito» per «Esposito F.P.» (Francesco Pio). Ogni nome scritto deve
+    cominciare con un'iniziale diversa, nello stesso ordine del listone."""
+    if not iniziali or not propri:
+        return False
+    if len(iniziali) <= len(propri) and all(p.startswith(i) for i, p in zip(iniziali, propri)):
+        return True
+    resto = iter(iniziali)                                   # ogni nome scritto prende la prima iniziale libera che gli va bene
+    return len(propri) < len(iniziali) and all(any(p.startswith(i) for i in resto) for p in propri)
 
 
 # pulizia delle celle copiate e incollate
