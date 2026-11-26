@@ -1,5 +1,19 @@
 [
   {
+    "versione": "1.576",
+    "data": "2026-11-26T10:47:42",
+    "titolo": "Scheda del giocatore: i fantavoti con i bonus della tua lega",
+    "voci": [
+      "Scheda del giocatore: fantamedia, ultime cinque giornate, grafico dei voti e «in crescita» o «in calo» ora contano i bonus e i malus della tua lega, come Formazione, Oggi e Giornate. Prima usavano i bonus classici: in una lega con il gol del difensore a 4,5, un difensore che prende 6 e segna faceva 10,5 in Giornate e 9 nella scheda. Uguale sull'iPhone.",
+      "Se una parte di Oggi o della Formazione non si riesce a calcolare, la schermata si apre come prima ma il guasto ora resta scritto per chi cura il server."
+    ],
+    "tecnico": [
+      "scheda.scheda riceve le Regole della lega (prima solo fonte_voto) e calcola voti[].fv con punteggio.fantavoto(riga, ruolo del listone, regole), bonus mancanti a zero, arrotondato a 2 cifre come fv_preso; non legge più fv_red, fv_stat e fv_ita. Ne dipendono stagione.fantamedia, stagione.ultime_5_fv e andamento. Con un ruolo del listone che non è P, D, C o A il calcolo si salta (fv, fantamedia e andamento null, riga nel registro) invece del 500. BONUS_E_MALUS sta in punteggio.py, unico per scheda e registro delle giornate. Chiamanti aggiornati: GET /api/giocatore/{id} e il comando giocatore. La scheda non ha una cache sul server.",
+      "fasi.aggiungi, fasi.formazione_a_giornata_iniziata e il blocco rinvio di gestione.oggi: l'except Exception ora scrive nel registro (logger fanta.fasi e fanta.gestione) il tipo d'errore e i punti del codice con registro_giornate._dove, senza il messaggio. formazione_a_giornata_iniziata dopo un errore tiene iniziata se l'ha già calcolata.",
+      "Stessi campi e stessi tipi nell'API; docs/API.md aggiornato sul significato di voti[].fv, stagione.fantamedia e andamento della scheda."
+    ]
+  },
+  {
     "versione": "1.575",
     "data": "2026-11-26T10:14:55",
     "titolo": "Widget dell'iPhone: una frase più corta sul recupero",
