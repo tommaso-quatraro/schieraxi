@@ -13,14 +13,13 @@ ID_APP="it.schieraxi.app"
 ERRORI=0
 IN_MOVIMENTO=0   # foto scattate allo scadere dell'attesa, con lo schermo che si muoveva ancora (vedi schermo_fermo.py)
 NON_RIUSCITI=()  # foto rimaste a metà attesa perché uno scatto non è riuscito: problemi, non movimento (uscita 4 di schermo_fermo.py)
-FOTO_RIFATTE=0   # foto rifatte perché lo schermo era ancora vuoto: schermata d'avvio o caricamento (schermo_vuoto.py, #860)
-FOTO_VUOTE=()    # foto con lo schermo vuoto anche dopo le nuove prove: la corsa fallisce (fine)
-CONTROLLATE=0    # controlli dello schermo vuoto riusciti (foto piena o vuota)
-NON_CONTROLLATE=()  # foto su cui il controllo non è riuscito: avviso su GitHub; se nessuna è controllata la corsa fallisce
 ARGOMENTI_EXTRA=()
 ARGOMENTI_SCENARIO=()   # -DEMO_SCENARIO <nome>: le fotografie dal vero (SCATTI=vero)
 TEMA_ARG=()    # -tema scuro/chiaro: l'app (AppStorage "tema") usa quel tema qualunque cosa dica il simulatore
-STILE_ARG=()   # -AppleInterfaceStyle Dark/Light: ripiego, vale per l'app anche se il simulatore non ha ancora cambiato aspetto
+# -DEMO_ASPETTO scuro/chiaro: l'aspetto del giro, che l'app usa anche dove il tema resta «Automatico» (impostazioni-aspetto) e
+# prima delle schede (l'accesso). Al primo giro dopo l'accensione il simulatore poteva essere ancora chiaro anche se «simctl ui
+# appearance» rileggeva «dark» (corsa 44739068749, #845); -AppleInterfaceStyle, il ripiego di prima, iOS non lo legge.
+ASPETTO_ARG=()
 RADDRIZZA=0
 mkdir -p "$USCITA"
 # Avvisi di sistema («Ready for Apple Intelligence»): si aspetta che compaiano e spariscano PRIMA delle foto (#393).
@@ -30,10 +29,10 @@ source "$(dirname "$0")/avvisi.sh"
 TUTTE=(formazione formazione-fondo formazione-in-corso formazione-finita formazione-rinvio formazione-chiusa formazione-cambiata formazione-sostituisci formazione-metti-in-campo
        formazione-campionato-finito
        giocatore giocatore-fondo ricerca
-       guida marchio giornate giornate-aperta giornate-dettagli
-       lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-stato lega-stato-fondo lega-stato-nostri lega-stato-taratura impostazioni-novita
+       guida marchio giornate giornate-aperta giornate-dettagli giornate-confronto
+       lega lega-squadre lega-rosa lega-rosa-fondo lega-regole lega-regole-fondo lega-stato lega-stato-fondo lega-stato-nostri lega-stato-taratura lega-stato-prova impostazioni-novita
        lega-importa lega-importa-salvate lega-importa-salvate-ok lega-importa-csv lega-stagione impostazioni-aspetto
-       impostazioni impostazioni-fondo impostazioni-squadra impostazioni-gestione impostazioni-crediti primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-account-fondo accesso-rose accesso-rete accesso-limite accesso-non-valido)
+       impostazioni impostazioni-fondo impostazioni-squadra impostazioni-gestione impostazioni-crediti primo-avvio collega-widget accesso-accedi accesso-registra accesso-recupero accesso-codice accesso-account accesso-account-fondo accesso-rose accesso-rete accesso-limite accesso-non-valido lega-scelta-squadra)
 # I nomi che l'app conosce: le foto a mano (SCHERMATE) possono chiedere solo questi.
 CONOSCIUTE=("${TUTTE[@]}")
 # giro in tema chiaro: le schermate principali e le nuove (il tema scuro le ha tutte)
@@ -99,6 +98,8 @@ scatta() {
     lega-stato-nostri) schermata="lega-stato"; fondo=(-DEMO_FONDO nostri) ;;
     # e la riga della taratura di «gioca N%» (#527), fra la cima e le nostri: in nessuna delle altre foto
     lega-stato-taratura) schermata="lega-stato"; fondo=(-DEMO_FONDO taratura) ;;
+    # e la frase della prova delle previsioni su «da fantamedia» (#842), subito sotto la taratura
+    lega-stato-prova) schermata="lega-stato"; fondo=(-DEMO_FONDO prova) ;;
   esac
   # «accesso-<scenario>»: la demo con gli account accesi (schermata di accesso, codice di recupero, account in Lega...).
   # Con «-fondo» lo scenario è lo stesso (accesso-account-fondo = scenario «account» con -DEMO_FONDO).
@@ -116,7 +117,7 @@ scatta() {
   xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
   sleep 1
   if ! xcrun simctl launch "$udid" "$ID_APP" -DEMO "${cosa[@]}" \
-        ${fondo[@]+"${fondo[@]}"} ${cerca[@]+"${cerca[@]}"} ${ARGOMENTI_EXTRA[@]+"${ARGOMENTI_EXTRA[@]}"} ${ARGOMENTI_SCENARIO[@]+"${ARGOMENTI_SCENARIO[@]}"}         ${STILE_ARG[@]+"${STILE_ARG[@]}"} ${tema[@]+"${tema[@]}"} \
+        ${fondo[@]+"${fondo[@]}"} ${cerca[@]+"${cerca[@]}"} ${ARGOMENTI_EXTRA[@]+"${ARGOMENTI_EXTRA[@]}"} ${ARGOMENTI_SCENARIO[@]+"${ARGOMENTI_SCENARIO[@]}"}         ${ASPETTO_ARG[@]+"${ASPETTO_ARG[@]}"} ${tema[@]+"${tema[@]}"} \
         -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null; then
     echo "ERRORE: l'app non parte ($etichetta / $nome)"
     ERRORI=$((ERRORI + 1))
@@ -132,58 +133,12 @@ scatta() {
     echo "ATTENZIONE: l'app non risulta in esecuzione ($etichetta / $nome): crash?"
     ERRORI=$((ERRORI + 1))
   fi
-  local file="$USCITA/${etichetta}_${nome}.png" esito inizio peso controllo vuota prove=0
-  # Ogni giro fa una foto. Si rifà (al massimo 2 volte, dopo 5 secondi) se lo schermo è ancora vuoto: la schermata d'avvio o
-  # il solo caricamento (#860, schermo_vuoto.py). Prima la foto restava così e la corsa era verde.
-  while :; do
-    inizio=$(date +%s)
-    # Si fotografa quando lo schermo è fermo (due foto di fila uguali): non mentre la schermata carica o i numeri salgono.
-    # Prima bastavano i secondi fissi qui sopra, e la Formazione in orizzontale usciva con lo scheletro del caricamento.
-    python3 -I "$(dirname "$0")/schermo_fermo.py" "$udid" "$file" "${ATTESA_FERMO:-8}"
-    esito=$?
-    if [ "$esito" -ne 0 ] && [ "$esito" -ne 3 ] && [ "$esito" -ne 4 ]; then
-      echo "ERRORE: scatto non riuscito ($etichetta / $nome)"
-      ERRORI=$((ERRORI + 1))
-      # in una nuova prova resta la foto vuota di prima
-      [ "$prove" -gt 0 ] && FOTO_VUOTE+=("$etichetta / $nome")
-      return
-    fi
-    # Un avviso di sistema comparso durante la foto (#601): si aspetta che sparisca e si rifà (avvisi.sh).
-    avvisi_rifai "$udid" "$file" "$inizio"
-    # Se la foto è quasi vuota (nera) l'app non aveva ancora finito di disegnarsi: si riprova dopo qualche secondo.
-    peso=$(stat -f%z "$file" 2>/dev/null || echo 999999)
-    if [ "$peso" -lt 150000 ]; then
-      sleep 5
-      xcrun simctl io "$udid" screenshot "$file" >/dev/null 2>&1
-    fi
-    # Il simulatore fotografa sempre lo schermo "in verticale": con l'app in orizzontale la foto esce girata di 90 gradi.
-    if [ "$RADDRIZZA" = "1" ]; then
-      sips -r 270 "$file" >/dev/null 2>&1
-    fi
-    # Lo schermo è ancora vuoto? Si guarda la foto già girata: barre in alto e in basso al loro posto.
-    controllo=$(python3 -I "$(dirname "$0")/schermo_vuoto.py" "$file")
-    vuota=$?
-    if [ "$vuota" -ne 0 ] && [ "$vuota" -ne 3 ]; then
-      # il controllo stesso non è riuscito (sips che manca, file illeggibile): avviso a fine corsa (fine)
-      echo "ATTENZIONE: foto non controllata ($etichetta / $nome): $controllo"
-      ERRORI=$((ERRORI + 1))
-      NON_CONTROLLATE+=("$etichetta / $nome")
-      break
-    fi
-    CONTROLLATE=$(( ${CONTROLLATE:-0} + 1 ))
-    [ "$vuota" -eq 0 ] && break
-    if [ "$prove" -ge 2 ]; then
-      echo "ERRORE: ($etichetta / $nome) lo schermo è ancora vuoto dopo $prove nuove foto: $controllo"
-      ERRORI=$((ERRORI + 1))
-      FOTO_VUOTE+=("$etichetta / $nome")
-      break
-    fi
-    prove=$((prove + 1))
-    FOTO_RIFATTE=$((FOTO_RIFATTE + 1))
-    echo "  ($etichetta / $nome: $controllo; aspetto e rifaccio la foto, $prove di 2)"
-    sleep 5
-  done
-  # Gli esiti dell'attesa valgono per la foto tenuta, l'ultima.
+  local file="$USCITA/${etichetta}_${nome}.png" esito inizio
+  inizio=$(date +%s)
+  # Si fotografa quando lo schermo è fermo (due foto di fila uguali): non mentre la schermata carica o i numeri salgono.
+  # Prima bastavano i secondi fissi qui sopra, e la Formazione in orizzontale usciva con lo scheletro del caricamento.
+  python3 -I "$(dirname "$0")/schermo_fermo.py" "$udid" "$file" "${ATTESA_FERMO:-8}"
+  esito=$?
   if [ "$esito" -eq 3 ]; then
     echo "  ($etichetta / $nome: lo schermo si muoveva ancora dopo l'attesa, foto scattata lo stesso)"
     IN_MOVIMENTO=$((IN_MOVIMENTO + 1))
@@ -192,6 +147,23 @@ scatta() {
     echo "ERRORE: scatto non riuscito durante l'attesa ($etichetta / $nome): resta la foto di prima"
     ERRORI=$((ERRORI + 1))
     NON_RIUSCITI+=("$etichetta / $nome")
+  elif [ "$esito" -ne 0 ]; then
+    echo "ERRORE: scatto non riuscito ($etichetta / $nome)"
+    ERRORI=$((ERRORI + 1))
+    return
+  fi
+  # Un avviso di sistema comparso durante la foto (#601): si aspetta che sparisca e si rifà (avvisi.sh).
+  avvisi_rifai "$udid" "$file" "$inizio"
+  # Se la foto è quasi vuota (nera) l'app non aveva ancora finito di disegnarsi: si riprova dopo qualche secondo.
+  local peso
+  peso=$(stat -f%z "$file" 2>/dev/null || echo 999999)
+  if [ "$peso" -lt 150000 ]; then
+    sleep 5
+    xcrun simctl io "$udid" screenshot "$file" >/dev/null 2>&1
+  fi
+  # Il simulatore fotografa sempre lo schermo "in verticale": con l'app in orizzontale la foto esce girata di 90 gradi.
+  if [ "$RADDRIZZA" = "1" ]; then
+    sips -r 270 "$file" >/dev/null 2>&1
   fi
   local w h
   w=$(sips -g pixelWidth "$file" 2>/dev/null | awk '/pixelWidth/ {print $2}')
@@ -204,12 +176,13 @@ giro() {
   local udid="$1" etichetta="$2" aspetto="$3" dimensione="$4"
   shift 4
   local ui="dark"
-  STILE_ARG=(-AppleInterfaceStyle Dark)
+  ASPETTO_ARG=(-DEMO_ASPETTO scuro)
   TEMA_ARG=(-tema scuro)
-  if [ "$aspetto" = "chiaro" ]; then ui="light"; STILE_ARG=(-AppleInterfaceStyle Light); TEMA_ARG=(-tema chiaro); fi
+  if [ "$aspetto" = "chiaro" ]; then ui="light"; ASPETTO_ARG=(-DEMO_ASPETTO chiaro); TEMA_ARG=(-tema chiaro); fi
   echo "=== $etichetta ($ui, testo $dimensione) ==="
   # Il cambio di aspetto del simulatore è asincrono e subito dopo l'avvio a volte non vale: capitava che le foto «scuro»
-  # dell'iPhone uscissero chiare. Si cambia, si aspetta e si controlla (fino a 5 tentativi).
+  # dell'iPhone uscissero chiare. Si cambia, si aspetta e si controlla (fino a 5 tentativi). Il controllo rilegge l'impostazione,
+  # non ciò che l'app vede (#845): per questo l'app riceve anche l'aspetto del giro (ASPETTO_ARG).
   local t letto
   for t in 1 2 3 4 5; do
     xcrun simctl ui "$udid" appearance "$ui"
@@ -273,33 +246,6 @@ riepilogo() {
     echo "Tra i problemi, foto con uno scatto non riuscito durante l'attesa (resta la foto di prima):"
     printf '  %s\n' "${NON_RIUSCITI[@]}"
   fi
-  echo "Foto rifatte perché lo schermo era ancora vuoto (avvio o caricamento): ${FOTO_RIFATTE:-0}"
-  if [ "${#FOTO_VUOTE[@]}" -gt 0 ]; then
-    echo "Tra i problemi, foto con lo schermo ancora vuoto dopo le nuove prove (schermata d'avvio o caricamento):"
-    printf '  %s\n' "${FOTO_VUOTE[@]}"
-  fi
-  echo "Foto non controllate (il controllo dello schermo vuoto non è riuscito): ${#NON_CONTROLLATE[@]}"
-}
-
-# Fine dello script: riepilogo, poi esce. Fallisce se non c'è nessuna foto (le foto mancanti si guardano nell'artifact), se una
-# foto mostra ancora lo schermo vuoto dopo le nuove prove (#860: prima la corsa restava verde con la schermata d'avvio) o se il
-# controllo dello schermo vuoto non è riuscito su nessuna foto (sips che manca, Python rotto: le foto vuote passerebbero tutte).
-# Qualche foto non controllata: avviso visibile su GitHub, la corsa resta verde.
-fine() {
-  riepilogo
-  if [ "${#NON_CONTROLLATE[@]}" -gt 0 ]; then
-    echo "::warning title=Foto::${#NON_CONTROLLATE[@]} foto non controllate (il controllo dello schermo vuoto non è riuscito): ${NON_CONTROLLATE[*]}"
-  fi
-  if [ "${#FOTO_VUOTE[@]}" -gt 0 ]; then
-    echo "::error title=Foto::Schermo ancora vuoto (schermata d'avvio o caricamento) dopo 2 nuove foto: ${FOTO_VUOTE[*]}"
-    exit 1
-  fi
-  if [ "${#NON_CONTROLLATE[@]}" -gt 0 ] && [ "${CONTROLLATE:-0}" -eq 0 ]; then
-    echo "::error title=Foto::Nessuna foto controllata: il controllo dello schermo vuoto (scripts/schermo_vuoto.py) non è mai riuscito"
-    exit 1
-  fi
-  [ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]
-  exit $?
 }
 
 # ---------------------------------------------------------------- fotografie dal vero
@@ -377,7 +323,9 @@ if [ "$SCATTI" = "vero" ]; then
     giro_vero "$UDID_VERO" "${QUALE}_scuro-testogrande" scuro accessibility-large
   fi
   spegni_simulatore "$UDID_VERO"
-  fine
+  riepilogo
+  [ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]
+  exit $?
 fi
 
 # ---------------------------------------------------------------- iPhone
@@ -417,10 +365,6 @@ xcrun simctl terminate "$UDID_IPHONE" "$ID_APP" >/dev/null 2>&1
 sleep 2
 xcrun simctl launch "$UDID_IPHONE" "$ID_APP" -DEMO >/dev/null 2>&1
 avvisi_foto "$UDID_IPHONE" "$USCITA/avvio_iphone.png"
-# Prova del controllo dello schermo vuoto sul Mac vero (foto rimpicciolita con sips): di solito questa foto mostra la schermata
-# d'avvio e il controllo deve dire «schermo vuoto» (uscita 3). Solo una riga nel registro: l'avvio può essere già passato.
-controllo=$(python3 -I "$(dirname "$0")/schermo_vuoto.py" "$USCITA/avvio_iphone.png")
-echo "  avvio_iphone (prova del controllo dello schermo vuoto): uscita $?, $controllo"
 sleep 4
 for aspetto in dark light; do
   xcrun simctl ui "$UDID_IPHONE" appearance "$aspetto"
@@ -429,13 +373,15 @@ for aspetto in dark light; do
   avvisi_foto "$UDID_IPHONE" "$USCITA/home_iphone_$aspetto.png"
 done
 
-STILE_ARG=()
+ASPETTO_ARG=()
 prova_url "$UDID_IPHONE"
 
 spegni_simulatore "$UDID_IPHONE"
 fi
 if [ "$DISPOSITIVI" = "iphone" ]; then
-  fine
+  riepilogo
+  [ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]
+  exit $?
 fi
 
 # ---------------------------------------------------------------- iPad
@@ -488,4 +434,6 @@ avvisi_foto "$UDID_IPAD" "$USCITA/home_ipad_dark.png"
 
 spegni_simulatore "$UDID_IPAD"
 
-fine
+riepilogo
+# Le foto mancanti non fanno fallire il lavoro: si guardano nell'artifact. Fallisce solo se non c'è nessuna foto.
+[ "$(ls "$USCITA"/*.png 2>/dev/null | wc -l | tr -d ' ')" -gt 0 ]

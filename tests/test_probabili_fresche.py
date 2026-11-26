@@ -27,6 +27,19 @@ def test_ieri_e_giorni_prima():
     assert freschezza_probabili("2026-10-28T09:00:00", ADESSO, None)["testo"] == "Probabili aggiornate il 28/10 alle 09:00"
 
 
+def test_apostrofo_davanti_all_8_e_all_11():
+    """«l'8/10», «l'11/10» (si legge «l'otto», «l'undici»), mai «il 8/10» o «il 11/10» (#859). Le altre date restano: «il 1/10»
+    (il primo), «il 18/10». La web e l'iPhone mostrano il testo del server: la frase giusta si scrive qui."""
+    def testo(rilevato):
+        return freschezza_probabili(rilevato, ADESSO, None)["testo"]
+    assert testo("2026-10-08T09:00:00") == "Probabili aggiornate l'8/10 alle 09:00"
+    assert testo("2026-10-11T21:30:00") == "Probabili aggiornate l'11/10 alle 21:30"
+    assert testo("2026-10-01T09:00:00") == "Probabili aggiornate il 1/10 alle 09:00"
+    assert testo("2026-10-18T09:00:00") == "Probabili aggiornate il 18/10 alle 09:00"
+    f = freschezza_probabili("2026-10-08T09:00:00", ADESSO, None)["frase"]
+    assert f == {"chiave": "probabili.data", "param": {"giorno": 8, "mese": 10, "ora": "09:00"}}       # i numeri restano com'erano
+
+
 def test_avviso_solo_se_vecchie_e_partita_vicina():
     vecchie = freschezza_probabili("2026-10-31T08:00:00", ADESSO, 1.0)
     assert vecchie["vecchie"] and "7 ore fa" in vecchie["avviso"] and "tra 1 ora" in vecchie["avviso"]

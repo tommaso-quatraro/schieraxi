@@ -56,12 +56,13 @@ struct ImpostazioniComeLaWebTests {
         #expect(due.sotto == Catalogo.Lega.nSquadre(1))
     }
 
-    @Test("La mia squadra non ancora scelta: lo dice, e la voce apre l'elenco per sceglierla")
+    /// Come la web (`vistaRosa("")` senza la mia squadra, #863): «La mia squadra» apre la sua scelta, non «Le altre squadre».
+    @Test("La mia squadra non ancora scelta: lo dice, e la voce apre la pagina per sceglierla")
     func senzaMiaSquadra() throws {
         let voci = VociImpostazioni.lega(squadre: squadre(4), squadreAltrui: true)
         let mia = try #require(voci.first { $0.id == "squadra" })
         #expect(mia.sotto == Catalogo.Imp.miaSquadraNessuna)
-        #expect(mia.pagina == .squadre)
+        #expect(mia.pagina == .sceltaSquadra)
     }
 
     @Test("Le altre squadre solo con più di una squadra e con la funzione accesa")
@@ -97,5 +98,14 @@ struct ImpostazioniComeLaWebTests {
     func oreTranquille() {
         let ore = OreTranquille(attive: true, da: 22, a: 8)
         #expect(AvvisiDispositivoViewModel.aiutoOreTranquille(ore) == Catalogo.Imp.oreTranquilleAiuto(a: "8", da: "22"))
+    }
+
+    /// Collaudo del 25/11 (#873, punto 4): con l'interruttore spento «Niente avvisi dalle 23 alle 7» faceva sembrare le ore
+    /// tranquille accese. Come la web dalla #878: spente lo dice, con la fascia che varrebbe accendendole.
+    @Test("Ore tranquille spente: la riga dice che sono spente e la fascia che varrebbe (`imp.ore_tranquille_spente`)")
+    func oreTranquilleSpente() {
+        let spente = OreTranquille(attive: false, da: 23, a: 7)
+        #expect(AvvisiDispositivoViewModel.aiutoOreTranquille(spente) == Catalogo.Imp.oreTranquilleSpente(a: "7", da: "23"))
+        #expect(AvvisiDispositivoViewModel.aiutoOreTranquille(spente) != Catalogo.Imp.oreTranquilleAiuto(a: "7", da: "23"))
     }
 }

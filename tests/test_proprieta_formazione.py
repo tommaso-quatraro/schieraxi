@@ -27,7 +27,7 @@ MODULI = [f"{d}-{c}-{a}" for d in range(1, 9) for c in range(1, 9) for a in rang
 # ---------------------------------------------------------------- generatori
 @st.composite
 def regole(draw) -> Regole:
-    """Regole valide (Regole.problemi() vuoto): moduli, panchina e modificatore della difesa a caso."""
+    """Regole che il server legge (Regole.problemi(misure=False) vuoto): moduli, panchina e modificatore della difesa a caso."""
     r = Regole()
     r.moduli = draw(st.lists(st.sampled_from(MODULI), min_size=1, max_size=8, unique=True))
     servono = [modulo_in_numeri(m) for m in r.moduli]
@@ -47,7 +47,9 @@ def regole(draw) -> Regole:
     m.min_difensori = draw(st.integers(1, 5))
     m.soglie = draw(st.lists(st.tuples(st.floats(4, 9), st.floats(-3, 8)).map(list), max_size=4))
     r.voto_senza_sostituto = draw(st.none() | st.floats(0, 6))
-    assert r.problemi() == [], r.problemi()
+    # come le legge il server (regole.carica): anche le regole salvate prima dei limiti di #881 (difensori minimi sotto 3,
+    # panchina vuota, fasce negative o ripetute, modificatore acceso senza fasce) arrivano al calcolo e non lo devono rompere
+    assert r.problemi(misure=False) == [], r.problemi(misure=False)
     return r
 
 

@@ -70,7 +70,7 @@ Adattate dal «Floor» di Hallmark. Si controllano a mano prima di ogni PR che t
 | Mercato | «PUNTI IN STAGIONE» | «punti in stagione» |
 | Diario | 9 righe di spiegazione in cima | una riga; il resto in «Come si legge» |
 | Sito, titolo | «La formazione giusta, *giornata dopo giornata*» con la seconda metà a gradiente | stesso titolo, un colore |
-| Sito, pulsante | «Apri la web app →» | «Apri la web app» |
+| Sito, pulsante | «Apri la web app →» | «Apri l'app» (dal 25/11/2026 senza «web app»: nei testi del sito si dice «l'app nel browser») |
 
 Grafica B della web (5-6/11/2026, `DESIGN.md`, «Web: grafica B»):
 

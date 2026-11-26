@@ -10,14 +10,16 @@ from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime
 from pathlib import Path
 
+from . import memoria_file
 from .frasi import F
 from .percorsi import scrivi_sicuro, utente_della_cartella
 from .regole import RUOLI, Regole
 from .rose import SquadraLetta
 
-# Si può cominciare con la sola propria rosa (2/11/2026): lo dicono l'anteprima delle rose e i controlli del primo avvio.
-UNA_SQUADRA = ("Con una sola squadra funzionano formazione e consigli; per gli scambi servono le rose degli altri: "
-               "potrai aggiungerle quando vuoi.")
+# Si può cominciare con la sola propria rosa (2/11/2026): lo dicono l'anteprima delle rose e i controlli del primo avvio. Gli scambi
+# non ci sono più (#615): le rose degli altri servono a guardare le altre squadre (#873, come docs/GUIDA-UTENTE.md).
+UNA_SQUADRA = ("Con una sola squadra funzionano formazione e consigli; le rose degli altri servono a guardare le altre squadre: "
+               "puoi aggiungerle quando vuoi.")
 # Anteprima e importazione con il file delle rose che non si legge più: si riparte dalle squadre del file (server._rose_di_prima).
 ROSE_ROVINATE = "Le rose salvate finora non si leggono più: l'importazione tiene solo le squadre di questo file."
 
@@ -145,15 +147,21 @@ def controlla(rose: Rose, regole: Regole) -> list[str]:
 
 
 def carica(percorso: Path) -> Rose | None:
+    """Le rose del file (None se non c'è), trasformate una volta finché il contenuto non cambia (`memoria_file`, #907): ogni
+    chiamata riceve un oggetto suo, da modificare liberamente."""
     if not percorso.exists():
         return None
-    try:
-        dati = json.loads(percorso.read_text(encoding="utf-8"))
-    except ValueError:
-        raise ValueError(f"Il file {percorso.name} è rovinato: ripristina la copia {percorso.name}.bak o importa di nuovo le rose") from None
-    rose = da_dict(dati)
+    rose = memoria_file.leggi(percorso, "rose", lambda contenuto: _da_contenuto(contenuto, percorso.name))
     rose.di_utente = utente_della_cartella(percorso)
     return rose
+
+
+def _da_contenuto(contenuto: bytes, nome: str) -> Rose:
+    try:
+        dati = json.loads(contenuto.decode("utf-8"))
+    except ValueError:
+        raise ValueError(f"Il file {nome} è rovinato: ripristina la copia {nome}.bak o importa di nuovo le rose") from None
+    return da_dict(dati)
 
 
 _CAMPI_GIOCATORE = {f.name for f in fields(GiocatoreRosa)}

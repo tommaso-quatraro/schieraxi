@@ -872,5 +872,389 @@
   "err.passo_sconosciuto": {
     "it": "Passo sconosciuto della configurazione",
     "en": "Unknown setup step"
+  },
+  "err.regole_non_valide": {
+    "it": "Regole non valide:",
+    "en": "Invalid rules:"
+  },
+  "err.regole_gol_portiere": {
+    "it": "il bonus per il gol del portiere deve essere tra {1} e {2}",
+    "en": "the bonus for a goal by a goalkeeper must be between {1} and {2}"
+  },
+  "err.regole_gol_difensore": {
+    "it": "il bonus per il gol del difensore deve essere tra {1} e {2}",
+    "en": "the bonus for a goal by a defender must be between {1} and {2}"
+  },
+  "err.regole_gol_centrocampista": {
+    "it": "il bonus per il gol del centrocampista deve essere tra {1} e {2}",
+    "en": "the bonus for a goal by a midfielder must be between {1} and {2}"
+  },
+  "err.regole_gol_attaccante": {
+    "it": "il bonus per il gol dell'attaccante deve essere tra {1} e {2}",
+    "en": "the bonus for a goal by a forward must be between {1} and {2}"
+  },
+  "err.regole_rigore_segnato": {
+    "it": "il bonus per il rigore segnato deve essere tra {1} e {2}",
+    "en": "the penalty scored bonus must be between {1} and {2}"
+  },
+  "err.regole_assist": {
+    "it": "il bonus per l'assist deve essere tra {1} e {2}",
+    "en": "the assist bonus must be between {1} and {2}"
+  },
+  "err.regole_rigore_parato": {
+    "it": "il bonus per il rigore parato deve essere tra {1} e {2}",
+    "en": "the penalty saved bonus must be between {1} and {2}"
+  },
+  "err.regole_portiere_imbattuto": {
+    "it": "il bonus per il portiere imbattuto deve essere tra {1} e {2}",
+    "en": "the clean sheet bonus must be between {1} and {2}"
+  },
+  "err.regole_mvp": {
+    "it": "il bonus per il migliore in campo deve essere tra {1} e {2}",
+    "en": "the man of the match bonus must be between {1} and {2}"
+  },
+  "err.regole_rigore_sbagliato": {
+    "it": "il malus per il rigore sbagliato deve essere tra {1} e {2}",
+    "en": "the penalty missed malus must be between {1} and {2}"
+  },
+  "err.regole_autogol": {
+    "it": "il malus per l'autogol deve essere tra {1} e {2}",
+    "en": "the own goal malus must be between {1} and {2}"
+  },
+  "err.regole_gol_subito": {
+    "it": "il malus per ogni gol subito dal portiere deve essere tra {1} e {2}",
+    "en": "the malus for each goal conceded by the goalkeeper must be between {1} and {2}"
+  },
+  "err.regole_ammonizione": {
+    "it": "il malus per l'ammonizione deve essere tra {1} e {2}",
+    "en": "the yellow card malus must be between {1} and {2}"
+  },
+  "err.regole_espulsione": {
+    "it": "il malus per l'espulsione deve essere tra {1} e {2}",
+    "en": "the red card malus must be between {1} and {2}"
+  },
+  "err.regole_rosa_portieri": {
+    "it": "i portieri della rosa devono essere tra {1} e {2}",
+    "en": "the goalkeepers in the roster must be between {1} and {2}"
+  },
+  "err.regole_rosa_difensori": {
+    "it": "i difensori della rosa devono essere tra {1} e {2}",
+    "en": "the defenders in the roster must be between {1} and {2}"
+  },
+  "err.regole_rosa_centrocampisti": {
+    "it": "i centrocampisti della rosa devono essere tra {1} e {2}",
+    "en": "the midfielders in the roster must be between {1} and {2}"
+  },
+  "err.regole_rosa_attaccanti": {
+    "it": "gli attaccanti della rosa devono essere tra {1} e {2}",
+    "en": "the forwards in the roster must be between {1} and {2}"
+  },
+  "err.regole_crediti": {
+    "it": "i crediti iniziali devono essere tra {1} e {2}",
+    "en": "the starting credits must be between {1} and {2}"
+  },
+  "err.regole_panchina": {
+    "it": "i giocatori in panchina devono essere tra {1} e {2}",
+    "en": "the players on the bench must be between {1} and {2}"
+  },
+  "err.regole_cambi": {
+    "it": "i cambi massimi devono essere tra {1} e {2}",
+    "en": "the maximum substitutions must be between {1} and {2}"
+  },
+  "err.regole_posti_portieri": {
+    "it": "i posti in panchina per i portieri devono essere tra {1} e {2}",
+    "en": "the bench spots for goalkeepers must be between {1} and {2}"
+  },
+  "err.regole_posti_difensori": {
+    "it": "i posti in panchina per i difensori devono essere tra {1} e {2}",
+    "en": "the bench spots for defenders must be between {1} and {2}"
+  },
+  "err.regole_posti_centrocampisti": {
+    "it": "i posti in panchina per i centrocampisti devono essere tra {1} e {2}",
+    "en": "the bench spots for midfielders must be between {1} and {2}"
+  },
+  "err.regole_posti_attaccanti": {
+    "it": "i posti in panchina per gli attaccanti devono essere tra {1} e {2}",
+    "en": "the bench spots for forwards must be between {1} and {2}"
+  },
+  "err.regole_voto_senza_sostituto": {
+    "it": "il voto d'ufficio di chi resta senza sostituto deve essere tra {1} e {2}",
+    "en": "the default grade for a player with no substitute must be between {1} and {2}"
+  },
+  "err.regole_voto_rinviate": {
+    "it": "il voto d'ufficio delle partite rinviate deve essere tra {1} e {2}",
+    "en": "the default grade for postponed matches must be between {1} and {2}"
+  },
+  "err.regole_md_min": {
+    "it": "i difensori minimi del modificatore difesa devono essere tra {1} e {2}",
+    "en": "the minimum defenders of the defence modifier must be between {1} and {2}"
+  },
+  "err.regole_md_media": {
+    "it": "la media di ogni fascia del modificatore difesa deve essere tra {1} e {2}",
+    "en": "the average of each defence modifier band must be between {1} and {2}"
+  },
+  "err.regole_md_bonus": {
+    "it": "il bonus di ogni fascia del modificatore difesa deve essere tra {1} e {2}",
+    "en": "the bonus of each defence modifier band must be between {1} and {2}"
+  },
+  "err.regole_fattore_campo": {
+    "it": "il fattore campo deve essere tra {1} e {2}",
+    "en": "the home advantage must be between {1} and {2}"
+  },
+  "err.regole_primo_gol": {
+    "it": "i punti del primo gol (partite testa a testa) devono essere tra {1} e {2}",
+    "en": "the points for the first goal (head-to-head matches) must be between {1} and {2}"
+  },
+  "err.regole_fasce_gol": {
+    "it": "l'ampiezza delle fasce dei gol (partite testa a testa) deve essere tra {1} e {2}",
+    "en": "the width of the goal bands (head-to-head matches) must be between {1} and {2}"
+  },
+  "err.regole_md_senza_fasce": {
+    "it": "con il modificatore difesa acceso serve almeno una fascia",
+    "en": "with the defence modifier on, at least one band is needed"
+  },
+  "err.regole_md_fasce_ripetute": {
+    "it": "due fasce del modificatore difesa hanno la stessa media: togline una",
+    "en": "two defence modifier bands have the same average: remove one"
+  },
+  "err.regole_md_nessun_modulo": {
+    "it": "nessun modulo ammesso ha almeno {1} difensori: il modificatore difesa non si applicherebbe mai",
+    "en": "no allowed formation has at least {1} defenders: the defence modifier would never apply"
+  },
+  "err.regole_gol_ruoli": {
+    "it": "il bonus per il gol deve indicare un valore per portieri, difensori, centrocampisti e attaccanti",
+    "en": "the goal bonus must give a value for goalkeepers, defenders, midfielders and forwards"
+  },
+  "err.regole_rosa_ruoli": {
+    "it": "la rosa deve indicare quanti portieri, difensori, centrocampisti e attaccanti",
+    "en": "the roster must say how many goalkeepers, defenders, midfielders and forwards"
+  },
+  "err.regole_posti_ruoli": {
+    "it": "i posti fissi in panchina devono indicare quanti portieri, difensori, centrocampisti e attaccanti",
+    "en": "the fixed bench spots must say how many goalkeepers, defenders, midfielders and forwards"
+  },
+  "err.regole_posti_somma": {
+    "it": "i giocatori in panchina ({1}) devono essere la somma dei posti per ruolo ({2})",
+    "en": "the players on the bench ({1}) must be the sum of the spots per position ({2})"
+  },
+  "err.regole_modulo_rosa": {
+    "it": "il modulo {1} chiede più giocatori di quanti ce ne sono in rosa",
+    "en": "the formation {1} needs more players than there are in the roster"
+  },
+  "err.regole_nessun_modulo": {
+    "it": "serve almeno un modulo",
+    "en": "at least one formation is needed"
+  },
+  "err.regole_moduli_ripetuti": {
+    "it": "ci sono moduli ripetuti",
+    "en": "some formations are repeated"
+  },
+  "err.regole_tipo_numero": {
+    "it": "«{1}» deve essere un numero",
+    "en": "“{1}” must be a number"
+  },
+  "err.regole_tipo_intero": {
+    "it": "«{1}» deve essere un numero intero",
+    "en": "“{1}” must be a whole number"
+  },
+  "err.regole_tipo_si_no": {
+    "it": "«{1}» deve essere sì o no",
+    "en": "“{1}” must be yes or no"
+  },
+  "err.regole_tipo_testo": {
+    "it": "«{1}» deve essere un testo",
+    "en": "“{1}” must be a text"
+  },
+  "err.regole_fonte_voto": {
+    "it": "il voto di partenza deve essere quello della redazione, quello statistico o quello di Italia",
+    "en": "the starting grade must be the editorial, the statistical or the Italia one"
+  },
+  "err.regole_tipo_panchina": {
+    "it": "le riserve devono entrare per ruolo o liberamente",
+    "en": "substitutes must come in by position or freely"
+  },
+  "err.regole_partite_rinviate": {
+    "it": "le partite rinviate devono aspettare il recupero, restare senza voto o avere il voto d'ufficio",
+    "en": "postponed matches must wait for the rescheduled match, stay without a grade or get the default grade"
+  },
+  "err.regole_eccezioni_rinviate": {
+    "it": "ogni eccezione delle partite rinviate deve dire la giornata e cosa fare",
+    "en": "each postponed-match exception must say the matchday and what to do"
+  },
+  "err.regole_moduli_forma": {
+    "it": "i moduli devono essere scritti come 3-4-3",
+    "en": "formations must be written like 3-4-3"
+  },
+  "err.regole_fasce_forma": {
+    "it": "ogni fascia del modificatore difesa deve avere una media e un bonus",
+    "en": "each defence modifier band must have an average and a bonus"
+  },
+  "err.regole_rimborso_tipo": {
+    "it": "il rimborso di chi si svincola deve essere un numero tra 0 e 1 (0,5 = metà del prezzo pagato)",
+    "en": "the refund for a released player must be a number between 0 and 1 (0.5 = half the price paid)"
+  },
+  "err.regole_rimborso": {
+    "it": "il rimborso di chi si svincola deve essere tra 0 e 1 (0,5 = metà del prezzo pagato)",
+    "en": "the refund for a released player must be between 0 and 1 (0.5 = half the price paid)"
+  },
+  "err.p_regola_bonus_gol_p": {
+    "it": "Gol di un portiere",
+    "en": "Goal by a goalkeeper"
+  },
+  "err.p_regola_bonus_gol_d": {
+    "it": "Gol di un difensore",
+    "en": "Goal by a defender"
+  },
+  "err.p_regola_bonus_gol_c": {
+    "it": "Gol di un centrocampista",
+    "en": "Goal by a midfielder"
+  },
+  "err.p_regola_bonus_gol_a": {
+    "it": "Gol di un attaccante",
+    "en": "Goal by a forward"
+  },
+  "err.p_regola_bonus_rigore_segnato": {
+    "it": "Rigore segnato",
+    "en": "Penalty scored"
+  },
+  "err.p_regola_bonus_assist": {
+    "it": "Assist",
+    "en": "Assist"
+  },
+  "err.p_regola_bonus_rigore_parato": {
+    "it": "Rigore parato",
+    "en": "Penalty saved"
+  },
+  "err.p_regola_bonus_rigore_sbagliato": {
+    "it": "Rigore sbagliato",
+    "en": "Penalty missed"
+  },
+  "err.p_regola_bonus_autogol": {
+    "it": "Autogol",
+    "en": "Own goal"
+  },
+  "err.p_regola_bonus_gol_subito_portiere": {
+    "it": "Gol subito dal portiere",
+    "en": "Goal conceded by the goalkeeper"
+  },
+  "err.p_regola_bonus_portiere_imbattuto": {
+    "it": "Portiere imbattuto",
+    "en": "Clean sheet"
+  },
+  "err.p_regola_bonus_ammonizione": {
+    "it": "Ammonizione",
+    "en": "Yellow card"
+  },
+  "err.p_regola_bonus_espulsione": {
+    "it": "Espulsione",
+    "en": "Red card"
+  },
+  "err.p_regola_bonus_mvp": {
+    "it": "Migliore in campo",
+    "en": "Man of the match"
+  },
+  "err.p_regola_rosa_p": {
+    "it": "Portieri della rosa",
+    "en": "Goalkeepers in the roster"
+  },
+  "err.p_regola_rosa_d": {
+    "it": "Difensori della rosa",
+    "en": "Defenders in the roster"
+  },
+  "err.p_regola_rosa_c": {
+    "it": "Centrocampisti della rosa",
+    "en": "Midfielders in the roster"
+  },
+  "err.p_regola_rosa_a": {
+    "it": "Attaccanti della rosa",
+    "en": "Forwards in the roster"
+  },
+  "err.p_regola_crediti_iniziali": {
+    "it": "Crediti iniziali",
+    "en": "Starting credits"
+  },
+  "err.p_regola_panchina_numero": {
+    "it": "Giocatori in panchina",
+    "en": "Players on the bench"
+  },
+  "err.p_regola_panchina_max_sostituzioni": {
+    "it": "Cambi massimi",
+    "en": "Maximum substitutions"
+  },
+  "err.p_regola_panchina_posti_p": {
+    "it": "Posti in panchina per i portieri",
+    "en": "Bench spots for goalkeepers"
+  },
+  "err.p_regola_panchina_posti_d": {
+    "it": "Posti in panchina per i difensori",
+    "en": "Bench spots for defenders"
+  },
+  "err.p_regola_panchina_posti_c": {
+    "it": "Posti in panchina per i centrocampisti",
+    "en": "Bench spots for midfielders"
+  },
+  "err.p_regola_panchina_posti_a": {
+    "it": "Posti in panchina per gli attaccanti",
+    "en": "Bench spots for forwards"
+  },
+  "err.p_regola_panchina_cambio_modulo": {
+    "it": "Cambio modulo nelle sostituzioni",
+    "en": "Formation change in substitutions"
+  },
+  "err.p_regola_panchina_tipo": {
+    "it": "Come entrano le riserve",
+    "en": "How substitutes come in"
+  },
+  "err.p_regola_voto_senza_sostituto": {
+    "it": "Voto d'ufficio di chi resta senza sostituto",
+    "en": "Default grade for a player with no substitute"
+  },
+  "err.p_regola_voto_ufficio_rinviate": {
+    "it": "Voto d'ufficio delle partite rinviate",
+    "en": "Default grade for postponed matches"
+  },
+  "err.p_regola_partite_rinviate": {
+    "it": "Partite rinviate",
+    "en": "Postponed matches"
+  },
+  "err.p_regola_modificatore_difesa_attivo": {
+    "it": "Modificatore difesa attivo",
+    "en": "Defence modifier on"
+  },
+  "err.p_regola_modificatore_difesa_min_difensori": {
+    "it": "Difensori minimi del modificatore difesa",
+    "en": "Minimum defenders of the defence modifier"
+  },
+  "err.p_regola_fattore_campo": {
+    "it": "Fattore campo",
+    "en": "Home advantage"
+  },
+  "err.p_regola_soglia_primo_gol": {
+    "it": "Punti del primo gol",
+    "en": "Points for the first goal"
+  },
+  "err.p_regola_ampiezza_fascia_gol": {
+    "it": "Ampiezza delle fasce dei gol",
+    "en": "Width of the goal bands"
+  },
+  "err.p_regola_scadenza_minuti": {
+    "it": "Scadenza della formazione",
+    "en": "Lineup deadline"
+  },
+  "err.p_regola_prima_giornata_lega": {
+    "it": "Prima giornata della lega",
+    "en": "First matchday of the league"
+  },
+  "err.p_regola_aggiornamenti_vicino_scadenza": {
+    "it": "Aggiornamenti vicino alla scadenza",
+    "en": "Updates close to the deadline"
+  },
+  "err.p_regola_nome_lega": {
+    "it": "Nome della lega",
+    "en": "League name"
+  },
+  "err.p_regola_fonte_voto": {
+    "it": "Voto di partenza",
+    "en": "Starting grade"
   }
 }

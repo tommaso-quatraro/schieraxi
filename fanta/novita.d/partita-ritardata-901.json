@@ -1,0 +1,11 @@
+{
+  "titolo": "Partita in ritardo: non è più rinviata",
+  "voci": [
+    "Oggi e risultati in diretta: una partita che comincia in ritardo resta «da giocare» finché non parte, poi è «in corso». Non risulta più rinviata e non prende il voto d'ufficio: prima poteva comparire come rinviata, con «conta il voto del recupero» o, nelle leghe che lo prevedono, con il voto d'ufficio contato tra i punti fatti."
+  ],
+  "tecnico": [
+    "live.leggi_espn: STATUS_DELAYED e STATUS_RAIN_DELAY non diventano più «sospesa» (che fasi e sentinella trattano come «rinviata»): da_giocare, oppure in_corso se la fonte la dà nel gruppo «in». STATUS_SUSPENDED e STATUS_ABANDONED restano «sospesa».",
+    "fasi.stato_partita: dopo l'orario previsto la partita resta da_giocare solo se la fonte ha confermato da_giocare dopo l'orario e al più 15 minuti fa (fasi.CONFERMA_RITARDO, campo visto dal nuovo live.Raccoglitore.stati, usato da server._stati_live); altrimenti vale l'orario come prima. Il ripiego che scrive da_giocare non lascia visto (nemmeno in dati/live.json): non conferma un ritardo.",
+    "Nessun campo né stato di /api/live o /api/oggi tolto o rinominato (visto non esce da /api/live); calcolo del fantavoto atteso non toccato."
+  ]
+}
