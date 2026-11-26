@@ -69,9 +69,10 @@ def test_i_tentativi_non_riusciti_contano_ancora_per_indirizzo(db):
     assert account.registra(db, "luca", PASSWORD, codice, ip="6.6.6.6", adesso=ADESSO)[0]       # un'altra rete no
 
 
-def test_tetto_di_account_nuovi_per_indirizzo(db):
+def test_tetto_di_account_nuovi_per_indirizzo(db, monkeypatch):
     """Un tetto resta anche per le iscrizioni riuscite: una lega intera (fino a MAX_SQUADRE squadre) entra dalla stessa rete in
-    un'ora, oltre no."""
+    un'ora, oltre no. (Il tetto di utenti predefinito è più basso: qui si alza, come farebbe il server di una lega così.)"""
+    monkeypatch.setenv("MAX_UTENTI", "100")
     assert account.ACCOUNT_PER_IP[0] >= limiti.MAX_SQUADRE and account.ACCOUNT_PER_IP[1] == account.ORA
     codice = account.crea_invito(db, "tutti", usi_max=30, adesso=ADESSO)
     for i in range(account.ACCOUNT_PER_IP[0]):
@@ -80,9 +81,10 @@ def test_tetto_di_account_nuovi_per_indirizzo(db):
     assert db.execute("SELECT usi FROM inviti").fetchone()[0] == account.ACCOUNT_PER_IP[0]      # il posto non si consuma
 
 
-def test_tetto_di_account_controllato_anche_quando_nasce_l_account(db):
+def test_tetto_di_account_controllato_anche_quando_nasce_l_account(db, monkeypatch):
     """Due richieste insieme passano entrambe il primo controllo del tetto: vale quello dentro la transazione che crea l'account,
     e lì l'account in più non nasce."""
+    monkeypatch.setenv("MAX_UTENTI", "100")
     codice = account.crea_invito(db, "tutti", usi_max=30, adesso=ADESSO)
     for i in range(account.ACCOUNT_PER_IP[0]):
         account.registra(db, f"amico{i:02d}", PASSWORD, codice, ip=IP, adesso=ADESSO)
@@ -123,7 +125,7 @@ def test_il_tetto_di_utenti_vale_anche_con_il_codice_multiuso(db, monkeypatch):
     codice = account.crea_invito(db, "amici", usi_max=12, adesso=ADESSO)
     for i in range(3):
         entra(db, f"amico{i}", codice)
-    assert "numero massimo" in errore(entra, db, "amico9", codice).messaggio
+    assert errore(entra, db, "amico9", codice).messaggio == account.AL_COMPLETO
     assert db.execute("SELECT usi FROM inviti").fetchone()[0] == 3                   # il posto non si consuma se il tetto blocca
 
 

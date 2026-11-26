@@ -38,7 +38,7 @@ def test_modo_log_scrive_solo_che_e_partito_mai_il_codice(tmp_path, monkeypatch)
     monkeypatch.setattr(posta.smtplib, "SMTP", lambda *a, **k: pytest.fail("non deve aprire connessioni"))
     codice = "482913"
     assert posta.invia(posta.modello_recupero("marco.rossi@example.com", codice, 15))
-    assert posta.invia(posta.modello_verifica("anna@example.com", "771204", 15, "anna"))
+    assert posta.invia(posta.modello_verifica("anna@example.com", "771204", 15))
     testo = (tmp_path / "dati" / posta.FILE_LOG).read_text(encoding="utf-8")
     assert codice not in testo and "771204" not in testo and "Ciao" not in testo
     assert "marco.rossi" not in testo and "m...@example.com" in testo and "non_inviata" in testo

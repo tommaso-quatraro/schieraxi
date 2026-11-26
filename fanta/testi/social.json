@@ -36,8 +36,8 @@
     "en": "This address already has a SchieraXI account. Sign in the usual way, then link Google in Settings › Your account › Sign-in methods."
   },
   "social.email_non_affidabile": {
-    "it": "Con questo account Google non posso iscriverti. Usa il modulo con la tua email.",
-    "en": "I can't sign you up with this Google account. Use the form with your email."
+    "it": "Con questo account Google non posso iscriverti. Usa il modulo di registrazione.",
+    "en": "I can't sign you up with this Google account. Use the sign-up form."
   },
   "social.google_gia_collegato": {
     "it": "Questo account Google è già collegato a un altro account SchieraXI.",
