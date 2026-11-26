@@ -211,12 +211,12 @@ extension Catalogo {
 
         /// `formazione.sost_spiega`
         static func sostSpiega(nome: String) -> String {
-            "Stesso ruolo, dalla tua rosa. Il numero grande sono i punti attesi in più o in meno rispetto a \(nome)."
+            "Stesso ruolo, dalla tua rosa. Il numero grande sono i punti attesi della formazione in più o in meno se \(nome) esce e gioca lui."
         }
 
         /// `formazione.punti_rispetto`
         static func puntiRispetto(nome: String) -> String {
-            "punti attesi rispetto a \(nome)"
+            "punti attesi della formazione con lui al posto di \(nome)"
         }
 
         /// `formazione.fv_atteso_breve`

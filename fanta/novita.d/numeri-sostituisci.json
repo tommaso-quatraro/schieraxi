@@ -1,0 +1,18 @@
+{
+  "titolo": "Formazione: «Sostituisci» e i cambi proposti dicono quanto cambia la formazione",
+  "voci": [
+    "Formazione, «Sostituisci»: accanto a ogni compagno c'è quanto guadagna o perde la formazione se entra lui, lo stesso numero di cui cambiano i punti attesi dopo il cambio. Prima c'era la differenza fra i due giocatori, che non tornava: se il titolare rischia di non giocare entra già uno dalla panchina.",
+    "Formazione, cambio proposto in cima («Meglio …»): il numero è quello della formazione, come sotto il campo, e per un titolare in dubbio o in panchina il cambio non compare più per differenze di pochi decimi (sotto un punto atteso). Per un infortunato o uno squalificato compare sempre, come prima.",
+    "Formazione sulla web: dopo un cambio, gli altri cambi proposti in cima si aggiornano subito, con il numero nuovo o spariscono se non valgono più, come sull'iPhone.",
+    "Avviso «cambio pronto»: lo stesso numero e la stessa regola: per chi va in panchina solo da un punto atteso in su, per chi è infortunato o squalificato sempre.",
+    "Primo avvio: la frase sui valori più comuni delle leghe non finisce più con i puntini."
+  ],
+  "tecnico": [
+    "Nuova rotta POST /api/formazione/sostituisci {esce, titolari, giornata?} → {giornata, esce, punteggio_atteso, entrate: [{entra, punteggio_atteso, differenza}]}: il contrario di /api/formazione/metti-in-campo, con le stesse schede, gli stessi bloccati (400 giocatore_bloccato se esce è fermo), 400 formazione_non_valida e 409 formazione_chiusa; regola in scelte.chi_prende_il_posto, punti di consigli.valuta, ordine per differenza e poi punti attesi da soli. docs/openapi.json e docs/API.md aggiornati; coperta da tests/test_isolamento.py.",
+    "Da fare, voce dubbio: campo nuovo differenza (consigli.valuta della formazione dopo il cambio meno quella di adesso, frasi.differenza); per un titolare in dubbio o in panchina il cambio (alternativa, decisione, «Sostituisci») si propone solo da da_fare.SOGLIA_CAMBIO = consigli.SOGLIA_CAMBIO_PUNTI (1,0) in su; per un infortunato o squalificato sempre, con la sua differenza. notifiche._cambi_pronti scrive differenza invece di alternativa.punti_attesi − atteso del titolare.",
+    "Web: apriSostituzione chiede la rotta nuova (come apriMettiInCampo: «Carico…», giocatore_bloccato come informazione, formazione_chiusa chiude e rilegge); tolta la funzione sostituti; guadagno delle decisioni legge v.differenza.",
+    "Web: dopo un salvataggio riuscito della scelta (salvaTitolari, tornaConsigliata) rileggiDecisioni rilegge /api/oggi e ridisegna se da_fare è cambiato (non con un elenco di Sostituisci o Metti in campo aperto), come rileggiDopoUnSalvataggio dell'iPhone.",
+    "Catalogo: formazione.sost_spiega senza il nome prima del punto finale (niente più «Chalobah T..»), formazione.punti_rispetto con «della formazione», onb.valori_piu_comuni senza «...»; rigenerati fanta/web/testi.js e il catalogo dell'iPhone.",
+    "Calcolo del fantavoto atteso e della consigliata non toccato."
+  ]
+}

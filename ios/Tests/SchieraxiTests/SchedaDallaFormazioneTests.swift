@@ -83,13 +83,16 @@ struct SchedaDallaFormazioneTests {
         #expect(!vm.fermo(Self.fermo))
     }
 
-    @Test("I sostituti: stesso ruolo, mai uno dei titolari in campo né chi è fermo")
+    @Test("I sostituti li dice il server (stesso ruolo, senza chi è fermo); in elenco mai uno dei titolari in campo")
     func sostituti() async throws {
-        let (vm, f) = try await caricata()
-        let uscente = try #require(f.schede?[String(Self.attaccante)])
-        let ids = vm.sostituti(di: uscente, f).map(\.id)
-        #expect(ids.contains(Self.riservaAttaccante))
-        #expect(!ids.contains(Self.altroAttaccante) && !ids.contains(Self.fermo) && !ids.contains(Self.attaccante))
+        let (vm, _) = try await caricata()
+        await vm.sostituisci(Self.attaccante)
+        guard case .entrate(let righe)? = vm.elencoSostituti?.stato else {
+            Issue.record("l'elenco non ha le righe del server")
+            return
+        }
+        #expect(righe.map(\.entra.id) == [Self.riservaAttaccante], "l'altro attaccante è titolare: non è una riga")
+        #expect(righe.map(\.differenza) == [-0.1])
     }
 
     @Test("Sostituire dalla scheda parte dagli undici in campo, cambia solo quel titolare e si salva subito")
@@ -122,17 +125,19 @@ struct SchedaDallaFormazioneTests {
     func sostituzioneInAttesa() async throws {
         let (vm, _) = try await caricata()
         vm.apriSostituzioneInAttesa()
-        #expect(vm.daSostituire == nil, "senza una richiesta non si apre niente")
+        #expect(vm.elencoSostituti == nil, "senza una richiesta non si apre niente")
         vm.chiediSostituzione(Self.attaccante)
-        #expect(vm.daSostituire == nil, "finché la scheda è aperta il foglio non parte")
+        #expect(vm.elencoSostituti == nil, "finché la scheda è aperta il foglio non parte")
         vm.apriSostituzioneInAttesa()
-        #expect(vm.daSostituire?.id == Self.attaccante)
-        vm.daSostituire = nil
+        #expect(await diventa { vm.elencoSostituti?.uscente.id == Self.attaccante })
+        vm.elencoSostituti = nil
         vm.apriSostituzioneInAttesa()
-        #expect(vm.daSostituire == nil)
+        try await Task.sleep(nanoseconds: 200_000_000)
+        #expect(vm.elencoSostituti == nil)
         vm.chiediSostituzione(Self.fermo)
         vm.apriSostituzioneInAttesa()
-        #expect(vm.daSostituire == nil, "un titolare fermo non si sostituisce")
+        try await Task.sleep(nanoseconds: 200_000_000)
+        #expect(vm.elencoSostituti == nil, "un titolare fermo non si sostituisce")
     }
 
     // MARK: aiuti
@@ -159,11 +164,27 @@ struct SchedaDallaFormazioneTests {
             if percorso.hasPrefix("/api/formazione/valuta") {
                 return Data(#"{"modulo": "4-3-3", "punteggio_atteso": 20.0, "panchina": []}"#.utf8)
             }
+            // «Sostituisci» per l'attaccante: la riserva e, per prova, l'altro attaccante, che è titolare (l'app non lo mostra)
+            if percorso.hasPrefix("/api/formazione/sostituisci") {
+                return Data(#"""
+                {"giornata": 9, "esce": 7525, "punteggio_atteso": 64.1, "entrate": [
+                  {"entra": 1926, "punteggio_atteso": 64.0, "differenza": -0.1}, {"entra": 7537, "punteggio_atteso": 64.6, "differenza": 0.5}]}
+                """#.utf8)
+            }
             if percorso.hasPrefix("/api/scelta") { return Data("null".utf8) }
             return dati
         }
         let vm = FormazioneViewModel(server: srv)
         await vm.carica()
         return (vm, try #require(vm.formazione))
+    }
+
+    /// Aspetta al massimo `secondi` che `condizione` sia vera (per ciò che parte in un `Task`); dice se lo è diventata.
+    private func diventa(_ secondi: Double = 5, _ condizione: () -> Bool) async -> Bool {
+        let limite = Date().addingTimeInterval(secondi)
+        while !condizione(), Date() < limite {
+            try? await Task.sleep(nanoseconds: 20_000_000)
+        }
+        return condizione()
     }
 }
