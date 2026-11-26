@@ -123,12 +123,13 @@ enum RegoleLogica {
         return r
     }
 
-    /// Come si scrive un valore riconosciuto nel regolamento, per mostrarlo prima di applicarlo.
+    /// Come si scrive un valore riconosciuto nel regolamento, per mostrarlo prima di applicarlo. I numeri negativi con il meno
+    /// tipografico «−0,5», come il resto dell'app (`Formato.conSegno`, `CampiRegole.cifra`; prima «-0,5», #911).
     static func descrivi(_ v: JSONValue) -> String {
         switch v {
         case .booleano(let b): return b ? "sì" : "no"
-        case .intero(let n): return String(n)
-        case .decimale(let d): return Formato.decimali(d, cifre: d == d.rounded() ? 0 : (d * 10 == (d * 10).rounded() ? 1 : 2))
+        case .intero(let n): return n < 0 ? "\u{2212}\(n.magnitude)" : String(n)
+        case .decimale(let d): return conMeno(d, cifre: d == d.rounded() ? 0 : (d * 10 == (d * 10).rounded() ? 1 : 2))
         case .testo(let t): return t
         case .nullo: return "—"
         case .lista(let l):
@@ -143,6 +144,13 @@ enum RegoleLogica {
         case .oggetto(let d):
             return d.keys.sorted().map { "\($0): \(descrivi(d[$0] ?? .nullo))" }.joined(separator: ", ")
         }
+    }
+
+    /// Un decimale con `cifre` cifre e, se è negativo, il meno tipografico davanti; senza segno se arrotondato vale zero («0,00»).
+    private static func conMeno(_ valore: Double, cifre: Int) -> String {
+        let testo = Formato.decimali(abs(valore), cifre: cifre)
+        guard valore < 0, testo.contains(where: { ("1"..."9").contains($0) }) else { return testo }
+        return "\u{2212}" + testo
     }
 }
 

@@ -74,13 +74,14 @@ struct ImpostazioniView: View {
                 // arrivano dopo, `demoInFondo` da solo restava in cima)
                 .demoScorriA("imp-informazioni", proxy: proxy, schermate: ["impostazioni"], inFondo: true, ancora: .bottom,
                              pronto: vm.squadre.dato != nil)
-                // fotografia `impostazioni-aspetto` con il testo grande (#857): `portaInVista` mette a metà schermo la prima riga di
-                // Aspetto, che con il testo massimo è più alta di mezzo schermo, e il titolo «Aspetto» restava sopra, sotto l'ora e
-                // la fascia. Solo per la foto, dopo `portaInVista` e con le righe della lega arrivate: in cima l'ultima riga di La
-                // mia lega, sotto il titolo «Aspetto» e il Tema. Con il testo normale la foto resta com'è.
-                .demoScorriA(ultimaRigaLega, proxy: proxy,
-                             schermate: TitoloPagina.barraSenzaTitolo(dimensione) ? ["impostazioni-aspetto"] : [],
-                             pronto: vm.squadre.dato != nil)
+                // fotografia `impostazioni-aspetto`: `portaInVista` scorre dopo 400 ms, e le righe arrivate dopo sopra Aspetto («Ore
+                // tranquille» con gli avvisi, «La mia squadra» e «Le altre squadre» con le squadre) la spingevano giù, con «Animazioni
+                // ridotte» sotto la barra (#911). Solo per la foto, quando sono arrivate tutte, si scorre di nuovo: con il testo normale
+                // la prima riga di Aspetto a metà schermo, come `portaInVista`; con il testo grande (#857), dove quella riga è più alta
+                // di mezzo schermo e il titolo «Aspetto» restava sotto l'ora, in cima l'ultima riga di La mia lega.
+                .demoScorriA(TitoloPagina.barraSenzaTitolo(dimensione) ? ultimaRigaLega : ParteImpostazioni.aspetto.ancora, proxy: proxy,
+                             schermate: ["impostazioni-aspetto"], ancora: TitoloPagina.barraSenzaTitolo(dimensione) ? .top : .center,
+                             pronto: vm.squadre.dato != nil && avvisi.caricatore.dato != nil)
                 .refreshable {
                     await vm.carica()
                     await avvisi.carica()
