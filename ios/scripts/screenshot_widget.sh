@@ -1,7 +1,8 @@
 #!/bin/bash
 # Fotografa i widget nel simulatore (lanciato da .github/workflows/screenshot.yml).
 # L'app di anteprima (target AnteprimaWidget) mostra i tre widget (oggi, formazione, dubbi) con dati finti:
-# -GALLERIA <widget>[-blocco], -DATI pieni|vuoto|in_corso|in_corso_recupero|finita|campionato_finito|senza_formazione|salvati.
+# -GALLERIA <widget>[-blocco], -DATI pieni|vuoto|in_corso|in_corso_recupero|finita|campionato_finito|senza_formazione|salvati,
+# -ASPETTO scuro|chiaro (l'aspetto del giro, che l'anteprima usa qualunque cosa dica il simulatore: vedi giro).
 # Uso: scripts/screenshot_widget.sh <AnteprimaWidget.app per il simulatore> <cartella dei PNG>
 APP="${1:?manca il percorso di AnteprimaWidget.app}"
 USCITA="${2:-screenshot-widget}"
@@ -13,13 +14,15 @@ source "$(dirname "$0")/avvisi.sh"
 
 scegli() { python3 -I "$(dirname "$0")/scegli_simulatore.py" "$1"; }
 
+# scatta <udid> <etichetta> <widget> <dati> <larghezza> <scuro|chiaro>
 scatta() {
-  local udid="$1" etichetta="$2" nome="$3" dati="${4:-pieni}" larghezza="$5"
+  local udid="$1" etichetta="$2" nome="$3" dati="${4:-pieni}" larghezza="$5" aspetto="${6:-scuro}"
   local render="pieno" suffisso=""
   if [[ "$dati" == *+* ]]; then render="${dati##*+}"; dati="${dati%%+*}"; suffisso="_$render"; fi
   xcrun simctl terminate "$udid" "$ID_APP" >/dev/null 2>&1
   sleep 1
-  if ! xcrun simctl launch "$udid" "$ID_APP" -GALLERIA "$nome" -DATI "$dati" -RENDER "$render" -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null; then
+  if ! xcrun simctl launch "$udid" "$ID_APP" -GALLERIA "$nome" -DATI "$dati" -RENDER "$render" -ASPETTO "$aspetto" \
+        -AppleLanguages "(it)" -AppleLocale it_IT >/dev/null; then
     echo "ERRORE: l'app non parte ($etichetta / $nome)"; ERRORI=$((ERRORI + 1)); return
   fi
   sleep 3
@@ -42,11 +45,16 @@ giro() {   # giro <udid> <etichetta> <dark|light> <larghezza> <widget[:dati]...>
   local udid="$1" etichetta="$2" aspetto="$3" larghezza="$4"
   shift 4
   echo "=== $etichetta ($aspetto) ==="
+  # Il cambio di aspetto del simulatore è asincrono: le prime foto «scuro» dopo l'accensione dell'iPad uscivano chiare (corsa
+  # 45529400800, #890). Per questo l'anteprima riceve anche l'aspetto del giro (-ASPETTO), come le foto dell'app (-DEMO_ASPETTO,
+  # #852); il simulatore si cambia lo stesso, per la barra di stato e il resto del sistema.
+  local nome_aspetto=scuro
+  [ "$aspetto" = light ] && nome_aspetto=chiaro
   xcrun simctl ui "$udid" appearance "$aspetto"
   xcrun simctl ui "$udid" content_size "${DIMENSIONE:-large}"
   local s
   for s in "$@"; do
-    scatta "$udid" "$etichetta" "${s%%:*}" "$( [[ "$s" == *:* ]] && echo "${s##*:}" || echo pieni )" "$larghezza"
+    scatta "$udid" "$etichetta" "${s%%:*}" "$( [[ "$s" == *:* ]] && echo "${s##*:}" || echo pieni )" "$larghezza" "$nome_aspetto"
   done
 }
 
