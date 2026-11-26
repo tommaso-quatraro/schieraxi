@@ -145,7 +145,7 @@ struct FormazioneView: View {
 
     /// Solo sull'iPad (largo e alto, #896): il campo con la metà campo libera e alto almeno tre quarti della larghezza, e gli
     /// elenchi chiusi bassi quanto la loro zona di tocco. Sui telefoni, anche grandi e in orizzontale, tutto come prima.
-    private var spazioso: Bool { classe == .regular && classeVerticale == .regular }
+    private var spazioso: Bool { SpazioIPad.largoEAlto(orizzontale: classe, verticale: classeVerticale) }
 
     @ViewBuilder
     private func pagina(_ f: Formazione) -> some View {

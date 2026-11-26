@@ -10,13 +10,20 @@ struct GiornateView: View {
     @ObservedObject var vm: GiornateViewModel
     @EnvironmentObject private var nav: Navigazione
     @Environment(\.horizontalSizeClass) private var classe
+    @Environment(\.verticalSizeClass) private var classeVerticale
     /// La giornata di «Non è quello che ho schierato».
     @State private var daCorreggere: VoceDiario?
     /// Dopo la correzione VoiceOver torna sulla riga della giornata corretta.
     @AccessibilityFocusState private var fuoco: String?
 
+    /// Elenco e dettaglio affiancati solo sull'iPad largo e alto (#919): un iPhone grande in orizzontale ha la larghezza «regular»
+    /// ma è basso, e tiene la pagina del telefono.
+    nonisolated static func elencoEDettaglio(orizzontale: UserInterfaceSizeClass?, verticale: UserInterfaceSizeClass?) -> Bool {
+        SpazioIPad.largoEAlto(orizzontale: orizzontale, verticale: verticale)
+    }
+
     var body: some View {
-        Group { if classe == .regular { colonne } else { pila } }
+        Group { if Self.elencoEDettaglio(orizzontale: classe, verticale: classeVerticale) { colonne } else { pila } }
             .sheet(item: $daCorreggere, onDismiss: { tornaAllaRiga() }) { v in
                 FormazioneManualeDiarioView(voce: v, server: vm.server) { titolari in
                     await vm.correggi(v, titolari: titolari)
@@ -96,23 +103,30 @@ struct GiornateView: View {
             }
             .background(Sfondo())
             .avvisoDatiSalvati(vm.caricatore)
-            .titoloPagina(Catalogo.Nav.giornate)
+            // il titolo piccolo nella barra, fermo (#919): con quello grande, in orizzontale, scorrendo la colonna di destra il
+            // titolo spariva senza lasciare quello piccolo e la colonna di sinistra saliva di ~50 punti con la barra
+            .titoloPagina(Catalogo.Nav.giornate, piccoloInBarra: true)
         }
     }
 
     /// A sinistra la riga di stato, la frase sulla precisione con «Dettagli» e le giornate; la riga scelta è quella a destra.
+    /// Niente lista con la selezione di iOS (#919): riempiva la riga scelta del colore principale e i testi grigi della riga non si
+    /// leggevano più (foto della corsa 45760638734). Ogni riga è un pulsante e quella scelta ha il grigio dell'app.
     private var elencoIPad: some View {
-        List(selection: sceltaIPad) {
+        let scelta = vm.pagina?.aDestra(scelta: vm.scelta).id
+        return List {
             capo
             if let p = vm.pagina {
-                testaIPad(p)
+                testaIPad(p, scelta: scelta)
                 if p.righe.isEmpty {
                     vuoto(p)
                 } else {
                     Section {
                         ForEach(p.righe) { r in
-                            RigaGiornataView(riga: r)
-                                .accessibilityFocused($fuoco, equals: r.id)
+                            rigaSceglibile(r.id, scelta: scelta) {
+                                RigaGiornataView(riga: r)
+                            }
+                            .accessibilityFocused($fuoco, equals: r.id)
                         }
                     }
                 }
@@ -126,15 +140,26 @@ struct GiornateView: View {
         .refreshable { await vm.carica() }
     }
 
-    /// La riga scelta nell'elenco dell'iPad: quella toccata (una giornata o «Dettagli»), se no la più recente
-    /// (`PaginaGiornate.aDestra`).
-    private var sceltaIPad: Binding<String?> {
-        Binding(get: { vm.pagina?.aDestra(scelta: vm.scelta).id }, set: { vm.scelta = $0 })
+    /// Una riga dell'elenco dell'iPad che si sceglie con un tocco (una giornata o «Dettagli»). La scelta, cioè quella che sta a
+    /// destra (`PaginaGiornate.aDestra`: la toccata, se no la più recente), ha il fondo grigio dell'app (`Color.rigaScelta`) e per
+    /// VoiceOver è «selezionata». I testi hanno i loro colori: nome e punti quello del testo, non quello dei pulsanti.
+    private func rigaSceglibile<Etichetta: View>(_ id: String, scelta: String?,
+                                                 @ViewBuilder etichetta: () -> Etichetta) -> some View {
+        let scelto = id == scelta
+        return Button { vm.scelta = id } label: {
+            etichetta()
+                .foregroundStyle(Color.primary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .listRowBackground(scelto ? Color.rigaScelta : nil)
+        .accessibilityAddTraits(scelto ? .isSelected : [])
     }
 
-    /// Sull'iPad la frase sulla precisione e la riga «Dettagli», che si sceglie come una giornata e apre i numeri a destra.
+    /// Sull'iPad la frase sulla precisione e la riga «Dettagli», che si sceglie come una giornata e apre i numeri a destra: la
+    /// freccia dice che si tocca (#919).
     @ViewBuilder
-    private func testaIPad(_ p: PaginaGiornate) -> some View {
+    private func testaIPad(_ p: PaginaGiornate, scelta: String?) -> some View {
         if p.precisione != nil || p.dettagli != nil {
             Section {
                 if let frase = p.precisione {
@@ -143,11 +168,19 @@ struct GiornateView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if let titolo = p.titoloDettagli, p.dettagli != nil {
-                    Text(titolo)
-                        .font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
-                        .contentShape(Rectangle())
-                        .tag(PaginaGiornate.idDettagli)
+                    rigaSceglibile(PaginaGiornate.idDettagli, scelta: scelta) {
+                        HStack(spacing: 8) {
+                            Text(titolo)
+                                .font(.subheadline.weight(.semibold))
+                                .fixedSize(horizontal: false, vertical: true)
+                            Spacer(minLength: 0)
+                            Image(systemName: "chevron.right")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(Color.testoSecondario)
+                                .accessibilityHidden(true)
+                        }
+                        .frame(minHeight: Tema.areaTocco)
+                    }
                 }
             }
         }

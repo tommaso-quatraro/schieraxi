@@ -254,12 +254,22 @@ struct RadiceView: View {
     /// Punto di partenza e arrivo della transizione a zoom tra una riga di giocatore e la sua scheda.
     @Namespace private var zoom
 
-    /// Si parte dalla barra laterale invece che dalla barra in alto? Solo sull'iPad (largo e alto) con il testo molto grande
-    /// (misure Accessibilità): la barra in alto non ha posto per tutte le voci, «Impostazioni» spariva oltre il bordo e dentro
-    /// Impostazioni nessuna voce risultava scelta (#896). Nella barra laterale le voci sono intere, una sotto l'altra.
-    nonisolated static func barraLateraleSubito(orizzontale: UserInterfaceSizeClass?, verticale: UserInterfaceSizeClass?,
-                                                testo: DynamicTypeSize) -> Bool {
-        orizzontale == .regular && verticale == .regular && testo.isAccessibilitySize
+    /// La barra delle voci va in basso, come sul telefono? Solo sull'iPad largo e alto con il testo molto grande (misure
+    /// Accessibilità). Nella barra in alto «Impostazioni» finiva oltre il bordo e dentro Impostazioni nessuna voce risultava scelta
+    /// (#896); la barra laterale, in verticale, era un pannello sopra un terzo della pagina e spezzava le voci («For-mazione»,
+    /// #919). In basso iOS tiene le etichette alla misura della barra (tenendo premuta una voce la mostra in grande): le tre voci
+    /// e Cerca sono intere, quella aperta si vede e la pagina resta tutta libera, in verticale e in orizzontale.
+    nonisolated static func barraInBasso(orizzontale: UserInterfaceSizeClass?, verticale: UserInterfaceSizeClass?,
+                                         testo: DynamicTypeSize) -> Bool {
+        SpazioIPad.largoEAlto(orizzontale: orizzontale, verticale: verticale) && testo.isAccessibilitySize
+    }
+
+    /// La larghezza che vede la `TabView`: «compact» quando la barra va in basso (`barraInBasso`: è così che iOS mette la barra in
+    /// basso anche sull'iPad), se no quella vera. Le pagine dentro le voci ricevono sempre quella vera (`classeOrizzontale`), così
+    /// colonne, campo e Giornate restano quelli dell'iPad.
+    nonisolated static func classeDellaBarra(orizzontale: UserInterfaceSizeClass?, verticale: UserInterfaceSizeClass?,
+                                             testo: DynamicTypeSize) -> UserInterfaceSizeClass? {
+        barraInBasso(orizzontale: orizzontale, verticale: verticale, testo: testo) ? .compact : orizzontale
     }
 
     var body: some View {
@@ -269,6 +279,8 @@ struct RadiceView: View {
                     vista(s)
                         // lasciata la Formazione, un suo salvataggio che non riesce si dice sulla scheda aperta (#726)
                         .avvisoNonSalvata(modello.formazione, attiva: s != .formazione && nav.sezione == s)
+                        // la larghezza vera anche quando la TabView vede «compact» (`classeDellaBarra`)
+                        .environment(\.horizontalSizeClass, classeOrizzontale)
                 } label: {
                     Label(s.titolo, systemImage: s.icona)
                 }
@@ -280,13 +292,16 @@ struct RadiceView: View {
                     RicercaGiocatoreView(server: modello.server)
                         .destinazioniGiocatore(server: modello.server)
                 }
+                // sull'iPad la colonna della web anche per il campo di ricerca nella barra, non solo per i risultati (#919)
+                .colonnaPagina()
                 .avvisoNonSalvata(modello.formazione, attiva: nav.sezione == .cerca)
+                .environment(\.horizontalSizeClass, classeOrizzontale)
             }
         }
         .tabViewStyle(.sidebarAdaptable)
-        .defaultAdaptableTabBarPlacement(
-            Self.barraLateraleSubito(orizzontale: classeOrizzontale, verticale: classeVerticale, testo: dimensioneTesto)
-                ? .sidebar : .automatic)
+        // con il testo molto grande sull'iPad la barra in basso, come sul telefono (`barraInBasso`)
+        .environment(\.horizontalSizeClass,
+                     Self.classeDellaBarra(orizzontale: classeOrizzontale, verticale: classeVerticale, testo: dimensioneTesto))
         .onAppear { apriPaginaRichiesta() }
         .onChange(of: nav.paginaDaAprire) { _, _ in apriPaginaRichiesta() }
         // la Formazione sa se è la scheda aperta: decide dove si dice un suo salvataggio che non riesce (#726)
