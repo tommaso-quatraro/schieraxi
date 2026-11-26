@@ -1957,6 +1957,26 @@ def test_stato_dei_dati_dice_una_volta_sola_la_frase_delle_fonti_spente(web):
     assert testo.count("condizioni d'uso") == 1 and testo.count("dati già salvati") == 1, testo
 
 
+def test_quanto_si_usa_l_app_scrive_i_nomi_del_server(web):
+    """«Quanto si usa l'app» scrive le etichette del server (il nome della funzione e quello della parte dell'app), mai i nomi
+    interni né i percorsi delle rotte: prima si leggeva «scambi_valuta_o_costruisci» e «GET /api/giocatore/{calciatore_id}»."""
+    solo(web, "prima")
+    s = web.registrata("/api/stato-dati")
+    s["uso"] = {"giorni": 28, "dal": "2026-11-01", "al": "2026-11-26", "richieste": 12, "nota": "", "per_giorno": [],
+                "per_funzione": [{"funzione": "scambi_costruisci", "etichetta": "Scambi dal server", "richieste": 2}],
+                "per_parte": [{"parte": "formazione", "etichetta": "Formazione dal server", "etichetta_frase": None, "richieste": 9}],
+                "per_rotta": [{"rotta": "GET /api/giocatore/{calciatore_id}", "richieste": 9}]}
+    web.risposta("/api/stato-dati", s)
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    tocca(web, principale(web).get_by_role("button", name="Apri lo stato dei dati"))
+    uso = web.pagina.get_by_role("dialog").locator(".carta", has=web.pagina.get_by_role("heading", name="Quanto si usa l'app"))
+    uso.get_by_text("Scambi dal server").wait_for(timeout=10000)
+    uso.get_by_text("Le schermate più usate").click()
+    uso.get_by_text("Formazione dal server").wait_for(timeout=5000)
+    testo = uso.inner_text()
+    assert "scambi_costruisci" not in testo and "/api/" not in testo, testo
+
+
 # ---------------------------------------------------------------- accesso: gli avvisi non sono errori
 def test_nella_schermata_di_accesso_un_avviso_non_e_un_errore(web):
     """Sessione finita: la schermata di accesso lo dice con un avviso (`role="status"`), non con un errore (`role="alert"`)."""
