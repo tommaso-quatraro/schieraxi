@@ -273,6 +273,11 @@
     "it": "Il tuo account si elimina da Impostazioni › Il tuo account, con la password",
     "en": "You delete your own account from Settings › Your account, with your password"
   },
+  "err.amministratore_dal_server": {
+    "it": "Un amministratore si blocca, si sblocca o si elimina solo sul server, dalla riga di comando",
+    "en": "An administrator can be blocked, unblocked or deleted only on the server, from the command line",
+    "nota": "Gestione › Utenti: blocca, sblocca o elimina un altro amministratore (403); la web non mostra i pulsanti su quelle righe"
+  },
   "err.problema_file": {
     "it": "Il server ha un problema con i suoi file: riprova più tardi. Se succede ancora, avvisa chi gestisce l'app.",
     "en": "The server has a problem with its files: try again later. If it keeps happening, tell whoever runs the app."

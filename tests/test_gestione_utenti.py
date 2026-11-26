@@ -9,11 +9,13 @@
 Dati inventati, cartelle temporanee."""
 import contextlib
 import json
+import re
+import sqlite3
 from datetime import datetime
 
 import pytest
 
-from fanta import account, contesto, frasi, fuso, percorsi, push, registro
+from fanta import account, contesto, frasi, fuso, percorsi, posta, push, registro
 from fanta.__main__ import main
 
 from test_account_http import PASSWORD, cliente, registra
@@ -98,6 +100,79 @@ def test_l_ultimo_amministratore_non_si_blocca(titolare):
     assert titolare.get("/api/account/me").status_code == 200
 
 
+def vice_bloccato() -> int:
+    """Un secondo amministratore, bloccato dal comando del server (dalla web non si può: revisione della #933)."""
+    c = cliente()
+    r = registra(c, "vice", amministratore=True)
+    assert r.status_code == 200, r.text
+    vice = r.json()["utente"]["id"]
+    with contextlib.closing(account.apri()) as db:
+        account.blocca(db, vice, via="comando")
+    return vice
+
+
+def test_un_amministratore_bloccato_non_conta_come_amministratore(titolare, monkeypatch):
+    """Revisione della #933: con il vice bloccato il capo è l'ultimo amministratore attivo. Se si eliminasse o si declassasse, il server
+    resterebbe senza nessuno che lo gestisce: né da Il tuo account, né dai comandi del server."""
+    vice_bloccato()
+    r = titolare.post("/api/account/elimina", json={"password": PASSWORD})
+    assert r.status_code == 400 and "ultimo amministratore" in r.json()["detail"], r.text
+    with contextlib.closing(account.apri()) as db, pytest.raises(account.ErroreAccount, match="ultimo amministratore"):
+        account.imposta_ruolo(db, "capo", "utente")
+    monkeypatch.setattr("builtins.input", lambda domanda: "capo")
+    with pytest.raises(SystemExit, match="ultimo amministratore"):
+        main(["utente-elimina", "capo"])
+    with pytest.raises(SystemExit, match="ultimo amministratore"):
+        main(["utente-ruolo", "--utente", "capo", "--ruolo", "normale"])
+    assert titolare.get("/api/account/me").json()["utente"]["ruolo"] == "amministratore"
+
+
+def test_l_amministratore_bloccato_si_puo_eliminare_dal_comando(titolare, monkeypatch):
+    """Il contrario: il vice bloccato non è l'ultimo amministratore attivo (c'è il capo), quindi dal comando si elimina."""
+    vice = vice_bloccato()
+    monkeypatch.setattr("builtins.input", lambda domanda: "vice")
+    main(["utente-elimina", "vice"])
+    with contextlib.closing(account.apri()) as db:
+        assert account.trova(db, vice) is None
+
+
+def test_gli_altri_amministratori_si_gestiscono_solo_dal_server(titolare):
+    """Revisione della #933: dalla web chi gestisce non blocca, non sblocca e non elimina un altro amministratore (403 chiaro);
+    si fa dalla riga di comando del server."""
+    c = cliente()
+    r = registra(c, "vice", amministratore=True)
+    vice = r.json()["utente"]["id"]
+    for risposta in (titolare.post(f"/api/admin/utenti/{vice}/blocca"), titolare.post(f"/api/admin/utenti/{vice}/sblocca"),
+                     titolare.delete(f"/api/admin/utenti/{vice}")):
+        assert risposta.status_code == 403, risposta.text
+        assert risposta.json()["detail"] == account.AMMINISTRATORE_DAL_SERVER
+    assert c.get("/api/account/me").status_code == 200 and utenti(titolare)["vice"]["bloccato"] is False
+    assert not eventi("account_bloccato") and not eventi("account_eliminato")
+
+
+# ---------------------------------------------------------------- la migrazione
+def test_la_colonna_del_blocco_gia_presente_non_ferma_il_database(tmp_path):
+    """Revisione della #933: la migrazione di `utenti.bloccato` aggiunge la colonna solo se manca. Con una colonna già presente
+    (aggiunta a mano, o da migrazioni di altre pull request unite in un altro ordine) il database si apre e arriva in fondo."""
+    f = tmp_path / "account.sqlite"
+    indice = next(n for n, v in enumerate(account.MIGRAZIONI)
+                  if getattr(v, "__name__", "") == "_aggiungi_bloccato" or (isinstance(v, str) and "ADD COLUMN bloccato" in v))
+    db = sqlite3.connect(f)
+    for n, voce in enumerate(account.MIGRAZIONI[:indice]):
+        if callable(voce):
+            voce(db)
+            db.execute(f"PRAGMA user_version = {n + 1}")
+            db.commit()
+        else:
+            db.executescript(voce + f"PRAGMA user_version = {n + 1};")
+    db.execute("ALTER TABLE utenti ADD COLUMN bloccato TEXT")
+    db.commit()
+    db.close()
+    with contextlib.closing(account.apri(f)) as db:
+        assert db.execute("PRAGMA user_version").fetchone()[0] == len(account.MIGRAZIONI)
+        assert [r[1] for r in db.execute("PRAGMA table_info(utenti)")].count("bloccato") == 1
+
+
 # ---------------------------------------------------------------- l'elenco
 def test_elenco_con_iscrizione_ultimo_accesso_e_blocco(titolare):
     _, uid = amico("luca")
@@ -168,6 +243,71 @@ def test_sbloccato_rientra(titolare):
     nuovo = cliente()
     assert nuovo.post("/api/account/accedi", json={"nome_utente": "luca", "password": PASSWORD}).status_code == 200
     assert nuovo.get("/api/account/me").json()["utente"]["nome_utente"] == "luca"
+
+
+def test_dopo_lo_sblocco_le_vecchie_sessioni_restano_chiuse(titolare):
+    """Sbloccare non riapre niente: la sessione e il token del widget di prima del blocco non valgono più, si rientra con la password."""
+    luca, uid = amico("luca")
+    widget = luca.post("/api/account/token-widget").json()["token"]
+    assert titolare.post(f"/api/admin/utenti/{uid}/blocca").status_code == 200
+    assert titolare.post(f"/api/admin/utenti/{uid}/sblocca").status_code == 200
+    assert luca.get("/api/account/me").status_code == 401
+    assert not token_widget_valido(widget)
+
+
+def riga_utente(uid: int) -> dict:
+    with contextlib.closing(account.apri()) as db:
+        return dict(db.execute("SELECT password_hash, recupero_hash, senza_password FROM utenti WHERE id = ?", (uid,)).fetchone())
+
+
+def google_finto(uid: int) -> None:
+    with contextlib.closing(account.apri()) as db:
+        db.execute("INSERT INTO identita_esterne (utente_id, provider, soggetto, creata) VALUES (?, 'google', 'sub-di-prova', '2026-11-01')",
+                   (uid,))
+        db.commit()
+
+
+def google_collegati(uid: int) -> int:
+    with contextlib.closing(account.apri()) as db:
+        return db.execute("SELECT COUNT(*) FROM identita_esterne WHERE utente_id = ?", (uid,)).fetchone()[0]
+
+
+def test_il_bloccato_non_recupera_la_password_con_il_codice(titolare):
+    """Revisione della #933: con il codice di recupero giusto un bloccato riceveva 200, cambiava la password e perdeva Google.
+    Ora 403 «bloccato» dopo il codice giusto e nient'altro cambia; con un codice sbagliato la risposta di sempre."""
+    c = cliente()
+    r = registra(c, "luca")
+    uid, codice = r.json()["utente"]["id"], r.json()["codice_recupero"]
+    google_finto(uid)
+    assert titolare.post(f"/api/admin/utenti/{uid}/blocca").status_code == 200
+    prima = riga_utente(uid)
+    corpo = {"nome_utente": "luca", "codice": codice, "nuova": "una-nuova-password-9"}
+    sbagliato = cliente().post("/api/account/recupero", json=corpo | {"codice": "AAAA-BBBB-CCCC-DDDD-EEEE"})
+    assert sbagliato.status_code == 403 and "codice" not in sbagliato.json(), sbagliato.text
+    r = cliente().post("/api/account/recupero", json=corpo)
+    assert r.status_code == 403 and r.json()["codice"] == "account_bloccato" and r.json()["detail"] == account.BLOCCATO, r.text
+    assert riga_utente(uid) == prima and google_collegati(uid) == 1
+    reset = titolare.post("/api/admin/reset-password", json={"nome_utente": "luca"}).json()["codice"]   # anche il codice di chi gestisce
+    assert cliente().post("/api/account/recupero", json=corpo | {"codice": reset}).json().get("codice") == "account_bloccato"
+    assert riga_utente(uid) == prima
+
+
+def test_il_bloccato_non_recupera_la_password_con_l_email(titolare, monkeypatch):
+    messaggi = []
+    monkeypatch.setattr(posta, "invia", lambda m: messaggi.append(m) or True)
+    monkeypatch.setattr(posta, "attiva", lambda: True)
+    luca, uid = amico("luca")
+    assert luca.post("/api/account/email", json={"email": "luca@example.com", "password": PASSWORD}).status_code == 200
+    sei_cifre = lambda: re.search(r"\b(\d{6})\b", messaggi[-1].testo).group(1)  # noqa: E731
+    assert luca.post("/api/account/email/conferma", json={"codice": sei_cifre()}).status_code == 200
+    google_finto(uid)
+    assert titolare.post(f"/api/admin/utenti/{uid}/blocca").status_code == 200
+    prima = riga_utente(uid)
+    assert cliente().post("/api/account/recupero-email", json={"email": "luca@example.com"}).status_code == 200
+    r = cliente().post("/api/account/recupero-email/conferma",
+                       json={"email": "luca@example.com", "codice": sei_cifre(), "nuova": "una-nuova-password-9"})
+    assert r.status_code == 403 and r.json()["codice"] == "account_bloccato", r.text
+    assert riga_utente(uid) == prima and google_collegati(uid) == 1
 
 
 def test_bloccare_due_volte_non_cambia_niente(titolare):

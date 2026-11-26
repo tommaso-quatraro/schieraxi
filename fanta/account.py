@@ -144,6 +144,15 @@ def _riparazione_sessione_hash(db: sqlite3.Connection) -> None:
         db.execute("ALTER TABLE flussi_social ADD COLUMN sessione_hash TEXT")
 
 
+def _aggiungi_bloccato(db: sqlite3.Connection) -> None:
+    """Account bloccato da chi gestisce il server (26/11/2026, Gestione › Utenti e `python -m fanta utente-blocca`): `utenti.bloccato`
+    = quando, NULL = non bloccato. Un bloccato non entra e non ha sessioni; i suoi dati restano finché non lo si sblocca o elimina.
+    La colonna si aggiunge solo se manca: una colonna già presente (a mano, o migrazioni di altre pull request unite in un altro
+    ordine) non ferma il database."""
+    if "bloccato" not in [r[1] for r in db.execute("PRAGMA table_info(utenti)")]:
+        db.execute("ALTER TABLE utenti ADD COLUMN bloccato TEXT")
+
+
 MIGRAZIONI = [
     """
     CREATE TABLE utenti (
@@ -317,11 +326,7 @@ MIGRAZIONI = [
     """
     ALTER TABLE token_widget ADD COLUMN sessione_id INTEGER;
     """,
-    # account bloccato da chi gestisce il server (26/11/2026, Gestione › Utenti e `python -m fanta utente-blocca`): quando, NULL =
-    # non bloccato. Un bloccato non entra e non ha sessioni; i suoi dati restano finché non lo si sblocca o elimina
-    """
-    ALTER TABLE utenti ADD COLUMN bloccato TEXT;
-    """,
+    _aggiungi_bloccato,
 ]
 
 # Versione dei testi «Privacy» e «Termini d'uso» (la data di «Ultimo aggiornamento» delle pagine): si cambia quando cambiano i testi.
@@ -1032,7 +1037,33 @@ def _utente_attivo(db: sqlite3.Connection, utente_id: int) -> Utente | None:
     return None if riga is None or riga["bloccato"] else _utente(riga)
 
 
+def _altri_amministratori_attivi(db: sqlite3.Connection, utente_id: int) -> int:
+    """Quanti amministratori NON bloccati ci sono oltre a questo account. Zero: bloccarlo, eliminarlo o declassarlo lascerebbe il
+    server senza nessuno che lo gestisca (un amministratore bloccato non entra, quindi non conta)."""
+    return db.execute("SELECT COUNT(*) FROM utenti WHERE ruolo = 'amministratore' AND bloccato IS NULL AND id != ?",
+                      (utente_id,)).fetchone()[0]
+
+
 BLOCCATO = "Questo account è bloccato: chiedi a chi gestisce SchieraXI."
+AMMINISTRATORE_DAL_SERVER = "Un amministratore si blocca, si sblocca o si elimina solo sul server, dalla riga di comando"
+
+
+def utente_comune(db: sqlite3.Connection, utente_id: int) -> Utente:
+    """L'account su cui chi gestisce agisce dalla web (blocca, sblocca, elimina): 404 se non c'è, 403 se è un amministratore.
+    Un amministratore si gestisce solo sul server, con i comandi `utente-blocca`, `utente-sblocca`, `utente-elimina`."""
+    utente = trova(db, utente_id)
+    if utente is None:
+        raise ErroreAccount("Account non trovato", 404)
+    if utente.amministratore:
+        raise ErroreAccount(AMMINISTRATORE_DAL_SERVER, 403)
+    return utente
+
+
+def negato_bloccato(nome: str, **campi) -> None:
+    """Un account bloccato ha passato la prova (password giusta, Google, codice di recupero giusto): niente sessione e niente
+    cambi, una riga nel registro di sicurezza e il 403 con `codice: account_bloccato`."""
+    evento("accesso_negato_bloccato", nome=nome, **campi)
+    raise ErroreAccount(BLOCCATO, 403, codice="account_bloccato")
 ULTIMO_AMMINISTRATORE_BLOCCO = "Non posso bloccare l'ultimo amministratore: prima promuovi un altro account"
 
 
@@ -1051,8 +1082,7 @@ def blocca(db: sqlite3.Connection, utente_id: int, bloccato: bool = True, adesso
         if bool(riga["bloccato"]) == bloccato:
             db.rollback()
             return 0
-        if bloccato and riga["ruolo"] == "amministratore" and db.execute(
-                "SELECT COUNT(*) FROM utenti WHERE ruolo = 'amministratore' AND bloccato IS NULL AND id != ?", (utente_id,)).fetchone()[0] == 0:
+        if bloccato and riga["ruolo"] == "amministratore" and not _altri_amministratori_attivi(db, utente_id):
             raise ErroreAccount(ULTIMO_AMMINISTRATORE_BLOCCO)
         db.execute("UPDATE utenti SET bloccato = ? WHERE id = ?", (_testo(adesso) if bloccato else None, utente_id))
         db.commit()
@@ -1336,9 +1366,7 @@ def _apri_sessione(db: sqlite3.Connection, utente_id: int, dispositivo: str, ade
     if _bloccato(db, utente_id):
         if db.in_transaction:
             db.rollback()
-        nome = db.execute("SELECT nome_utente FROM utenti WHERE id = ?", (utente_id,)).fetchone()["nome_utente"]
-        evento("accesso_negato_bloccato", nome=nome)
-        raise ErroreAccount(BLOCCATO, 403, codice="account_bloccato")
+        negato_bloccato(db.execute("SELECT nome_utente FROM utenti WHERE id = ?", (utente_id,)).fetchone()["nome_utente"])
     token = secrets.token_urlsafe(32)                    # 256 bit
     db.execute("INSERT INTO sessioni (utente_id, token_hash, creata, scade, ultimo_uso, dispositivo) VALUES (?, ?, ?, ?, ?, ?)",
                (utente_id, _hash_token(token), _testo(adesso), _testo(adesso + INATTIVITA), _testo(adesso),
@@ -1660,8 +1688,7 @@ def elimina(db: sqlite3.Connection, utente_id: int, **chi) -> None:
     _transazione(db)                                 # il controllo e la cancellazione stanno in una transazione sola
     try:
         riga = db.execute("SELECT nome_utente, ruolo FROM utenti WHERE id = ?", (utente_id,)).fetchone()
-        if riga and riga["ruolo"] == "amministratore" and db.execute(
-                "SELECT COUNT(*) FROM utenti WHERE ruolo = 'amministratore'").fetchone()[0] <= 1:
+        if riga and riga["ruolo"] == "amministratore" and not _altri_amministratori_attivi(db, utente_id):
             raise ErroreAccount("Non posso eliminare l'ultimo amministratore: prima promuovi un altro account")
         db.execute("DELETE FROM utenti WHERE id = ?", (utente_id,))
         db.commit()
@@ -1689,8 +1716,7 @@ def imposta_ruolo(db: sqlite3.Connection, nome_utente: str, ruolo: str) -> Utent
         if riga["ruolo"] == ruolo:
             db.rollback()
             return _utente(riga)                     # già così: niente da fare
-        if riga["ruolo"] == "amministratore" and db.execute(
-                "SELECT COUNT(*) FROM utenti WHERE ruolo = 'amministratore'").fetchone()[0] <= 1:
+        if riga["ruolo"] == "amministratore" and not _altri_amministratori_attivi(db, riga["id"]):
             raise ErroreAccount("Non posso declassare l'ultimo amministratore: prima promuovi un altro account")
         db.execute("UPDATE utenti SET ruolo = ? WHERE id = ?", (ruolo, riga["id"]))
         db.commit()
@@ -1742,6 +1768,8 @@ def _recupera(db, nome_utente, codice, nuova, ip, adesso, fidato=None, tieni_pus
     if not (buono_reset or buono_recupero):
         _fallimento("recupero", nome, ip)
         raise ErroreAccount("Nome utente o codice non validi", 403)
+    if riga["bloccato"]:                             # codice giusto ma account bloccato: niente password nuova (il tentativo resta contato)
+        negato_bloccato(nome, via="recupero")
     limite.annulla(db, righe)                        # codice giusto: il tentativo non conta come sbagliato
     valida_password(nuova, nome)
     nuovo = nuovo_codice(20)

@@ -136,3 +136,31 @@ def test_sblocca_chiede_conferma(web):
     riga(web, "Sara").get_by_role("button", name="Blocca Sara").wait_for(timeout=10000)
     assert server.azioni == ["POST /api/admin/utenti/9/sblocca"]
     assert len(domande) == 1 and "«Sara»" in domande[0], domande
+
+
+def test_gli_altri_amministratori_non_hanno_pulsanti(web):
+    """Revisione della #933: un altro amministratore si gestisce solo sul server, dalla riga di comando: sulla sua riga niente
+    «Blocca» né «Elimina», anche se è bloccato (niente «Sblocca»)."""
+    vice, vice_bloccato = utente(10, "vice", "Vice", "amministratore"), utente(11, "terzo", "Terzo", "amministratore", bloccato=True)
+    apri_gestione(web, [IO, vice, vice_bloccato, LUCA])
+    for nome in ("Vice", "Terzo"):
+        assert riga(web, nome).get_by_role("button").count() == 0, nome
+    assert "Bloccato mer 25 nov: non può entrare." in riga(web, "Terzo").inner_text()
+    assert riga(web, "Luca").get_by_role("button").count() == 2
+
+
+def test_un_nome_con_html_si_legge_come_testo(web):
+    """Il nome viene dall'utente: nell'elenco, nel nome del pulsante e nella conferma si legge com'è scritto, mai come HTML."""
+    strano = utente(12, "strano", '<img src=x onerror="window.violato=1"><b>Strano</b>')
+    server = apri_gestione(web, [IO, strano])
+    domande = conferma(web, False)
+    testo = riga(web, "Strano").inner_text()
+    assert '<img src=x onerror="window.violato=1"><b>Strano</b>' in testo
+    assert elenco(web).locator("img, b").count() == 0
+    pulsante = elenco(web).get_by_role("button", name=re.compile("^Blocca <img"))
+    assert pulsante.count() == 1
+    pulsante.click(timeout=10000)
+    web.aspetta()
+    assert len(domande) == 1 and '«<img src=x onerror="window.violato=1"><b>Strano</b>»' in domande[0], domande
+    assert server.azioni == [] and not web.pagina.evaluate("() => window.violato === 1")
+    assert not web.errori_console

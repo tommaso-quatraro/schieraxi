@@ -675,18 +675,19 @@ def elenco_utenti():
         return {"utenti": [u | frasi_utente(u) for u in account.elenco(db)], "massimo": account.max_utenti()} | _avviso_posti(db)
 
 
-def _esiste(utente_id: int) -> None:
+def _utente_comune(utente_id: int) -> None:
+    """404 se l'account non c'è, 403 se è un amministratore: chi gestisce il server si gestisce solo dalla riga di comando."""
     with closing(account.apri()) as db:
-        if account.trova(db, utente_id) is None:
-            raise ErroreAccount("Account non trovato", 404)
+        account.utente_comune(db, utente_id)
 
 
 @router.post("/api/admin/utenti/{utente_id}/blocca", dependencies=[Depends(_attivo)])
 def blocca_utente(utente_id: int = FPath(ge=1, le=MAX_ID), chi: Utente = Depends(solo_amministratore)):
     """Blocca un account: non entra più e le sue sessioni, il token del widget e le notifiche web si chiudono subito. I dati restano.
-    La conferma la chiede il client. Mai il proprio account (400)."""
+    La conferma la chiede il client. Mai il proprio account (400) né quello di un altro amministratore (403)."""
     if utente_id == chi.id:
         raise ErroreAccount("Non puoi bloccare il tuo account")
+    _utente_comune(utente_id)
     with closing(account.apri()) as db:
         chiuse = account.blocca(db, utente_id, da=chi.nome_utente)
     return {"ok": True, "sessioni_chiuse": chiuse}
@@ -694,7 +695,8 @@ def blocca_utente(utente_id: int = FPath(ge=1, le=MAX_ID), chi: Utente = Depends
 
 @router.post("/api/admin/utenti/{utente_id}/sblocca", dependencies=[Depends(_attivo)])
 def sblocca_utente(utente_id: int = FPath(ge=1, le=MAX_ID), chi: Utente = Depends(solo_amministratore)):
-    """Toglie il blocco: l'account rientra con la sua password (o con Google)."""
+    """Toglie il blocco: l'account rientra con la sua password (o con Google). Un amministratore (403) solo dal comando."""
+    _utente_comune(utente_id)
     with closing(account.apri()) as db:
         account.blocca(db, utente_id, False, da=chi.nome_utente)
     return {"ok": True}
@@ -703,10 +705,11 @@ def sblocca_utente(utente_id: int = FPath(ge=1, le=MAX_ID), chi: Utente = Depend
 @router.delete("/api/admin/utenti/{utente_id}", dependencies=[Depends(_attivo)])
 def elimina_utente(utente_id: int = FPath(ge=1, le=MAX_ID), chi: Utente = Depends(solo_amministratore)):
     """Elimina un account e tutti i suoi dati, come «Elimina il mio account». Non si può annullare: la conferma la chiede il
-    client. Il proprio account si elimina da Impostazioni › Il tuo account, con la password (400)."""
+    client. Il proprio account si elimina da Impostazioni › Il tuo account, con la password (400); quello di un altro
+    amministratore solo dal comando (403)."""
     if utente_id == chi.id:
         raise ErroreAccount("Il tuo account si elimina da Impostazioni › Il tuo account, con la password")
-    _esiste(utente_id)
+    _utente_comune(utente_id)
     elimina_account_e_dati(utente_id, da=chi.nome_utente)
     return {"ok": True}
 

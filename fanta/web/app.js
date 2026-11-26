@@ -4233,6 +4233,7 @@ function collegaAmministratore() {
   }));
   // Utenti: quanti sono e, per ognuno, il nome, la frase del server (iscrizione e ultimo accesso) e, se è bloccato, da quando.
   // Sugli altri account «Blocca» (o «Sblocca») ed «Elimina»; il proprio non ha pulsanti («Sei tu»): si elimina da Il tuo account.
+  // Nemmeno quelli degli altri amministratori: si gestiscono solo sul server, dalla riga di comando (il server rifiuta con 403).
   const caricaUtenti = async () => {
     const dove = $("#adm-utenti");
     if (!dove) return;
@@ -4248,7 +4249,7 @@ function collegaAmministratore() {
         return `<li class="riga"><div><div>${esc(nome)}${u.ruolo === "amministratore" ? t("admin.admin_breve") : ""}</div>
           ${u.bloccato && u.blocco ? `<div class="piccolo">${esc(testoDi(u, "blocco"))}</div>` : ""}
           ${u.dettaglio ? `<div class="debole piccolo">${esc(testoDi(u, "dettaglio"))}</div>` : ""}</div>
-          ${mio ? `<span class="debole piccolo">${t("admin.tu")}</span>`
+          ${mio ? `<span class="debole piccolo">${t("admin.tu")}</span>` : u.ruolo === "amministratore" ? ""
             : `<div class="adm-azioni">${pulsante(u.bloccato ? "sblocca" : "blocca")}${pulsante("elimina")}</div>`}</li>`;
       };
       dove.innerHTML = `<p class="debole piccolo">${tp("admin.utenti_conteggio", r.utenti.length, { massimo: r.massimo })}</p>
