@@ -1,7 +1,8 @@
 import Foundation
 
 /// Una riga delle Impostazioni che apre una pagina: il nome, sotto una riga piccola, e la pagina. L'`id` è il gruppo della stessa
-/// riga sulla web (`rigaImp` di `fanta/web/impostazioni.js`: rose, squadra, regole, squadre, account, informazioni, gestione).
+/// riga sulla web (`rigaImp` di `fanta/web/impostazioni.js`: rose, squadra, regole, squadre, account, informazioni, scrivici,
+/// gestione).
 struct VoceImpostazioni: Identifiable, Equatable {
     let id: String
     let nome: String
@@ -45,10 +46,14 @@ enum VociImpostazioni {
     /// Sotto «Gestione» solo quello che c'è sull'iPhone (aggiornare i dati e il loro stato): inviti e utenti sono della web.
     static let sottoGestione = "\(Catalogo.Shell.aggiorna) · \(Catalogo.Av.stato)"
 
-    /// Informazioni per tutti; Gestione solo per chi gestisce il server (invisibile a un utente normale).
-    static func informazioni(gestisce: Bool) -> [VoceImpostazioni] {
+    /// Informazioni per tutti; Scrivici solo con un account (`scrivici`: come la web, che la mostra con `stato.account`); Gestione
+    /// solo per chi gestisce il server (invisibile a un utente normale).
+    static func informazioni(gestisce: Bool, scrivici: Bool = false) -> [VoceImpostazioni] {
         var voci = [VoceImpostazioni(id: "informazioni", nome: Catalogo.Imp.informazioni, sotto: Catalogo.Imp.informazioniSub,
                                      pagina: .informazioni)]
+        if scrivici {
+            voci.append(VoceImpostazioni(id: "scrivici", nome: Catalogo.Scrivici.voce, sotto: Catalogo.Scrivici.voceSub, pagina: .scrivici))
+        }
         if gestisce {
             voci.append(VoceImpostazioni(id: "gestione", nome: Catalogo.Imp.gestione, sotto: sottoGestione, pagina: .gestione))
         }
