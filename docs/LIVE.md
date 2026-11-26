@@ -14,7 +14,7 @@ Provato il 30/10/2026 con poche richieste dirette (pausa >= 1 s, User-Agent ones
 ## Scelta
 
 - **Principale: ESPN.** Unica fonte gratuita senza account con minuto, marcatori e cartellini.
-- **Ripiego: calendario di Fantacalcio.it**, solo punteggio e stato. Entra dopo 3 errori di fila della principale e dura 10 minuti, poi si riprova ESPN. Il campo `fonte` della risposta dice quale dei due ha riempito la cache.
+- **Ripiego: calendario di Fantacalcio.it**, solo punteggio e stato. Entra dopo 3 errori di fila della principale e dura 10 minuti, poi si riprova ESPN. Il campo `fonte` della risposta dice quale dei due ha riempito la cache. Le partite da giocare non hanno punteggio (`null`, come con ESPN) e il minuto dell'ultima lettura di ESPN non si ricopia (i marcatori già noti sì). Con Fantacalcio.it spenta negli interruttori delle fonti il ripiego non parte: si riprova solo ESPN, con le pause che crescono. La richiesta passa da `rete.scarica`, con la pausa delle altre richieste a Fantacalcio.it e un tentativo solo (dal 26/11/2026).
 - Se ESPN sparisse del tutto, la funzione degrada a «punteggio senza minuto» (ripiego) e, senza nemmeno quello, a calendario e risultati finali dal database come prima.
 
 ## Latenza e frequenza
@@ -28,7 +28,7 @@ Provato il 30/10/2026 con poche richieste dirette (pausa >= 1 s, User-Agent ones
 
 ## Rischi
 
-- Blocco o cambio di forma di ESPN: il lettore salta le partite che non capisce e la cache resta quella di prima; una risposta senza nessuna delle partite seguite (forma cambiata o elenco vuoto) conta come errore, non aggiorna l'ora né la fonte, e dopo 3 errori il ripiego prende il posto. Ogni lettura non riuscita lascia una riga nel registro del servizio con il nome della fonte. Nessun errore arriva all'utente.
+- Blocco o cambio di forma di ESPN: il lettore salta le partite che non capisce e la cache resta quella di prima; una risposta senza nessuna delle partite seguite (forma cambiata o elenco vuoto) conta come errore, non aggiorna l'ora né la fonte, e dopo 3 errori il ripiego prende il posto. Ogni lettura non riuscita lascia una riga nel registro del servizio con il nome della fonte; anche un giro del raccoglitore non riuscito e una cache su file non salvata lasciano una riga, con il tipo d'errore. Nessun errore arriva all'utente.
 - Termini d'uso: uso personale, frequenza bassa, nessuna ridistribuzione dei dati oltre agli utenti dell'app. Se l'app diventasse pubblica/commerciale, la fonte va rivista (football-data.org o un provider con licenza).
 - Nomi squadra non riconosciuti: la partita non compare dal vivo e resta quella del database.
 - Memoria: la cache è un dizionario di al massimo qualche decina di partite (2 giorni).

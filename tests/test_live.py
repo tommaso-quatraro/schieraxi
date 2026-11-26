@@ -2,14 +2,17 @@
 import copy
 import json
 import sqlite3
+import threading
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace as NS
 
 import pytest
+import requests
 from fastapi.testclient import TestClient
 
-from fanta import live, server
+from fanta import fonti_attive, live, rete, server
+from fanta.fonti import fantacalcio as fc
 
 DATI = Path(__file__).parent / "dati"
 SLUG = {"inter", "fiorentina", "lecce", "juventus", "napoli", "roma", "milan", "udinese"}
@@ -290,6 +293,115 @@ def test_il_ripiego_non_cancella_i_marcatori():
     r._unisci([{"casa": k[0], "trasferta": k[1], "data": "2026-10-31 15:00", "stato": "in_corso", "minuto": None,
                 "gol_casa": 1, "gol_trasferta": 0, "eventi": []}], "fantacalcio", o.t)
     assert r.istantanea()["partite"][k]["eventi"] and r.fonte == "fantacalcio"
+
+
+# ---------------------------------------------------------------- difetti del 26/11/2026: ripiego, interruttori, registro
+def _non_giocata(html):
+    """La prima partita della pagina (inter-monza) com'è sul sito prima del calcio d'inizio: stato 0 e punteggio vuoto."""
+    return (html.replace('data-match-status="4"', 'data-match-status="0"', 1)
+            .replace('<span class="score-home">4</span>', '<span class="score-home"></span>', 1)
+            .replace('<span class="score-away">1</span>', '<span class="score-away"></span>', 1))
+
+
+def test_ripiego_non_inventa_lo_zero_a_zero_per_una_partita_da_giocare():
+    """Prima il ripiego dava gol 0 alle partite da giocare e il widget scriveva «0–0»: come ESPN, nessun punteggio."""
+    html = _non_giocata((DATI / "calendario_1.html").read_text(encoding="utf8"))
+    p = next(x for x in live.leggi_ripiego(html, 1, "2026-27") if x["casa"] == "inter")
+    assert (p["stato"], p["gol_casa"], p["gol_trasferta"]) == ("da_giocare", None, None)
+
+
+def test_il_ripiego_non_ricopia_il_minuto_vecchio():
+    """Il ripiego non ha il minuto: tenere quello dell'ultima lettura di ESPN lo mostrerebbe fermo per dieci minuti."""
+    o = Orologio("2026-10-31 15:30")
+    f = FonteFinta(o, {"json": _corpo()})
+    f.risposte["json"]["events"][0]["competitions"][0]["details"] = _espn()["events"][0]["competitions"][0]["details"][:1]
+    r = _racc(o, f)
+    r.passo()
+    k = next(iter(r.istantanea()["partite"]))
+    assert r.istantanea()["partite"][k]["minuto"] == "10'"
+    r._unisci([{"casa": k[0], "trasferta": k[1], "data": "2026-10-31 15:00", "stato": "in_corso", "minuto": None,
+                "gol_casa": 1, "gol_trasferta": 0, "eventi": []}], "fantacalcio", o.t)
+    p = r.istantanea()["partite"][k]
+    assert p["minuto"] is None and p["eventi"]                    # i marcatori restano, il minuto no
+
+
+def test_ripiego_con_fantacalcio_spenta_non_chiede_niente(monkeypatch):
+    chiesti = []
+    monkeypatch.setattr(live.requests, "get", lambda url, **k: chiesti.append(url))
+    monkeypatch.setattr(rete._sessione, "get", lambda url, **k: chiesti.append(url))
+    monkeypatch.setenv("FANTA_FONTE_FANTACALCIO", "0")
+    with pytest.raises(fonti_attive.FonteSpenta):
+        live._scarica_http(live._url_ripiego(10))
+    assert chiesti == []
+
+
+def test_ripiego_rispetta_la_pausa_e_fa_una_richiesta_sola(monkeypatch):
+    """Il ripiego passa dalla pausa di rete.py (una richiesta a Fantacalcio.it appena fatta: aspetta) e non ritenta subito: mai
+    più di una richiesta al minuto della diretta."""
+    chiesti, attese = [], []
+    monkeypatch.setattr(live.requests, "get", lambda *a, **k: pytest.fail("il ripiego deve passare da rete.scarica"))
+    monkeypatch.setattr(rete._sessione, "get", lambda url, **k: chiesti.append(url) or NS(status_code=503, text=""))
+    monkeypatch.setattr(rete.time, "sleep", attese.append)
+    monkeypatch.setattr(rete, "_ultima", rete.time.monotonic())
+    with pytest.raises(requests.HTTPError):
+        live._scarica_http(live._url_ripiego(10))
+    assert chiesti == [fc.url_calendario(10)]
+    assert len(attese) == 1 and 0 < attese[0] <= rete.PAUSA
+
+
+def test_con_fantacalcio_spenta_niente_ripiego_e_le_pause_crescono(monkeypatch):
+    """Fantacalcio.it spenta: dopo tre errori di ESPN non parte il ripiego (prima: richieste a Fantacalcio.it) e si riprova ESPN
+    con pause sempre più lunghe (prima: entrando nel ripiego la pausa tornava a un minuto)."""
+    monkeypatch.setenv("FANTA_FONTE_FANTACALCIO", "0")
+    o = Orologio("2026-10-31 15:05")
+    f = FonteFinta(o, {"json": _corpo(), "html": (DATI / "calendario_1.html").read_text(encoding="utf8")})
+    f.errore = OSError("rete giu")
+    r = _racc(o, f)
+    attese = []
+    for _ in range(5):
+        assert r.passo() == "errore"
+        attese.append(r.prossima - o.mono)
+        o.avanza(r.prossima - o.mono)
+    assert len(f.url) == 5 and all("espn" in u for u in f.url)
+    assert attese == [60, 120, 240, 480, 600]
+
+
+def test_ripiego_in_corso_si_ferma_se_fantacalcio_si_spegne(monkeypatch):
+    o = Orologio("2026-10-31 15:05")
+    f = FonteFinta(o, {"json": _corpo(), "html": (DATI / "calendario_1.html").read_text(encoding="utf8")})
+    r = _racc(o, f)
+    r.ripiego_fino = o.mono + live.DURATA_RIPIEGO
+    monkeypatch.setenv("FANTA_FONTE_FANTACALCIO", "0")
+    assert r.passo() == "ok" and len(f.url) == 1 and "espn" in f.url[0]
+
+
+def test_un_guasto_del_raccoglitore_lascia_una_riga_senza_dettagli(caplog):
+    """Prima `sorveglia` ingoiava ogni errore del raccoglitore senza traccia. Nel registro il tipo d'errore, non il messaggio
+    (può contenere indirizzi o dati)."""
+    fermo = threading.Event()
+
+    class Rotto:
+        def passo(self):
+            fermo.set()
+            raise RuntimeError("dettaglio-riservato")
+
+    live.sorveglia(Rotto(), fermo, pausa=0)
+    righe = [rec.getMessage() for rec in caplog.records if rec.name == "fanta.live"]
+    assert len(righe) == 1 and "RuntimeError" in righe[0] and "dettaglio-riservato" not in righe[0]
+
+
+def test_cache_su_file_non_salvata_lascia_una_riga(tmp_path, monkeypatch, caplog):
+    o = Orologio("2026-10-31 14:50")
+    f = FonteFinta(o, {"json": _corpo()})
+    r = live.Raccoglitore(_calendario, scarica=f, adesso=lambda: o.t, orologio=lambda: o.mono, file=tmp_path / "live.json")
+
+    def disco_pieno(*a, **k):
+        raise OSError("disco pieno in /percorso/riservato")
+
+    monkeypatch.setattr(live, "scrivi_sicuro", disco_pieno)
+    assert r.passo() == "ok"                                      # la raccolta va avanti
+    righe = [rec.getMessage() for rec in caplog.records if rec.name == "fanta.live"]
+    assert len(righe) == 1 and "OSError" in righe[0] and "riservato" not in righe[0]
 
 
 def test_calendario_da_database():
