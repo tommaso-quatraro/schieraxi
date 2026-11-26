@@ -1,0 +1,17 @@
+{
+  "titolo": "Formazione, scheda del giocatore e Regole: sei ritocchi dalle foto",
+  "voci": [
+    "Formazione: l'avviso di aste e scambi è più corto («È il momento di aste e scambi: se le rose sono cambiate, aggiornale.») e non ripete la giornata, che è già scritta in cima; sull'iPhone occupava cinque righe.",
+    "Scheda del giocatore: quanto è probabile che giochi si legge una volta sola, accanto al fantavoto atteso. In «Perché questo numero» non c'è più la riga «gioca il 62%: dubbio», sul computer e sull'iPhone.",
+    "Regole e scadenza, e il passo «I tempi della lega» della prima configurazione: con lo zoom del browser al 200% i menu della scadenza e della prima giornata scrivono la scelta intera, andando a capo, invece di «10 minuti prima dell…».",
+    "La mia squadra, finché non hai detto qual è la tua: il menu parte da «Scegli una squadra», così si può scegliere anche la prima dell'elenco (prima era già in vista e non si salvava).",
+    "iPhone, Regole e scadenza: i valori con due decimali si leggono interi («−0,25», prima «−0,3»), come sul computer; con il testo molto grande il nome della lega va a capo invece di tagliarsi; la linea fra «Salva le regole» e «Annulla le modifiche» parte dal bordo."
+  ],
+  "tecnico": [
+    "Server: dafare.rose_mercato senza {giornata} (fanta/frasi.py, fanta/testi/frase.json, testi.js rigenerato). Il parametro giornata resta nella frase con chiave: le app già installate lo usano nel loro testo. Nessun campo dell'API cambiato.",
+    "Web, htmlScheda: il motivo con chiave «gioca» si toglie sempre da perche_numero nella scheda (prima solo a partita cominciata). iPhone: LetturaScheda.perche allo stesso modo.",
+    "Web: menuIntero e mostraScelta (app.js) mettono #tempi-scadenza e #tempi-prima (Regole e scadenza) e #pa-scadenza e #pa-prima (primoavvio.js) dentro .menu-scelta, il riquadro con il <select> trasparente sopra già usato per il modulo e per le partite rinviate; il testo segue il menu al cambio, dopo un errore di salvataggio, dopo «Applica ai campi» e dopo la lettura delle regole nel primo avvio. stile.css: .accesso-campo .menu-scelta alto come gli altri campi, select a 17 px.",
+    "Web, vistaRosa senza la mia squadra: sceltaMiaSquadra(squadre, true) aggiunge la voce vuota disabilitata «Scegli una squadra» (lega.scegli_squadra, nuova nel catalogo); collegaSceltaMia ignora il valore vuoto. «Non è la tua squadra?» e la Formazione senza squadra non cambiano.",
+    "iPhone: RigaStepper.testo usa max(cifre, RegoleLogica.decimaliRegola(valore)), come cifraCampo della web; il nome della lega è un TextField con axis .vertical, gli a capo si tolgono (RegoleLogica.suUnaRiga) e «Invio» chiude la tastiera senza contare come modifica (RegoleEditorViewModel.nomeLega); alignmentGuide(.listRowSeparatorLeading) sui due pulsanti in fondo."
+  ]
+}
