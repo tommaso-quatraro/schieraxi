@@ -172,6 +172,53 @@ def test_recupero_giocato_ma_voti_in_arrivo_la_voce_resta_nascosta(mondo):
     assert mondo.riepilogo(aspetta) is None
 
 
+@pytest.mark.parametrize("oltre", [False, True])
+def test_titolare_ceduto_prima_del_recupero_la_voce_si_rifa_lo_stesso(mondo, monkeypatch, oltre):
+    """Seconda revisione di #947: G12, titolare della formazione salvata, viene ceduto prima del recupero (mercato di gennaio).
+    La scelta non si può più schierare con la rosa di oggi, ma la voce ha la formazione schierata: prima non si rifaceva più e
+    restavano per sempre i 66 punti del voto d'ufficio. Ora se ne rifanno i punti con la regola di adesso, contando anche G12
+    (6 nella giornata), dentro le ultime giornate e oltre."""
+    assert mondo.aggiorna(UFFICIO) == 1
+    aspetta = rinvii.con_eccezione(UFFICIO, ST, 1, "aspetta", ST)
+    if oltre:
+        _giornata_2_giocata(mondo.db)
+        monkeypatch.setattr(diario, "MASSIMO_GIORNATE", 1)
+    mondo.recupero(TUTTI_SEI | {21: 7.0, 25: 10.0})
+    senza_12 = lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(i, f"G{i}", RUOLI[i - 1], "INT") for i in range(1, 26) if i != 12])],
+                         "Mia")
+    assert diario.aggiorna(mondo.db, aspetta, senza_12, mondo.file, simulazioni=30) == 1
+    v = mondo.voce(aspetta)
+    assert [t["id"] for t in v["schierata"]["titolari"]] == TIT and v["schierata"]["reale"] == 9 * 6.0 + 7.0 + 10.0
+    assert v["spiegazione_punti"] is None
+    assert diario.aggiorna(mondo.db, aspetta, senza_12, mondo.file, simulazioni=30) == 0      # una volta sola
+
+
+def test_voti_del_recupero_arrivati_prima_del_calcolo_la_voce_resta_nascosta(mondo):
+    """Seconda revisione di #947: il recupero è giocato e i suoi voti sono arrivati, ma il Diario non ha ancora fatto il suo giro.
+    I segni `rinvio` della voce dicono il voto d'ufficio e la regola di adesso è «aspetta»: la voce non si mostra, senza nemmeno
+    leggere l'archivio (vuoto qui), e Oggi conta dai voti."""
+    assert mondo.aggiorna(UFFICIO) == 1
+    aspetta = rinvii.con_eccezione(UFFICIO, ST, 1, "aspetta", ST)
+    mondo.recupero(TUTTI_SEI | {21: 7.0, 25: 10.0})
+    assert diario.elenco(mondo.file, aspetta, mondo.db)["giornate"] == []
+    assert diario.elenco(mondo.file, aspetta, sqlite3.connect(":memory:"))["giornate"] == []
+    assert mondo.riepilogo(aspetta)["nel_diario"] is False
+
+
+def test_il_diario_chiede_le_giornate_finite_una_volta_sola(mondo, monkeypatch):
+    """Seconda revisione di #947: con più voci calcolate con altre regole `elenco` chiede all'archivio le giornate finite una
+    volta, non una per voce."""
+    mondo.aggiorna(UFFICIO)
+    voce = diario.carica(mondo.file)["giornate"][f"{ST}/1"] | {"regole": "di-prima"}
+    diario._scrivi(mondo.file, voci={f"{ST}/1": voce, f"{ST}/3": voce | {"giornata": 3}})
+    chiamate = []
+    vera = rinvii.giornate_chiuse
+    monkeypatch.setattr(rinvii, "giornate_chiuse", lambda *a, **k: chiamate.append(1) or vera(*a, **k))
+    r = diario.elenco(mondo.file, UFFICIO, mondo.db)
+    assert [v["giornata"] for v in r["giornate"]] == [1] and [x["giornata"] for x in r["in_attesa"]] == [3]
+    assert len(chiamate) == 1
+
+
 # ---------------------------------------------------------------- 2. il voto contato dalla lega nella tabella degli 11
 @pytest.mark.parametrize("modo, preso, segno", [("voto_ufficio", 6.0, "voto_ufficio"), ("senza_voto", None, "senza_voto"),
                                                 ("aspetta", 10.0, None)])

@@ -611,8 +611,13 @@ def test_voci_senza_impronta_si_rifanno_ma_la_schierata_senza_scelta_resta(finto
         v.pop("regole")
     finto.file.write_text(json.dumps(d), encoding="utf-8")
     monkeypatch.setattr(diario.scelte, "leggi", lambda *a, **k: None)          # la scelta della 1 non c'è più
-    assert diario.aggiorna(finto.db, Regole(), finto.rose, finto.file, simulazioni=50) == 1          # solo la 2, che non ha schierata
-    assert diario.carica(finto.file)["giornate"][f"{ST}/1"]["schierata"] is not None
+    # la 2 si rifà da zero; della 1, che ha la schierata senza più la scelta, si rifanno solo i punti (seconda revisione di #947:
+    # prima restava con l'impronta vecchia e i punti di altre regole)
+    assert diario.aggiorna(finto.db, Regole(), finto.rose, finto.file, simulazioni=50) == 2
+    v = diario.carica(finto.file)["giornate"][f"{ST}/1"]
+    assert [t["id"] for t in v["schierata"]["titolari"]] == [t["id"] for t in d["giornate"][f"{ST}/1"]["schierata"]["titolari"]]
+    assert v["regole"] == diario.impronta_regole(Regole())
+    assert diario.aggiorna(finto.db, Regole(), finto.rose, finto.file, simulazioni=50) == 0
 
 
 def test_istantanea_con_giocatore_non_piu_in_rosa_ripiega_sulla_ricostruzione(vero):

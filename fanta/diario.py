@@ -507,12 +507,14 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
                      scelta: dict | None, simulazioni: int = SIMULAZIONI, automatica: dict | None = None,
                      altri_ids=(), istantanea: dict | None = None, cambi: tuple | None = None,
                      indicatori: bool = True, giocatori_rosa: dict[int, tuple[str, str | None]] | None = None,
-                     tieni: dict | None = None, completa: bool = False) -> dict | None:
+                     tieni: dict | None = None, completa: bool = False, ceduti=()) -> dict | None:
     """La voce del diario di una giornata finita, o None se mancano i dati (o la rosa è troppo piccola per quella giornata).
     Con `tieni` (una voce già scritta) non la rifà da zero: ne rifà solo i punti (`rifai_i_punti`); con anche `completa` (per dare
     il dettaglio dei punti a una voce di prima, `_con_il_dettaglio`) il dettaglio di una formazione è null se la sua panchina di
     allora non si conosce intera e la panchina ha contato.
-    `altri_ids`: chi era nella consigliata di allora (istantanea) ma non è più in rosa, per i numeri per giocatore.
+    `altri_ids`: chi era nella consigliata di allora (istantanea) o fra i titolari della tua formazione ma non è più in rosa, per
+    i numeri per giocatore. `ceduti`: i titolari della tua formazione (schierata o copia alla scadenza) non più in rosa; con
+    `tieni` si contano nelle formazioni da ricontare.
     `giocatori_rosa`: {id: (nome, ruolo)} di tutta la rosa. Chi non ha una previsione per quella giornata (mai sceso in campo prima,
     come spesso il portiere di riserva) si può schierare lo stesso (#447, la regola di `scelte.ruoli_schierabili` a giornata finita):
     entra nella schierata senza voto atteso e con il suo voto vero, se l'ha preso. La consigliata non lo usa.
@@ -537,8 +539,14 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
     rosa = {int(i): fz.Giocatore(int(i), prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]),
                                  float(prev.at[i, "mu"]), float(prev.at[i, "mu_voto"])) for i in ids}
     lista = list(rosa.values())
-    gioca, fv, voto, extra, rinviati = _voti_veri(d, rosa, giocatori_rosa, prev, reali, fv_vero, regole, rinviate, r_rinvio)
-    tutti = rosa | extra
+    # con `tieni` (le formazioni di allora, da ricontare) si conta anche chi le aveva fra i titolari e non è più in rosa (`ceduti`:
+    # per esempio un titolare della formazione salvata ceduto prima del recupero, seconda revisione di #947), con i suoi numeri di
+    # quella giornata. La consigliata non si sceglie di nuovo, quindi non lo usa mai
+    fuori_rosa = {i: fz.Giocatore(i, prev.at[i, "nome"], prev.at[i, "ruolo"], float(prev.at[i, "p_voto"]), float(prev.at[i, "mu"]),
+                              float(prev.at[i, "mu_voto"]))
+              for i in dict.fromkeys(int(x) for x in ceduti) if tieni is not None and i in prev.index and i not in rosa}
+    gioca, fv, voto, extra, rinviati = _voti_veri(d, rosa | fuori_rosa, giocatori_rosa, prev, reali, fv_vero, regole, rinviate, r_rinvio)
+    tutti = rosa | fuori_rosa | extra
     ruoli = {i: g.ruolo for i, g in tutti.items()}
 
     def fatti(tit: list[fz.Giocatore], panc: list[fz.Giocatore]) -> tuple[float, dict]:
@@ -631,7 +639,7 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
 def rifai_i_punti(d: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri, voce: dict, ids_rosa: list[int],
                   scelta: dict | None, automatica: dict | None, istantanea: dict | None,
                   giocatori_rosa: dict[int, tuple[str, str | None]] | None, simulazioni: int = SIMULAZIONI, altri_ids=(),
-                  completa: bool = False) -> dict | None:
+                  completa: bool = False, ceduti=()) -> dict | None:
     """La voce `voce` con i soli punti fatti rifatti con i voti di adesso (#793, decisione del coordinatore): stesse formazioni,
     stessa classificazione (consigliata mostrata o ricostruita, `consigliata_di_allora`, tipo e «L'ho messa» della schierata,
     copia automatica), stessi punti attesi. Cambiano `reale` di ogni formazione, `fv` dei numeri per giocatore, i punti degli
@@ -641,7 +649,8 @@ def rifai_i_punti(d: Dati, stagione: str, giornata: int, regole: Regole, par: Pa
     titolare non più in rosa) la voce resta com'era, con le sole impronte nuove. Le simulazioni servono solo a S2 degli
     indicatori. None se mancano i dati (come `calcola_giornata`). `completa`: vedi `calcola_giornata`."""
     return calcola_giornata(d, stagione, giornata, regole, par, ids_rosa, scelta, simulazioni, automatica, altri_ids,
-                            istantanea=istantanea, giocatori_rosa=giocatori_rosa, tieni=voce, completa=completa)
+                            istantanea=istantanea, giocatori_rosa=giocatori_rosa, tieni=voce, completa=completa,
+                            ceduti=ceduti)
 
 
 def _solo_punti(voce: dict, punti, istantanea: dict | None, scelta: dict | None, automatica: dict | None) -> dict | None:
@@ -824,8 +833,15 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
             continue                    # il calendario la dà finita ma i voti di una partita giocata non ci sono ancora
         chiave = f"{stagione}/{g}"
         ist = istantanee.get(chiave) if isinstance(istantanee.get(chiave), dict) else {}
-        altri = [t["id"] for t in (ist.get("titolari") or []) + (ist.get("panchina") or [])
-                 if isinstance(t, dict) and isinstance(t.get("id"), int) and t["id"] not in ids]
+        vecchia = voci.get(chiave)
+        # chi non è più in rosa: della consigliata di allora (solo per i numeri per giocatore) e, seconda revisione di #947, i
+        # titolari della tua formazione (schierata o copia alla scadenza), per esempio uno ceduto prima del recupero: questi si
+        # contano anche quando se ne rifanno i punti (`ceduti` di `rifai_i_punti`)
+        ceduti = list(dict.fromkeys(t["id"] for k in ("schierata", "automatica") if isinstance((vecchia or {}).get(k), dict)
+                                    for t in vecchia[k].get("titolari") or []
+                                    if isinstance(t, dict) and isinstance(t.get("id"), int) and t["id"] not in ids))
+        altri = list(dict.fromkeys([t["id"] for t in (ist.get("titolari") or []) + (ist.get("panchina") or [])
+                                    if isinstance(t, dict) and isinstance(t.get("id"), int) and t["id"] not in ids] + ceduti))
         scelta = scelte.leggi(stagione, g, file_scelte)
         # una scelta che non si può schierare (regola unica) conta come nessuna scelta. La copia automatica in quel caso non c'è
         # (stesso posto nel file): al suo posto la consigliata congelata alla scadenza (istantanea), la stessa di Oggi in diretta e
@@ -838,13 +854,18 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
                 "titolari": congelati, "panchina": [t["id"] for t in ist.get("panchina") or [] if isinstance(t, dict) and "id" in t]}
         else:
             auto = None if scelta else scelte.leggi(stagione, g, file_scelte, anche_automatica=True)
-        vecchia = voci.get(chiave)
         impronta = impronta_regole(regole, stagione, g, rinvii.ha_fuori_turno(db, stagione, g))
+        if vecchia and vecchia.get("regole") != impronta and vecchia.get("schierata") and not scelta:
+            # regole cambiate, ma la scelta non c'è più o non si può schierare con la rosa di oggi (un titolare ceduto): rifatta da
+            # zero la voce perderebbe la formazione schierata. Se ne rifanno i punti con le regole di adesso, con le stesse formazioni
+            # e chi è stato ceduto (`ceduti`). Prima restava com'era, con i punti di un'altra regola dei rinvii (seconda revisione di #947)
+            if voce := rifai_i_punti(consigli.dati(db), stagione, g, regole, Parametri(), vecchia, ids, None, auto, ist or None,
+                                     _giocatori_rosa(squadra), simulazioni, altri, ceduti=ceduti):
+                nuove_voci[chiave] = voce
+            continue
         if vecchia:
-            salta = False
-            if vecchia.get("regole") != impronta:
-                salta = bool(vecchia.get("schierata") and not scelta)      # regole cambiate ma la scelta non c'è più: non si perde quella schierata già nel diario
-            elif vecchia.get("schierata") or (not scelta and not (auto and not vecchia.get("automatica"))):
+            salta = False                       # regole cambiate: si rifà da zero (senza una scelta valida, sopra: solo i punti)
+            if vecchia.get("regole") == impronta and (vecchia.get("schierata") or (not scelta and not (auto and not vecchia.get("automatica")))):
                 salta = True
             # voce scritta prima di #614, con l'istantanea della giornata: si rifà una volta, per confrontare con la consigliata
             # mostrata (se aveva la schierata e la scelta non c'è più resta com'è: rifarla la perderebbe)
@@ -863,7 +884,7 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
                 if _stessi_voti(dati, stagione, g, regole, vecchia):
                     nuove_voci[chiave] = {**vecchia, "impronta_voti": adesso}     # voti dei suoi giocatori invariati: solo l'impronta
                 elif voce := rifai_i_punti(dati, stagione, g, regole, Parametri(), vecchia, ids, scelta, auto, ist or None,
-                                           _giocatori_rosa(squadra), simulazioni, altri):
+                                           _giocatori_rosa(squadra), simulazioni, altri, ceduti=ceduti):
                     nuove_voci[chiave] = voce
                 continue
             if salta:
@@ -877,7 +898,7 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
                         # e vorrebbero le simulazioni
                         rifatta = rifai_i_punti(dati, stagione, g, regole, Parametri(), {k: x for k, x in vecchia.items() if k != "consiglio"},
                                                 ids, scelta, auto, ist or None, _giocatori_rosa(squadra), simulazioni, altri,
-                                                completa=True)
+                                                completa=True, ceduti=ceduti)
                     except Exception as e:  # noqa: BLE001 - un di più: non deve fermare le giornate dopo
                         # una volta sola: la voce resta com'era, con il dettaglio null, così i giri dopo non ci riprovano
                         LOG.warning("diario: dettaglio dei punti della giornata %s non calcolato (%s), la voce resta senza",
@@ -891,7 +912,7 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
             # rifatta da zero (regole cambiate) la formazione schierata non si valuta più con la rosa di oggi: resta la voce di prima,
             # con i soli punti rifatti (anche con i voti di adesso, #793) e le impronte nuove, così i giri dopo non la rifanno ogni volta
             voce = rifai_i_punti(consigli.dati(db), stagione, g, regole, Parametri(), vecchia, ids, scelta, auto, ist or None,
-                                 _giocatori_rosa(squadra), simulazioni, altri) or (
+                                 _giocatori_rosa(squadra), simulazioni, altri, ceduti=ceduti) or (
                 _unisci_voce(vecchia, voce) | {"regole": voce["regole"], "impronta_voti": voce["impronta_voti"]})
         if voce:
             nuove_voci[chiave] = voce
@@ -1246,24 +1267,39 @@ def motivo_vuoto(db: sqlite3.Connection, regole: Regole, rose: Rose | None) -> s
     return "calcolo"
 
 
-def sospesa(db: sqlite3.Connection, regole: Regole, voce: dict) -> bool:
+def sospesa(db: sqlite3.Connection, regole: Regole, voce: dict, chiuse: set[int] | None = None) -> bool:
     """Vero se la voce non va mostrata, né nel Diario né nel riepilogo di Oggi: è stata calcolata con regole diverse da quelle di
     adesso (`impronta_regole`) e la sua giornata (della stagione in corso) per la lega non è più finita, oppure lo è di nuovo ma i
     voti non sono ancora tutti arrivati (`fasi.voti_arrivati`: `aggiorna` non l'ha ancora rifatta). Succede quando la regola delle
     partite rinviate di quella giornata torna ad «aspetta» dopo il calcolo: i punti della voce (con il voto d'ufficio o senza voto)
     non sono più quelli della lega, che aspetta il recupero. Arrivati i voti del recupero `aggiorna` la rifà, anche fuori dalle
-    ultime MASSIMO_GIORNATE (revisione di #947), perché l'impronta è cambiata.
-    L'archivio si legge solo per le voci calcolate con altre regole: con le regole di adesso una giornata ha una di due impronte
-    (senza o con partite fuori dal turno), e una voce con una delle due resta. Resta anche nel solo caso in cui l'impronta giusta è
-    l'altra, cioè quando il calendario ha spostato una partita dentro o fuori dal turno dopo il calcolo: allora la giornata è finita
-    lo stesso e la rifà `aggiorna`, che usa l'impronta esatta."""
+    ultime MASSIMO_GIORNATE (revisione di #947), perché l'impronta è cambiata. `chiuse` = le giornate finite
+    (`rinvii.giornate_chiuse`), se chi chiama le ha già: `elenco` le chiede una volta sola."""
+    nota = _sospesa_senza_archivio(regole, voce)
+    if nota is not None:
+        return nota
+    stagione, g = consigli.stagione_corrente(), voce["giornata"]
+    finite = chiuse if chiuse is not None else set(rinvii.giornate_chiuse(db, stagione, regole))
+    return not (g in finite and fasi.voti_arrivati(db, stagione, g, regole))
+
+
+def _sospesa_senza_archivio(regole: Regole, voce: dict) -> bool | None:
+    """Quello che di `sospesa` si sa senza leggere l'archivio: False se la voce resta (un'altra stagione, una voce senza l'impronta
+    delle regole, o calcolata con le regole di adesso: con queste una giornata ha una di due impronte, senza o con partite fuori dal
+    turno; resta anche nel solo caso in cui l'impronta giusta è l'altra, cioè quando il calendario ha spostato una partita dentro o
+    fuori dal turno dopo il calcolo, e la rifà `aggiorna`, che usa quella esatta). True se la voce ha i segni `rinvio` dei suoi
+    giocatori (voto d'ufficio o senza voto) e per la giornata adesso vale «aspetta»: i suoi punti non sono quelli della lega
+    nemmeno fra l'arrivo dei voti del recupero e il giro di `aggiorna` (seconda revisione di #947). None se serve l'archivio."""
     stagione = consigli.stagione_corrente()
     g, fatta = voce.get("giornata"), voce.get("regole")
     if voce.get("stagione") != stagione or not isinstance(g, int) or not isinstance(fatta, str):
-        return False                    # un'altra stagione, o una voce senza l'impronta delle regole: non si sa, resta
+        return False
     if fatta in (impronta_regole(regole, stagione, g, False), impronta_regole(regole, stagione, g, True)):
-        return False                    # calcolata con le regole di adesso: niente da chiedere all'archivio
-    return not (g in rinvii.giornate_chiuse(db, stagione, regole) and fasi.voti_arrivati(db, stagione, g, regole))
+        return False
+    segni = any(isinstance(x, dict) and x.get("rinvio") for x in voce.get("giocatori") or [])
+    if segni and rinvii.regola(regole, stagione, g)["modo"] == "aspetta":
+        return True
+    return None
 
 
 def elenco(percorso: Path | None = None, regole: Regole | None = None, db: sqlite3.Connection | None = None) -> dict:
@@ -1280,7 +1316,10 @@ def elenco(percorso: Path | None = None, regole: Regole | None = None, db: sqlit
     if regole is not None:
         voci = [v for v in voci if v["stagione"] != corrente or v["giornata"] >= regole.prima_giornata_lega]
         if db is not None:
-            sospese = [v for v in voci if sospesa(db, regole, v)]
+            # le giornate finite si chiedono all'archivio una volta sola, e solo se una voce ne ha bisogno
+            serve = any(_sospesa_senza_archivio(regole, v) is None for v in voci)
+            chiuse = set(rinvii.giornate_chiuse(db, corrente, regole)) if serve else set()
+            sospese = [v for v in voci if sospesa(db, regole, v, chiuse)]
             voci = [v for v in voci if v not in sospese]
             for v in sospese:
                 lega = serie_a_a_lega(v["giornata"], regole)
