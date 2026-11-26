@@ -159,7 +159,7 @@ struct GiocatoreCorpo: View {
     private var cartaUltimiVoti: some View {
         Carta(Catalogo.Formazione.ultimiVoti) {
             if let s = vm.caricatore.dato {
-                if let forma = Forma.calcola(s.voti ?? []) {
+                if let forma = Forma.di(s.voti ?? [], andamento: s.codiceAndamento) {
                     FilaPillole(spazio: 6) {
                         ForEach(forma.ultime) { pallino($0) }
                     }
