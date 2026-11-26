@@ -1295,7 +1295,7 @@
   "frase.uso.parte_formazione": {
     "it": "Formazione",
     "en": "Lineup",
-    "nota": "nomi delle parti dell'app in «Quanto si usa l'app» (fanta/uso.py, PARTI): gli stessi di «Errori recenti» (nav.formazione, imp.lega, errori.area_avvio...)"
+    "nota": "nomi delle parti dell'app (fanta/uso.py, PARTI, la sola tabella): in «Quanto si usa l'app» (per_parte) e accanto alle rotte di «Errori recenti» (parte di GET /api/admin/registro)"
   },
   "frase.uso.parte_giornate": {
     "it": "Giornate",

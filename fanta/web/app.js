@@ -4287,29 +4287,6 @@ function collegaAccount() {
   }));
 }
 
-// «Errori recenti» (#827): il nome della parte dell'app che usa una rotta, dalla prima parte del percorso («/api/oggi» →
-// «Formazione»), da scrivere accanto al percorso. Una rotta che qui non c'è (nuova, o «(file dell'app)») resta con il solo percorso.
-const AREE_DELLE_ROTTE = {
-  "nav.formazione": ["oggi", "formazione", "scelta", "giocatore", "giocatori", "live", "osservati", "confronto", "classifica", "avatar"],
-  "nav.giornate": ["diario", "calendario", "affidabilita"],
-  "imp.lega": ["regole", "rose", "rosa", "squadre", "mia-squadra", "crediti", "stagione", "nuova-stagione", "onboarding", "primo-avvio",
-    "scambi", "movimenti", "mercato", "asta"],
-  "imp.account": ["account"],
-  "imp.sez_avvisi": ["avvisi", "push"],
-  "imp.aspetto": ["icona"],
-  "imp.gestione": ["admin", "aggiorna", "backup", "stato-dati"],
-  "imp.informazioni": ["novita", "sotto-il-cofano"],
-  "scrivici.voce": ["feedback"],
-  "errori.area_avvio": ["stato", "funzioni"],
-  "errori.area_widget": ["widget"],
-  "errori.area_controllo": ["salute"],
-};
-function nomeDiRotta(rotta) {
-  const m = /^\/api\/([a-z-]+)/.exec(String(rotta || ""));
-  const chiave = m && Object.keys(AREE_DELLE_ROTTE).find(k => AREE_DELLE_ROTTE[k].includes(m[1]));
-  return chiave ? t(chiave) : "";
-}
-
 function collegaAmministratore() {
   if (!stato.account || stato.account.ruolo !== "amministratore" || !$("#scheda-admin")) return;
   const valore = id => ($(id) ? $(id).value : "");
@@ -4437,9 +4414,10 @@ function collegaAmministratore() {
         return esc(Object.hasOwn(TESTI.it, "errori.evento_" + nome) ? t("errori.evento_" + nome) : nome.replace(/_/g, " ")); };
       const righe = (elenco, vuoto, testo) => elenco.length ? `<ul class="registro-elenco">${elenco.map(testo).join("")}</ul>` : `<p>${vuoto}</p>`;
       // tempi in parole (#827): «18,2 millisecondi», da un secondo in su «1,2 secondi»; il percorso accanto al nome della parte
-      // dell'app, il metodo solo dove serve (gli errori)
+      // dell'app scritto dal server (`parte`, `parte_frase` di ogni voce: uso.PARTI), il metodo solo dove serve (gli errori).
+      // Una rotta senza `parte` (sconosciuta, o «(file dell'app)») resta con il solo percorso.
       const tempo = ms => Number(ms) >= 1000 ? t("errori.secondi", { n: num(Number(ms) / 1000) }) : t("errori.millisecondi", { n: num(ms) });
-      const doveRotta = (rotta, metodo = "") => { const percorso = esc(((metodo ? metodo + " " : "") + (rotta || "")).trim()), nome = nomeDiRotta(rotta);
+      const doveRotta = (voce, metodo = "") => { const percorso = esc(((metodo ? metodo + " " : "") + (voce.rotta || "")).trim()), nome = voce.parte ? testoDi(voce, "parte") : "";
         return nome ? t("errori.dove", { nome: esc(nome), rotta: percorso }) : percorso; };
       // le richieste prima dell'accesso (#894) non sono fra le rifiutate: si dicono a parte, solo se ci sono; niente percentile
       const senzaAccesso = Number(c.senza_accesso) > 0 ? " " + tp("errori.senza_accesso", c.senza_accesso, { n: fNum(c.senza_accesso) }) : "";
@@ -4447,9 +4425,9 @@ function collegaAmministratore() {
           rifiutate: tp("errori.n_rifiutate", c.rifiutate, { n: fNum(c.rifiutate) }), errori: tp("errori.n_errori", c.errori, { n: fNum(c.errori) }) })}${senzaAccesso}
           ${t("errori.tempi", { medio: tempo(c.tempo_medio_ms), max: tempo(c.tempo_max_ms) })}</p>
         <h3>${t("errori.del_server")}</h3>${righe(r.errori, t("errori.nessun_errore"), e => `<li>${t(e.errore ? "errori.riga_errore_tipo" : "errori.riga_errore",
-          { quando: quando(e.quando), dove: doveRotta(e.rotta, e.metodo), stato: esc(e.stato || ""), tipo: esc(e.errore || "") })}</li>`)}
+          { quando: quando(e.quando), dove: doveRotta(e, e.metodo), stato: esc(e.stato || ""), tipo: esc(e.errore || "") })}</li>`)}
         <h3>${t("errori.sicurezza")}</h3>${righe(r.sicurezza, t("errori.nessun_evento"), e => `<li>${quando(e.quando)} · ${evento(e.tipo)}${e.nome ? " · " + esc(e.nome) : ""}${e.ip ? " · " + esc(e.ip) : ""}</li>`)}
-        <h3>${t("errori.lente")}</h3>${righe(c.piu_lente, t("errori.ancora_niente"), p => `<li>${tp("errori.lenta_riga", p.richieste, { n: fNum(p.richieste), dove: doveRotta(p.rotta), medio: tempo(p.medio_ms) })}</li>`)}`;
+        <h3>${t("errori.lente")}</h3>${righe(c.piu_lente, t("errori.ancora_niente"), p => `<li>${tp("errori.lenta_riga", p.richieste, { n: fNum(p.richieste), dove: doveRotta(p), medio: tempo(p.medio_ms) })}</li>`)}`;
     } catch (e) { dove.textContent = e.message; }
   };
   $("#adm-registro-aggiorna").addEventListener("click", caricaRegistro);

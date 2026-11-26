@@ -6,6 +6,7 @@ una versione di prima non rompono niente.
 Si guarda ciò che vede chi usa l'app (ruoli, nomi, cosa succede a un tocco), non il sorgente. I test che non dipendono dalla fase
 della giornata girano solo prima della scadenza (`solo`).
 """
+import copy
 import json
 import re
 from urllib.parse import parse_qs, urlsplit
@@ -1685,10 +1686,12 @@ def test_stato_dei_dati_usa_le_etichette_del_server(web):
 # ---------------------------------------------------------------- Gestione: gli errori recenti in parole (#779)
 REGISTRO = {"contatori": {"da": "2026-11-20T08:00:00+00:00", "richieste": 1, "riuscite": 0, "rifiutate": 1, "errori": 0,
                           "senza_accesso": 29, "tempo_medio_ms": 7.3, "tempo_p95_ms": 7.3, "tempo_max_ms": 1234.5,
-                          "piu_lente": [{"rotta": "/api/rotta-mai-vista", "richieste": 2, "medio_ms": 1234.5, "max_ms": 1234.5},
-                                        {"rotta": "/api/stato", "richieste": 1, "medio_ms": 7.3, "max_ms": 7.3}]},
+                          "piu_lente": [{"rotta": "/api/rotta-mai-vista", "richieste": 2, "medio_ms": 1234.5, "max_ms": 1234.5,
+                                         "parte": None, "parte_frase": None},
+                                        {"rotta": "/api/stato", "richieste": 1, "medio_ms": 7.3, "max_ms": 7.3,
+                                         "parte": "Apertura dell'app", "parte_frase": {"chiave": "uso.parte_avvio", "param": {}}}]},
             "errori": [{"quando": "2026-11-20T09:10:00+00:00", "tipo": "errore", "metodo": "GET", "rotta": "/api/oggi", "stato": "500",
-                        "errore": "KeyError"}],
+                        "errore": "KeyError", "parte": "Formazione", "parte_frase": {"chiave": "uso.parte_formazione", "param": {}}}],
             "sicurezza": [{"quando": "2026-11-20T09:05:00+00:00", "tipo": "ruolo_cambiato", "nome": "amico"},
                           {"quando": "2026-11-20T09:01:00+00:00", "tipo": "accesso_fallito", "nome": "amico", "ip": "192.0.2.x"},
                           {"quando": "2026-11-20T09:00:30+00:00", "tipo": "fonte-cambiata", "utente": "amico", "fonte": "understat"},
@@ -1731,6 +1734,26 @@ def test_gli_errori_recenti_sono_scritti_in_parole(web):
     utenti.get_by_text("Amico di prova", exact=False).wait_for(timeout=10000)
     assert "Amico di prova (amministratore)" in utenti.inner_text() and "admin)" not in utenti.inner_text(), utenti.inner_text()
     assert not web.errori_console and not web.richieste_fallite
+
+
+def test_gli_errori_recenti_scrivono_il_nome_della_parte_mandato_dal_server(web):
+    """Il nome accanto al percorso è quello del server (`parte` di /api/admin/registro, tabella uso.PARTI): la web non ha più una
+    sua copia della tabella delle parti. Una rotta senza `parte` resta con il solo percorso, anche se la web la conoscerebbe."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    web.risposta("/api/admin/utenti", {"utenti": [], "massimo": 10})
+    web.risposta("/api/admin/inviti", {"inviti": []})
+    registro = copy.deepcopy(REGISTRO)
+    registro["contatori"]["piu_lente"] = [{"rotta": "/api/stato", "richieste": 1, "medio_ms": 7.3, "max_ms": 7.3,
+                                           "parte": "Nome dal server", "parte_frase": None}]
+    registro["errori"][0] |= {"parte": None, "parte_frase": None}
+    web.risposta("/api/admin/registro", registro)
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    carta = principale(web).locator(".carta", has=web.pagina.get_by_role("heading", name="Errori recenti"))
+    carta.get_by_text("Ruolo cambiato").wait_for(timeout=10000)
+    testo = " ".join(carta.inner_text().split())
+    assert "Nome dal server (/api/stato)" in testo and "Apertura dell'app" not in testo, testo
+    assert "10:10 · GET /api/oggi · errore 500, KeyError" in testo and "Formazione (" not in testo, testo
 
 
 # ---------------------------------------------------------------- Gestione per il titolare (#894)

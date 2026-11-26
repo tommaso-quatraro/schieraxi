@@ -2560,7 +2560,7 @@
   },
   "/api/admin/registro": {
    "get": {
-    "description": "Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà).",
+    "description": "Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà).\nOgni errore e ogni richiesta lenta ha accanto il nome della parte dell'app (`parte`, `parte_frase`).",
     "responses": {
      "200": {
       "content": {

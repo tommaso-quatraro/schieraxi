@@ -58,6 +58,22 @@ def test_scheda_admin_contatori_errori_e_eventi(admin, monkeypatch):
     assert sic["ip"] == "203.0.113.x" and "203.0.113.77" not in r.text           # indirizzo nascosto a metà
 
 
+def test_accanto_a_ogni_rotta_il_nome_della_parte_dell_app(admin, monkeypatch):
+    """«Errori recenti» scrive accanto al percorso il nome della parte dell'app («Formazione (/api/oggi)»). Prima lo cercava la web
+    in una sua tabella, copia di quella di «Quanto si usa l'app»; ora lo manda il server (`uso.PARTI`, una tabella sola): `parte`
+    e `parte_frase` in ogni errore e in ogni richiesta lenta, null per una rotta che non è di nessuna parte."""
+    monkeypatch.setattr(server, "_db", lambda: 1 / 0)
+    admin.get("/api/oggi")
+    registro.errore("GET", "/api/rotta-mai-vista", 500)
+    d = admin.get("/api/admin/registro").json()
+    per_rotta = {e["rotta"]: e for e in d["errori"]}
+    assert per_rotta["/api/oggi"]["parte"] == "Formazione"
+    assert per_rotta["/api/oggi"]["parte_frase"] == {"chiave": "uso.parte_formazione", "param": {}}
+    assert per_rotta["/api/rotta-mai-vista"]["parte"] is None and per_rotta["/api/rotta-mai-vista"]["parte_frase"] is None
+    lente = {p["rotta"]: p for p in d["contatori"]["piu_lente"]}
+    assert lente["/api/oggi"]["parte"] == "Formazione" and lente["/api/oggi"]["parte_frase"]["chiave"] == "uso.parte_formazione"
+
+
 def test_scheda_solo_per_l_amministratore(admin):
     semplice = cliente()
     registra(semplice, "pippo")

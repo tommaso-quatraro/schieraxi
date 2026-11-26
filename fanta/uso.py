@@ -37,9 +37,9 @@ FUNZIONE_DI_ROTTA: dict[str, str] = {
 # nomi usati prima nel file -> funzione di oggi: fino al 26/11/2026 «Valuta un'offerta» si contava così (non è una funzione)
 VECCHI_NOMI = {"scambi_valuta_o_costruisci": "scambi_costruisci"}
 
-# la parte dell'app di una rotta, dalla prima parte del percorso dopo /api/ («/api/oggi» -> Formazione): gli stessi gruppi e gli
-# stessi nomi della tabella AREE_DELLE_ROTTE di «Errori recenti» (fanta/web/app.js), con la frase `uso.parte_<id>` del catalogo
-# (fanta/frasi.py). Una rotta che qui non c'è conta in «altro».
+# la parte dell'app di una rotta, dalla prima parte del percorso dopo /api/ («/api/oggi» -> Formazione), con la frase
+# `uso.parte_<id>` del catalogo (fanta/frasi.py). Una rotta che qui non c'è conta in «altro». È l'unica tabella: la usano
+# «Quanto si usa l'app» (riepilogo) e «Errori recenti» (nome_parte, GET /api/admin/registro); la web scrive i nomi che arrivano.
 PARTI: dict[str, tuple[str, ...]] = {
     "formazione": ("oggi", "formazione", "scelta", "giocatore", "giocatori", "live", "osservati", "confronto", "classifica", "avatar"),
     "giornate": ("diario", "calendario", "affidabilita"),
@@ -149,6 +149,13 @@ def parte_di(chiave: str) -> str:
     percorso = chiave.split(" ", 1)[-1]
     inizio = percorso.removeprefix("/api/").split("/", 1)[0] if percorso.startswith("/api/") else ""
     return _PARTE_DI.get(inizio, "altro")
+
+
+def nome_parte(rotta) -> frasi.Frase | None:
+    """Il nome della parte dell'app di una rotta («/api/oggi» -> «Formazione»), None se non è di nessuna parte (allora «Errori
+    recenti» scrive solo il percorso)."""
+    parte = parte_di(str(rotta or ""))
+    return None if parte == "altro" else frasi.F(f"uso.parte_{parte}")
 
 
 def nome_funzione(funzione: str) -> str:

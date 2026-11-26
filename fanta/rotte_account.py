@@ -19,7 +19,7 @@ from fastapi import Path as FPath
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from . import account, account_email, contesto, fonti_attive, frasi, funzioni, fuso, percorsi, posta, registro, social
+from . import account, account_email, contesto, fonti_attive, frasi, funzioni, fuso, percorsi, posta, registro, social, uso
 from .account import ErroreAccount, Utente
 
 LOG = logging.getLogger(__name__)
@@ -714,10 +714,19 @@ def elimina_utente(utente_id: int = FPath(ge=1, le=MAX_ID), chi: Utente = Depend
     return {"ok": True}
 
 
+def _con_parte(voci: list[dict]) -> list[dict]:
+    """Accanto a ogni rotta il nome della parte dell'app (`uso.nome_parte`): `parte` e `parte_frase`, null se la rotta non è di
+    nessuna parte."""
+    return [v | {"parte": str(n) if n else None, "parte_frase": frasi.di(n)} for v in voci for n in [uso.nome_parte(v.get("rotta"))]]
+
+
 @router.get("/api/admin/registro", dependencies=[Depends(solo_amministratore)])
 def registro_server():
-    """Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà)."""
-    return {"contatori": registro.contatori.riepilogo(), "errori": registro.ultimi(registro.FILE_ERRORI, 30),
+    """Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà).
+    Ogni errore e ogni richiesta lenta ha accanto il nome della parte dell'app (`parte`, `parte_frase`)."""
+    contatori = registro.contatori.riepilogo()
+    return {"contatori": contatori | {"piu_lente": _con_parte(contatori["piu_lente"])},
+            "errori": _con_parte(registro.ultimi(registro.FILE_ERRORI, 30)),
             "sicurezza": registro.ultimi(registro.FILE_SICUREZZA, 30, nascondi_indirizzi=True)}
 
 
