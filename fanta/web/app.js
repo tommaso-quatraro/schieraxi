@@ -2352,7 +2352,7 @@ async function apriStatoDati() {
       try {
         await api("/api/admin/fonti", { method: "PUT", body: JSON.stringify({ fonte: bt.dataset.fonte, acceso: bt.dataset.acceso !== "1" }) });
         apriStatoDati();
-      } catch (e) { avviso(t("scambio.non_sono_riuscito")); }
+      } catch (e) { avviso(e.status === 409 ? e.message : t("scambio.non_sono_riuscito"), 6000); }   // 409: il file delle scelte sul server è scritto male, la frase dice cosa fare
     }));
     mostraAffidabilita(numero);
   } catch (e) {

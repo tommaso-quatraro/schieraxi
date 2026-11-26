@@ -104,8 +104,12 @@ Le misure dello **Stato dei dati**:
 - **Funzioni dietro un interruttore.** Alcune parti sono spente di norma, per esempio **Squadre della lega** (le rose delle
   altre squadre: senza, in **La mia lega** la voce **Le altre squadre** non c'è) e **Immagini da indirizzo web** (stemma e maglia
   da un indirizzo `https://` e, sulla web, dal menu Condividi del telefono; sull'iPhone il menu Condividi funziona anche senza) e **Widget aggiuntivi** (`widget_extra`: il widget **Da controllare**;
-  spento, dice «Widget spento»). Si accendono con il file `dati/funzioni.json` o con la variabile
-  `FANTA_FUNZIONE_<NOME>` (`1` acceso, `0` spento); l'elenco con i nomi è in `fanta/funzioni.py`.
+  spento, dice «Widget spento»). Si accendono con il file `dati/funzioni.json`, per esempio
+  `{"squadre_altrui": true, "widget_extra": false}` (`true` acceso, `false` spento; valgono anche `1` e `0`), o con la
+  variabile `FANTA_FUNZIONE_<NOME>` (`1` acceso, `0` spento); l'elenco con i nomi è in `fanta/funzioni.py`. Se il file è
+  scritto male (per esempio una virgola di troppo) nessuna delle sue scelte vale: il registro del servizio lo dice con il nome
+  del file, e dall'app gli interruttori non si cambiano finché non lo correggi o lo togli. Lo stesso vale per `dati/fonti.json`,
+  il file delle fonti.
 - **Server senza account.** In **Gestione** c'è anche **Avvisi anche per l'app nativa**: gli avvisi arrivano anche con ntfy,
   e il tocco sulla notifica apre l'app per iPhone.
 

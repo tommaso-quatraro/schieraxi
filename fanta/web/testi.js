@@ -664,6 +664,7 @@ const TESTI = {
     "err.p_regola_aggiornamenti_vicino_scadenza": "Aggiornamenti vicino alla scadenza",
     "err.p_regola_nome_lega": "Nome della lega",
     "err.p_regola_fonte_voto": "Voto di partenza",
+    "err.interruttori_file_rovinato": "Non cambio l'interruttore: il file {1} sul server è scritto male e lo perderei. Correggilo o toglilo, poi riprova.",
 
     "errori.titolo": "Errori recenti",
     "errori.spiega": "Gli errori del server e gli ultimi eventi di sicurezza. Nessuna password, nessun dato delle richieste: solo quando, dove e che tipo di errore.",
@@ -2544,6 +2545,7 @@ const TESTI = {
     "err.p_regola_aggiornamenti_vicino_scadenza": "Updates close to the deadline",
     "err.p_regola_nome_lega": "League name",
     "err.p_regola_fonte_voto": "Starting grade",
+    "err.interruttori_file_rovinato": "I am not changing the switch: the file {1} on the server is malformed and I would lose it. Fix it or remove it, then try again.",
 
     "errori.titolo": "Recent errors",
     "errori.spiega": "Server errors and the latest security events. No passwords, no request data: only when, where and what kind of error.",
