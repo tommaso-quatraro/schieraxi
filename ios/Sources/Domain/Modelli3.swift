@@ -34,6 +34,7 @@ struct Affidabilita: Decodable {
 // MARK: - Regole e stagione
 
 /// Un valore riconosciuto nel testo del regolamento: la chiave dice quale regola cambia («bonus.assist», «panchina.numero»...).
+/// Si mostra con `AnteprimaRegolamento`.
 struct ModificaRegola: Decodable, Identifiable {
     let chiave: String
     let etichetta: String
@@ -55,12 +56,26 @@ struct RigaDaControllare: Decodable, Equatable {
     let regole: [RegolaDaImpostare]?
 }
 
+/// Un valore letto nel regolamento incollato che con le regole di adesso non si può salvare così com'è (`non_applicabili`, #881):
+/// come `ModificaRegola`, più il perché del server. `motivo` è il testo in italiano; `motivo_frase` (chiave e parametri per
+/// tradurlo) all'iPhone non serve e non si legge, come per le altre frasi del server.
+struct ValoreNonApplicabile: Decodable, Equatable {
+    let chiave: String?
+    let etichetta: String?
+    let valore: JSONValue?
+    let riga: String?
+    let motivo: String?
+}
+
 struct RiconoscimentoRegole: Decodable {
     let modifiche: [ModificaRegola]
     /// Le righe con numeri non lette: le mostra solo chi non riceve `da_controllare` (un server di prima del 19/11/2026).
     let nonRiconosciute: [String]?
     /// Le righe da controllare a mano, nell'ordine del testo incollato (dal 19/11/2026). Un server di prima non lo manda.
     let daControllare: [RigaDaControllare]?
+    /// I valori letti che non si possono salvare così come sono, con il perché (dal 25/11/2026, #881): non sono in `modifiche`,
+    /// quindi «Applica ai campi» non li mette nei campi. Un server di prima non lo manda.
+    let nonApplicabili: [ValoreNonApplicabile]?
 }
 
 struct RichiestaTesto: Encodable {

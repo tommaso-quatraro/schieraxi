@@ -427,6 +427,8 @@ def test_riconosci_regole_non_propone_la_panchina_che_non_si_puo_salvare(client)
     [na] = r["non_applicabili"]
     assert (na["chiave"], na["etichetta"], na["valore"], na["riga"]) == ("panchina.numero", "Giocatori in panchina", 12, riga)
     assert "posti fissi" in na["motivo"] and "11" in na["motivo"]
+    # una frase valida per la web e per l'iPhone: niente «Modifica i valori», che c'è solo sulla web (#889)
+    assert na["motivo"] == "La tua panchina ha posti fissi per ruolo, 11 in tutto: cambia a mano i posti di ogni ruolo nei valori delle regole."
     assert na["motivo_frase"] == {"chiave": "regole.panchina_posti_fissi", "param": {"n": 11}}
     assert r["da_controllare"] == [] and r["non_riconosciute"] == []
 

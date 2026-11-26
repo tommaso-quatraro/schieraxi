@@ -32,6 +32,7 @@ regole.riconosci_regole
 regole.incolla_prima_testo
 regole.non_riconosciuto_nessuna
 regole.riconosciuto
+regole.non_applicato
 regole.da_riga
 regole.da_controllare
 regole.da_impostare
@@ -77,6 +78,10 @@ regole.agg_vicini_aiuto
 regole.salva_regole
 regole.annulla_modifiche
 regole.regole_salvate_consigli
+# Controllo dei campi prima di salvare, come `problemaCampo` della web (CampiRegole, #889)
+regole.campo_vuoto
+regole.fuori_limiti
+regole.intero
 
 # Novità: l'etichetta delle versioni non ancora viste
 regole.nuovo
