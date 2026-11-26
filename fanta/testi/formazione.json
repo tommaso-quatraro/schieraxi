@@ -252,8 +252,8 @@
     "en": "This match"
   },
   "formazione.punti_rispetto": {
-    "it": "punti attesi della formazione se gioca al posto di {nome}",
-    "en": "lineup expected points if he plays instead of {nome}"
+    "it": "punti attesi della formazione con lui al posto di {nome}",
+    "en": "lineup expected points with him instead of {nome}"
   },
   "formazione.fv_atteso_breve": {
     "it": "atteso {fv}",

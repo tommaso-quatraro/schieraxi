@@ -216,7 +216,7 @@ extension Catalogo {
 
         /// `formazione.punti_rispetto`
         static func puntiRispetto(nome: String) -> String {
-            "punti attesi della formazione se gioca al posto di \(nome)"
+            "punti attesi della formazione con lui al posto di \(nome)"
         }
 
         /// `formazione.fv_atteso_breve`
