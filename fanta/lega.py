@@ -132,11 +132,12 @@ POSTI_DEL_RUOLO = {"P": "rose.portieri", "D": "rose.difensori", "C": "rose.centr
 
 def problemi_rosa(s: Squadra, regole: Regole) -> list[str]:
     """Cosa non torna nella rosa con le regole, in parole come l'anteprima: «Mia: mancano 1 portiere e 4 difensori.»,
-    «Mia: 1 attaccante in più.», «Mia: 2 giocatori senza ruolo.». Vuoto se la rosa è giusta."""
+    «Mia: 1 attaccante in più.», «Mia: 2 giocatori senza ruolo.». Vuoto se la rosa è giusta. Fra i giocatori senza ruolo non
+    si contano quelli non riconosciuti: hanno già la loro frase (`rose.non_riconosciuto`), un fatto si dice una volta."""
     conta = Counter(g.ruolo for g in s.giocatori)
     mancano = [(r, regole.rosa[r] - conta.get(r, 0)) for r in RUOLI if conta.get(r, 0) < regole.rosa[r]]
     in_piu = [(r, conta.get(r, 0) - regole.rosa[r]) for r in RUOLI if conta.get(r, 0) > regole.rosa[r]]
-    senza_ruolo = sum(n for r, n in conta.items() if r not in RUOLI)
+    senza_ruolo = sum(1 for g in s.giocatori if g.ruolo not in RUOLI and g.id is not None)
     avvisi = []
     if mancano:
         avvisi.append(F("rose.mancano_in_squadra", squadra=s.nome, n=sum(n for _, n in mancano),

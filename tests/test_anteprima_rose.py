@@ -472,7 +472,7 @@ def test_l_esito_di_aggiorna_le_rose_parla_semplice_e_solo_delle_squadre_del_fil
     avvisi = esito["avvisi"]
     assert not [x for x in avvisi if "Altra" in x], avvisi                    # la squadra che il file non tocca
     assert "Mia: mancano 2 portieri, 7 difensori, 8 centrocampisti e 5 attaccanti." in avvisi, avvisi
-    assert "Mia: 1 giocatore senza ruolo." in avvisi, avvisi
+    assert not [x for x in avvisi if "senza ruolo" in x], avvisi         # Rossi, senza ruolo, ha già la sua frase: una volta sola
     assert "Mia: non so chi è «Rossi»: potrebbe essere uno fra Rossi (difensore, Genoa) e Rossi (attaccante, Lecce)." in avvisi
     assert "Mia: ho riconosciuto Pellegrini Lu. dal nome scritto abbreviato: controlla che sia lui." in avvisi, avvisi
     assert "Mia: Kean: squadra diversa: nel file JUV, nel listone Fiorentina." in avvisi, avvisi
