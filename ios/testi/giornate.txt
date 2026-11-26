@@ -24,6 +24,7 @@ giornate.col_giocatore
 giornate.col_atteso
 giornate.col_preso
 giornate.senza_voto
+giornate.perche_punti
 giornate.al_posto
 giornate.correggi
 giornate.vuoto

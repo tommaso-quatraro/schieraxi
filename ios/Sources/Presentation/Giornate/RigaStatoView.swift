@@ -2,8 +2,10 @@ import SwiftUI
 
 /// La riga sotto il titolo di Giornate, come la riga di stato della web (`rigaStato` di `app.js`, #863): lo stemma della mia squadra,
 /// se c'è, e «Giornata 13 · 13ª di Serie A · Real Esempio · dati del 26 ott 23:55». Ogni pezzo sta intero: se la riga non ci sta si
-/// va a capo dopo un « · », come la web (`FilaPillole`). In una lista: allineata al bordo delle schede, senza fondo né filo, come
-/// `TitoloNellaPagina`. VoiceOver la legge in una volta (`RigaStato.voce`).
+/// va a capo dopo un « · », come la web (`FilaPillole`). In una lista sta come intestazione di una sezione (`GiornateView.capo`),
+/// allineata al bordo delle schede come `TitoloNellaPagina`: da riga della lista era la sola di una sezione con gli angoli tondi, che
+/// tagliavano la prima lettera di ogni riga di testo senza lo stemma davanti (#936). Le lettere restano come sono, non maiuscole come
+/// le intestazioni di sistema. VoiceOver la legge in una volta (`RigaStato.voce`), come testo e non come titolo.
 struct RigaStatoView: View {
     let riga: RigaStato
     @ObservedObject private var immagini = Immagini.condivise
@@ -28,11 +30,11 @@ struct RigaStatoView: View {
             // lo stemma si chiede anche se non è ancora in memoria (dopo lo svuotamento dei dati, #824): arrivato, compare
             if let mia = riga.squadra { await immagini.caricaSquadra(mia, tipo: "stemma") }
         }
+        .textCase(nil)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(riga.voce)
+        .accessibilityRemoveTraits(.isHeader)
         .listRowInsets(EdgeInsets())
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
     }
 
     /// I pezzi con « ·» in fondo a tutti tranne l'ultimo: andando a capo il punto resta sulla riga di sopra, come sulla web.
@@ -44,6 +46,6 @@ struct RigaStatoView: View {
 #Preview("Riga sotto il titolo di Giornate") {
     let json = #"{"prossima_giornata": 11, "prossima_giornata_lega": 8, "mia_squadra": "Nuvola Ovest", "ultimo_aggiornamento": "2026-10-26T23:55:13"}"#
     if let info: InfoServer = try? Decodifica.decodifica(Data(json.utf8)), let riga = RigaStato(info: info, nonRaggiungibile: false) {
-        List { RigaStatoView(riga: riga) }
+        List { Section {} header: { RigaStatoView(riga: riga) } }
     }
 }

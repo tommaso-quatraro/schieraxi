@@ -43,18 +43,25 @@ final class GiornateViewModel: ViewModelBase {
     /// raggiungibile» se `/api/stato` non ha risposto. Nil prima della prima risposta (anche dalla copia del telefono).
     var rigaStato: RigaStato? { RigaStato(info: info.dato, nonRaggiungibile: info.errore != nil) }
 
-    /// La cima della pagina è completa: le giornate con i Dettagli e la riga sotto il titolo, che `carica()` legge dopo e che,
-    /// comparendo in cima alla lista, la riporta in cima. La foto `giornate-confronto` scorre solo da qui in poi (`ConfrontoDemo`).
+    /// La pagina che la vista mostra: le giornate solo quando c'è anche la riga sotto il titolo (o `/api/stato` ha detto che il
+    /// server non risponde). La riga sta in cima alla lista: se arrivava dopo le giornate, comparendo sopra la lista già in vista la
+    /// riportava in cima, e chi aveva cominciato a scorrere si ritrovava in alto (#913). Fino ad allora la vista tiene lo scheletro.
+    /// Le due letture partono insieme (`carica()`): l'attesa è quella della più lenta, e con le copie del telefono non c'è.
+    var paginaDaMostrare: PaginaGiornate? { rigaStato == nil ? nil : pagina }
+
+    /// La cima della pagina è completa: le giornate con i Dettagli e la riga sotto il titolo. La foto `giornate-confronto` scorre
+    /// solo da qui in poi (`ConfrontoDemo`).
     var cimaCompleta: Bool { pagina?.dettagli != nil && rigaStato != nil }
 
-    /// Rilegge le giornate e poi `/api/stato` per la riga sotto il titolo. Solo una risposta fresca del server chiude la richiesta
-    /// di «Com'è andata», come la web: la copia del telefono, o una lettura non riuscita, possono essere di prima della giornata
-    /// chiesta.
+    /// Rilegge insieme le giornate e `/api/stato`, per la riga sotto il titolo (prima una dopo l'altra: la riga arrivava dopo e
+    /// spostava la lista, #913). Solo una risposta fresca del server chiude la richiesta di «Com'è andata», come la web: la copia
+    /// del telefono, o una lettura non riuscita, possono essere di prima della giornata chiesta.
     func carica() async {
+        async let stato: Void = info.ricarica()
         await caricatore.ricarica()
         applicaChiesta()
         if caricatore.dato != nil, caricatore.errore == nil, !caricatore.dallaCache { chiesta = nil }
-        await info.ricarica()
+        await stato
     }
 
     /// «Com'è andata» o un indirizzo: apre la giornata `giornata` (numero di Serie A) se c'è già; altrimenti la apre `carica()`
