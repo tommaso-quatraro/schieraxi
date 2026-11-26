@@ -202,8 +202,9 @@ def _scatti(tmp_path, esiti):
         "sleep() { :; }",
         "stat() { echo 999999; }",
         'sips() { echo "$*" >> "$USCITA/sips.txt"; }',
-        # schermo_fermo.py finto: lascia la foto (tranne con l'uscita 1, nessuna foto) ed esce come gli si dice
-        'python3() { [ "$ESITO" != 1 ] && : > "$4"; return "$ESITO"; }',
+        # schermo_fermo.py finto: lascia la foto (tranne con l'uscita 1, nessuna foto) ed esce come gli si dice;
+        # schermo_vuoto.py finto: la foto mostra sempre una schermata (le foto vuote le prova test_schermo_vuoto.py)
+        'python3() { case "$2" in *schermo_vuoto.py) echo "schermata"; return 0 ;; esac; [ "$ESITO" != 1 ] && : > "$4"; return "$ESITO"; }',
         _funzione(testo, "scatta"),
         _funzione(testo, "riepilogo"),
     ]
