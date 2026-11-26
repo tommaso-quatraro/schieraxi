@@ -1,0 +1,20 @@
+{
+  "titolo": "Importazione delle rose più facile",
+  "voci": [
+    "Rose incollate con un nome per riga: un nome che l'app non conosce resta un giocatore da sistemare, non diventa una squadra; se manca una riga vuota fra due squadre, l'anteprima lo chiede.",
+    "Ricaricando lo stesso file, i giocatori che avevi già scelto tornano già scelti («scelto da te l'ultima volta») e si possono ancora cambiare; «Cosa cambia» non mostra movimenti finti.",
+    "Le 10 importazioni al giorno contano solo i controlli riusciti: un file rifiutato, come il calendario, non conta più.",
+    "«Pio Esposito» con la sua squadra e il suo ruolo si riconosce da solo, e i CSV con la squadra su ogni riga si leggono giusti.",
+    "Impostazioni › Aggiorna le rose: dopo il salvataggio, frasi semplici solo sulle squadre del file («manca 1 difensore»), l'interruttore «Togli le squadre che non sono nel file» si vede anche per il file e il pulsante del testo si chiama «Controlla le rose»."
+  ],
+  "tecnico": [
+    "rose._da_un_valore_per_riga: un testo non riconosciuto apre una squadra solo con un segno chiaro (_e_titolo: prima riga, dopo una riga vuota o i crediti, squadra già salvata, «Allenatore:» sotto, formato con ruolo o club, rosa completa, _sembra_squadra); le righe dei giocatori passano a _Celle(giocatori=...). estrai(..., squadre_note) dal server (_squadre_salvate).",
+    "rose._estrai_blocco: colonna della fantasquadra da intestazione (PAROLE_FANTASQUADRA) o, senza, _colonna_fantasquadra.",
+    "nomi._propri_compatibili: un nome proprio scritto può essere il secondo del listone (Pio per F.P.).",
+    "lega.GiocatoreRosa.testo (nuovo, facoltativo, anche in GET /api/rosa): il nome scritto nel file se diverso; anteprima_rose.riusa_scelte riusa le scelte manuali della stessa squadra in anteprima e importazione; /api/rose/correggi lo tiene.",
+    "Limiti: anteprima e importazione contano tra le 10 del giorno solo se riescono (server._conta_se_riesce, _buono_dell_anteprima); le importazioni senza buono prendono un posto di MAX_ANTEPRIME_ALL_ORA, che resta anche se falliscono.",
+    "lega.controlla(rose, regole, squadre): l'esito dell'importazione guarda solo le squadre del file; frasi nuove rose.mancano_in_squadra, rose.in_piu_in_squadra, rose.senza_ruolo_in_squadra, rose.potrebbe_essere_uno_fra, rose.candidato, nomi.ruolo_*; tolta rose.diversa; ruoli e club per esteso (frasi.nome_ruolo, nome_club).",
+    "Web: interruttore fuori da «Incolla il testo», fuoco su #esito-titolo dopo il salvataggio, lega.importa_testo = «Controlla le rose» (anche nel catalogo dell'iPhone).",
+    "Revisione: riusa_scelte propone (metodo «precedente», da_controllare) invece di decidere; /api/rose/correggi accetta anche i giocatori scelti a mano; limiti.restituisci_anteprima restituisce il posto di un'anteprima fallita solo se il suo buono non è stato usato (stesso lucchetto); rose._forse_manca_una_riga_vuota; _sembra_squadra ignora il numero dell'elenco e il costo sulla riga."
+  ]
+}

@@ -17,7 +17,7 @@ def test_controlli_rosa(indice):
     r = _rose(indice, griglia)
     avvisi = lega.controlla(r, Regole(rosa=ROSA_PICCOLA))
     assert any("Barella è in più squadre" in a for a in avvisi)
-    assert any(a.startswith("Beta: rosa diversa") and "A 0/1" in a for a in avvisi)
+    assert "Beta: manca 1 attaccante." in avvisi
     assert not any(a.startswith("Alfa:") for a in avvisi)
 
 
