@@ -510,6 +510,17 @@ enum LegaDemo {
         return ("fatto", 5.5 + Double((p.id * 7) % 9) * 0.5)
     }
 
+    /// La riga sotto i punti a giornata in corso come la scrive il server (`in_corso.situazione`, `fasi.situazione`, #895).
+    static let situazioneInCorso = "6 giocatori devono ancora giocare"
+
+    /// La stessa riga più avanti nella giornata, quando hanno giocato tutti tranne tre titolari di Milan-Juventus, rinviata e da
+    /// recuperare, e i voti non sono ancora usciti (`in_corso.voti_e_recupero` del server): la frase più lunga, con tre nomi interi.
+    /// La usa la galleria dei widget (`DatiGalleria`, dati `in_corso_recupero`), per vedere che nel medio non si taglia (#900).
+    static var situazioneRecupero: String {
+        let nomi = [106, 114, 115].map { calciatore($0).nome }
+        return "Hanno giocato tutti tranne \(nomi[0]), \(nomi[1]) e \(nomi[2]), che aspettano il recupero; mancano anche i voti ufficiali."
+    }
+
     /// Il blocco `in_corso` di Oggi a giornata in corso: punti fatti, previsti, giocatore per giocatore e i cambi dalla panchina.
     /// Un cambio già fatto (Bastrani senza voto, entra Dimarzi) e due probabili.
     static func bloccoInCorso(adesso: Date) -> [String: Any] {
@@ -524,6 +535,8 @@ enum LegaDemo {
         return [
             "giornata": giornata, "giornata_lega": giornataLega, "formazione_di": "tua",
             "punti_fatti": 39.0, "punti_attesi_restanti": 38.7, "punti_previsti": 77.7, "modificatore": NSNull(), "ancora_da_giocare": 6,
+            // la riga sotto i punti scelta dal server (#895): in questo momento 6 di chi va a punteggio devono ancora giocare
+            "situazione": situazioneInCorso,
             "giocatori": giocatori,
             "sostituzioni": [
                 ["esce": persona(104), "entra": persona(105), "certa": true, "motivo": "senza_voto"],

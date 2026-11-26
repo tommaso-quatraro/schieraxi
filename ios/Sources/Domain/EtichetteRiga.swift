@@ -16,7 +16,9 @@ enum EtichetteRiga {
         let esito = g.esitoPartita
         let stato: ParolaStato? = esito == nil ? ParolaStato(g) : nil
         var pezzi: [Pezzo] = []
-        if let esito, esito.fv == nil, let testo = esito.testo {
+        if let parola = esito?.parola {
+            pezzi.append(Pezzo(testo: parola, tono: .parola))          // «Voto d'ufficio» (#895), come la web
+        } else if let esito, esito.fv == nil, let testo = esito.testo {
             pezzi.append(Pezzo(testo: testo, tono: .parola))
         } else if let stato {
             pezzi.append(Pezzo(testo: stato.testo, tono: stato.nonGiocaDiSicuro ? .basso : .medio))

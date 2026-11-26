@@ -118,15 +118,18 @@ struct RestiDalCatalogoTests {
                    "Catalogo.Formazione.statoEConsigliata", "Catalogo.Formazione.statoNonValidaOra", "Catalogo.Formazione.sceltaNonLetta",
                    "Catalogo.Formazione.statoChiusaTua", "Catalogo.Formazione.statoChiusaNonValida"]),
         // la testa della Formazione per fase (#673)
+        // con il riquadro del rinvio della giornata finita (#900)
         Caso(file: "Sources/Domain/TestaFormazione.swift",
              testi: [Catalogo.Formazione.puntiFinora, Catalogo.Formazione.punti, Catalogo.Formazione.chiusaBreve,
-                     Catalogo.Oggi.calendarioNo, Catalogo.Oggi.tuttiGiocato, Catalogo.Oggi.giaIniziataTesto],
+                     Catalogo.Oggi.calendarioNo, Catalogo.Oggi.tuttiGiocato, Catalogo.Oggi.giaIniziataTesto, Catalogo.Oggi.recuperoPunti],
              frasi: [Catalogo.Formazione.circaFine(n: "§"), Catalogo.Formazione.puntiEAttesi(n: "§"),
                      Catalogo.Formazione.perLaProssima(g: "§", m: "§"), Catalogo.Formazione.siChiude(quando: "§"),
-                     Catalogo.Formazione.fra(tempo: "§")],
+                     Catalogo.Formazione.fra(tempo: "§"), Catalogo.Oggi.rinvioTitoloGiornata1(g: "§"),
+                     Catalogo.Oggi.rinvioTitoloGiornataN(g: "§")],
              usa: ["Catalogo.Formazione.circaFine(", "Catalogo.Formazione.puntiEAttesi(", "Catalogo.Formazione.perLaProssima(",
                    "Catalogo.Formazione.siChiude(", "Catalogo.Formazione.fra(", "Catalogo.Formazione.chiusaBreve",
-                   "Catalogo.Oggi.calendarioNo", "Catalogo.Oggi.giornataFinita(", "Catalogo.Oggi.conConsigliata("]),
+                   "Catalogo.Oggi.calendarioNo", "Catalogo.Oggi.giornataFinita(", "Catalogo.Oggi.conConsigliata(",
+                   "Catalogo.Oggi.rinvioTitoloGiornata1(", "Catalogo.Oggi.rinvioTitoloGiornataN(", "Catalogo.Oggi.recuperoPunti"]),
         Caso(file: "Sources/Domain/InformazioniLegali.swift",
              testi: [Catalogo.Legale.privacy, Catalogo.Legale.termini, Catalogo.Legale.crediti],
              usa: ["Catalogo.Legale.privacy", "Catalogo.Legale.termini", "Catalogo.Legale.crediti"]),
@@ -168,7 +171,7 @@ struct RestiDalCatalogoTests {
              testi: [Catalogo.Lega.esportaRoseExcel, Catalogo.Pav.scegliFile],
              usa: ["Catalogo.Lega.esportaRoseExcel", "Catalogo.Pav.scegliFile"]),
         Caso(file: "Sources/Support/RigaGiocatore.swift", testi: [Catalogo.Mercato.fantavoto, Catalogo.Perche.apriScheda],
-             usa: ["Catalogo.Mercato.fantavoto", "Catalogo.Perche.apriScheda"]),
+             usa: ["Catalogo.Mercato.fantavoto", "Catalogo.Perche.apriScheda", "Catalogo.Formazione.attesoBreve"]),
         Caso(file: "Sources/Presentation/Lega/RigaRosa.swift", testi: [Catalogo.Mercato.fantavoto], usa: ["Catalogo.Mercato.fantavoto"]),
         // Stato dei dati, la prova delle previsioni: la frase su «da fantamedia» è quella della web dopo #839, non più
         // «chi ha la media più alta» (#840)

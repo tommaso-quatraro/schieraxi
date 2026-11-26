@@ -201,6 +201,12 @@ struct SchedaGiocatore: Decodable {
     let voti: [VotoGiornata]?
     let avanzate: StatisticheAvanzate?
     let rendimento: Rendimento?
+    /// L'andamento dei fantavoti deciso dal server (#895, `scheda.andamento`): `in_crescita`, `in_calo`, `stabile`, `pochi_dati`.
+    /// Facoltativo e tollerante: un server di prima non lo manda, una forma strana vale «niente».
+    private let andamento: Tollerante<String>?
+
+    /// Il codice dell'andamento del server (vedi `Forma`); nil senza il campo.
+    var codiceAndamento: String? { andamento?.valore }
 }
 
 /// I sigilli dell'immagine di una squadra della lega: stemma e maglia caricati dall'utente.
@@ -378,6 +384,9 @@ struct Oggi: Decodable {
     /// La giornata da preparare non ha ancora le date (#552): `{testo, frase}` («Data da definire»), solo in quel caso. Facoltativo e
     /// tollerante: un server di prima non lo manda, una forma strana vale «no».
     let senzaData: Tollerante<FraseServer>?
+    /// La giornata appena finita senza i voti (#895): `{giornata, giornata_lega, testo, frase}`, solo con la fase `finita` e
+    /// `riepilogo` nullo. Facoltativo e tollerante: un server di prima non lo manda, una forma strana vale «no».
+    let votiInArrivo: Tollerante<VotiInArrivo>?
 }
 
 extension Oggi {
@@ -1171,21 +1180,33 @@ struct GiornataInCorso: Decodable, Equatable {
     let modificatore: Double?
     /// Quanti di chi va a punteggio non hanno ancora il voto.
     let ancoraDaGiocare: Int?
+    /// La riga sotto i punti scelta dal server (#895), già nella lingua chiesta: «3 giocatori devono ancora giocare», «Hanno giocato
+    /// tutti tranne Bapepe, che aspetta il recupero.», «I voti dei tuoi giocatori sono tutti usciti.»… Facoltativa: un server di
+    /// prima non la manda (allora le parole di sempre da `ancoraDaGiocare`).
+    let situazione: String?
     let giocatori: [GiocatoreInCorso]
     let sostituzioni: [CambioPanchina]
     let partite: ContoPartite?
 
     private enum Chiavi: String, CodingKey {
         case giornata, giornataLega, formazioneDi, puntiFatti, puntiAttesiRestanti, puntiPrevisti, modificatore, ancoraDaGiocare
-        case giocatori, sostituzioni, partite
+        case situazione, giocatori, sostituzioni, partite
     }
 
     init(giornata: Int? = nil, giornataLega: Int? = nil, formazioneDi: String? = nil, puntiFatti: Double? = nil,
          puntiAttesiRestanti: Double? = nil, puntiPrevisti: Double? = nil, modificatore: Double? = nil, ancoraDaGiocare: Int? = nil,
-         giocatori: [GiocatoreInCorso] = [], sostituzioni: [CambioPanchina] = [], partite: ContoPartite? = nil) {
+         situazione: String? = nil, giocatori: [GiocatoreInCorso] = [], sostituzioni: [CambioPanchina] = [],
+         partite: ContoPartite? = nil) {
         self.giornata = giornata; self.giornataLega = giornataLega; self.formazioneDi = formazioneDi; self.puntiFatti = puntiFatti
         self.puntiAttesiRestanti = puntiAttesiRestanti; self.puntiPrevisti = puntiPrevisti; self.modificatore = modificatore
-        self.ancoraDaGiocare = ancoraDaGiocare; self.giocatori = giocatori; self.sostituzioni = sostituzioni; self.partite = partite
+        self.ancoraDaGiocare = ancoraDaGiocare; self.situazione = situazione; self.giocatori = giocatori
+        self.sostituzioni = sostituzioni; self.partite = partite
+    }
+
+    /// La frase del server sotto i punti senza spazi ai lati; nil se manca o è vuota (server di prima).
+    var testoSituazione: String? {
+        let t = situazione?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return t.isEmpty ? nil : t
     }
 
     init(from decoder: Decoder) throws {
@@ -1198,6 +1219,7 @@ struct GiornataInCorso: Decodable, Equatable {
         puntiPrevisti = k.facoltativo(Double.self, .puntiPrevisti)
         modificatore = k.facoltativo(Double.self, .modificatore)
         ancoraDaGiocare = k.facoltativo(Int.self, .ancoraDaGiocare)
+        situazione = k.facoltativo(String.self, .situazione)
         giocatori = k.elenco(GiocatoreInCorso.self, .giocatori)
         sostituzioni = k.elenco(CambioPanchina.self, .sostituzioni)
         partite = k.facoltativo(ContoPartite.self, .partite)
@@ -1228,6 +1250,33 @@ typealias CampionatoFinito = FraseServer
 /// non si legge.
 struct FraseServer: Decodable, Equatable {
     let testo: String?
+
+    /// Il testo senza spazi ai lati; nil se manca o è vuoto.
+    var testoPronto: String? {
+        let t = testo?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return t.isEmpty ? nil : t
+    }
+}
+
+/// Il campo `voti_in_arrivo` di Oggi (#895): la giornata appena finita, con una formazione schierata, ma senza i voti e quindi senza
+/// totale. `testo` = la frase del server già nella lingua chiesta («I punti arrivano quando escono i voti.»); `frase` non si legge.
+struct VotiInArrivo: Decodable, Equatable {
+    let giornata: Int?
+    let giornataLega: Int?
+    let testo: String?
+
+    private enum Chiavi: String, CodingKey { case giornata, giornataLega, testo }
+
+    init(giornata: Int? = nil, giornataLega: Int? = nil, testo: String? = nil) {
+        self.giornata = giornata; self.giornataLega = giornataLega; self.testo = testo
+    }
+
+    init(from decoder: Decoder) throws {
+        let k = try decoder.container(keyedBy: Chiavi.self)
+        giornata = k.facoltativo(Int.self, .giornata)
+        giornataLega = k.facoltativo(Int.self, .giornataLega)
+        testo = k.facoltativo(String.self, .testo)
+    }
 
     /// Il testo senza spazi ai lati; nil se manca o è vuoto.
     var testoPronto: String? {
@@ -1335,7 +1384,8 @@ struct GiocatoreRinviato: Decodable, Equatable, Identifiable {
 }
 
 /// Cosa vale per una giornata con una partita rinviata e cosa serve al menu «per questa giornata»: campo `rinvio` di Oggi (con
-/// `partite` e `miei`) e `riepilogo.rinvio` della giornata finita (senza). Letto in modo tollerante.
+/// `partite` e `miei`) e `riepilogo.rinvio` della giornata finita (con `partite` e `miei` dal #895; senza, un server di prima).
+/// Letto in modo tollerante.
 struct SceltaRinvio: Decodable, Equatable {
     let stagione: String?
     let giornata: Int

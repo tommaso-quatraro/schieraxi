@@ -3,10 +3,6 @@ import XCTest
 
 /// Le regole di contorno che non toccano la rete: forma, etichette, ballottaggi, testo della formazione, scambi, regole, collegamenti.
 final class DominioTests: XCTestCase {
-    private func voto(_ g: Int, _ fv: Double?) -> VotoGiornata {
-        VotoGiornata(giornata: g, voto: fv.map { $0 - 1 }, fv: fv, gol: nil, assist: nil)
-    }
-
     private func giocatore(_ id: Int, _ nome: String, ruolo: String = "D", titolarita: String? = "titolare", punti: Double = 5, pVoto: Double = 0.9,
                            extra: String = "") throws -> Giocatore {
         let titolo = titolarita.map { "\"titolarita\": \"\($0)\"," } ?? ""
@@ -14,28 +10,7 @@ final class DominioTests: XCTestCase {
         return try Decodifica.decodifica(Data(json.utf8))
     }
 
-    // MARK: forma
-
-    func testFormaConPochiDatiNonGiudica() throws {
-        let f = try XCTUnwrap(Forma.calcola([voto(1, 6), voto(2, 7), voto(3, nil)]))
-        XCTAssertEqual(f.andamento, .pochiDati)
-        XCTAssertEqual(f.ultime.count, 3)
-        XCTAssertNil(Forma.calcola([]))
-    }
-
-    func testFormaInCrescitaInCaloEStabile() throws {
-        let crescita = (1...6).map { voto($0, $0 <= 3 ? 5 : 8) }
-        XCTAssertEqual(Forma.calcola(crescita)?.andamento, .crescita)
-        XCTAssertEqual(Forma.calcola(crescita)?.andamento.freccia, "↗")
-        let calo = (1...6).map { voto($0, $0 <= 3 ? 8 : 5) }
-        XCTAssertEqual(Forma.calcola(calo)?.andamento, .calo)
-        XCTAssertEqual(Forma.calcola(calo)?.andamento.freccia, "↘")
-        let stabile = (1...6).map { voto($0, 6.5) }
-        XCTAssertEqual(Forma.calcola(stabile)?.andamento, .stabile)
-        // le ultime sono al massimo cinque, in ordine di giornata
-        XCTAssertEqual(Forma.calcola(stabile)?.ultime.map(\.giornata), [2, 3, 4, 5, 6])
-    }
-
+    // La forma (ultimi voti e andamento deciso dal server, #900) sta in `BordiGiornataComeLaWebTests`.
     // Le etichette sono passate a Swift Testing: `EtichetteGiocatoreTests`.
 
     // MARK: testo, nome corto

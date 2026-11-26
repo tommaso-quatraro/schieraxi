@@ -153,7 +153,35 @@ struct VistaWidget: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    /// Il medio a giornata in corso o finita. A giornata in corso la frase del server su cosa manca (`in_corso.situazione`, #900:
+    /// «Hanno giocato tutti tranne Glauco Brevisi, Teo Kloosmeijer e Cesare Pulinski, che aspettano il recupero; mancano anche i voti
+    /// ufficiali.») può essere lunga: va nella colonna di destra se ci sta alla sua misura, se no a tutta larghezza sotto le due
+    /// colonne, se no nella colonna di destra rimpicciolita. Si misura (`ViewThatFits`): la frase non si taglia mai con «…».
+    @ViewBuilder
     private func faseMedio(_ r: RiassuntoOggi) -> some View {
+        if r.inCorso, let frase = r.ancoraDaGiocareTesto {
+            ViewThatFits(in: .vertical) {
+                colonneMedio(r, frase: frase, stretta: false)
+                VStack(alignment: .leading, spacing: 6) {
+                    colonneMedio(r, frase: nil, stretta: false)
+                    fraseIntera(frase)
+                }
+                colonneMedio(r, frase: frase, stretta: true)
+            }
+        } else {
+            colonneMedio(r, frase: nil, stretta: false)
+        }
+    }
+
+    /// La frase su cosa manca alla sua misura, su tutte le righe che servono (così `faseMedio` la misura intera).
+    private func fraseIntera(_ frase: String) -> some View {
+        Text(frase).font(.caption2).foregroundStyle(.white.opacity(0.8)).fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Le due colonne del medio; `frase` (solo a giornata in corso) va in fondo a quella di destra: intera o, con `stretta` (l'ultima
+    /// scelta di `faseMedio`), rimpicciolita fino a entrare in 4 righe, partendo dalla misura normale del testo anche con il testo
+    /// grande: così ci sta sempre.
+    private func colonneMedio(_ r: RiassuntoOggi, frase: String?, stretta: Bool) -> some View {
         HStack(alignment: .top, spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
                 titoloFase(r)
@@ -181,9 +209,13 @@ struct VistaWidget: View {
                             .foregroundStyle(.white.opacity(0.85)).lineLimit(1).minimumScaleFactor(0.7)
                     }
                     Spacer(minLength: 0)
-                    // la frase intera del catalogo («Hanno giocato tutti: mancano solo i voti ufficiali.») va a capo, non si taglia
-                    if let a = r.ancoraDaGiocareTesto {
-                        Text(a).font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(3).minimumScaleFactor(0.8)
+                    if let frase {
+                        if stretta {
+                            Text(frase).font(.caption2).foregroundStyle(.white.opacity(0.8))
+                                .dynamicTypeSize(...DynamicTypeSize.large).lineLimit(4).minimumScaleFactor(0.6)
+                        } else {
+                            fraseIntera(frase)
+                        }
                     }
                 } else {
                     GiornataInRiga(forme: r.formeGiornata, voce: r.voceGiornata, simbolo: "calendar")
