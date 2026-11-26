@@ -1,0 +1,11 @@
+{
+  "titolo": "Scheda del giocatore: la data delle statistiche avanzate una volta sola",
+  "voci": [
+    "Scheda del giocatore, «Tutti i numeri»: «Dati fino al …» compare una volta sola, in fondo, dopo le statistiche avanzate, e vale anche per «Gol e assist rispetto alle occasioni»; prima si leggeva due volte. Uguale sull'iPhone."
+  ],
+  "tecnico": [
+    "Web, riempiScheda in app.js: la frase mercato.dati_fino_al (dal campo avanzate.dati_fino_al, #862) esce dalla riga del rendimento e da sotto il titolo «Statistiche avanzate» e sta una volta, ultima riga del blocco delle statistiche avanzate, dopo le stagioni precedenti. Il blocco del rendimento c'è solo con avanzate.minuti, come quello delle statistiche avanzate: la riga c'è ogni volta che c'è uno dei due. Non in cima a «Tutti i numeri»: stagione e voti vengono da un'altra fonte, che va avanti.",
+    "iPhone, TuttiINumeri: stessa posizione e stesso testo; la foto giocatore-fondo scorre al fondo del blocco (ancora .bottom). Test del browser tests/browser/test_scheda_dati_fino_al.py: una volta sola, ultima riga di «Tutti i numeri».",
+    "Nessuna rotta né campo dell'API cambiato; catalogo dei testi e calcolo non toccati."
+  ]
+}
