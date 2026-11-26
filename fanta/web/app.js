@@ -3514,9 +3514,14 @@ const CAMPO_EMAIL = (id, facoltativa) => campoAccesso(id, facoltativa ? t("acces
   facoltativa ? t("accesso.email_facoltativa_aiuto") : "");
 const CAMPO_CODICE_EMAIL = (id) => campoAccesso(id, t("accesso.codice_email"), "text",
   'autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocapitalize="none" autocorrect="off" spellcheck="false" required');
+// La trappola per i programmi che compilano i moduli da soli (`account.trappola` del server): un campo che una persona non vede né
+// raggiunge (nascosto, fuori dal giro del Tab e dai lettori di schermo, che il browser non riempie). Se arriva pieno il server non crea
+// l'account. L'iPhone non l'ha: il suo modulo non è una pagina che un programma trova e compila.
+const CAMPO_TRAPPOLA = () => `<div class="accesso-trappola" hidden aria-hidden="true">${campoAccesso("ac-sito", t("accesso.sito_web"), "text", 'name="sito" tabindex="-1" autocomplete="off"')}</div>`;
 // La riga sopra i campi di «Registrati»: con il codice d'invito già scritto (arrivato dal link) non chiede di procurarselo (#580).
+// Con la registrazione aperta (predefinita) non serve l'invito: nome utente e password, l'email facoltativa come con l'invito.
 function spiegaRegistrazione(modo, conInvito) {
-  if (modo === "aperta") return "accesso.serve_email";
+  if (modo === "aperta") return "accesso.registrazione_aperta";
   if (modo === "email") return conInvito ? "accesso.invito_inserito_email" : "accesso.serve_invito_email";
   return conInvito ? "accesso.invito_inserito" : "accesso.serve_invito";
 }
@@ -3528,8 +3533,9 @@ function campiAccesso(scheda, extra = {}) {
     + CAMPO_CODICE_EMAIL("ac-codice-email");
   if (scheda === "registra") return `<div class="debole piccolo">${t(spiegaRegistrazione(modo, !!invitoSalvato()))}</div>`
     + (modo === "aperta" ? "" : campoAccesso("ac-invito", t("accesso.codice_invito"), "text", SENZA_AIUTI + valoreInvito())) + CAMPO_NOME()
-    + (stato.emailAttiva === false && modo === "invito" ? "" : CAMPO_EMAIL("ac-email", modo === "invito"))
+    + (stato.emailAttiva === false && modo !== "email" ? "" : CAMPO_EMAIL("ac-email", modo !== "email"))
     + campoAccesso("ac-pw", t("accesso.password_10"), "password", `autocomplete="new-password" minlength="10" ${CAMPO_PW}`)
+    + CAMPO_TRAPPOLA()
     + `<label class="interruttore accesso-letto"><span>${t("accesso.letto", { privacy: linkLegale("privacy", "legale.privacy"), termini: linkLegale("termini", "legale.termini"), eta: ETA_MINIMA })}</span><input type="checkbox" id="ac-letto"></label>`;
   if (extra.sub === "email") return `<div class="debole piccolo">${t("accesso.recupero_email_spiega")}</div>` + CAMPO_EMAIL("ac-email", false);
   if (extra.sub === "email-codice") return `<div class="debole piccolo">${t("accesso.recupero_codice_email_spiega", { email: esc(extra.email || "") })}</div>`
@@ -3588,7 +3594,8 @@ function mostraMessaggioAccesso(testo, errore, dopo = false) {
 // `extra.errore`: il messaggio è un errore (un accesso con Google non riuscito), non un avviso.
 function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
   accessoAperto = true;
-  if (scheda === "recupero" && !extra.sub) extra = { ...extra, sub: (stato.registrazione || "invito") === "invito" || stato.emailAttiva === false ? "codice" : "email" };
+  // l'email è di tutti solo con il modo `email`: con l'invito o la registrazione aperta è facoltativa, si parte dal codice di recupero
+  if (scheda === "recupero" && !extra.sub) extra = { ...extra, sub: (stato.registrazione || "invito") !== "email" || stato.emailAttiva === false ? "codice" : "email" };
   stato.account = null;
   document.body.classList.add("senza-accesso");
   contenuto.innerHTML = ""; contenuto.removeAttribute("aria-busy");
@@ -3645,6 +3652,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
         const corpo = { nome_utente: v("#ac-nome"), password: v("#ac-pw"), invito: v("#ac-invito"), accetto_termini: true };      // la casella è spuntata (controllo qui sopra)
         const email = $("#ac-email") ? v("#ac-email").trim() : "";
         if (email) corpo.email = email;                      // facoltativa: i server vecchi non la conoscono
+        if (v("#ac-sito")) corpo.sito = v("#ac-sito");       // la trappola: solo se un programma l'ha riempita
         const r = await manda("/api/account/registra", corpo);
         if (r && r.verifica_email) { mostraAccesso("", "registra", { sub: "verifica", email, iscrizione: r.iscrizione || "" }); return; }   // l'account nasce col codice (legato a questa richiesta)
         if (!r || !r.codice_recupero) throw new Error(t("accesso.risposta_incompleta_accedi"));
@@ -4070,23 +4078,29 @@ async function scaricaIMieiDati() {
 }
 
 // Impostazioni > Gestione (solo amministratore con gli account): inviti, inviti aperti con «Annulla», codici per chi ha perso la
-// password, utenti. Con i posti pieni l'avviso del server sta sopra «Crea l'invito» (#894).
+// password, utenti. Con i posti pieni l'avviso del server sta sopra «Crea l'invito» (#894). Con la registrazione aperta (il modo
+// che dice /api/account/me) gli inviti non servono: al loro posto «Iscrizioni» con la frase e lo stesso avviso dei posti.
 const gestisceAccount = () => !!(stato.account && stato.account.ruolo === "amministratore");
+const iscrizioniAperte = () => stato.registrazione === "aperta";
 function schedaAmministratore() {
   return gestisceAccount() ? `<div class="carta" id="scheda-admin"><h3>${t("admin.titolo")}</h3>
-    <h3>${t("admin.invito_titolo")}</h3>
-    <div class="debole piccolo">${t("admin.invito_spiega")}</div>
-    <div id="adm-avviso-posti" role="status"></div>
-    <label class="accesso-campo"><span class="debole piccolo">${t("admin.etichetta")}</span><input class="campo-testo" id="adm-etichetta" type="text" maxlength="60" autocomplete="off"></label>
-    <label class="interruttore"><span>${t("admin.nuovo_admin")}</span><input type="checkbox" id="adm-admin"></label>
-    <div class="pulsanti"><button class="bottone" id="adm-invito">${t("admin.crea_invito")}</button></div><div id="adm-esito-invito"></div>
-    <h3 id="adm-inviti-titolo" tabindex="-1">${t("admin.inviti_aperti")}</h3><div id="adm-inviti"><p class="debole piccolo">${t("admin.carico")}</p></div>
+    ${iscrizioniAperte() ? `<h3>${t("admin.iscrizioni_titolo")}</h3>
+    <div class="debole piccolo">${t("admin.iscrizioni_aperte")}</div>
+    <div id="adm-avviso-posti" role="status"></div>` : schedaInviti()}
     <h3>${t("admin.reset_titolo")}</h3>
     <div class="debole piccolo">${t("admin.reset_spiega")}</div>
     <label class="accesso-campo"><span class="debole piccolo">${t("accesso.nome_utente")}</span><input class="campo-testo" id="adm-nome" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off"></label>
     <div class="pulsanti"><button class="bottone secondario" id="adm-reset">${t("admin.genera_codice")}</button></div><div id="adm-esito-reset"></div>
     <h3>${t("admin.utenti_titolo")}</h3><div id="adm-utenti" class="debole piccolo">${t("admin.carico")}</div></div>` : "";
 }
+// «Nuovo invito» e «Inviti aperti»: solo se si entra con un invito (FANTA_REGISTRAZIONE=invito o email).
+const schedaInviti = () => `<h3>${t("admin.invito_titolo")}</h3>
+    <div class="debole piccolo">${t("admin.invito_spiega")}</div>
+    <div id="adm-avviso-posti" role="status"></div>
+    <label class="accesso-campo"><span class="debole piccolo">${t("admin.etichetta")}</span><input class="campo-testo" id="adm-etichetta" type="text" maxlength="60" autocomplete="off"></label>
+    <label class="interruttore"><span>${t("admin.nuovo_admin")}</span><input type="checkbox" id="adm-admin"></label>
+    <div class="pulsanti"><button class="bottone" id="adm-invito">${t("admin.crea_invito")}</button></div><div id="adm-esito-invito"></div>
+    <h3 id="adm-inviti-titolo" tabindex="-1">${t("admin.inviti_aperti")}</h3><div id="adm-inviti"><p class="debole piccolo">${t("admin.carico")}</p></div>`;
 // «Errori recenti», accanto agli strumenti da 1100 px (paginaGestione).
 function schedaErrori() {
   return gestisceAccount() ? `<div class="carta" id="scheda-errori"><h3>${t("errori.titolo")}</h3>
@@ -4191,7 +4205,7 @@ function collegaAmministratore() {
     if (!dove || !r || !("avviso" in r)) return;
     dove.innerHTML = r.avviso ? `<div class="attenzione">${esc(testoDi(r, "avviso"))}</div>` : "";
   };
-  $("#adm-invito").addEventListener("click", () => provaCosi(t("admin.crea_invito_no"), async () => {
+  if ($("#adm-invito")) $("#adm-invito").addEventListener("click", () => provaCosi(t("admin.crea_invito_no"), async () => {
     const r = await api("/api/admin/inviti", { method: "POST", body: JSON.stringify({ etichetta: valore("#adm-etichetta"), amministratore: $("#adm-admin").checked }) });
     $("#adm-etichetta").value = "";
     avvisoPosti(r);

@@ -333,3 +333,41 @@ def test_dopo_un_accesso_si_apre_formazione_o_giornate_non_il_tuo_account(web, u
     web.aspetta()
     titolo = web.pagina.locator("main").get_by_role("heading", level=1).inner_text().strip()
     assert titolo == attesa, f"dopo l'accesso si apre «{titolo}» ({web.pagina.url})"
+
+
+# ---------------------------------------------------------------- registrazione aperta, senza invito (26/11/2026)
+def test_registrazione_aperta_senza_invito_porta_al_primo_avvio(web):
+    """Con la registrazione aperta (il modo predefinito del server) chi arriva sceglie solo nome utente e password: niente campo
+    dell'invito, l'email facoltativa resta vuota. Creato l'account e salvato il codice di recupero, si entra e il primo avvio si apre
+    da solo dal passo «Le rose», come per chi entra con un invito."""
+    solo_prima(web)
+    corpi = []
+
+    def registra(route):
+        corpi.append(json.loads(route.request.post_data))
+        _rispondi(route, {**UTENTE, "codice_recupero": "AAAAA-BBBBB-CCCCC"})
+
+    web.risposta("/api/account/me", {**SENZA_SESSIONE, "registrazione": "aperta"}, stato=401)
+    web.pagina.route(_rotta("/api/account/registra"), registra)
+    web.pagina.set_viewport_size({"width": 390, "height": 844})
+    web.pagina.goto(web.server.indirizzo + "/", wait_until="load")
+    accesso = web.pagina.get_by_role("dialog")
+    web.pagina.locator("#accesso-schede button[data-s='registra']").click(timeout=10000)
+    accesso.get_by_text("Scegli un nome utente e una password.", exact=True).wait_for(timeout=10000)
+    assert web.pagina.locator("#ac-invito").count() == 0, "con la registrazione aperta non si chiede l'invito"
+    assert accesso.get_by_label("Email (facoltativa)").is_visible()
+    web.pagina.locator("#ac-nome").fill("amico")
+    web.pagina.locator("#ac-pw").fill("una-password-lunga-9")
+    web.pagina.locator("#ac-letto").check()
+    accesso.get_by_role("button", name="Crea l'account").click()
+    accesso.get_by_text("AAAAA-BBBBB-CCCCC").first.wait_for(timeout=10000)
+    assert len(corpi) == 1 and corpi[0]["nome_utente"] == "amico" and corpi[0]["accetto_termini"] is True, corpi
+    assert not corpi[0].get("invito") and "email" not in corpi[0] and "sito" not in corpi[0], corpi
+    account_senza_rose(web)
+    web.risposta("/api/account/me", UTENTE)
+    web.pagina.locator("#codice-salvato").check()
+    with web.pagina.expect_navigation(timeout=10000):
+        accesso.get_by_role("button", name="Entra nell'app").click()
+    titolo_della_guida(web, "Le rose")
+    # niente errori, tranne il «chi sono» di prima della registrazione (401: nessuna sessione)
+    assert all("/api/account/me" in e and "401" in e for e in web.errori_console + web.richieste_fallite), (web.errori_console, web.richieste_fallite)
