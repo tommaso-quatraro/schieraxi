@@ -204,10 +204,6 @@
     "it": "La formazione si chiude tra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
     "en": "The lineup closes in {tempo} and the one you saved is no longer valid: save another one."
   },
-  "frase.dafare.rose_vecchie": {
-    "it": "Le rose non sono aggiornate da {giorni} giorni e nel frattempo si è giocata una giornata.",
-    "en": "The rosters have not been updated for {giorni} days and a matchday has been played in the meantime."
-  },
   "frase.dafare.rose_mercato": {
     "it": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della {giornata}.",
     "en": "It's time for auctions and trades in the league: if the rosters have changed, update them before {giornata}."

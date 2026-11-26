@@ -580,10 +580,12 @@ private extension LegaDemo {
                 "priorita": 2, "azione": "Vedi", "destinazione": ["sezione": "mercato", "link": "schieraxi://mercato"]]
     }
 
-    /// Rose ferme da 5 giorni dopo una giornata giocata: una decisione in cima alla Formazione (`decisione`, #673), dopo il cambio
-    /// del titolare in dubbio se la demo lo propone.
+    /// Rose da aggiornare nel periodo di aste e scambi, con la frase che il server manda oggi (`dafare.rose_mercato` di
+    /// fanta/frasi.py, #883: «Le rose non sono aggiornate da 5 giorni…» il server non la scrive più): una decisione in cima alla
+    /// Formazione (`decisione`, #673), dopo il cambio del titolare in dubbio se la demo lo propone.
     static var voceRoseVecchie: [String: Any] {
-        ["id": "rose", "tipo": "rose", "testo": "Le rose non sono aggiornate da 5 giorni e nel frattempo si è giocata una giornata.",
+        ["id": "rose", "tipo": "rose",
+         "testo": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della \(TempiLega.etichetta(serieA: giornata, lega: giornataLega)).",
          "priorita": 2, "azione": "Aggiorna le rose", "destinazione": ["sezione": "lega", "link": "schieraxi://lega"],
          "decisione": voceDubbio["alternativa"] == nil ? 1 : 2]
     }
