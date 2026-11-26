@@ -2101,20 +2101,18 @@ function collegaSceltaMia() {
   let salvata = ms.value;                  // ciò che vale sul server: "" («Scegli una squadra») finché la mia non è scelta
   ms.addEventListener("change", async () => {
     if (!ms.value) return;
+    let scritta = false;
     try {
       await api("/api/mia-squadra", { method: "PUT", body: JSON.stringify({ nome: ms.value }) });
-    } catch (e) {                          // il menu torna a ciò che vale, così la stessa squadra si riprova (revisione della #945)
-      ms.value = salvata;
-      avviso(e.message);
-      return;
-    }
-    salvata = ms.value;
-    try {
+      scritta = true; salvata = ms.value;
       svuotaCache(); stato.squadraVista = null;
       avviso(t("lega.squadra_salvata"));
       await Promise.all([caricaInfo(), caricaSquadre()]);
       if (stato.vista === "impostazioni") vaiQui();
-    } catch (e) { avviso(e.message); }
+    } catch (e) {
+      if (!scritta) ms.value = salvata;    // non salvata: il menu torna a ciò che vale e la stessa squadra si riprova (revisione della #945)
+      avviso(e.message);
+    }
   });
 }
 async function vistaRosa(nome) {
