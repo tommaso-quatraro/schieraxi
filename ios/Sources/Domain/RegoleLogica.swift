@@ -146,11 +146,16 @@ enum RegoleLogica {
         }
     }
 
-    /// Un testo su una riga: ogni a capo (anche più d'uno di seguito) diventa uno spazio, e quelli in fondo («Invio» alla fine) si
-    /// tolgono. Gli spazi scritti restano com'erano, anche in fondo, perché il nome si sta scrivendo. Per il nome della lega nel
-    /// campo che va a capo (#923).
+    /// Un testo su una riga, per il nome della lega nel campo che va a capo (#923). Senza a capo resta com'è, anche con uno spazio in
+    /// fondo, perché il nome si sta scrivendo. Con un a capo («Invio», un testo incollato) ogni riga perde gli spazi ai lati e le
+    /// righe non vuote si uniscono con uno spazio solo: «Invio» dopo uno spazio non lascia «Lega  degli» (revisione della #945), e
+    /// quello in fondo si toglie.
     static func suUnaRiga(_ testo: String) -> String {
-        testo.split(whereSeparator: \.isNewline).joined(separator: " ")
+        guard testo.contains(where: \.isNewline) else { return testo }
+        return testo.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 
     /// Quanti decimali scrivere per un valore delle regole: 0 per un intero, 1 per «0,5», 2 per «0,25» (oltre si arrotonda), come

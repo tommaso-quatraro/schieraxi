@@ -8,10 +8,15 @@ import Testing
 
 @Suite("Regole: il nome della lega va a capo ma resta una riga")
 struct NomeLegaUnaRigaTests {
-    @Test("Gli a capo diventano spazi, quelli in fondo si tolgono; il resto non cambia", arguments: [
+    /// Revisione della #945: «Invio» a metà del nome, dopo o prima di uno spazio, lasciava due spazi («Lega  degli amici»).
+    @Test("Gli a capo diventano uno spazio solo, quelli in fondo si tolgono; senza a capo il testo non cambia", arguments: [
         ("Lega degli amici", "Lega degli amici"),
         ("Lega degli amici\n", "Lega degli amici"),
+        ("Lega degli amici \n", "Lega degli amici"),
         ("Lega degli\namici", "Lega degli amici"),
+        ("Lega degli \namici", "Lega degli amici"),
+        ("Lega degli\n amici", "Lega degli amici"),
+        ("Lega degli \n amici", "Lega degli amici"),
         ("Lega\r\n\ndegli amici", "Lega degli amici"),
         ("Lega ", "Lega "),
         ("\n", ""),
