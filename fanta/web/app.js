@@ -2896,7 +2896,7 @@ async function notificheWeb(dispositivi) {
     if (await Notification.requestPermission() !== "granted") throw new Error(t("avv.permesso_negato_abilita"));
     const { chiave } = await api("/api/push/chiave");
     sub = await iscrizioneMia(reg, chiave);              // mai quella di un altro account (#874)
-    dispositivi = (await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) })).dispositivi;
+    dispositivi = (await api("/api/push/iscrivi", { method: "POST", body: corpoIscrizione(sub) })).dispositivi;
     segnaAvvisiDi();                                       // l'iscrizione è di chi l'ha accesa (#804)
   };
   const spegni = async () => {
@@ -4004,12 +4004,29 @@ function avvisiDiQuestoAccount() {
   if (!n) return true;
   try { return localStorage.getItem(AVVISI_DI) === n; } catch { return false; }
 }
+// Il corpo di POST /api/push/iscrivi: l'iscrizione con `iphone`, vero se questo browser gira su un iPhone (iPad e Mac si presentano
+// come «Macintosh»). Il server dice all'app per iPhone che il promemoria arriva anche dalla web app (`promemoria_da` di /api/avvisi)
+// solo per un'iscrizione nata su un iPhone e confermata da poco: l'app lo scrive sotto «Avvisi su questo dispositivo».
+function corpoIscrizione(sub) {
+  return JSON.stringify({ ...sub.toJSON(), iphone: /iPhone/.test(navigator.userAgent || "") });
+}
+// La conferma di ogni giorno: con il permesso delle notifiche, la prima apertura del giorno rimanda l'iscrizione al server, che ne
+// segna la data. Una web app tolta dalla Home, o con le notifiche spente, smette di confermare: dopo qualche giorno il server non la
+// conta più. Il giorno dell'ultima conferma sta in AVVISI_CONFERMATI.
+const AVVISI_CONFERMATI = "avvisi-confermati";
+const giornoDiOggi = () => new Date().toISOString().slice(0, 10);
 async function rimandaAvvisi() {
-  try { if (localStorage.getItem(AVVISI_DA_RIMANDARE) !== "1") return; } catch { return; }
-  const fatto = () => { try { localStorage.removeItem(AVVISI_DA_RIMANDARE); } catch { /* niente memoria */ } };
+  let daRimandare, confermati;
+  try { daRimandare = localStorage.getItem(AVVISI_DA_RIMANDARE) === "1"; confermati = localStorage.getItem(AVVISI_CONFERMATI); }
+  catch { return; }
+  const daConfermare = confermati !== giornoDiOggi() && "Notification" in window && Notification.permission === "granted";
+  if (!daRimandare && !daConfermare) return;
+  const fatto = () => {
+    try { localStorage.removeItem(AVVISI_DA_RIMANDARE); localStorage.setItem(AVVISI_CONFERMATI, giornoDiOggi()); } catch { /* niente memoria */ }
+  };
   const sub = await iscrizionePushQui();
   if (!sub || !avvisiDiQuestoAccount()) { fatto(); return; }            // fatta da un altro account: non si rimanda (#804)
-  try { await api("/api/push/iscrivi", { method: "POST", body: JSON.stringify(sub.toJSON()) }); fatto(); }
+  try { await api("/api/push/iscrivi", { method: "POST", body: corpoIscrizione(sub) }); fatto(); }
   catch (e) { if (!(e.rete || e.status >= 500 || e.status === 429)) fatto(); }        // rifiutata per sempre: riprovare non serve
 }
 // Un'iscrizione fatta da un altro account non resta in questo browser (#874). Finché c'è, il server manda qui gli avvisi di
