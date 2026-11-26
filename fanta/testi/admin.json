@@ -64,13 +64,81 @@
     "it": "Carico…",
     "en": "Loading…"
   },
-  "admin.utenti_riepilogo.one": {
-    "it": "{n} utente su {massimo} al massimo: {elenco}.",
-    "en": "{n} user out of a maximum of {massimo}: {elenco}."
+  "admin.utenti_conteggio.one": {
+    "it": "{n} utente su {massimo} al massimo.",
+    "en": "{n} user out of a maximum of {massimo}.",
+    "nota": "Gestione › Utenti: sopra l'elenco degli account (26/11/2026; prima admin.utenti_riepilogo con i nomi in fila)"
   },
-  "admin.utenti_riepilogo.other": {
-    "it": "{n} utenti su {massimo} al massimo: {elenco}.",
-    "en": "{n} users out of a maximum of {massimo}: {elenco}."
+  "admin.utenti_conteggio.other": {
+    "it": "{n} utenti su {massimo} al massimo.",
+    "en": "{n} users out of a maximum of {massimo}."
+  },
+  "admin.tu": {
+    "it": "Sei tu",
+    "en": "That's you",
+    "nota": "Gestione › Utenti: al posto dei pulsanti sulla riga del proprio account (il proprio si elimina da Il tuo account)"
+  },
+  "admin.blocca": {
+    "it": "Blocca",
+    "en": "Block",
+    "nota": "pulsante di una riga di Gestione › Utenti; per i lettori di schermo admin.blocca_per"
+  },
+  "admin.blocca_per": {
+    "it": "Blocca {nome}",
+    "en": "Block {nome}"
+  },
+  "admin.blocca_conferma": {
+    "it": "L'account «{nome}» non potrà più entrare e le sue sessioni si chiudono subito. I suoi dati restano e puoi sbloccarlo quando vuoi. Confermi?",
+    "en": "The account «{nome}» will no longer be able to sign in and its sessions end right away. Its data stays and you can unblock it whenever you want. Continue?",
+    "nota": "domanda del browser prima di bloccare (pulsanti OK e Annulla del sistema, come admin.annulla_conferma)"
+  },
+  "admin.blocca_fatto": {
+    "it": "Account bloccato: non può più entrare",
+    "en": "Account blocked: it can no longer sign in"
+  },
+  "admin.blocca_no": {
+    "it": "Non riesco a bloccare l'account",
+    "en": "I cannot block the account"
+  },
+  "admin.sblocca": {
+    "it": "Sblocca",
+    "en": "Unblock"
+  },
+  "admin.sblocca_per": {
+    "it": "Sblocca {nome}",
+    "en": "Unblock {nome}"
+  },
+  "admin.sblocca_conferma": {
+    "it": "L'account «{nome}» potrà di nuovo entrare con la sua password. Confermi?",
+    "en": "The account «{nome}» will be able to sign in again with its password. Continue?"
+  },
+  "admin.sblocca_fatto": {
+    "it": "Account sbloccato: può di nuovo entrare",
+    "en": "Account unblocked: it can sign in again"
+  },
+  "admin.sblocca_no": {
+    "it": "Non riesco a sbloccare l'account",
+    "en": "I cannot unblock the account"
+  },
+  "admin.elimina": {
+    "it": "Elimina",
+    "en": "Delete"
+  },
+  "admin.elimina_per": {
+    "it": "Elimina {nome}",
+    "en": "Delete {nome}"
+  },
+  "admin.elimina_conferma": {
+    "it": "L'account «{nome}» e tutti i suoi dati (rose, regole, formazioni, avvisi) spariscono per sempre: non si può annullare. Confermi?",
+    "en": "The account «{nome}» and all its data (rosters, rules, line-ups, alerts) disappear for good: this cannot be undone. Continue?"
+  },
+  "admin.elimina_fatto": {
+    "it": "Account eliminato con tutti i suoi dati",
+    "en": "Account deleted with all its data"
+  },
+  "admin.elimina_no": {
+    "it": "Non riesco a eliminare l'account",
+    "en": "I cannot delete the account"
   },
   "admin.invito_manda": {
     "it": "Manda all'amico questo link: apre la registrazione con il codice già scritto.",

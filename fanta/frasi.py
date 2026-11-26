@@ -390,6 +390,11 @@ CATALOGO: dict[str, str] = {
     "admin.invito_aperto": "Creato {creato}, scade {scade}.",
     "admin.invito_aperto_posti.one": "Creato {creato}, scade {scade}. {n} posto libero su {posti}.",
     "admin.invito_aperto_posti.other": "Creato {creato}, scade {scade}. {n} posti liberi su {posti}.",
+    # Gestione › Utenti (26/11/2026, `dettaglio` e `blocco` di GET /api/admin/utenti): {creato}, {accesso} e {quando} = una
+    # `data.giorno_mese` nell'ora italiana. «Nessun accesso recente» quando non resta nessuna sessione (si cancellano scadute)
+    "admin.utente_dettaglio": "Iscrizione {creato}, ultimo accesso {accesso}.",
+    "admin.utente_dettaglio_senza_accesso": "Iscrizione {creato}, nessun accesso recente.",
+    "admin.utente_bloccato": "Bloccato {quando}: non può entrare.",
     # Stato dei dati › Fonti dei dati, sotto una fonte spenta (#894, `fonti_attive.cosa_manca`): solo cosa non arriva, una chiave
     # per fonte (`fonte.spenta_<id>`); il nome e la frase comune sulle condizioni d'uso li scrive la pagina
     "fonte.spenta_fantacalcio": "Non scarico listone, quotazioni, calendario, voti e probabili formazioni.",

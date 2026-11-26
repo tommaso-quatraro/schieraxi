@@ -802,6 +802,63 @@ def cmd_utente_ruolo(a) -> None:
     print(f"Fatto: l'account «{nuovo.nome_utente}» è ora {'amministratore' if nuovo.amministratore else 'utente normale'}. "
           "I suoi dati non sono cambiati e le sue sessioni restano aperte.")
 
+def _account_da_confermare(nome: str, cosa: str) -> int:
+    """Per i comandi che bloccano, sbloccano o eliminano un account: il suo numero, dopo che chi scrive ha confermato riscrivendo
+    il nome. Account che non c'è o conferma diversa: si esce senza fare niente."""
+    import contextlib
+    from . import account
+    if not account.multiutente():
+        sys.exit("Gli account non sono attivi: serve FANTA_MULTIUTENTE=1 nell'ambiente del servizio.")
+    normalizzato = account.normalizza_nome(nome)
+    try:
+        with contextlib.closing(account.apri()) as db:
+            riga = db.execute("SELECT id FROM utenti WHERE nome_utente = ?", (normalizzato,)).fetchone()
+    except account.ErroreAccount as e:
+        sys.exit(f"Errore: {e.messaggio}")
+    if riga is None:
+        sys.exit(f"Errore: l'account «{nome}» non esiste.")
+    try:
+        risposta = input(f"{cosa}. Per confermare scrivi di nuovo il nome dell'account ({normalizzato}): ")
+    except EOFError:
+        risposta = ""
+    if account.normalizza_nome(risposta) != normalizzato:
+        sys.exit("Il nome non corrisponde. Non ho fatto niente.")
+    return riga["id"]
+
+
+def cmd_utente_blocca(a) -> None:
+    """Blocca o sblocca un account (multiutente), dopo la conferma: il bloccato non entra più e perde subito sessioni, token del
+    widget e notifiche web; i suoi dati restano. Una riga nel registro di sicurezza."""
+    import contextlib
+    from . import account
+    if a.sblocca:
+        cosa = f"L'account «{a.nome}» potrà di nuovo entrare con la sua password"
+    else:
+        cosa = f"L'account «{a.nome}» non potrà più entrare e le sue sessioni si chiudono subito (i dati restano)"
+    numero = _account_da_confermare(a.nome, cosa)
+    try:
+        with contextlib.closing(account.apri()) as db:
+            chiuse = account.blocca(db, numero, not a.sblocca, via="comando")
+    except account.ErroreAccount as e:
+        sys.exit(f"Errore: {e.messaggio}")
+    if a.sblocca:
+        print(f"Fatto: l'account «{a.nome}» non è più bloccato.")
+    else:
+        print(f"Fatto: l'account «{a.nome}» è bloccato (sessioni chiuse: {chiuse}). Per sbloccarlo: python -m fanta utente-sblocca {a.nome}")
+
+
+def cmd_utente_elimina(a) -> None:
+    """Elimina un account e tutti i suoi dati (multiutente), dopo la conferma: gli stessi passi di «Elimina il mio account».
+    Non si può annullare; non si elimina l'ultimo amministratore. Una riga nel registro di sicurezza."""
+    from . import account, rotte_account
+    numero = _account_da_confermare(a.nome, f"L'account «{a.nome}» e tutti i suoi dati spariscono, senza ritorno")
+    try:
+        rotte_account.elimina_account_e_dati(numero, via="comando")
+    except account.ErroreAccount as e:
+        sys.exit(f"Errore: {e.messaggio}")
+    print(f"Fatto: l'account «{a.nome}» e i suoi dati non ci sono più.")
+
+
 def cmd_importa_per_conto_di(a) -> None:
     """Importa le rose di un amico che l'ha chiesto, nel SUO archivio (multiutente). Solo da chi ha accesso al server; resta
     una riga nel registro di sicurezza. Excel letto in un processo separato, come per le importazioni dall'app."""
@@ -1005,6 +1062,15 @@ def main(argv: list[str] | None = None) -> None:
     x.add_argument("--utente", required=True, help="nome utente dell'account")
     x.add_argument("--ruolo", required=True, choices=("admin", "normale"), help="admin = amministratore, normale = utente")
     x.set_defaults(f=cmd_utente_ruolo)
+    x = sub.add_parser("utente-blocca", help="blocca un account: non entra più e le sue sessioni si chiudono, i dati restano (multiutente, chiede conferma)")
+    x.add_argument("nome", help="nome utente dell'account")
+    x.set_defaults(f=cmd_utente_blocca, sblocca=False)
+    x = sub.add_parser("utente-sblocca", help="toglie il blocco a un account (multiutente, chiede conferma)")
+    x.add_argument("nome", help="nome utente dell'account")
+    x.set_defaults(f=cmd_utente_blocca, sblocca=True)
+    x = sub.add_parser("utente-elimina", help="elimina un account e tutti i suoi dati, senza ritorno (multiutente, chiede conferma)")
+    x.add_argument("nome", help="nome utente dell'account")
+    x.set_defaults(f=cmd_utente_elimina)
     x = sub.add_parser("importa-per-conto-di", help="importa le rose di un amico che lo ha chiesto, nel suo archivio (multiutente)")
     x.add_argument("--utente", required=True, help="nome utente dell'amico")
     x.add_argument("file", help="file Excel, CSV o di testo con le rose")

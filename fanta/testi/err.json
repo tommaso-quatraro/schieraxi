@@ -277,6 +277,28 @@
     "it": "Non posso declassare l'ultimo amministratore: prima promuovi un altro account",
     "en": "I cannot demote the last administrator: promote another account first"
   },
+  "err.ultimo_admin_blocca": {
+    "it": "Non posso bloccare l'ultimo amministratore: prima promuovi un altro account",
+    "en": "I cannot block the last administrator: promote another account first"
+  },
+  "err.account_bloccato": {
+    "it": "Questo account è bloccato: chiedi a chi gestisce SchieraXI.",
+    "en": "This account is blocked: ask whoever runs SchieraXI.",
+    "nota": "accesso (password o Google) di un account bloccato da chi gestisce il server; solo dopo la password giusta"
+  },
+  "err.blocca_se_stesso": {
+    "it": "Non puoi bloccare il tuo account",
+    "en": "You cannot block your own account"
+  },
+  "err.elimina_se_stesso": {
+    "it": "Il tuo account si elimina da Impostazioni › Il tuo account, con la password",
+    "en": "You delete your own account from Settings › Your account, with your password"
+  },
+  "err.amministratore_dal_server": {
+    "it": "Un amministratore si blocca, si sblocca o si elimina solo sul server, dalla riga di comando",
+    "en": "An administrator can be blocked, unblocked or deleted only on the server, from the command line",
+    "nota": "Gestione › Utenti: blocca, sblocca o elimina un altro amministratore (403); la web non mostra i pulsanti su quelle righe"
+  },
   "err.problema_file": {
     "it": "Il server ha un problema con i suoi file: riprova più tardi. Se succede ancora, avvisa chi gestisce l'app.",
     "en": "The server has a problem with its files: try again later. If it keeps happening, tell whoever runs the app."

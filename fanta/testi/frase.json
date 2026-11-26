@@ -1265,6 +1265,21 @@
     "it": "Creato {creato}, scade {scade}. {n} posti liberi su {posti}.",
     "en": "Created {creato}, expires {scade}. {n} places left out of {posti}."
   },
+  "frase.admin.utente_dettaglio": {
+    "it": "Iscrizione {creato}, ultimo accesso {accesso}.",
+    "en": "Joined {creato}, last sign-in {accesso}.",
+    "nota": "Gestione › Utenti: sotto il nome di un account; {creato} e {accesso} = frase.data.giorno_mese (campo dettaglio_frase)"
+  },
+  "frase.admin.utente_dettaglio_senza_accesso": {
+    "it": "Iscrizione {creato}, nessun accesso recente.",
+    "en": "Joined {creato}, no recent sign-in.",
+    "nota": "come frase.admin.utente_dettaglio, quando non resta nessuna sessione (si cancellano scadute)"
+  },
+  "frase.admin.utente_bloccato": {
+    "it": "Bloccato {quando}: non può entrare.",
+    "en": "Blocked {quando}: cannot sign in.",
+    "nota": "Gestione › Utenti: riga di un account bloccato da chi gestisce; {quando} = frase.data.giorno_mese (campo blocco_frase)"
+  },
   "frase.fonte.spenta_fantacalcio": {
     "it": "Non scarico listone, quotazioni, calendario, voti e probabili formazioni.",
     "en": "I don't download the player list, prices, fixtures, ratings and probable lineups.",
