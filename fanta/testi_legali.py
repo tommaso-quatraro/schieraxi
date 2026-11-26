@@ -85,6 +85,9 @@ TESTI: dict[str, dict] = {
                 "e le impostazioni degli avvisi, per esempio quali avvisi vuoi, le ore tranquille e la lingua in cui riceverli.",
                 "Se usi il widget dell'iPhone: un codice solo per il widget, conservato come hash, con la data dell'ultimo uso. Vale 90 giorni e permette solo di leggere "
                 "lo stato della giornata, il widget e i risultati in diretta. Si annulla quando cambi la password o usi «Esci da tutti i dispositivi».",
+                "Se usi «Scrivici»: il testo del commento, con la data, la versione e la piattaforma dell'app (web, iPhone, Android). Lo legge solo chi gestisce l'app; "
+                "resta finché non elimini l'account, che lo cancella, ed è in «Scarica i tuoi dati». Non va a terzi: all'avviso che riceve chi gestisce l'app "
+                "arriva solo «un commento nuovo», senza testo né nome.",
                 "Le sessioni aperte (un codice casuale conservato come hash, il tipo di dispositivo, quando le hai usate l'ultima volta) e quindi la data dell'ultimo accesso.",
                 "Un registro di sicurezza con accessi falliti, blocchi e simili: contiene il nome utente e l'indirizzo di rete accorciato (senza la parte che indica il singolo apparecchio), mai password né codici. "
                 "Per riconoscere i tuoi dispositivi (così chi prova password sul tuo nome non ti chiude fuori) il server tiene, per 60 giorni dall'ultimo accesso, solo un'impronta degli indirizzi di rete e di un segreto casuale salvato sul dispositivo, calcolata con una chiave segreta del server: senza quella chiave non si risale all'indirizzo. "
@@ -134,7 +137,7 @@ TESTI: dict[str, dict] = {
             ]),
             ("h", "Cancellazione e copia dei dati"),
             ("p", "Da Impostazioni › Il tuo account, con «Scarica i tuoi dati», ricevi subito un file (JSON, leggibile anche da altri programmi) con i tuoi dati: "
-                  "quelli dell'account (nome, email, accessi collegati, termini accettati) e quelli della lega (regole, rose, scelte, giocatori seguiti, "
+                  "quelli dell'account (nome, email, accessi collegati, termini accettati, commenti mandati con «Scrivici») e quelli della lega (regole, rose, scelte, giocatori seguiti, "
                   "impostazioni delle notifiche). La password e gli altri codici segreti non ci sono mai. Per una copia anche del resto (per esempio le immagini "
                   "caricate o le formazioni importate) scrivi a {contatto}. Con «Elimina il mio account» cancelli tutto dal server. "
                   "L'eliminazione è definitiva. Nelle copie di sicurezza i tuoi dati possono restare fino alla scadenza della copia ({backup}). "
@@ -286,6 +289,9 @@ TESTI: dict[str, dict] = {
                 "and the alert settings, for example which alerts you want, the quiet hours and the language you receive them in.",
                 "If you use the iPhone widget: a code only for the widget, stored as a hash, with the date it was last used. It lasts 90 days and only lets the widget read "
                 "the matchday status, the widget and the live scores. It is cancelled when you change your password or use «Sign out of all devices».",
+                "If you use «Write to us»: the text of the comment, with the date and the version and platform of the app (web, iPhone, Android). Only whoever runs the app reads it; "
+                "it stays until you delete your account, which deletes it, and it is in «Download your data». It does not go to third parties: the alert that whoever runs the app "
+                "receives only says «a new comment», without the text or your name.",
                 "Open sessions (a random code stored as a hash, the type of device, when you last used them) and therefore the date of your last sign-in.",
                 "A security log with failed sign-ins, blocks and the like: it contains the username and the shortened network address (without the part that identifies a single device), never passwords or codes. "
                 "To recognise your devices (so that someone trying passwords on your name cannot lock you out) the server keeps, for 60 days after your last sign-in, only a fingerprint of your network addresses and of a random secret stored on the device, computed with a secret key of the server: without that key the address cannot be recovered. "
@@ -335,7 +341,7 @@ TESTI: dict[str, dict] = {
             ]),
             ("h", "Deletion and a copy of your data"),
             ("p", "From Settings › Your account, with «Download your data», you get a file right away (JSON, readable by other programs too) with your data: "
-                  "your account (name, email, linked sign-ins, accepted terms) and your league (rules, squads, choices, followed players, "
+                  "your account (name, email, linked sign-ins, accepted terms, comments sent with «Write to us») and your league (rules, squads, choices, followed players, "
                   "notification settings). The password and other secret codes are never in it. For a copy of the rest too (for example the images "
                   "you uploaded or the lineups you imported) write to {contatto}. With «Delete my account» you delete everything from the server. "
                   "Deletion is final. In backup copies your data may remain until the copy expires ({backup}). "
