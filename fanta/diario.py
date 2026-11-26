@@ -408,21 +408,43 @@ def _previsti_e_veri(d: Dati, stagione: str, giornata: int, regole: Regole, par:
 MAX_GIOCATORI_VOCE = 60          # rosa + chi era nella consigliata di allora: il tetto tiene piccolo il file anche con rose strane
 
 
-def _numeri_giocatori(prev: pd.DataFrame, fv_vero: dict, ids) -> list[dict]:
-    """Per «Quanto ci abbiamo preso»: per ogni giocatore la probabilità di voto e il fantavoto atteso RICOSTRUITI con i dati di
-    prima e il fantavoto vero (`fv` null = non ha preso voto). Circa 60 byte a giocatore."""
+def _fv_della_lega(prev: pd.DataFrame, fv_vero: dict, r_rinvio: dict) -> tuple[dict, dict]:
+    """({id: fantavoto che la lega ha contato}, {id: regola}) di una giornata finita. Chi aveva la partita rinviata, con «senza
+    voto» o con il voto d'ufficio, ha il voto della regola della lega (`rinvii.voti_lega`: nessuno o quello fisso) anche se il
+    recupero si è giocato, e la regola nel secondo dizionario; gli altri il voto vero. Con «aspetta» la lega conta il voto del
+    recupero: sono i voti veri. `prev` = le previsioni con la regola applicata (`rinvii.applica`, colonna `rinvio`)."""
+    if r_rinvio["modo"] == "aspetta" or "rinvio" not in prev.columns:
+        return fv_vero, {}
+    coinvolti = [int(i) for i in prev.index[prev["rinvio"].notna()]]
+    gioca, fv = {i: i in fv_vero for i in coinvolti}, dict(fv_vero)
+    rinvii.voti_lega(gioca, fv, {}, coinvolti, r_rinvio)
+    return {i: x for i, x in fv.items() if gioca.get(i, True)}, dict.fromkeys(coinvolti, r_rinvio["modo"])
+
+
+def _numeri_giocatori(prev: pd.DataFrame, fv_lega: dict, ids, rinvio: dict | None = None) -> list[dict]:
+    """Per la tabella degli 11 della pagina Giornate e per «Quanto ci abbiamo preso»: per ogni giocatore la probabilità di voto e il
+    fantavoto atteso RICOSTRUITI con i dati di prima e il fantavoto che la lega ha contato (`fv`, null = nessun voto; vedi
+    `_fv_della_lega`). Chi aveva la partita rinviata e ha il voto della regola della lega ha in più `rinvio` (la regola, da
+    `rinvio` = {id: regola}): quel voto non è del campo, quindi non si confronta con l'atteso. Circa 60 byte a giocatore."""
     out = []
     for i in dict.fromkeys(int(x) for x in ids):
         if i in prev.index:
             out.append({"id": i, "p_voto": round(float(prev.at[i, "p_voto"]), 3), "fv_atteso": round(float(prev.at[i, "mu"]), 2),
-                        "fv": round(float(fv_vero[i]), 2) if i in fv_vero else None})
+                        "fv": round(float(fv_lega[i]), 2) if i in fv_lega else None} | (
+                {"rinvio": rinvio[i]} if rinvio and i in rinvio else {}))
     return out[:MAX_GIOCATORI_VOCE]
 
 
 def numeri_giocatori(d: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri, ids) -> list[dict] | None:
-    """Solo i numeri per giocatore di una giornata finita, senza simulazioni: completa le voci scritte prima che ci fossero."""
-    pv = _previsti_e_veri(d, stagione, giornata, regole, par)
-    return None if pv is None else _numeri_giocatori(pv[0], pv[2], ids)
+    """Solo i numeri per giocatore di una giornata finita, senza simulazioni, con la regola della lega per le partite rinviate come
+    in `calcola_giornata`: completa le voci scritte prima che ci fossero e dice se i voti sono cambiati (`_stessi_voti`)."""
+    r_rinvio = rinvii.regola(regole, stagione, giornata)
+    rinviate = rinvii.id_fuori_turno(d.partite, stagione, giornata)
+    pv = _previsti_e_veri(d, stagione, giornata, regole, par, rinviate if r_rinvio["modo"] != "aspetta" else frozenset())
+    if pv is None:
+        return None
+    fv_lega, rinvio = _fv_della_lega(rinvii.applica(pv[0], rinviate, r_rinvio), pv[2], r_rinvio)
+    return _numeri_giocatori(pv[0], fv_lega, ids, rinvio)
 
 
 def _senza_previsione(d: Dati, giocatori_rosa, rosa: dict, reali: pd.DataFrame, col: str, regole: Regole, rinviate, r_rinvio: dict,
@@ -508,6 +530,7 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
     prev, reali, fv_vero = pv
     numeri_prev = prev                    # «Quanto ci abbiamo preso» misura il modello: numeri di prima della regola dei rinvii
     prev = rinvii.applica(prev, rinviate, r_rinvio)
+    fv_lega, rinvio_numeri = _fv_della_lega(prev, fv_vero, r_rinvio)      # ... e i voti che la lega ha contato
     ids = [i for i in ids_rosa if i in prev.index]
     if len(ids) < MIN_GIOCATORI_ROSA:
         return None
@@ -559,9 +582,12 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
             return json.loads(json.dumps(tieni)) | impronte
         for g in nuova.get("giocatori") or []:
             if isinstance(g, dict) and g.get("id") in numeri_prev.index:
-                g["fv"] = round(float(fv_vero[g["id"]]), 2) if g["id"] in fv_vero else None
+                g["fv"] = round(float(fv_lega[g["id"]]), 2) if g["id"] in fv_lega else None
+                g.pop("rinvio", None)
+                if g["id"] in rinvio_numeri:
+                    g["rinvio"] = rinvio_numeri[g["id"]]
         if "giocatori" not in nuova:
-            nuova["giocatori"] = _numeri_giocatori(numeri_prev, fv_vero, list(ids) + list(altri_ids))
+            nuova["giocatori"] = _numeri_giocatori(numeri_prev, fv_lega, list(ids) + list(altri_ids), rinvio_numeri)
         return nuova | impronte
     # chi non ha previsione sta in colonne fisse DOPO le estrazioni della rosa: la consigliata vale come prima, e la stessa
     # formazione vale lo stesso con o senza di lui (revisione di #461)
@@ -577,7 +603,7 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
             "impronta_voti": impronta_voti(d, stagione, giornata),
             "consigliata": ricostruita, "ricostruita": dict(ricostruita),
             "schierata": None, "automatica": None,
-            "giocatori": _numeri_giocatori(numeri_prev, fv_vero, list(ids) + list(altri_ids))}
+            "giocatori": _numeri_giocatori(numeri_prev, fv_lega, list(ids) + list(altri_ids), rinvio_numeri)}
 
     def riga_di(sc: dict | None) -> dict | None:
         scelti = list(dict.fromkeys(int(i) for i in (sc or {}).get("titolari", [])))
@@ -666,14 +692,16 @@ def _solo_punti(voce: dict, punti, istantanea: dict | None, scelta: dict | None,
 
 
 def _stessi_voti(d: Dati, stagione: str, giornata: int, regole: Regole, voce: dict) -> bool:
-    """Vero se i voti dei giocatori della voce (il fantavoto vero di ciascuno in `giocatori`) sono quelli di adesso: i suoi punti
-    sono già giusti e basta scriverle l'impronta (revisione di #798: al rilascio, a voti invariati, nessun numero cambia)."""
-    prima = {g["id"]: g.get("fv") for g in voce.get("giocatori") or [] if isinstance(g, dict) and isinstance(g.get("id"), int)}
+    """Vero se i voti dei giocatori della voce (il fantavoto contato dalla lega di ciascuno in `giocatori`, con il segno `rinvio`)
+    sono quelli di adesso: i suoi punti sono già giusti e basta scriverle l'impronta (revisione di #798: al rilascio, a voti
+    invariati, nessun numero cambia)."""
+    prima = {g["id"]: (g.get("fv"), g.get("rinvio")) for g in voce.get("giocatori") or []
+             if isinstance(g, dict) and isinstance(g.get("id"), int)}
     adesso = numeri_giocatori(d, stagione, giornata, regole, Parametri(), list(prima)) if prima else None
     if adesso is None:
         return False
-    adesso = {g["id"]: g["fv"] for g in adesso}
-    return all(i in adesso and adesso[i] == fv for i, fv in prima.items())
+    adesso = {g["id"]: (g["fv"], g.get("rinvio")) for g in adesso}
+    return all(i in adesso and adesso[i] == x for i, x in prima.items())
 
 
 def _giocatori_rosa(squadra) -> dict[int, tuple[str, str | None]]:
@@ -1059,9 +1087,10 @@ def fatti_e_attesi(voce: dict) -> dict | None:
     titolari ha fatto meglio (`meglio`) o peggio (`peggio`) del suo fantavoto atteso di almeno SOGLIA_SCARTO punti, al massimo
     MAX_SCARTI per parte, dalla differenza più grande: `{id, nome, ruolo, atteso, preso, differenza}`. L'atteso di un giocatore è quello mostrato prima della
     scadenza (istantanea), se c'è, altrimenti quello rifatto con i soli dati di prima (`giocatori`): gli stessi numeri della tabella
-    della pagina. Chi non ha preso voto non c'è (senza un fantavoto non si confronta; la tabella lo dice «senza voto»). Le
-    differenze sono quelle dei numeri come la pagina li scrive (`_letto`). `testo` e `frase`: la frase su `meglio` e `peggio`, null
-    se sono vuoti. None se la formazione non ha i punti."""
+    della pagina. Chi non ha preso voto non c'è (senza un fantavoto non si confronta; la tabella lo dice «senza voto»), e nemmeno
+    chi aveva la partita rinviata e ha il voto della regola della lega (`giocatori[].rinvio`: d'ufficio o nessuno, non del campo).
+    Le differenze sono quelle dei numeri come la pagina li scrive (`_letto`). `testo` e `frase`: la frase su `meglio` e `peggio`,
+    null se sono vuoti. None se la formazione non ha i punti."""
     chi = _formazione_che_conta(voce)
     if chi is None or _numero(chi[1].get("atteso")) is None or _numero(chi[1].get("reale")) is None:
         return None
@@ -1076,7 +1105,7 @@ def fatti_e_attesi(voce: dict) -> dict | None:
             continue
         n = numeri.get(t["id"]) or {}
         atteso, preso = mostrati.get(t["id"], n.get("fv_atteso")), n.get("fv")
-        if _numero(atteso) is None or _numero(preso) is None:
+        if _numero(atteso) is None or _numero(preso) is None or n.get("rinvio"):
             continue
         righe.append({"id": t["id"], "nome": t.get("nome", ""), "ruolo": t.get("ruolo"), "atteso": atteso, "preso": preso,
                       "differenza": round(_letto(preso) - _letto(atteso), 1)})

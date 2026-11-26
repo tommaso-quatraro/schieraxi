@@ -355,7 +355,10 @@ def test_diario_con_la_partita_rinviata(monkeypatch, modo, reale):
     else:
         assert v["schierata"]["reale"] == 9 * 6          # 21 e 25 senza voto e in panchina nessuno può entrare (22 ha la stessa partita)
     numeri = {g["id"]: g for g in v["giocatori"]}
-    assert numeri[25]["fv"] == 9.0 and numeri[25]["fv_atteso"] == pytest.approx(6.75)     # «Quanto ci abbiamo preso»: il modello
+    assert numeri[25]["fv_atteso"] == pytest.approx(6.75)                       # «Quanto ci abbiamo preso»: il modello
+    # la tabella degli 11: il voto che la lega ha contato (difetto del 26/11/2026: prima il 9 del recupero con ogni regola)
+    assert (numeri[25]["fv"], numeri[25].get("rinvio")) == {"aspetta": (9.0, None), "voto_ufficio": (6.0, "voto_ufficio"),
+                                                            "senza_voto": (None, "senza_voto")}[modo]
     base = diario.impronta_regole(Regole())
     assert v["regole"] == (base if modo == "aspetta" else diario.impronta_regole(regole, ST, 1, True))
     assert (diario.impronta_regole(regole, ST, 1, True) == base) is (modo == "aspetta")
