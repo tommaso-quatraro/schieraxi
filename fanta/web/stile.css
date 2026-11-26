@@ -986,6 +986,12 @@ body.pagina-testo { padding: 0 0 40px; }
 .adm-utenti li > span { flex: none; }
 .adm-azioni { display: flex; flex: none; margin-right: -8px; }
 .azione-testo.distruttiva { color: var(--rosso); }
+/* Gestione › Commenti degli utenti (Scrivici): chi, quando e da dove piccolo; sotto il testo intero, a capo dove è andato a capo chi
+   l'ha scritto (anche una parola lunghissima va a capo); in fondo «Segna come letto» o «Letto» */
+.commenti-elenco li { padding: 10px 0; }
+.commento-testo { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.commento-coda { margin: 2px 0 0 -8px; }
+.commento-coda.debole { margin: 6px 0 0; }
 
 
 .segmenti[hidden] { display: none !important; }

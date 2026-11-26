@@ -54,6 +54,9 @@ NON_PERSONALI = {
     ("GET", "/api/admin/funzioni"), ("PUT", "/api/admin/funzioni"),
     # chi gestisce blocca, sblocca o elimina l'account di un altro (tests/test_gestione_utenti.py)
     ("POST", "/api/admin/utenti/{utente_id}/blocca"), ("POST", "/api/admin/utenti/{utente_id}/sblocca"), ("DELETE", "/api/admin/utenti/{utente_id}"),
+    # «Scrivici»: l'utente scrive solo (il numero dalla sessione) e il suo commento sta nel database degli account; legge chi gestisce
+    # (tests/test_feedback.py prova che un utente non legge l'elenco e che «Scarica i tuoi dati» ha solo i commenti di chi chiede)
+    ("POST", "/api/feedback"), ("GET", "/api/admin/feedback"), ("POST", "/api/admin/feedback/{commento_id}/letto"),
     # accesso con Google: parlano solo di account e identità, nessun dato della lega
     ("POST", "/api/account/social/google/inizia"), ("GET", "/api/account/social/google/ritorno"), ("POST", "/api/account/social/scambio"),
     ("POST", "/api/account/social/completa"), ("GET", "/api/account/social/accessi"), ("DELETE", "/api/account/social/{provider}"),

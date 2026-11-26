@@ -326,6 +326,22 @@ MIGRAZIONI = [
     """
     ALTER TABLE token_widget ADD COLUMN sessione_id INTEGER;
     """,
+    # «Scrivici» (26/11/2026, vedi fanta/feedback.py): i commenti degli utenti per chi gestisce il server. Vanno via con l'account
+    # (dato personale); `letto` = quando chi gestisce l'ha segnato come letto (NULL = da leggere). IF NOT EXISTS: una tabella già
+    # presente (creata a mano o da una prova a metà) non deve fermare il database di tutti
+    """
+    CREATE TABLE IF NOT EXISTS feedback (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        utente_id INTEGER NOT NULL REFERENCES utenti(id) ON DELETE CASCADE,
+        testo TEXT NOT NULL,
+        creato TEXT NOT NULL,
+        piattaforma TEXT,
+        versione TEXT,
+        schermata TEXT,
+        letto TEXT
+    );
+    CREATE INDEX IF NOT EXISTS feedback_utente ON feedback(utente_id);
+    """,
     _aggiungi_bloccato,
 ]
 
@@ -1666,6 +1682,11 @@ def esporta(db: sqlite3.Connection, utente_id: int, mostra_tutte: bool | None = 
     if lega is not None:
         impostazioni["procedura_guidata"] = {"tipo": lega["tipo"], "stato": lega["stato"], "passo": lega["passo"],
                                              "demo": bool(lega["demo"]), "aggiornata": lega["aggiornato"]}
+    # i commenti mandati con «Scrivici» (fanta/feedback.py), dal più vecchio
+    commenti = [{"testo": r["testo"], "quando": r["creato"], "piattaforma": r["piattaforma"], "versione": r["versione"],
+                 "schermata": r["schermata"], "letto": r["letto"] is not None}
+                for r in db.execute("SELECT testo, creato, piattaforma, versione, schermata, letto FROM feedback WHERE utente_id = ? "
+                                    "ORDER BY id", (int(utente_id),))]
     return {
         "nome_visualizzato": riga["nome_visualizzato"] or riga["nome_utente"],
         "nome_utente": riga["nome_utente"],
@@ -1677,6 +1698,7 @@ def esporta(db: sqlite3.Connection, utente_id: int, mostra_tutte: bool | None = 
         "accessi_collegati": collegati,
         "termini": {"accettati": riga["termini_accettati"], "versione": riga["termini_versione"]},
         "impostazioni": impostazioni,
+        "commenti": commenti,
     }
 
 
