@@ -48,9 +48,6 @@ final class LegaViewModel: ViewModelBase {
     @Published var regoleNonSalvate = false
     /// Le pagine chieste mentre le Regole avevano modifiche non salvate: si aprono dopo la risposta alla domanda.
     @Published private(set) var pagineInAttesa: [PaginaImpostazioni]?
-    /// Una pagina (o il foglio del widget) chiesta da un passo della configurazione guidata: lasciata, la guida si riapre da quel
-    /// passo (#880). La segue `ContenitoreApp` a ogni cambio di `percorso` e del foglio del widget.
-    var ritornoAllaGuida = RitornoAllaGuida()
     private var ascoltoStato: AnyCancellable?
     /// L'ultima risposta di `/api/stato` già passata al pulsante «Aggiorna i dati» (`Caricatore.risposte`).
     private var rispostaUsata = 0
@@ -140,7 +137,7 @@ final class LegaViewModel: ViewModelBase {
         return nil
     }
 
-    /// La riga di Gestione sul controllo che iOS fa fare all'app quando è chiusa (giornata, promemoria, widget), in italiano semplice.
+    /// La riga di Gestione sul controllo che iOS fa fare all'app quando è chiusa (se cambia la consigliata), in italiano semplice.
     static let titoloControlli = "Controllo con l'app chiusa"
 
     /// Lo stato di quel controllo; se è spento, dove si riaccende (Impostazioni > Generali > Aggiornamento app in background).

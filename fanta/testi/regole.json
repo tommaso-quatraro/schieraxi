@@ -303,8 +303,8 @@
     "en": "More frequent updates near the deadline"
   },
   "regole.agg_vicini_aiuto": {
-    "it": "Probabili e infortuni riletti a 60, 30 e 15 minuti dalla scadenza",
-    "en": "Probable lineups and injuries re-read 60, 30 and 15 minutes before the deadline"
+    "it": "Probabili e infortuni riletti a 60, 30 e 15 minuti dalla scadenza, con avviso se cambia qualcosa",
+    "en": "Probable lineups and injuries re-read 60, 30 and 15 minutes before the deadline, with an alert if anything changes"
   },
   "regole.rinviate": {
     "it": "Partite rinviate",

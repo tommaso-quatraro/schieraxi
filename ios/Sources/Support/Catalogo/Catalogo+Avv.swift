@@ -21,14 +21,6 @@ extension Catalogo {
         /// `avv.nativa_aiuto`
         static let nativaAiuto = "Arrivano con l'app ntfy e il tocco apre l'app iOS nativa. Con «Avvisi su questo dispositivo» acceso potresti riceverli doppi"
 
-        /// `avv.certificato_titolo`
-        static let certificatoTitolo = "SchieraXI · Da rinnovare"
-
-        /// `avv.certificato_ore.one`, `avv.certificato_ore.other`
-        static func certificatoOre(_ n: Int) -> String {
-            n == 1 ? "Tra circa un'ora l'app smette di aprirsi. Rinnovala dall'app con cui l'hai installata." : "Tra circa \(n) ore l'app smette di aprirsi. Rinnovala dall'app con cui l'hai installata."
-        }
-
         /// `avv.nome_del_giocatore`
         static let nomeDelGiocatore = "Nome del giocatore"
 

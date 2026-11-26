@@ -68,7 +68,7 @@ final class GiornateViewModel: ViewModelBase {
     private var piuRecenteDaAprire = false
 
     /// Le foto della demo: `giornate-aperta` apre la giornata più recente, `giornate-dettagli` apre «Dettagli»; anche
-    /// `giornate-confronto`, che poi scorre alla voce del confronto (#842).
+    /// `giornate-confronto`, che poi scorre fino al fondo dei Dettagli, dove sta il confronto (#842, `ConfrontoDemo`).
     func preparaFoto(_ nome: String) {
         switch nome {
         case "giornate-aperta":

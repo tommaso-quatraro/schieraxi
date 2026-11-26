@@ -1,18 +1,10 @@
 import SwiftUI
 
-/// Dove porta un passo della configurazione guidata (la schermata si chiude, poi l'app va lì). Lasciata la pagina (o chiuso il
-/// foglio del widget) a cui porta un passo, la guida si riapre da quel passo (`RitornoAllaGuida`, #880).
+/// Dove porta un passo della configurazione guidata (la schermata si chiude, poi l'app va lì).
 enum AzioneGuida: Equatable {
-    /// «Importa le rose».
     case importaRose
-    /// «Scegli la squadra»: l'elenco delle squadre, dove si sceglie la propria.
-    case scegliSquadra
-    /// «Scegli stemma e maglia»: la rosa della propria squadra (senza squadra scelta, l'elenco delle squadre).
-    case stemma(nome: String?)
+    case squadre(nome: String?)
     case impostazioni
-    /// «Tutto pronto»: «Vai alla Formazione» e il collegamento a Regole e scadenza della frase sui punteggi (#880).
-    case formazione
-    case regole
     /// «Collega il widget»: apre la schermata; al tocco su «Collega» lo collega (App Group o Keychain condiviso) e solo se non va
     /// copia il codice.
     case collegaWidget
@@ -60,16 +52,9 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
     /// Il server da cui è stata letta la guida: se nel frattempo è cambiato (Impostazioni > Server, spostamento automatico),
     /// alla chiusura non si scrive niente.
     private var indirizzoLetto: String?
-    /// Riaperta dopo una pagina in cui l'aveva portata un passo: riparte da quel passo, o dal primo dopo se è fatto (#880).
-    private let riprendiDa: PassoGuidato?
-    /// Il passo fatto in quella pagina e che l'app non vede dai dati della lega (il widget collegato da «Collega il widget»): si
-    /// segna fatto da solo, senza «L'ho già fatto» (#880).
-    private let passoFatto: PassoGuidato?
 
-    init(server: any ServerClient, riprendiDa: PassoGuidato? = nil, passoFatto: PassoGuidato? = nil) {
+    init(server: any ServerClient) {
         self.server = server
-        self.riprendiDa = riprendiDa
-        self.passoFatto = passoFatto
         super.init()
     }
 
@@ -98,19 +83,13 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
             return
         }
         stato = await Self.leggiStato(server)
-        if let passoFatto {
-            fattiOra.insert(passoFatto)
-            saltatiOra.remove(passoFatto)
-        }
-        let fattiDaDire = stato.fattiDaiDati.union(fattiOra)
-        passi = PrimoAvvioLogica.daFare(avanzamento, stato: stato).filter { !fattiOra.contains($0) }
-        indice = PrimoAvvioLogica.inizio(passi, riprendiDa: riprendiDa)
+        let fattiOraDaiDati = stato.fattiDaiDati
+        passi = PrimoAvvioLogica.daFare(avanzamento, stato: stato)
+        indice = 0
         fase = .pronta
-        // Chi ha già cominciato e nel frattempo ha fatto dei passi (le rose, la squadra, il widget collegato): il server lo viene a
-        // sapere.
-        let ricordati = Set((avanzamento?.fatti ?? []).compactMap(PassoGuidato.init(rawValue:)))
-        if avanzamento != nil || passoFatto != nil, !fattiDaDire.isSubset(of: ricordati) {
-            await salva(fatti: fattiDaDire, saltati: [], chiuso: avanzamento?.chiuso ?? false)
+        // Chi ha già cominciato e nel frattempo ha fatto dei passi (le rose, la squadra): il server lo viene a sapere.
+        if let a = avanzamento, !fattiOraDaiDati.isSubset(of: Set(a.fatti.compactMap(PassoGuidato.init(rawValue:)))) {
+            await salva(fatti: fattiOraDaiDati, saltati: [], chiuso: a.chiuso)
         }
     }
 
@@ -177,13 +156,6 @@ final class ConfigurazioneGuidataViewModel: ViewModelBase {
         lasciata = true
         let restanti = Set(passi.filter { esito($0) != .fatto })
         await salva(fatti: [], saltati: restanti, chiuso: false)
-    }
-
-    /// «Importa le rose»: la guida si chiude per la pagina delle rose e si riapre quando la pagina si lascia (`RitornoAllaGuida`),
-    /// come la web che dopo le rose continua con i passi che restano (#880). Niente diventa saltato e la chiusura del foglio non
-    /// salva: se l'app si chiude prima, all'apertura la guida si riprende dalle rose (`PrimoAvvioLogica.daRiprendere`).
-    func versoLeRose() async {
-        lasciata = true
     }
 
     /// Fine del percorso: non si riapre più da solo.

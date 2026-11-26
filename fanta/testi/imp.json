@@ -31,11 +31,6 @@
     "it": "Due avvisi: un promemoria prima della scadenza, se non hai spuntato «L'ho messa», e un avviso quando cambia la formazione da schierare",
     "en": "Two alerts: a reminder before the deadline, if you haven't ticked «I've entered it», and an alert when the lineup to field changes"
   },
-  "imp.avvisi_qui_aiuto_app": {
-    "it": "Un promemoria prima della scadenza, se non hai spuntato «L'ho messa»",
-    "en": "A reminder before the deadline, if you haven't ticked «I've entered it»",
-    "nota": "iPhone, sotto «Avvisi su questo dispositivo»: l'interruttore accende solo i promemoria dell'app; l'avviso quando cambia la formazione lo manda il server alla web (#906). Stesse parole della prima parte di imp.avvisi_qui_aiuto"
-  },
   "imp.avvisi_controllo": {
     "it": "Controllo gli avvisi di questo dispositivo…",
     "en": "Checking the alerts on this device…"

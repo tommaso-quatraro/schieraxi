@@ -116,19 +116,6 @@
     "it": "Arrivano con l'app ntfy e il tocco apre l'app iOS nativa. Con «Avvisi su questo dispositivo» acceso potresti riceverli doppi",
     "en": "They arrive with the ntfy app and tapping opens the native iOS app. With «Alerts on this device» turned on you may get them twice"
   },
-  "avv.certificato_titolo": {
-    "it": "SchieraXI · Da rinnovare",
-    "en": "SchieraXI · Renew the app",
-    "nota": "iPhone: titolo dei promemoria prima che scada il certificato dell'app (24 e 6 ore prima, fuori dalle ore tranquille, #906)"
-  },
-  "avv.certificato_ore.one": {
-    "it": "Tra circa un'ora l'app smette di aprirsi. Rinnovala dall'app con cui l'hai installata.",
-    "en": "In about an hour the app will stop opening. Renew it from the app you installed it with."
-  },
-  "avv.certificato_ore.other": {
-    "it": "Tra circa {n} ore l'app smette di aprirsi. Rinnovala dall'app con cui l'hai installata.",
-    "en": "In about {n} hours the app will stop opening. Renew it from the app you installed it with."
-  },
   "avv.ore_tranq": {
     "it": "Ore tranquille",
     "en": "Quiet hours"

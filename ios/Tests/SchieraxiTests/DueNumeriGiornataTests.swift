@@ -214,14 +214,12 @@ struct DueNumeriGiornataTests {
         #expect(try #require(TestoPrecisione(corrente.precisione)).barre.map(\.etichetta) == ["7", "8"])
     }
 
-    @Test("Promemoria minimo del telefono (senza i testi del server): la giornata in testa, seguita dai due punti, come gli avvisi del server")
-    func promemoria() throws {
+    @Test("Avvisi del telefono: la giornata in testa, seguita dai due punti, come gli avvisi del server")
+    func promemoria() {
         let n = NomeGiornata(serieA: 11, lega: 8)
-        let inizio = try #require(Quando.data("2026-11-28 14:50"))
-        let elenco = Notifiche.promemoriaDaProgrammare(giornata: n, inizio: inizio, testi: nil, lettaIl: nil, ore: .predefinite,
-                                                       attivi: [15], tace: false, dalServer: false,
-                                                       adesso: inizio.addingTimeInterval(-3600))
-        #expect(elenco.map(\.testo) == ["Giornata 8 · 11ª di Serie A: la formazione si chiude oggi 14:50."])
+        #expect(Notifiche.corpoPromemoria(giornata: n, modulo: "3-4-3")
+                == "Giornata 8 · 11ª di Serie A: modulo consigliato 3-4-3. Mister, dai un'occhiata alla formazione.")
+        #expect(Notifiche.corpoPromemoria(giornata: n, modulo: nil) == "Giornata 8 · 11ª di Serie A: mister, dai un'occhiata alla formazione.")
     }
 
     @MainActor

@@ -92,8 +92,7 @@ enum PassoGuidato: String, CaseIterable, Identifiable {
         case .widget:
             return "Tieni premuto sulla Home, tocca + e cerca SchieraXI. Il widget si collega da solo: se dice «Tocca per collegare», toccalo."
         case .avvisi:
-            // solo ciò che fanno i promemoria dell'app (#906): l'avviso quando cambia la formazione lo manda il server alla web
-            return Catalogo.Pav.avvisiSpiega
+            return "Ti avvisiamo prima della partita se un titolare è in dubbio e quando la formazione consigliata cambia."
         }
     }
 
@@ -170,16 +169,6 @@ enum PrimoAvvioLogica {
     static func daFare(_ avanzamento: AvanzamentoPrimoAvvio?, stato: StatoConfigurazione) -> [PassoGuidato] {
         let gia = fatti(avanzamento, stato: stato)
         return PassoGuidato.allCases.filter { !gia.contains($0) }
-    }
-
-    /// Da quale dei `passi` parte la guida. Aperta da sola o da «Da fare» (`riprendiDa` nil), dal primo. Riaperta dopo una pagina in
-    /// cui l'aveva portata un passo (#880), da quel passo se è ancora da fare (il widget, che l'app non sa se è collegato, si
-    /// segna con «L'ho già fatto»), altrimenti dal primo dopo: i passi prima, già decisi, non si ripropongono. Nessuno dopo:
-    /// `passi.count`, cioè «Tutto pronto».
-    static func inizio(_ passi: [PassoGuidato], riprendiDa: PassoGuidato?) -> Int {
-        let ordine = PassoGuidato.allCases
-        guard let riprendiDa, let soglia = ordine.firstIndex(of: riprendiDa) else { return 0 }
-        return passi.firstIndex { (ordine.firstIndex(of: $0) ?? 0) >= soglia } ?? passi.count
     }
 
     /// Il corpo del PUT: si parte da quello che il server ricorda (anche i passi di altri dispositivi) e si aggiunge il nuovo.

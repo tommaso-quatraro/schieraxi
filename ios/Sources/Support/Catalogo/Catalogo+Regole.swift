@@ -228,7 +228,7 @@ extension Catalogo {
         static let aggVicini = "Aggiornamenti più fitti vicino alla scadenza"
 
         /// `regole.agg_vicini_aiuto`
-        static let aggViciniAiuto = "Probabili e infortuni riletti a 60, 30 e 15 minuti dalla scadenza"
+        static let aggViciniAiuto = "Probabili e infortuni riletti a 60, 30 e 15 minuti dalla scadenza, con avviso se cambia qualcosa"
 
         /// `regole.salva_regole`
         static let salvaRegole = "Salva le regole"

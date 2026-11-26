@@ -2,7 +2,7 @@ import Foundation
 
 /// Impostazioni > Avvisi, come la web (#673 passo 3, #693): «Avvisi su questo dispositivo» e «Ore tranquille»; in Gestione, senza
 /// account, «Avvisi anche per l'app nativa». Quali avvisi arrivano lo decide il server; qui l'interruttore unico accende o spegne il
-/// permesso di iOS e i promemoria locali (un'ora e un quarto d'ora prima, con i testi del server, #906). Le scelte per
+/// permesso di iOS e i promemoria locali (un'ora e un quarto d'ora prima, l'avviso quando cambia la consigliata). Le scelte per
 /// singolo avviso restano sul server come sono e non si mostrano. Si salva solo ciò che si cambia (`PUT /api/avvisi` con un campo).
 @MainActor
 final class AvvisiDispositivoViewModel: ViewModelBase {
@@ -43,14 +43,11 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
         return ore.attive ? Catalogo.Imp.oreTranquilleAiuto(a: a, da: da) : Catalogo.Imp.oreTranquilleSpente(a: a, da: da)
     }
 
-    /// Legge gli avvisi dal server. Se per i promemoria è cambiato qualcosa (ore tranquille, avvisi del server a questa app), li
-    /// rimette subito in programma: niente doppioni o promemoria mancanti fino alla prossima lettura di Oggi (#906).
     func carica() async {
         await caricatore.ricarica()
         if let stato = caricatore.dato {
-            let cambiato = applica(stato)
+            applica(stato.impostazioni)
             oreTranquilleSpente = stato.oreTranquilleSpente
-            if cambiato { await telefono.riprogramma() }
         }
         qui = await statoQui()
     }
@@ -88,10 +85,9 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
         await salva(SoloSilenzio(silenzio: acceso), riprogramma: true) { $0.oreTranquille.attive = acceso }
     }
 
-    /// «Avvisi anche per l'app nativa» (Gestione, senza account): si manda il solo `app_nativa`; poi i promemoria del telefono
-    /// tornano in programma, perché con ntfy acceso arriva già quello del server (#906).
+    /// «Avvisi anche per l'app nativa» (Gestione, senza account): si manda il solo `app_nativa`.
     func cambiaAppNativa(_ acceso: Bool) async {
-        await salva(SoloAppNativa(app_nativa: acceso), riprogramma: true) { $0.appNativa = acceso }
+        await salva(SoloAppNativa(app_nativa: acceso), riprogramma: false) { $0.appNativa = acceso }
     }
 
     /// Salva un campo: l'interruttore si sposta subito e, se il server non risponde, torna come lo ha il server e lo si dice.
@@ -104,10 +100,10 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
         subito(self)
         do {
             let stato: StatoAvvisi = try await server.posta("PUT", "/api/avvisi", corpo, snake: false)
-            let cambiato = applica(stato)
+            applica(stato.impostazioni)
             oreTranquilleSpente = false
             erroreSalvataggio = nil
-            if riprogramma || cambiato, !Demo.attivo { await telefono.riprogramma() }
+            if riprogramma, !Demo.attivo { await telefono.riprogramma() }
         } catch {
             oreTranquille = ore
             appNativa = nativa
@@ -119,16 +115,14 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
     /// Rilegge dal server dopo un conflitto, lasciando l'errore in vista.
     private func rileggi() async {
         await caricatore.ricarica()
-        if let stato = caricatore.dato, applica(stato) { await telefono.riprogramma() }
+        if let stato = caricatore.dato { applica(stato.impostazioni) }
     }
 
-    /// Gli avvisi come li ha il server: ore tranquille e app nativa, ricordate anche sul telefono con il fatto che il server manda già
-    /// i suoi avvisi a questa app (per i promemoria locali, `TelefonoAvvisi.ricorda`). Dice se per i promemoria è cambiato qualcosa
-    /// (nella demo mai: niente promemoria).
-    private func applica(_ stato: StatoAvvisi) -> Bool {
-        oreTranquille = stato.impostazioni.oreTranquille
-        appNativa = stato.impostazioni.app_nativa
-        return Demo.attivo ? false : telefono.ricorda(stato)
+    /// Le impostazioni come le ha il server: ore tranquille (ricordate anche sul telefono, per i promemoria) e app nativa.
+    private func applica(_ impostazioni: ImpostazioniAvvisi) {
+        oreTranquille = impostazioni.oreTranquille
+        appNativa = impostazioni.app_nativa
+        if !Demo.attivo { telefono.ricordaOre(oreTranquille) }
     }
 }
 

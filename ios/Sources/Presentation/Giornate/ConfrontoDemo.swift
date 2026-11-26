@@ -12,8 +12,8 @@ enum ConfrontoDemo {
 extension View {
     /// Solo in demo, nella foto `giornate-confronto`, appena la cima della pagina è completa (`GiornateViewModel.cimaCompleta`): la
     /// riga dei Dettagli con il bordo basso in fondo allo schermo. Prima si scorreva appena c'erano i Dettagli, e la riga sotto il
-    /// titolo (#863), se arrivava dopo, riportava la lista in cima: la voce restava sotto lo schermo (3 corse su 6 il 25/11, registro
-    /// della corsa 45668942279). La voce del confronto sta dentro la riga e la lista non la trova (uno scorrimento a lei non muoveva
+    /// titolo (#863), se arrivava dopo, riportava la lista in cima: la voce restava sotto lo schermo (3 corse su 6 il 25/11; 5 lanci su 7
+    /// nella corsa di diagnosi 45668942279). La voce del confronto sta dentro la riga e la lista non la trova (uno scorrimento a lei non muoveva
     /// niente): sotto il confronto c'è solo la voce corta dei punti della squadra (la demo della foto non ha i suoi numeri), così la
     /// fine del confronto è a video anche con il testo grande. Fuori dalla demo non fa niente.
     func demoScorriAlConfronto(proxy: ScrollViewProxy, pronto: Bool) -> some View {

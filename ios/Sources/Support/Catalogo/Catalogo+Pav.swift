@@ -21,21 +21,7 @@ extension Catalogo {
         /// `pav.permesso_negato_abilita`
         static let permessoNegatoAbilita = "Permesso negato: abilita gli avvisi per l'app nelle impostazioni del telefono"
 
-        /// `pav.regole_comuni`
-        static func regoleComuni(regole: String) -> String {
-            "I fantavoti attesi usano i punteggi più comuni delle leghe classic (gol 3, assist 1, ammonizione −0,5), finché non metti quelli della tua lega in \(regole)."
-        }
-
-        /// `pav.vai_formazione`
-        static let vaiFormazione = "Vai alla Formazione"
-
-        /// `pav.avvisi_spiega`
-        static let avvisiSpiega = "Un promemoria prima della scadenza, se non hai spuntato «L'ho messa»."
-
         /// `pav.scegli_file`
         static let scegliFile = "Scegli il file (Excel o CSV)"
-
-        /// `pav.incolla_testo_delle`
-        static let incollaTestoDelle = "Esporta le rose da Leghe (Excel, CSV o testo copiato), poi incolla qui il testo o scegli il file. Per cominciare basta anche solo la tua squadra."
     }
 }

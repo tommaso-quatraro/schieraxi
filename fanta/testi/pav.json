@@ -52,11 +52,6 @@
     "it": "Permesso negato: abilita gli avvisi per l'app nelle impostazioni del telefono",
     "en": "Permission denied: turn on alerts for the app in your phone's settings"
   },
-  "pav.avvisi_spiega": {
-    "it": "Un promemoria prima della scadenza, se non hai spuntato «L'ho messa».",
-    "en": "A reminder before the deadline, if you haven't ticked «I've entered it».",
-    "nota": "iPhone, passo «Attiva gli avvisi» del primo avvio: cosa fanno i promemoria dell'app, come imp.avvisi_qui_aiuto_app (#906)"
-  },
   "pav.n_rose": {
     "it": "Le rose",
     "en": "The rosters"

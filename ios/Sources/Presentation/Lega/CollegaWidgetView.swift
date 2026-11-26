@@ -15,13 +15,6 @@ struct CollegaWidgetView: View {
     @State private var lavoro: Task<Void, Never>?
     /// Il simbolo in alto segue la dimensione del testo.
     @ScaledMetric(relativeTo: .largeTitle) private var dimensioneSimbolo: CGFloat = 44
-    /// Il widget si è collegato da solo («Widget collegato»): la configurazione guidata che ha aperto il foglio segna fatto il suo
-    /// passo, senza «L'ho già fatto» (#880). Il codice copiato non basta: va ancora incollato nel widget.
-    private let collegato: (@MainActor () -> Void)?
-
-    init(collegato: (@MainActor () -> Void)? = nil) {
-        self.collegato = collegato
-    }
 
     var body: some View {
         NavigationStack {
@@ -66,7 +59,6 @@ struct CollegaWidgetView: View {
         // a tutta altezza: a metà, su iPad e con il testo grande, «Fatto» restava sotto la piega
         .presentationDragIndicator(.visible)
         .sensoryFeedback(.success, trigger: modello.riuscite)
-        .onChange(of: modello.stato) { _, stato in if stato == .automatico { collegato?() } }
         // chiuso trascinando in basso: si ferma anche il collegamento in corso
         .onDisappear(perform: fermaIlLavoro)
     }

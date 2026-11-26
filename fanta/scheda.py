@@ -34,6 +34,8 @@ def con_voto_fino_al(db: sqlite3.Connection, calciatore_id: int, stagione: str, 
         "(SELECT 1 FROM partite p WHERE p.stagione = v.stagione AND p.giornata = v.giornata "
         "AND (p.casa = v.squadra OR p.trasferta = v.squadra) AND substr(p.data, 1, 10) <= ?)",
         (stagione, calciatore_id, giorno)).fetchone()[0]
+
+
 SOGLIA_ANDAMENTO = 0.6        # di quanto la media delle ultime 3 si stacca da quella della stagione
 
 

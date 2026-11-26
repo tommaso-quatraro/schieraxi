@@ -9,8 +9,8 @@ extension Catalogo {
         /// `imp.avvisi_qui`
         static let avvisiQui = "Avvisi su questo dispositivo"
 
-        /// `imp.avvisi_qui_aiuto_app`
-        static let avvisiQuiAiutoApp = "Un promemoria prima della scadenza, se non hai spuntato «L'ho messa»"
+        /// `imp.avvisi_qui_aiuto`
+        static let avvisiQuiAiuto = "Due avvisi: un promemoria prima della scadenza, se non hai spuntato «L'ho messa», e un avviso quando cambia la formazione da schierare"
 
         /// `imp.ore_tranquille_aiuto`
         static func oreTranquilleAiuto(a: String, da: String) -> String {

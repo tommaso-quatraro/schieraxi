@@ -68,8 +68,6 @@ enum Demo {
             if let vero = ScenarioVero.attuale { return vero.server }
             // Oggi durante e dopo la giornata (fotografie `oggi-in-corso` e `oggi-finita`)
             if let fase = FinteServer.demoFase(schermata) { return fase }
-            // «Tutto pronto» della guida e le rose al primo caricamento (#880), che la lega di prova da sola non mostra
-            if let ingresso = FinteServer.demoPrimoIngresso(schermata) { return ingresso }
             if accesso == "rose" {
                 // La lega non ha rose: il server risponde 409 «Nessuna rosa importata» a tutto quello che le richiede.
                 var senzaRose = FinteServer.demo
@@ -199,7 +197,7 @@ extension Demo {
         case "lega-stato":
             apriLega(nav, modello, [.gestione, .stato])
         // la pagina Giornate (#673 passo 2): le righe chiuse (sull'iPad la più recente a destra), la più recente aperta, «Dettagli»,
-        // «Dettagli» scorsi alla voce del confronto con 1,0 punti (#842, il diario di `FinteServer.demoFase`)
+        // «Dettagli» scorsi fino al confronto con 1,0 punti in fondo allo schermo (#842, il diario di `FinteServer.demoFase`)
         case "giornate", "giornate-aperta", "giornate-dettagli", "giornate-confronto":
             nav.sezione = .giornate
             modello.giornate.preparaFoto(nome)
@@ -220,12 +218,6 @@ extension Demo {
         // «La mia squadra» da scegliere (#863): la pagina della scelta; nella demo la squadra è già scelta e il selettore la mostra
         case "lega-scelta-squadra":
             apriLega(nav, modello, [.sceltaSquadra])
-        // l'amico nuovo (#880), con il server finto di `FinteServer.demoPrimoIngresso`: la guida su «Tutto pronto» e Importa le rose
-        // al primo caricamento
-        case "guida-pronta":
-            nav.guidaAperta = true
-        case "lega-importa-prima":
-            apriLega(nav, modello, [.importa])
         default:
             break
         }

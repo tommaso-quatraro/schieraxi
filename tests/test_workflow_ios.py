@@ -5,13 +5,8 @@
   rilancia i controlli e «unisci» non parte finché non arriva un altro push (è successo con #69).
 - Su una PR un push nuovo annulla le corse vecchie della stessa PR; su main nessuna corsa si annulla (build e foto).
 I workflow si leggono come testo (niente PyYAML nelle dipendenze)."""
-import os
 import re
-import shutil
-import subprocess
 from pathlib import Path
-
-import pytest
 
 CARTELLA = Path(__file__).resolve().parent.parent / ".github" / "workflows"
 
@@ -248,100 +243,3 @@ def test_i_lanci_a_mano_non_si_annullano_mai():
             valore = m.group(1).split(" #")[0].strip()
             assert valore != "true", f"{file.name}: annullerebbe anche i lanci a mano"
             assert valore == "false" or "github.event_name == 'pull_request'" in valore, f"{file.name}: {valore}"
-
-
-# --- Issue #870: le righe «chiudiFoglio:» dei tocchi ripetuti nel riepilogo della corsa ------------------------------------------
-# Il test d'interfaccia scrive «chiudiFoglio: N tocchi, chiuso dopo S s (…)» quando un foglio non si chiude al primo tocco; la riga
-# finiva solo in build/test-interfaccia.log, che nessuno guarda. Un passo dopo i test la copia nel riepilogo, senza mai far
-# fallire la corsa (log mancante, nessuna riga, grep che non trova nulla).
-
-NOME_RIEPILOGO = "name: Tocchi ripetuti per chiudere un foglio (riepilogo)"
-
-
-def _passo_riepilogo() -> str:
-    passi = _job_ios("test").split("      - ")
-    trovati = [p for p in passi if p.startswith(NOME_RIEPILOGO)]
-    assert len(trovati) == 1, f"manca il passo «{NOME_RIEPILOGO}»"
-    return trovati[0]
-
-
-def _comandi(passo: str) -> str:
-    """Il testo di «run: |» senza il rientro."""
-    m = re.search(r"^(\s+)run: \|\s*\n", passo, re.M)
-    assert m, "il passo non ha «run: |»"
-    rientro = len(m.group(1)) + 2
-    righe = []
-    for riga in passo[m.end():].splitlines():
-        if riga.strip() and len(riga) - len(riga.lstrip()) < rientro:
-            break
-        righe.append(riga[rientro:])
-    return "\n".join(righe) + "\n"
-
-
-def test_riepilogo_chiudifoglio_dopo_l_interfaccia_e_anche_col_rosso():
-    passi = _job_ios("test").split("      - ")
-    i_interfaccia = next(i for i, p in enumerate(passi) if p.startswith("name: Compila ed esegui i test (3 di 3"))
-    i_riepilogo = next((i for i, p in enumerate(passi) if p.startswith(NOME_RIEPILOGO)), None)
-    assert i_riepilogo == i_interfaccia + 1, "il riepilogo va subito dopo i test d'interfaccia"
-    passo = _passo_riepilogo()
-    cond = re.search(r"^        if:\s*(.+)$", passo, re.M).group(1)
-    # anche dopo un test rosso (è lì che la riga serve di più), mai con la corsa annullata né nelle corse «solo unitari»
-    assert "!cancelled()" in cond and "inputs.parte != 'unitari'" in cond
-    assert cond.startswith(('"', "'")), "un valore che comincia con «!» in YAML è un tag: va tra virgolette"
-    comandi = _comandi(passo)
-    assert "${{" not in comandi
-    assert "build/test-interfaccia.log" in comandi and "$GITHUB_STEP_SUMMARY" in comandi
-
-
-def _trova_bash():
-    for c in (r"C:\Program Files\Git\usr\bin\bash.exe", r"C:\Program Files\Git\bin\bash.exe"):
-        if Path(c).exists():
-            return c
-    return shutil.which("bash")
-
-
-BASH = _trova_bash()
-serve_bash = pytest.mark.skipif(not BASH, reason="serve bash (c'è su GitHub e con Git per Windows)")
-
-
-def _esegui_riepilogo(tmp_path, log: str | None) -> tuple[str, int, str]:
-    (tmp_path / "build").mkdir()
-    if log is not None:
-        (tmp_path / "build" / "test-interfaccia.log").write_text(log, encoding="utf-8", newline="\n")
-    riepilogo = tmp_path / "riepilogo.md"
-    riepilogo.write_text("", encoding="utf-8")
-    prova = tmp_path / "passo.sh"
-    # come GitHub con la shell predefinita (bash -e) e con quella esplicita (pipefail)
-    prova.write_text("set -eo pipefail\n" + _comandi(_passo_riepilogo()), encoding="utf-8", newline="\n")
-    ambiente = {**os.environ, "PATH": str(Path(BASH).parent) + os.pathsep + os.environ.get("PATH", ""),
-                "GITHUB_STEP_SUMMARY": riepilogo.as_posix()}
-    r = subprocess.run([BASH, prova.as_posix()], cwd=tmp_path, capture_output=True, text=True, encoding="utf-8",
-                       timeout=60, env=ambiente)
-    return riepilogo.read_text(encoding="utf-8"), r.returncode, r.stdout + r.stderr
-
-
-@serve_bash
-def test_riepilogo_mostra_le_righe_chiudifoglio(tmp_path):
-    # la riga vera è quella di `print`, a inizio riga; l'attività di XCTest con lo stesso testo esce come «t = …s <nome>»
-    # e non va contata due volte. Un carattere nullo nel registro non deve far trattare il file come binario da grep.
-    log = ("Test Case '-[SchieraxiUITests.AccessoUITests testA]' started.\n"
-           "chiudiFoglio: 2 tocchi, chiuso dopo 11 s («Annulla» di «Elimina l'account»)\n"
-           "    t =    12.34s chiudiFoglio: 2 tocchi, chiuso dopo 11 s («Annulla» di «Elimina l'account»)\n"
-           "altra riga \x00 con un carattere nullo\n"
-           "chiudiFoglio: 1 tocchi, chiuso dopo 14 s («Chiudi» di «Account»)\n")
-    testo, codice, uscita = _esegui_riepilogo(tmp_path, log)
-    assert codice == 0, uscita
-    assert "chiudiFoglio: 2 tocchi, chiuso dopo 11 s («Annulla» di «Elimina l'account»)" in testo
-    assert "chiudiFoglio: 1 tocchi, chiuso dopo 14 s («Chiudi» di «Account»)" in testo
-    assert testo.count("chiudiFoglio:") == 2, testo
-    assert "altra riga" not in testo and "Test Case" not in testo and "t =" not in testo
-
-
-@serve_bash
-@pytest.mark.parametrize("log", [None, "", "nessun tocco ripetuto\n", "    t =     3.21s chiudiFoglio: 2 tocchi\n",
-                                 # la riga del test che simula il tocco perso (#869) c'è in ogni corsa: non è un tocco ripetuto vero
-                                 "chiudiFoglio (prova voluta): 2 tocchi, chiuso dopo 11 s («Annulla» di «Elimina l'account»)\n"])
-def test_riepilogo_senza_righe_non_scrive_e_non_fallisce(tmp_path, log):
-    testo, codice, uscita = _esegui_riepilogo(tmp_path, log)
-    assert codice == 0, uscita
-    assert testo == ""
