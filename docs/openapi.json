@@ -2493,7 +2493,7 @@
   },
   "/api/admin/utenti/{utente_id}": {
    "delete": {
-    "description": "Elimina un account e tutti i suoi dati, come «Elimina il mio account». Non si può annullare: la conferma la chiede il\nclient. Il proprio account si elimina da Impostazioni › Il tuo account, con la password (400).",
+    "description": "Elimina un account e tutti i suoi dati, come «Elimina il mio account». Non si può annullare: la conferma la chiede il\nclient. Il proprio account si elimina da Impostazioni › Il tuo account, con la password (400); quello di un altro\namministratore solo dal comando (403).",
     "parameters": [
      {
       "in": "path",
@@ -2532,7 +2532,7 @@
   },
   "/api/admin/utenti/{utente_id}/blocca": {
    "post": {
-    "description": "Blocca un account: non entra più e le sue sessioni, il token del widget e le notifiche web si chiudono subito. I dati restano.\nLa conferma la chiede il client. Mai il proprio account (400).",
+    "description": "Blocca un account: non entra più e le sue sessioni, il token del widget e le notifiche web si chiudono subito. I dati restano.\nLa conferma la chiede il client. Mai il proprio account (400) né quello di un altro amministratore (403).",
     "parameters": [
      {
       "in": "path",
@@ -2620,7 +2620,7 @@
   },
   "/api/admin/utenti/{utente_id}/sblocca": {
    "post": {
-    "description": "Toglie il blocco: l'account rientra con la sua password (o con Google).",
+    "description": "Toglie il blocco: l'account rientra con la sua password (o con Google). Un amministratore (403) solo dal comando.",
     "parameters": [
      {
       "in": "path",
