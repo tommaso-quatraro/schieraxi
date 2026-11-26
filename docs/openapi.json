@@ -1291,6 +1291,43 @@
     "title": "SoloPassword",
     "type": "object"
    },
+   "Sostituisci": {
+    "properties": {
+     "esce": {
+      "maximum": 2147483647.0,
+      "minimum": 1.0,
+      "title": "Esce",
+      "type": "integer"
+     },
+     "giornata": {
+      "anyOf": [
+       {
+        "maximum": 100.0,
+        "minimum": 1.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Giornata"
+     },
+     "titolari": {
+      "items": {
+       "type": "integer"
+      },
+      "maxItems": 40,
+      "title": "Titolari",
+      "type": "array"
+     }
+    },
+    "required": [
+     "esce",
+     "titolari"
+    ],
+    "title": "Sostituisci",
+    "type": "object"
+   },
    "TestoRegole": {
     "properties": {
      "testo": {
@@ -3249,6 +3286,42 @@
      }
     },
     "summary": "Metti In Campo"
+   }
+  },
+  "/api/formazione/sostituisci": {
+   "post": {
+    "description": "«Sostituisci»: chi può prendere il posto di `esce`, uno dei `titolari` in pagina. I compagni dello stesso ruolo che non sono\ntitolari; per ognuno i punti attesi della formazione dopo il cambio e la differenza da quella di adesso. Non scrive niente: il\ncambio scelto si salva con POST /api/formazione/valuta.",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/Sostituisci"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Sostituisci"
    }
   },
   "/api/formazione/testo": {

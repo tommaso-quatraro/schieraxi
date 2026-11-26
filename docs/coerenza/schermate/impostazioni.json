@@ -145,7 +145,7 @@
       "stato": "fatto"
     },
     {
-      "id": 107,
+      "id": 109,
       "schermata": "Impostazioni › Scrivici; Gestione › Commenti degli utenti (26/11/2026)",
       "web": "con un account, la riga «Scrivici» («Un'idea, un problema, un dubbio») fra Informazioni e Gestione apre la pagina «Scrivici»: «Scrivi cosa non va o cosa ti piacerebbe trovare: lo legge chi gestisce SchieraXI.», la casella «Il tuo commento» (al massimo 2000 caratteri, va a capo) e «Invia», spento finché la casella è vuota; inviato: la casella si svuota e sotto «Grazie, l'abbiamo ricevuto.»; non inviato: il messaggio del server (per esempio il limite di 5 al giorno) e il testo resta (`paginaScrivici` in `impostazioni.js`, testi `scrivici.*`). In Gestione, per chi gestisce il server, «Commenti degli utenti»: il più recente in alto, chi · quando (ora italiana) · da dove e versione, il testo intero come testo semplice e «Segna come letto» (`schedaCommenti`, `caricaCommenti`)",
       "iphone": "la stessa riga, solo con un account, e la stessa pagina con gli stessi testi del catalogo (`VociImpostazioni.informazioni(gestisce:scrivici:)`, `ScriviciPagina`, `ScriviciViewModel`): manda a `POST /api/feedback` testo e versione dell'app, la piattaforma la dice l'intestazione `X-Schieraxi-Client: ios`. L'elenco «Commenti degli utenti» non c'è: la Gestione dell'iPhone non ha gli strumenti degli account (inviti, utenti, errori), che sono della web",
