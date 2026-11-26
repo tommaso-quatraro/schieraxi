@@ -115,7 +115,7 @@ def controlli(r: regole.Regole, rose: Rose | None, regole_salvate: bool) -> list
     avvisi = lega.controlla(rose, r) if rose and squadre else []
     non_riconosciuti = [f"{s.nome}: {g.nome}" for s in squadre for g in s.giocatori if g.id is None]
     doppioni = [a for a in avvisi if "è in più squadre" in a]
-    incomplete = [a for a in avvisi if "rosa diversa dalle regole" in a]
+    incomplete = [a for a in avvisi if getattr(a, "chiave", "") in lega.CHIAVI_ROSA_DIVERSA]
 
     def voce(id_, titolo, ok, obbligatorio, dettaglio=""):
         return {"id": id_, "titolo": titolo, "ok": bool(ok), "obbligatorio": obbligatorio, "dettaglio": dettaglio}

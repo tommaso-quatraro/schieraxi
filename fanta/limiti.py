@@ -1,7 +1,7 @@
 """Limiti per utente (solo con FANTA_MULTIUTENTE=1): un utente non deve poter riempire il disco o il processore del server.
 
 - importazioni di rose, proposte di scambi e commenti di «Scrivici»: un tetto al giorno (contatori in account.sqlite, azzerati a
-  mezzanotte);
+  mezzanotte); per le rose contano solo i controlli e i salvataggi riusciti, e le letture (anche rifiutate) hanno un tetto all'ora;
 - spazio: i dati personali di ciascuno (regole, rose, immagini, archivio...) stanno in 5 MB;
 - dimensione della lega: al massimo 20 squadre da 40 giocatori;
 - calcoli e memorie condivise: calcoli in coda insieme, parte della memoria dei risultati (li applica calcolo.py), consigliate
@@ -261,7 +261,9 @@ def conta(ctx, cosa: str, chiave=None) -> None:
         raise
 
 
-MAX_ANTEPRIME_ALL_ORA = 30           # controlli delle rose senza salvare (/api/rose/anteprima): ogni richiesta rilegge tutto il testo
+# letture delle rose all'ora: i controlli senza salvare (/api/rose/anteprima) e i salvataggi senza un controllo prima. Ogni
+# richiesta rilegge tutto; resta contata anche se il file è rifiutato, che invece non conta tra le importazioni del giorno
+MAX_ANTEPRIME_ALL_ORA = 30
 
 
 def chiave_anteprima(impronta: str) -> tuple:
@@ -271,8 +273,9 @@ def chiave_anteprima(impronta: str) -> tuple:
 def conta_anteprima(ctx, impronta: str) -> list[Prenotazione]:
     """L'anteprima delle rose costa come un'importazione, ma una sola volta per lo stesso contenuto: rifarla (per esempio
     dopo aver scelto i dubbi) e poi importare QUEL contenuto non conta di nuovo (vedi `conta_importazione`). In più al massimo
-    `MAX_ANTEPRIME_ALL_ORA` anteprime all'ora, anche dello stesso testo (ognuna rilegge tutto).
-    Restituisce i posti presi (ognuno col suo giorno o la sua ora): da annullare se il lavoro non comincia (server occupato)."""
+    `MAX_ANTEPRIME_ALL_ORA` letture all'ora, anche dello stesso testo (ognuna rilegge tutto).
+    Restituisce i posti presi (ognuno col suo giorno o la sua ora, `Prenotazione.cosa` dice quale): se l'anteprima non riesce
+    (file rifiutato) torna quello del giorno; se il lavoro non comincia (server occupato) tutti e due (server._conta_se_riesce)."""
     if ctx.utente_id is None:
         return []
     presi = [prenota_ora(ctx, "anteprime_rose", massimo=MAX_ANTEPRIME_ALL_ORA)]
@@ -284,6 +287,21 @@ def conta_anteprima(ctx, impronta: str) -> list[Prenotazione]:
                 p.annulla()
         raise
     return [p for p in presi if p is not None]
+
+
+def restituisci_anteprima(p: Prenotazione) -> bool:
+    """Il posto del giorno di un'anteprima che non è riuscita torna, ma solo se il suo buono (vedi `conta_importazione`) non è
+    stato usato nel frattempo da un salvataggio dello stesso contenuto (revisione della #939): quel salvataggio è pagato da
+    questo posto, che allora resta contato. Si controlla e si toglie il buono nello stesso lucchetto di `conta_importazione`,
+    così le due cose non si incrociano. True = il posto è tornato."""
+    with _blocco_contate:
+        visti = _gia_contate.get((p.utente_id, p.giorno, p.cosa))
+        if p.chiave is not None:
+            if visti is None or p.chiave not in visti:
+                return False
+            visti.discard(p.chiave)
+    Prenotazione(p.utente_id, p.giorno, p.cosa, None).annulla()
+    return True
 
 
 def oggi() -> str:

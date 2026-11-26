@@ -79,7 +79,7 @@ def test_rosters_i_ruoli_si_controllano_come_per_l_excel(ridotto):
     cal = [Calciatore(c, nome_di(c), "P", "", "INT", "inter", 1, 1, 1) for c in codici_del_file(ridotto)]
     nuove = lega.da_import(rose.estrai(rose.griglie_da_bytes(ridotto.encode()), Indice(cal), ROSA))
     avvisi = lega.controlla(nuove, _regole())
-    assert any("Real Esempio: rosa diversa dalle regole" in a for a in avvisi)        # tutti portieri: lo si vede
+    assert "Real Esempio: 22 portieri in più." in avvisi, avvisi                             # tutti portieri: lo si vede
 
 
 def _regole():
@@ -144,8 +144,8 @@ def test_codice_non_nel_listone_e_segnalato_con_squadra_e_codice(ridotto):
     assert [(r.testo, r.costo) for r in non] == [("Codice 7550", 1), ("Codice 4751", 1)]      # tenuti in rosa, col loro costo
     nuove = lega.da_import(squadre)
     persi = [g for s in nuove.squadre for g in s.giocatori if g.id is None]
-    assert [g.nome for g in persi] == ["Codice 7550", "Codice 4751"] and "non presente nel listone" in persi[0].avviso
-    assert any("'Codice 7550' non riconosciuto" in a for a in lega.controlla(nuove, _regole()))     # e lo vede anche il controllo della lega
+    assert [g.nome for g in persi] == ["Codice 7550", "Codice 4751"] and persi[0].avviso == "il codice 7550 non è nel listone"
+    assert any("non so chi è «Codice 7550»" in a for a in lega.controlla(nuove, _regole()))     # e lo vede anche il controllo della lega
 
 
 def test_stesso_codice_in_due_squadre_e_doppione_nella_stessa(ridotto, indice_file):
@@ -168,7 +168,7 @@ def test_squadre_poche_o_con_pochi_portieri_hanno_gli_avvisi_dell_excel(ridotto,
     corto = "\n".join(ridotto.splitlines()[:30]) + "\n"          # Real Esempio con 24 giocatori e FC UNDER con 1
     nuove = lega.da_import(leggi(corto.encode(), indice_file))
     avvisi = lega.controlla(nuove, _regole())
-    assert any(a.startswith("Under Prova: rosa diversa dalle regole") for a in avvisi)
+    assert any(a.startswith("Under Prova: mancano ") for a in avvisi), avvisi
 
 
 # ---------------------------------------------------------------- CSV a colonne (non «rosters») in tante codifiche
@@ -208,6 +208,25 @@ def test_gli_accenti_restano_giusti_con_cp1252(indice):
     assert rose.decodifica("è à ù ò ì €".encode("cp1252")) == "è à ù ò ì €"
     assert rose.decodifica("Laurienté".encode("utf-8")) == "Laurienté"
     assert rose.decodifica(b"\x81abc") == "\x81abc"                  # byte che cp1252 non ha: si ricade su latin-1, senza errori
+
+
+FANTASQUADRA = Path(__file__).parent / "dati" / "rose_colonna_fantasquadra.csv"
+
+
+@pytest.mark.parametrize("con_intestazione", [True, False])
+def test_colonna_fantasquadra_su_ogni_riga(indice, con_intestazione):
+    """Collaudo del 26/11: un CSV con la fantasquadra scritta su ogni riga («Fantasquadra;Ruolo;Calciatore;Squadra;Costo»)
+    diventava una sola «Squadra senza nome» con tutti i giocatori. La colonna dice di quale squadra è ogni giocatore, anche
+    senza la riga delle intestazioni."""
+    testo = FANTASQUADRA.read_text(encoding="utf-8")
+    if not con_intestazione:
+        testo = testo.split("\n", 1)[1]
+    s = {x.nome: x for x in rose.estrai(rose.griglie_da_bytes(testo.encode()), indice)}
+    assert list(s) == ["Union Esempio", "Olimpia Prova"]
+    union = s["Union Esempio"].righe
+    assert [(r.testo, r.ruolo, r.costo) for r in union] == [("Sommer", "P", 2), ("Bastoni", "D", 35), ("Pinco Pallino", "A", 3)]
+    assert [r.esito.calciatore.id if r.esito.calciatore else None for r in union] == [2, 3, None]
+    assert [r.esito.calciatore.id for r in s["Olimpia Prova"].righe] == [1, 12, 14]
 
 
 def test_una_colonna_sola_una_squadra_per_blocco(indice):

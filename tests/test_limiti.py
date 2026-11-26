@@ -218,19 +218,76 @@ def test_il_tetto_degli_scambi_si_controlla_prima_del_calcolo(ambiente, monkeypa
     assert ricerca(a, 999).status_code == 429 and not chiamate
 
 
-def test_i_rifiuti_immediati_non_consumano_importazioni_i_file_letti_si(ambiente):
+def test_i_rifiuti_non_consumano_importazioni(ambiente):
     a, id_a = nuovo_utente("utentea")
     assert a.post("/api/rose/file", files={"file": ("rose.xlsm", b"PK\x03\x04", "application/zip")}).status_code == 400
     assert a.post("/api/rose/file", files={"file": ("vuoto.csv", b"  \n", "text/csv")}).status_code == 400
     assert a.post("/api/rose/testo", json={"testo": "x" * 300_000}).status_code == 400
     assert a.post("/api/rose/testo", json={"testo": "a\n" * 2000}).status_code == 400          # troppe righe
-    assert limiti.usati_oggi(id_a, "importazioni") == 0
-    # un file che il server ha dovuto leggere conta anche se poi è rifiutato (niente file sbagliati all'infinito)
+    # dal collaudo del 26/11 nemmeno un file che il server ha dovuto leggere e poi ha rifiutato: conta solo ciò che riesce
     assert a.post("/api/rose/file", files={"file": ("rose.pdf", b"%PDF", "application/pdf")}).status_code == 400
     assert a.post("/api/rose/file", files={"file": ("rose.xls", b"\xd0\xcf\x11\xe0" + b"\x00" * 40, "application/vnd.ms-excel")}).status_code == 400
-    assert limiti.usati_oggi(id_a, "importazioni") == 2
+    assert limiti.usati_oggi(id_a, "importazioni") == 0
     assert importa(a).status_code == 200
-    assert limiti.usati_oggi(id_a, "importazioni") == 3
+    assert limiti.usati_oggi(id_a, "importazioni") == 1
+
+
+CALENDARIO = "Giornata,Casa,Ospite\n1,Real Finzione,Atletico Inventato\n1,Dinamo Segnaposto,Sporting Fantasia\n"
+
+
+def test_conta_solo_un_controllo_riuscito_testo_e_file_allo_stesso_modo(ambiente):
+    """Collaudo del 26/11: il «Controlla» di un file rifiutato (un calendario, una lega oltre i tetti) contava tra le 10 importazioni
+    del giorno. Conta solo un controllo riuscito (e il salvataggio dello stesso contenuto non conta di nuovo), per il testo
+    incollato e per il file."""
+    a, id_a = nuovo_utente("utentea")
+    calendario = {"file": ("calendario.csv", CALENDARIO.encode(), "text/csv")}
+    troppe = rose_di(limiti.MAX_SQUADRE + 1)
+    assert a.post("/api/rose/anteprima/file", files=calendario).status_code == 400
+    assert a.post("/api/rose/anteprima", json={"testo": CALENDARIO}).status_code == 400
+    assert a.post("/api/rose/anteprima", json={"testo": troppe}).status_code == 413
+    assert a.post("/api/rose/anteprima/file", files={"file": ("rose.txt", troppe.encode(), "text/plain")}).status_code == 413
+    assert a.post("/api/rose/file", files=calendario).status_code == 400
+    assert a.post("/api/rose/testo", json={"testo": troppe}).status_code == 413
+    assert limiti.usati_oggi(id_a, "importazioni") == 0
+    for chiede in (lambda: a.post("/api/rose/anteprima", json={"testo": "Mia\nP\tSommer\t10\n"}),
+                   lambda: a.post("/api/rose/anteprima/file", files={"file": ("rose.txt", b"Tua\nA\tKean\t3\n", "text/plain")})):
+        assert chiede().status_code == 200
+    assert limiti.usati_oggi(id_a, "importazioni") == 2
+    assert a.post("/api/rose/testo", json={"testo": "Mia\nP\tSommer\t10\n"}).status_code == 200      # dopo il controllo: già contata
+    assert limiti.usati_oggi(id_a, "importazioni") == 2
+
+
+def test_un_anteprima_fallita_non_restituisce_il_posto_se_il_buono_e_gia_usato(ambiente):
+    """Revisione della #939: anteprima e salvataggio dello stesso contenuto insieme. Il salvataggio usa il buono dell'anteprima
+    (non conta); se poi l'anteprima fallisce, il posto del giorno non deve tornare: sarebbe un salvataggio gratis, e due
+    richieste insieme aggirerebbero il tetto. Se il buono non è stato usato il posto torna, e il buono sparisce."""
+    from types import SimpleNamespace
+    _, uid = nuovo_utente("utentea")
+    ctx = SimpleNamespace(utente_id=uid)
+    presi = limiti.conta_anteprima(ctx, "stesso contenuto")
+    assert limiti.usati_oggi(uid, "importazioni") == 1
+    assert limiti.conta_importazione(ctx, "stesso contenuto") is True          # il salvataggio usa il buono, intanto
+    with pytest.raises(ValueError), server._conta_se_riesce(presi):
+        raise ValueError("l'anteprima fallisce dopo")
+    assert limiti.usati_oggi(uid, "importazioni") == 1
+    presi = limiti.conta_anteprima(ctx, "un altro")
+    with pytest.raises(ValueError), server._conta_se_riesce(presi):
+        raise ValueError("l'anteprima fallisce")
+    assert limiti.usati_oggi(uid, "importazioni") == 1
+    assert limiti.conta_importazione(ctx, "un altro") is False                 # nessun buono rimasto: conta
+    assert limiti.usati_oggi(uid, "importazioni") == 2
+
+
+def test_i_file_rifiutati_hanno_un_tetto_all_ora(ambiente):
+    """Un file rifiutato non conta tra le importazioni, ma lo si legge lo stesso: controlli e salvataggi senza controllo prima
+    hanno un tetto all'ora (niente file sbagliati mandati all'infinito)."""
+    a, _ = nuovo_utente("utentea")
+    calendario = {"file": ("calendario.csv", CALENDARIO.encode(), "text/csv")}
+    for _ in range(limiti.MAX_ANTEPRIME_ALL_ORA):
+        assert a.post("/api/rose/file", files=calendario).status_code == 400
+    r = a.post("/api/rose/file", files=calendario)
+    assert r.status_code == 429 and "in quest'ora" in r.json()["detail"]
+    assert a.post("/api/rose/anteprima", json={"testo": CALENDARIO}).status_code == 429
 
 
 # ---------------------------------------------------------------- dimensione della lega

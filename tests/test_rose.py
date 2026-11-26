@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 import openpyxl
 
@@ -89,6 +91,69 @@ def test_un_valore_per_riga(indice):
     squadre = _per_nome(rose.estrai([("testo", rose.griglia_da_testo(testo))], indice))
     assert [(r.esito.calciatore.id, r.ruolo, r.costo) for r in squadre["Real Esempio"].righe] == [(2, "P", 10), (3, "D", 15)]
     assert [(r.esito.calciatore.id, r.costo) for r in squadre["I Bomber"].righe] == [(14, 30)]
+
+
+DATI = Path(__file__).parent / "dati"
+
+
+def _da_testo(testo, indice, rosa=None, **k):
+    return _per_nome(rose.estrai([("testo", rose.griglia_da_testo(testo))], indice, rosa, **k))
+
+
+def test_uno_per_riga_un_nome_non_riconosciuto_non_apre_una_squadra(indice):
+    """Collaudo del 26/11: nel testo con un nome per riga «Maignan» e «D'Ambrosio» (non nel listone) diventavano squadre e il
+    nome in fondo spariva. Un nome non riconosciuto dentro una squadra è un giocatore non trovato; la squadra nuova comincia dopo
+    la riga vuota."""
+    squadre = _da_testo((DATI / "rose_uno_per_riga.txt").read_text(encoding="utf-8"), indice)
+    assert list(squadre) == ["Real Finzione", "Sporting Fantasia"]
+    righe = squadre["Real Finzione"].righe
+    assert [r.testo for r in righe] == ["Carnesecchi", "Maignan", "Bastoni", "D'Ambrosio", "Dimarco", "Barella", "Mkhitaryan",
+                                        "Kean", "Pio Esposito"]
+    assert [r.testo for r in righe if r.esito.metodo == "non trovato"][:3] == ["Maignan", "D'Ambrosio", "Mkhitaryan"]
+    assert [r.testo for r in squadre["Sporting Fantasia"].righe] == ["Thuram", "Laurienté"]
+
+
+def test_uno_per_riga_senza_riga_vuota_la_squadra_nuova_dopo_una_rosa_completa(indice):
+    # senza righe vuote: un nome sconosciuto dopo una rosa già completa è la squadra dopo; prima, è un giocatore non trovato
+    squadre = _da_testo("Alfa\nSommer\nBastoni\nBarella\nKean\nBeta\nThuram\nDimarco\n", indice, ROSA_PICCOLA)
+    assert list(squadre) == ["Alfa", "Beta"] and len(squadre["Beta"].righe) == 2
+    squadre = _da_testo("Alfa\nSommer\nPinco Pallino\nBarella\nKean\n", indice, ROSA_PICCOLA)
+    assert list(squadre) == ["Alfa"] and [r.testo for r in squadre["Alfa"].righe][1] == "Pinco Pallino"
+
+
+def test_uno_per_riga_titolo_riconosciuto_dall_allenatore_o_dalle_squadre_salvate(indice):
+    assert list(_da_testo("Alfa\nSommer\nBeta\nAllenatore: luca\nKean\n", indice)) == ["Alfa", "Beta"]
+    assert list(_da_testo("Alfa\nSommer\nBeta\nKean\n", indice, squadre_note={"Beta"})) == ["Alfa", "Beta"]
+    assert list(_da_testo("Alfa\nSommer\nBeta\nKean\n", indice)) == ["Alfa"]
+
+
+FORSE_SQUADRA = ("Alfa: manca una riga vuota fra le squadre? «Pantere» non è nel listone: se è il nome di una squadra, lascia "
+                 "una riga vuota prima e controlla di nuovo.")
+
+
+def test_uno_per_riga_senza_righe_vuote_avvisa_che_forse_manca_una_riga_vuota(indice):
+    """Revisione della #939: squadre una sotto l'altra senza riga vuota diventano una squadra sola. Un nome sconosciuto in mezzo
+    ai giocatori potrebbe essere il nome della seconda: l'anteprima lo chiede. Con le righe vuote fra le squadre no: chi le usa
+    sa come separarle, e un giocatore sconosciuto ha già la sua riga fra i non trovati."""
+    avvisi = []
+    squadre = _da_testo("Alfa\nSommer\nBastoni\nPantere\nKean\nDimarco\n", indice, avvisi=avvisi)
+    assert list(squadre) == ["Alfa"] and avvisi == [FORSE_SQUADRA]
+    avvisi = []
+    _da_testo("Alfa\nSommer\nPantere\nBastoni\nKean\n\nBeta\nDimarco\n", indice, avvisi=avvisi)
+    assert avvisi == []
+    avvisi = []                                                    # rosa più lunga di quella delle regole: anche con le righe vuote
+    _da_testo("Alfa\nSommer\nBastoni\nPantere\nKean\nDimarco\n\nBeta\nBarella\n", indice, ROSA_PICCOLA, avvisi=avvisi)
+    assert avvisi == [FORSE_SQUADRA]
+
+
+@pytest.mark.parametrize("testo", ["Alfa\nSommer 15\nPinco Pallino 3\nBastoni 20\nKean 30\n",
+                                   "Alfa\n1. Sommer\n2. Pinco Pallino\n3. Bastoni\n4. Kean\n",
+                                   "Alfa\n\nSommer\n\nPinco Pallino\n\nBastoni\n\nKean\n"])
+def test_uno_per_riga_costo_numero_o_riga_vuota_fra_i_giocatori_non_aprono_squadre(indice, testo):
+    # revisione della #939: il costo sulla stessa riga, l'elenco numerato e una riga vuota fra ogni giocatore
+    squadre = _da_testo(testo, indice)
+    assert list(squadre) == ["Alfa"], testo
+    assert len(squadre["Alfa"].righe) == 4 and "Pinco Pallino" in squadre["Alfa"].righe[1].testo
 
 
 def test_csv_con_punto_e_virgola(tmp_path, indice):
