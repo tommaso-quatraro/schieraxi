@@ -426,9 +426,15 @@ enum Condiviso {
         scriviCambio(cartella: cartella, scrivi: scriviFile, modifica: modifica)
     }
 
-    /// La scrittura vera del file condiviso (i test ne passano una che non riesce).
+    /// La scrittura vera del file condiviso (i test ne passano una che non riesce). Il file resta fuori dai backup del telefono
+    /// (iCloud o computer): dentro c'è il token del widget, che come gli elementi del Keychain non deve passare a un altro telefono;
+    /// dopo un ripristino l'app lo riscrive da sola alla prima apertura. Va rimesso a ogni scrittura: quella atomica crea un file nuovo.
     static func scriviFile(_ dati: Data, in url: URL) throws {
         try dati.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+        var scritto = url
+        var valori = URLResourceValues()
+        valori.isExcludedFromBackup = true
+        try? scritto.setResourceValues(valori)
     }
 
     private static func scriviCambio(cartella: URL?, scrivi: (Data, URL) throws -> Void, modifica: (inout DatiCondivisi) -> Void) -> Bool {
@@ -547,6 +553,39 @@ enum Condiviso {
                            filePresente: presente, ultimaScrittura: dati.aggiornato, haIndirizzo: dati.indirizzo != nil,
                            haToken: dati.token != nil, haRiassunto: dati.riassunto != nil,
                            gruppiDelProfilo: profilo?.gruppi ?? [], portachiavi: PortachiaviCondiviso.leggi() != nil)
+    }
+}
+
+/// Il segnale del widget all'app (26/11/2026): il server ha rifiutato (401) il token con cui il widget scaricava. Lo scrive il widget
+/// in un file suo nella cartella del gruppo (il file condiviso lo scrive solo l'app); dentro c'è solo l'impronta del collegamento
+/// rifiutato (`MemoriaWidget.impronta`, da cui non si risale al token). L'app lo legge all'apertura e nell'aggiornamento in background
+/// (`TokenWidget.assicura`): se è proprio il token che ha lei, lo dimentica e ne chiede uno nuovo; poi lo toglie. Senza gruppo non c'è
+/// segnale: resta «Tocca per collegare», che apre «Collega», dove il token è sempre nuovo. `cartella`: i test ne passano una loro.
+enum SegnaleWidget {
+    private static let nomeFile = "widget-rifiutato.json"
+
+    struct Contenuto: Codable, Equatable {
+        /// L'impronta del collegamento rifiutato (indirizzo e token).
+        var chi: String
+    }
+
+    private static func percorso(_ cartella: URL?) -> URL? { cartella?.appendingPathComponent(nomeFile) }
+
+    /// Lo scrive il widget dopo un 401 con un token. Senza gruppo non fa niente.
+    static func scrivi(chi: String, cartella: URL? = Condiviso.cartella()) {
+        guard let url = percorso(cartella), let dati = try? JSONEncoder().encode(Contenuto(chi: chi)) else { return }
+        try? dati.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    }
+
+    /// Lo legge l'app; nil se non c'è o non si capisce.
+    static func leggi(cartella: URL? = Condiviso.cartella()) -> Contenuto? {
+        guard let url = percorso(cartella), let dati = try? Data(contentsOf: url), dati.count <= 4000 else { return nil }
+        return try? JSONDecoder().decode(Contenuto.self, from: dati)
+    }
+
+    static func cancella(cartella: URL? = Condiviso.cartella()) {
+        guard let url = percorso(cartella) else { return }
+        try? FileManager.default.removeItem(at: url)
     }
 }
 

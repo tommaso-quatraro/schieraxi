@@ -678,32 +678,29 @@ final class SessioneAccount: ObservableObject {
     /// l'errore arriva a chi ha chiesto (la riga lo dice con `account.esci_no`), qui non si pulisce niente e il widget resta
     /// collegato (`riprendiIlWidget`). Con un
     /// 401 la sessione era già finita (chiusa da un altro dispositivo, scaduta): si esce lo stesso. Non aspetta altre richieste in
-    /// corso.
+    /// corso. Il token del widget di questo dispositivo lo toglie il server insieme alla sessione (#814): dal 26/11/2026 l'app non
+    /// manda più `DELETE /api/account/token-widget`, che con il server di prima toglieva anche il widget degli altri dispositivi.
     func esci() async throws {
         inCorso = true
         defer { inCorso = false }
         rinnovoWidget?.cancel()   // un token del widget che arriva adesso non si tiene
         rinnovoWidget = nil
-        // il token del widget lo toglie il server finché la sessione vale, prima di chiuderla; il telefono lo dimentica solo a
-        // uscita riuscita (`chiudiLocale`)
-        let widgetRevocato = await TokenWidget.revocaSulServer(server)
         do {
             _ = try await server.corpoJSON("POST", "/api/account/esci", [String: String]())
         } catch ErroreApi.accessoRichiesto {
             // la sessione era già finita: si esce come se la richiesta fosse riuscita
         } catch {
-            riprendiIlWidget(revocato: widgetRevocato)
+            riprendiIlWidget()
             throw error
         }
         avvisoAccesso = nil   // un «Esci» normale non dice «Sei fuori da tutti i dispositivi»
         chiudiLocale()
     }
 
-    /// «Esci» non riuscito: il widget resta collegato. Se il server gli aveva già tolto il token, il telefono dimentica solo quello
-    /// (riassunto e copie restano) e ne chiede uno nuovo, come dopo il cambio della password; poi ripassa il collegamento al widget.
-    private func riprendiIlWidget(revocato: Bool) {
+    /// «Esci» non riuscito: il widget resta collegato con il suo token (il server non l'ha tolto). Riparte il lavoro sul token
+    /// annullato all'inizio di «Esci» e il collegamento si ripassa al widget.
+    private func riprendiIlWidget() {
         let w = luoghiWidget, s = server, a = archivio
-        if revocato { TokenWidget.dimenticaToken(indirizzo: s.indirizzo, luoghi: w) }
         rinnovoWidget = Task { await TokenWidget.assicura(server: s, luoghi: w, sessione: a) }
     }
 
@@ -729,12 +726,12 @@ final class SessioneAccount: ObservableObject {
 
     /// La rete di sicurezza delle Impostazioni (`SessioneMinimaSezione`), per quando l'app non si collega: esce da questo telefono
     /// anche se il server non risponde (il server chiude la sessione, se risponde), come faceva «Esci» prima del #809. Così nessuno
-    /// resta chiuso dentro. Non aspetta altre richieste in corso.
+    /// resta chiuso dentro. Non aspetta altre richieste in corso. Il token del widget di questo dispositivo lo toglie il server con
+    /// la sessione; il telefono lo dimentica in `chiudiLocale`.
     func esciAncheSenzaServer() async {
         inCorso = true
         defer { inCorso = false }
         rinnovoWidget?.cancel()   // un token del widget che arriva adesso non si tiene
-        await TokenWidget.revoca(server: server, luoghi: luoghiWidget)   // serve ancora la sessione: prima di chiuderla
         _ = try? await server.corpoJSON("POST", "/api/account/esci", [String: String]())
         avvisoAccesso = nil   // un «Esci» normale non dice «Sei fuori da tutti i dispositivi»
         chiudiLocale()
