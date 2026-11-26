@@ -145,10 +145,6 @@
     "it": "Scegli almeno un modulo",
     "en": "Choose at least one formation"
   },
-  "regole.sono_valori_non": {
-    "it": "Ci sono valori non numerici: correggili prima di salvare",
-    "en": "Some values are not numbers: fix them before saving"
-  },
   "regole.tempi_della_lega": {
     "it": "Tempi della lega",
     "en": "League timing"
@@ -432,5 +428,9 @@
   "regole.intero": {
     "it": "«{campo}» deve essere un numero intero",
     "en": "“{campo}” must be a whole number"
+  },
+  "regole.non_numero": {
+    "it": "«{campo}» non è un numero: correggilo prima di salvare",
+    "en": "“{campo}” is not a number: fix it before saving"
   }
 }

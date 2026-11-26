@@ -147,7 +147,8 @@ enum RegoleLogica {
     }
 
     /// Un decimale con `cifre` cifre e, se è negativo, il meno tipografico davanti; senza segno se arrotondato vale zero («0,00»).
-    private static func conMeno(_ valore: Double, cifre: Int) -> String {
+    /// La usano anche le righe con − e + dell'editor delle regole (`RigaStepper.testo`).
+    static func conMeno(_ valore: Double, cifre: Int) -> String {
         let testo = Formato.decimali(abs(valore), cifre: cifre)
         guard valore < 0, testo.contains(where: { ("1"..."9").contains($0) }) else { return testo }
         return "\u{2212}" + testo

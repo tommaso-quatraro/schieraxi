@@ -6,6 +6,8 @@ import SwiftUI
 @MainActor
 final class OggiViewModel: ViewModelBase {
     let caricatore: Caricatore<Oggi>
+    /// Rose salvate ma la tua squadra non scelta: la Formazione chiede la squadra invece della giornata (collaudo del 26/11).
+    let squadra: SquadraDaScegliere
     private let server: any ServerClient
     /// Cresce a ogni lettura della giornata che passa a promemoria e widget (`leggi`): una lettura partita prima di un'altra e
     /// arrivata dopo, o mentre l'altra è in viaggio, è superata e non decide niente.
@@ -26,6 +28,7 @@ final class OggiViewModel: ViewModelBase {
         self.server = server
         // Il comando «Aggiorna» lo gestisce questo ViewModel (deve anche riprogrammare i promemoria), non il Caricatore.
         caricatore = Caricatore<Oggi>(OggiRepository.percorso, ascolta: false, server: server)
+        squadra = SquadraDaScegliere(server: server)
         if conPromemoria {
             dopoLetturaFresca = { oggi, chiestaIl, chi in await OggiViewModel.passaAWidgetEPromemoria(oggi, chiestaIl: chiestaIl, di: chi) }
             dopoLetturaNonRiuscita = { await Aggiornamento.riprogrammaPromemoria(lettura: .nonRiuscita) }
@@ -35,6 +38,7 @@ final class OggiViewModel: ViewModelBase {
         }
         super.init()
         osserva(caricatore)
+        osserva(squadra)
         alComandoAggiorna { [weak self] in
             await self?.carica()
         }
