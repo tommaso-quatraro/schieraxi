@@ -55,6 +55,32 @@ struct DemoConsigliataTests {
         #expect(sopra.isEmpty, "la consigliata della demo lascia fuori cambi da un punto o più: \(sopra.sorted())")
     }
 
+    /// Anche con più cambi insieme (revisione della #955: Dimarzi e Di Corvara nel 4-4-2 davano +1,13): per ogni modulo della lega
+    /// la formazione migliore della rosa, i più attesi di ogni ruolo, non vale un punto o più della consigliata.
+    @Test("Nessuna formazione della rosa, in nessun modulo della lega, vale un punto atteso o più della consigliata")
+    func nessunaFormazioneSopraLaSoglia() async throws {
+        let f = try await formazione()
+        let moduli = try await moduliDellaLega()
+        let schede = try #require(f.schede, "la Formazione della demo non ha le schede della rosa")
+        let disponibili = schede.values.filter { ($0.puntiAttesi ?? 0) > 0 }
+        /// I punti dei migliori `n` di un ruolo; nil se il ruolo non ne ha abbastanza.
+        func migliori(_ ruolo: String, _ n: Int) -> Double? {
+            let punti = disponibili.filter { $0.ruolo == ruolo }.compactMap(\.puntiAttesi).sorted(by: >)
+            return punti.count >= n ? punti.prefix(n).reduce(0, +) : nil
+        }
+        let consigliata = tondo(f.punteggioAtteso)
+        var sopra: [String] = []
+        for modulo in moduli {
+            let numeri = modulo.split(separator: "-").compactMap { Int($0) }
+            try #require(numeri.count == 3, "modulo strano nelle regole della demo: \(modulo)")
+            guard let p = migliori("P", 1), let d = migliori("D", numeri[0]), let c = migliori("C", numeri[1]),
+                  let a = migliori("A", numeri[2]) else { continue }
+            let differenza = tondo(tondo(p + d + c + a) - consigliata)
+            if differenza >= Self.soglia { sopra.append("\(modulo): \(Formato.conSegno(differenza))") }
+        }
+        #expect(sopra.isEmpty, "formazioni della rosa da un punto o più sopra la consigliata: \(sopra)")
+    }
+
     @Test("«Sostituisci» della demo (Marténi): nessun compagno di ruolo vale un punto atteso o più")
     func sostituisciSottoLaSoglia() async throws {
         let f = try await formazione()

@@ -95,6 +95,26 @@ struct DemoSchedaVotiTests {
         }
     }
 
+    /// Revisione della #955: i gol e gli assist attesi non dipendevano dal ruolo, e un portiere come Sorvani mostrava «−2,04 punti a
+    /// partita» e «Gol −4,1 rispetto ai gol attesi». Un portiere non ha gol né assist attesi; un difensore ne ha pochi, e i suoi gol
+    /// e assist della stagione stanno «in linea con le occasioni» (fra −0,3 e +0,3 punti a partita, la fascia neutra della scheda).
+    @Test("Portieri senza gol e assist attesi; difensori in linea con le occasioni che hanno")
+    func rendimentoDiPortieriEDifensori() async throws {
+        let ruoli = LegaDemo.miaRosa.filter { $0.ruolo == "P" || $0.ruolo == "D" }
+        try #require(ruoli.contains { $0.ruolo == "P" } && ruoli.contains { $0.ruolo == "D" })
+        for c in ruoli {
+            let s = try await oggetto("/api/giocatore/\(c.id)")
+            let a = try #require(s["avanzate"] as? [String: Any], "\(c.nome): niente statistiche avanzate")
+            let r = try #require(s["rendimento"] as? [String: Any], "\(c.nome): niente rendimento")
+            let punti = numero(r, "sovra_rendimento")
+            #expect(abs(punti) <= 0.3, "\(c.nome) (\(c.ruolo)): \(Formato.conSegno(punti, cifre: 2)) punti a partita")
+            if c.ruolo == "P" {
+                #expect(numero(a, "xg") == 0 && numero(a, "xa") == 0, "\(c.nome): un portiere con gol o assist attesi")
+                #expect(numero(r, "gol_meno_xg") == 0 && numero(r, "assist_meno_xa") == 0, "\(c.nome): rendimento di un portiere")
+            }
+        }
+    }
+
     @Test("Gol e assist rispetto alle occasioni come li calcola il server, con i gol e gli assist della stagione")
     func rendimentoComeIlServer() async throws {
         let regole = try await oggetto("/api/regole")
