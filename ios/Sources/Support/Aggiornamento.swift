@@ -143,12 +143,16 @@ enum Aggiornamento {
     /// mentre la lettura era in viaggio, 26/11/2026), la giornata è dell'account di prima: niente promemoria e niente riassunto nel file
     /// condiviso, dove riscriverebbe i dati di chi è uscito. Si controlla anche subito prima di scrivere, dopo i promemoria.
     /// «Cambio di modulo» ed «Escono le probabili» non partono più dal telefono (#906): annunciavano come notizia anche il modulo
-    /// salvato dall'utente, e il server li ha tolti con #676. `sessione` e `cartella`: i test ne passano di loro.
+    /// salvato dall'utente, e il server li ha tolti con #676. `sessione`, `cartella` e `promemoria`: i test ne passano di loro (i
+    /// promemoria veri passano dal centro delle notifiche di iOS, che nei test non si tocca).
     static func elabora(_ oggi: Oggi, chiestaIl: Date, di chi: ChiLegge, sessione: any ArchivioToken = Accesso.archivio,
-                        cartella: URL? = Condiviso.cartella()) async {
+                        cartella: URL? = Condiviso.cartella(),
+                        promemoria: (Oggi, Date) async -> Void = { oggi, chiestaIl in
+                            await Aggiornamento.programmaPromemoria(oggi, lettura: .fresca(chiestaIl: chiestaIl))
+                        }) async {
         if Demo.attivo { return }   // demo: niente promemoria né widget
         guard chi.ancoraLui(sessione) else { return }
-        await programmaPromemoria(oggi, lettura: .fresca(chiestaIl: chiestaIl))
+        await promemoria(oggi, chiestaIl)
         guard chi.ancoraLui(sessione) else { return }
         // Il widget trova subito l'ultima giornata (senza aspettare il suo scarico) e si ridisegna.
         Condiviso.aggiorna(cartella: cartella) { $0.riassunto = RiassuntoOggi(oggi: oggi) }
