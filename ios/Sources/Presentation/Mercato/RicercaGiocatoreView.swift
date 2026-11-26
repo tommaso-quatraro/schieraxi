@@ -29,6 +29,8 @@ struct RicercaGiocatoreView: View {
                     NavigationLink(value: PassoScheda.scheda(g.id)) { RigaRicerca(g) }
                 }
             }
+            // sull'iPad una colonna larga come quella della web, non righe da un bordo all'altro dello schermo (#896)
+            .colonnaPagina()
             .scrollContentBackground(.hidden)
         }
         .navigationTitle(Catalogo.Shell.cerca)
