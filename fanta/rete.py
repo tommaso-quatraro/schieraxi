@@ -35,10 +35,11 @@ _ultima = 0.0
 contatore = 0        # richieste fatte in questa esecuzione (per i resoconti)
 
 
-def scarica(url: str, headers: dict | None = None, timeout: int = 30) -> requests.Response:
+def scarica(url: str, headers: dict | None = None, timeout: int = 30, tentativi: int = TENTATIVI) -> requests.Response:
+    """`tentativi=1` per chi ha già le sue pause dopo un errore (la diretta: al massimo una richiesta al minuto)."""
     global _ultima, contatore
     errore: Exception | None = None
-    for tentativo in range(TENTATIVI):
+    for tentativo in range(max(1, tentativi)):
         attesa = PAUSA * (1 + 2 * tentativo) - (time.monotonic() - _ultima)
         if attesa > 0:
             time.sleep(attesa)
