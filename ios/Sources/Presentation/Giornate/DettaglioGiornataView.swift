@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// Gli 11 di una giornata finita (`dettaglioGiornata` della web): il titolo con il modulo, chi ha fatto meglio o peggio del previsto,
-/// i titolari con il fantavoto atteso e quello preso, cosa hai cambiato rispetto alla consigliata e un solo pulsante, «Non è quello
-/// che ho schierato». Tutto viene già pronto da `PaginaGiornate.dettaglio`: qui non si calcola niente.
+/// i titolari con il fantavoto atteso e quello preso, da dove vengono i punti (#900), cosa hai cambiato rispetto alla consigliata e
+/// un solo pulsante, «Non è quello che ho schierato». Tutto viene già pronto da `PaginaGiornate.dettaglio`: qui non si calcola niente.
 struct DettaglioGiornataView: View {
     let dettaglio: DettaglioGiornata
     /// L'esito dell'ultima correzione di questa giornata («Salvato: …»), se c'è.
@@ -28,6 +28,10 @@ struct DettaglioGiornataView: View {
             }
             // con il testo molto grande tre colonne non ci stanno: un giocatore per riga, i due numeri sotto il nome
             if dimensione.isAccessibilitySize { elencoImpilato } else { tabella }
+            // perché i punti non sono la somma dei fantavoti della tabella: le frasi del server, sotto la tabella come la web (#900)
+            if !dettaglio.perche.isEmpty {
+                PerchePuntiView(frasi: dettaglio.perche)
+            }
             if let cambi = dettaglio.cambi {
                 Text(cambi)
                     .font(.subheadline)
@@ -126,6 +130,7 @@ struct DettaglioGiornataView: View {
                        TitolareGiornata(id: 2, nome: "Bastrani", ruolo: "D", atteso: "6,0", preso: Catalogo.Giornate.senzaVoto,
                                         senzaVoto: true),
                        TitolareGiornata(id: 3, nome: "Marténi", ruolo: "A", atteso: "7,4", preso: "10,5", senzaVoto: false)],
+            perche: ["Orsetti (7,0) è entrato dalla panchina al posto di Bastrani."],
             cambi: Catalogo.Giornate.alPosto(dentro: "Orsetti", fuori: "Dunfrey"), senzaConfronto: nil, correggibile: true)) {}
     }
 }

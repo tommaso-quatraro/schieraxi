@@ -82,6 +82,9 @@ extension Catalogo {
         /// `giornate.senza_voto`
         static let senzaVoto = "senza voto"
 
+        /// `giornate.perche_punti`
+        static let perchePunti = "Da dove vengono i punti"
+
         /// `giornate.al_posto`
         static func alPosto(dentro: String, fuori: String) -> String {
             "Al posto di \(fuori) hai messo \(dentro)."

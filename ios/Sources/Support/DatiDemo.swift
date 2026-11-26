@@ -1034,6 +1034,11 @@ private extension LegaDemo {
             8: "Meglio del previsto: Pulinski (+2,3) e Sorvani (+1,2). Peggio: Lemão (\u{2212}1,8) e Orsetti (\u{2212}1,5).",
             7: "Meglio del previsto: Lemão (+2,0). Peggio: Kloosmeijer (\u{2212}2,1) e Pulinski (\u{2212}1,5).",
         ]
+        // da dove vengono i punti (`spiegazione_punti`, #900): nella giornata 10 di Serie A Lemão è senza voto ed entra Orsetti, la prima
+        // riserva del suo ruolo con il voto (6,0 nella tabella qui sopra; `DemoDiarioTests` controlla che siano quei numeri)
+        let frasiPunti: [Int: [String]] = [
+            10: ["Orsetti (6,0) è entrato dalla panchina al posto di Lemão."],
+        ]
         func esito(_ e: EsitoGiornata, _ nomi: [String]) -> [String: Any] {
             ["modulo": e.modulo, "atteso": e.atteso, "reale": e.fatti, "intervallo": fascia(e.atteso), "titolari": titolari(nomi)]
         }
@@ -1069,6 +1074,11 @@ private extension LegaDemo {
                                         "differenza": differenza, "testo": NSNull()]
             if let frase = frasiScarti[g.serieA] { fatti["testo"] = frase }
             voce["fatti_e_attesi"] = fatti
+            // da dove vengono i punti della formazione che conta (`spiegazione_punti` di fanta/diario.py, #900): le frasi le scrive il
+            // server, qui il loro testo per la giornata più recente, quella aperta nella foto `giornate-aperta`
+            if let righe = frasiPunti[g.serieA] {
+                voce["spiegazione_punti"] = ["formazione": formazione, "righe": righe] as [String: Any]
+            }
             return voce
         }
         return json([

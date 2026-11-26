@@ -42,7 +42,8 @@ struct GiornateView: View {
             ScrollViewReader { proxy in
                 List {
                     capo
-                    if let p = vm.pagina {
+                    // le giornate insieme alla riga sotto il titolo, mai prima: la riga non sposta la lista già in vista (#913)
+                    if let p = vm.paginaDaMostrare {
                         testa(p)
                         if p.righe.isEmpty {
                             vuoto(p)
@@ -61,7 +62,7 @@ struct GiornateView: View {
                                 }
                             }
                         }
-                    } else if let e = vm.caricatore.errore {
+                    } else if vm.caricatore.dato == nil, let e = vm.caricatore.errore {
                         ErroreVista(messaggio: e) { Task { await vm.carica() } }
                     } else {
                         ScheletroRighe(righe: 5).listRowBackground(Color.clear)
@@ -113,10 +114,11 @@ struct GiornateView: View {
     /// Niente lista con la selezione di iOS (#919): riempiva la riga scelta del colore principale e i testi grigi della riga non si
     /// leggevano più (foto della corsa 45760638734). Ogni riga è un pulsante e quella scelta ha il grigio dell'app.
     private var elencoIPad: some View {
-        let scelta = vm.pagina?.aDestra(scelta: vm.scelta).id
+        let pagina = vm.paginaDaMostrare   // con la riga sotto il titolo, come sul telefono (#913)
+        let scelta = pagina?.aDestra(scelta: vm.scelta).id
         return List {
             capo
-            if let p = vm.pagina {
+            if let p = pagina {
                 testaIPad(p, scelta: scelta)
                 if p.righe.isEmpty {
                     vuoto(p)
@@ -130,7 +132,7 @@ struct GiornateView: View {
                         }
                     }
                 }
-            } else if let e = vm.caricatore.errore {
+            } else if vm.caricatore.dato == nil, let e = vm.caricatore.errore {
                 ErroreVista(messaggio: e) { Task { await vm.carica() } }
             } else {
                 ScheletroRighe(righe: 5).listRowBackground(Color.clear)
@@ -191,7 +193,7 @@ struct GiornateView: View {
     private var dettaglioIPad: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if let p = vm.pagina {
+                if let p = vm.paginaDaMostrare {
                     switch p.aDestra(scelta: vm.scelta) {
                     case .dettagli:
                         if let t = p.dettagli {
