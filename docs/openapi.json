@@ -4514,7 +4514,7 @@
   },
   "/api/rose/correggi": {
    "post": {
-    "description": "Un giocatore che l'importazione non ha riconosciuto (o ha riconosciuto per somiglianza): lo si abbina a mano a quello del listone.",
+    "description": "Un giocatore che l'importazione non ha riconosciuto (o ha riconosciuto per somiglianza, o che l'utente aveva scelto a mano):\nlo si abbina a mano a quello del listone. Si può cambiare anche una scelta fatta prima (revisione della #939); non un\ngiocatore riconosciuto con certezza.",
     "requestBody": {
      "content": {
       "application/json": {
