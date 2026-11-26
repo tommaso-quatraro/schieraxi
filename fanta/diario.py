@@ -742,20 +742,21 @@ def per_il_consiglio(db: sqlite3.Connection, regole: Regole, stagione: str, gior
     """Gli argomenti di `calcola_giornata` per gli indicatori del consiglio, dal file del diario `d`: l'istantanea della giornata e
     C2 contato sui cambi delle 24 ore prima della scadenza della lega. C2 solo se l'istantanea ha le `misure`: le istantanee
     salvate prima di questa versione non registravano i cambi. Non alza mai: se qualcosa non riesce, la voce si fa senza indicatori
-    (`indicatori` falso)."""
+    (`indicatori` falso) ma con l'istantanea, letta prima: senza, la voce perdeva la consigliata mostrata e diceva che non era
+    stata salvata (difetto del 26/11/2026)."""
+    chiave = f"{stagione}/{giornata}"
+    ist = d.get("istantanee", {}).get(chiave) if isinstance(d.get("istantanee"), dict) else None
+    ist = ist if isinstance(ist, dict) else None
+    if ist is None or not isinstance(ist.get("misure"), dict):
+        return {"istantanea": ist, "cambi": None}
     try:
-        chiave = f"{stagione}/{giornata}"
-        ist = d.get("istantanee", {}).get(chiave) if isinstance(d.get("istantanee"), dict) else None
-        ist = ist if isinstance(ist, dict) else None
-        if ist is None or not isinstance(ist.get("misure"), dict):
-            return {"istantanea": ist, "cambi": None}
         tutti = d.get("cambi") if isinstance(d.get("cambi"), dict) else {}
         cambi = tutti.get(chiave) if isinstance(tutti.get(chiave), list) else []
         scadenza = avvisi.scadenza(avvisi.prima_partita(db, stagione, giornata), regole)
         return {"istantanea": ist, "cambi": ic.conta_cambi(cambi, scadenza, regole)}
     except Exception as e:  # noqa: BLE001 - un di più: la voce del Diario si scrive comunque, senza gli indicatori
         _senza_indicatori(e)
-        return {"indicatori": False}
+        return {"istantanea": ist, "indicatori": False}
 
 
 FORMAZIONI = ("consigliata", "ricostruita", "schierata", "automatica")          # le formazioni di una voce, ognuna con i suoi punti
@@ -838,6 +839,12 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
             # voce scritta prima di #614, con l'istantanea della giornata: si rifà una volta, per confrontare con la consigliata
             # mostrata (se aveva la schierata e la scelta non c'è più resta com'è: rifarla la perderebbe)
             if salta and "ricostruita" not in vecchia and ist.get("titolari") and (scelta or not vecchia.get("schierata")):
+                salta = False
+            # voce che dice «la consigliata mostrata non era stata salvata» mentre l'istantanea c'è: un errore l'aveva persa
+            # (per_il_consiglio, difetto del 26/11/2026). Si rifà una volta, alle stesse condizioni: con l'istantanea non torna più
+            # «non_salvata» (_allora_al_calcolo)
+            if salta and vecchia.get("consigliata_di_allora") == "non_salvata" and _ids(ist.get("titolari")) and (
+                    scelta or not vecchia.get("schierata")):
                 salta = False
             # voti cambiati, o voce scritta prima dell'impronta dei voti (il primo giro dopo il rilascio): si rifanno solo i punti,
             # con le stesse formazioni e la stessa classificazione (decisione del coordinatore su #793)

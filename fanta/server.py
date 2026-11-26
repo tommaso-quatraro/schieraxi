@@ -961,8 +961,10 @@ def _copia_automatica(db, ctx: Contesto, f: dict) -> None:
         if prima is None or datetime.now() >= prima:
             return
         copia_scadenza.salva(f, stagione, ctx.scelte, ctx.diario)    # copia e consigliata di allora per il diario (si congela alla scadenza)
-    except Exception:                       # noqa: BLE001 - la copia è un di più
-        pass
+    except Exception as e:                  # noqa: BLE001 - la copia è un di più: la risposta esce lo stesso, il guasto va nel registro
+        # senza l'istantanea il Diario non avrà la consigliata mostrata di questa giornata: solo il tipo (il messaggio può avere dati)
+        logging.getLogger("uvicorn.error").warning("Formazione: copia automatica e consigliata per il Diario non salvate (%s)",
+                                                   type(e).__name__)
 
 
 class FormazioneScelta(BaseModel):
