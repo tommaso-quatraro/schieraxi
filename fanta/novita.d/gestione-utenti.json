@@ -1,7 +1,7 @@
 {
   "titolo": "Gestione: chi gestisce il server può bloccare o eliminare un account",
   "voci": [
-    "Impostazioni › Gestione › Utenti, per chi gestisce il server: ogni account con la data d'iscrizione e l'ultimo accesso, e per gli altri account «Blocca» (o «Sblocca») ed «Elimina», dopo una conferma con il nome. Un account bloccato non entra più e le sue sessioni si chiudono subito, ma i suoi dati restano; eliminato, sparisce con tutti i suoi dati, come quando lo elimina chi lo usa.",
+    "Impostazioni › Gestione › Utenti: chi gestisce il server vede iscrizione e ultimo accesso di ogni account e può bloccarlo (non entra più, i dati restano) o eliminarlo con tutti i suoi dati, dopo una conferma.",
     "Chi è bloccato e prova a entrare con la sua password legge «Questo account è bloccato: chiedi a chi gestisce SchieraXI.»."
   ],
   "tecnico": [
