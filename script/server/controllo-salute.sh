@@ -8,6 +8,7 @@
 #   - memoria disponibile sotto il 10%
 #   - certificato che scade tra meno di 14 giorni
 #   - ultimo aggiornamento dei dati piu' vecchio di 12 ore
+#   - ultima copia notturna riuscita (backup-dati.sh) piu' vecchia di 36 ore
 # Quando un problema torna a posto, manda un avviso "risolto". Non cambia niente sull'app.
 # Stato e log in ~/.cache/controllo/ (avvisi.log, ultimo-giro, fallimenti, aperto-<problema>).
 #
@@ -158,6 +159,19 @@ if printf '%s' "$cert" | grep -q 'will expire'; then
   apri certificato "SchieraXI: certificato" "Il certificato scade il ${fine}: meno di 14 giorni. Rinnovarlo (Let's Encrypt, certbot)." 4 warning
 elif printf '%s' "$cert" | grep -q 'will not expire'; then
   chiudi certificato "SchieraXI: certificato" "Il certificato e' di nuovo valido a lungo."
+fi
+
+# ---- copia notturna dei dati: backup-dati.sh scrive ultimo-backup-dati solo quando la copia riesce. Piu' vecchio di 36 ore (una
+# notte saltata piu' un margine): avviso. Senza il file non si decide niente (server appena installato, copia non ancora nel cron).
+ultimo_backup="${CONTROLLO_ULTIMO_BACKUP:-$HOME/.cache/fantacalcio/ultimo-backup-dati}"
+quando_backup=$(stat -c %Y "$ultimo_backup" 2>/dev/null)
+if [[ $quando_backup =~ ^[0-9]+$ ]]; then
+  ore_backup=$(( ( $(date +%s) - quando_backup ) / 3600 ))
+  if [ "$ore_backup" -gt 36 ]; then
+    apri copia "SchieraXI: copia notturna" "L'ultima copia notturna dei dati riuscita e' di circa $ore_backup ore fa (limite 36). Controllare backup-dati.log." 4 floppy_disk
+  else
+    chiudi copia "SchieraXI: copia notturna" "La copia notturna dei dati riesce di nuovo."
+  fi
 fi
 
 date '+%F %T' > "$dir/ultimo-giro"

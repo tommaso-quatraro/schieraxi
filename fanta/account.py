@@ -37,6 +37,7 @@ import os
 import re
 import secrets
 import sqlite3
+import tempfile
 import threading
 import time
 import unicodedata
@@ -402,19 +403,44 @@ def _copia_prima_di_migrare(db: sqlite3.Connection, percorso: Path, versione: in
     """Copia di sicurezza del file prima di cambiarne la struttura (cartella `backup` accanto al file). Se la copia non riesce
     non si migra: meglio un errore che dati senza rete. Nasce leggibile solo dal proprietario (600) come le copie serali, anche
     senza l'umask del servizio: dentro ci sono nomi, email e impronte delle password. Scade nel giro serale
-    (backup.GIORNI_COPIE_MIGRAZIONE)."""
+    (backup.GIORNI_COPIE_MIGRAZIONE).
+    La copia si scrive in un file temporaneo della stessa cartella e prende il nome giusto solo quando è finita: se si interrompe
+    (disco pieno) il temporaneo si toglie e il giro dopo la rifà. Una copia già presente ma vuota o rovinata (lasciata a metà dalle
+    versioni di prima) si rifà. La copia esce dal modo WAL (un file solo, come in backup-dati.sh) e prima di darle il nome si tolgono
+    i -journal, -wal e -shm rimasti accanto al nome: un giornale di una copia di prima la svuoterebbe alla prima apertura. I
+    temporanei rimasti da una copia interrotta di colpo li toglie il giro serale (backup.copia_account)."""
     cartella = percorso.parent / "backup"
     cartella.mkdir(parents=True, exist_ok=True)
     destinazione = cartella / f"{percorso.stem}-prima-della-migrazione-{versione}.sqlite"
-    try:
-        os.close(os.open(destinazione, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600))
-    except FileExistsError:
+    if _copia_buona(destinazione):
         return
-    copia = sqlite3.connect(destinazione)
+    fd, nome = tempfile.mkstemp(dir=cartella, prefix=f".{destinazione.name}.", suffix=".tmp")     # nasce 600
+    os.close(fd)
+    temporaneo = Path(nome)
     try:
-        db.backup(copia)
-    finally:
-        copia.close()
+        copia = sqlite3.connect(temporaneo)
+        try:
+            db.backup(copia)
+            copia.execute("PRAGMA journal_mode = DELETE")
+        finally:
+            copia.close()
+        for resto in ("-journal", "-wal", "-shm"):
+            Path(f"{destinazione}{resto}").unlink(missing_ok=True)
+        os.replace(temporaneo, destinazione)
+    except BaseException:
+        temporaneo.unlink(missing_ok=True)
+        raise
+
+
+def _copia_buona(percorso: Path) -> bool:
+    """La copia di sicurezza c'è, non è vuota e passa il controllo veloce di SQLite (aperta in sola lettura)."""
+    try:
+        if percorso.stat().st_size == 0:
+            return False
+        with contextlib.closing(sqlite3.connect(percorso.resolve().as_uri() + "?mode=ro", uri=True)) as copia:
+            return copia.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+    except (OSError, sqlite3.DatabaseError):
+        return False
 
 
 def _applica_migrazioni(db: sqlite3.Connection, versione: int) -> None:

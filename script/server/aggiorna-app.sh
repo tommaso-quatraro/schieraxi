@@ -67,8 +67,8 @@ case "$ISTANZA" in
      exit 2 ;;
 esac
 # Il blocco della pubblicazione va con il clone: chi usa lo stesso clone usa lo stesso blocco (un solo git fetch e una sola verifica
-# delle firme, che lavora in .git/verifica-firme, alla volta). Produzione: ~/.cache/fantacalcio/blocco-pubblicazione, lo stesso di
-# pubblica-sito.sh, promemoria.sh e sentinella.sh. La prova ha la sua casa, quindi clone suo e blocco suo: niente in comune.
+# delle firme alla volta; ogni verifica ha comunque il suo portachiavi temporaneo, .git/verifica-firme.XXXXXX, vedi verifica-firme.sh).
+# Produzione: ~/.cache/fantacalcio/blocco-pubblicazione, lo stesso di pubblica-sito.sh, promemoria.sh e sentinella.sh. La prova ha la sua casa, quindi clone suo e blocco suo: niente in comune.
 BLOCCO="$STATO/blocco-pubblicazione"
 CHIAVI="${SCHIERAXI_CHIAVI:-$CHIAVI_DI_SOLITO}"     # chiavi fidate per le firme: FUORI dal repository (e, per la prova, fuori dalla sua casa)
 # Intervallo minimo fra due installazioni riuscite, in minuti (#635): variabile SCHIERAXI_INTERVALLO_MINUTI, altrimenti il file
