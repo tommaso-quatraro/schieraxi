@@ -20,6 +20,8 @@ enum ParoleSquadre {
     static let stemmaEMaglia = Catalogo.Lega.stemmaMaglia
     static let nonLaTua = Catalogo.Lega.nonTuaSquadra
     static let scegliLaTua = Catalogo.Lega.scegliQualeDelle
+    /// La voce vuota del selettore finché la mia squadra non è scelta (`lega.scegli_squadra`, come la web, #923).
+    static let scegliUnaSquadra = Catalogo.Lega.scegliSquadra
     /// Il nome del selettore per VoiceOver (`lega.tua_squadra`).
     static let tuaSquadra = Catalogo.Lega.tuaSquadra
     static let importaPrima = Catalogo.Lega.importaPrimaRose

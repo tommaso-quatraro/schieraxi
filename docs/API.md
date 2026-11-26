@@ -745,7 +745,7 @@ Il testo si costruisce con una funzione sola per piattaforma (web `nomeGiornata`
 
 Testi del server con la forma intera (frasi con chiave, `fanta/frasi.py`): la chiave `giornata.lega` (`{n}` lega, `{a}` Serie A)
 e `giornata.serie_a` (`{a}`), dentro il parametro `giornata` di `dafare.diario` («Giornata 7 · 10ª di Serie A: è finita, dimmi se
-hai schierato la consigliata.») e di `dafare.rose_mercato` («… aggiornale prima della Giornata 12 · 15ª di Serie A.»); negli avvisi le stesse forme con le chiavi `n.giornata.lega` e `n.giornata.serie_a`, in italiano e
+hai schierato la consigliata.») e di `dafare.rose_mercato` (dalla #923 il testo non la scrive più, il parametro resta); negli avvisi le stesse forme con le chiavi `n.giornata.lega` e `n.giornata.serie_a`, in italiano e
 in inglese. I titoli degli avvisi «cambi nelle probabili» e «riepilogo» non hanno più il numero: la forma intera sta in testa al
 testo. `GET /api/formazione/testo` comincia con «Giornata 8 · 11ª di Serie A · 3-4-3». I messaggi d'errore «Non ci sono ancora
 previsioni per la Giornata 8 · 11ª di Serie A: riprova più tardi.» e «Giocatore … senza previsione per la Giornata 8 · 11ª di Serie A
@@ -999,9 +999,11 @@ Quando compaiono (al massimo 8 voci in tutto; la card di Oggi ne mostra 4):
   cominciato: asta estiva, asta invernale e finestre di scambio delle regole oppure, se la lega non le indica, le date di partenza
   delle aste e le soste del campionato (sezione «Momenti di mercato della lega»). Compare dall'inizio del momento e resta fino
   all'aggiornamento delle rose o fino alla scadenza (della lega) della prima giornata della lega dopo la FINE del momento, così
-  copre anche un'asta che cade alla fine del periodo. Testo: «È il momento di aste e scambi nella lega: se le
-  rose sono cambiate, aggiornale prima della Giornata 12 · 15ª di Serie A.» (chiave `dafare.rose_mercato`, parametro `giornata` = la
-  frase della giornata con i due numeri, `giornata.lega`, come `dafare.diario`; fino alla #306 era `n` = giornata della lega). Campi,
+  copre anche un'asta che cade alla fine del periodo. Testo: «È il momento di aste e scambi: se le rose sono
+  cambiate, aggiornale.» (chiave `dafare.rose_mercato`). Dalla #923 il testo non dice la giornata, che sta già nella testata della
+  Formazione; il parametro `giornata` (la frase della giornata con i due numeri, `giornata.lega`, come `dafare.diario`; fino alla
+  #306 era `n` = giornata della lega) resta per le pagine web in inglese rimaste in memoria, il cui `testi.js` traduce ancora
+  con «{giornata}»; l'iPhone mostra `testo`, già scritto dal server. Campi,
   `id` (`rose-vecchie`), azione e destinazione non cambiano; `giorni` = giorni dall'ultimo aggiornamento delle rose. Prima compariva
   dopo ogni giornata giocata con le rose ferme da 4 giorni (chiave `dafare.rose_vecchie`, che il server non scrive più).
 - `svincolato` e `scambio` (3): solo se già in cache e solo se superano il buon senso (`fanta/buon_senso.py`): guadagno di almeno 2-3 punti (secondo il ruolo) sulle prossime 5 giornate e positivo nella maggior parte di esse, chi entra gioca davvero (titolare fisso, non in dubbio), chi esce non è un titolare utile né costoso, crediti sufficienti, nessun giocatore preso o lasciato libero negli ultimi 21 giorni. Campo in più facoltativo `motivo` (una frase: perché conviene), anche dentro il `testo`. Mai calcolati qui. `svincolato` c'è solo se «Cambi consigliati» (`mercato`) è accesa per l'utente (dal 20/11/2026, #797), `scambio` solo se «Scambi: trova per me» (`scambi_trova`) è accesa per l'utente (dal 20/11/2026, #803). Dubbi, coperture, svincolati e scambi insieme sono al massimo 3 consigli, e nessun giocatore compare in due consigli. Se non c'è niente di utile `da_fare` può essere vuota (i client scrivono «Nessuna azione utile oggi»).

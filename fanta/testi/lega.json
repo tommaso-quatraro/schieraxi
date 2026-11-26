@@ -178,6 +178,10 @@
     "it": "Scegli quale delle squadre è la tua.",
     "en": "Choose which of the teams is yours."
   },
+  "lega.scegli_squadra": {
+    "it": "Scegli una squadra",
+    "en": "Choose a team"
+  },
   "lega.squadra_aggiorna_rose": {
     "it": ": in Impostazioni › Aggiorna le rose, con l'Excel di Leghe (si importa anche con il menu Condividi).",
     "en": ": in Settings › Update the rosters, with the Leghe Excel (you can also import it from the Share menu)."

@@ -639,6 +639,53 @@ def test_le_altre_squadre_contano_ed_elencano_solo_le_altre(web, scelta):
     assert not any("la tua" in n for n in nomi), nomi
 
 
+@pytest.mark.parametrize("quale", ["prima", "ultima"])
+def test_la_mia_squadra_non_scelta_si_sceglie_anche_la_prima_dell_elenco(web, quale):
+    """Collaudo del 26/11 (#923): in «La mia squadra», finché la mia non è scelta, il menu salvava appena cambiava e mostrava già la
+    prima squadra dell'elenco: sceglierla non era un cambio, quindi non si salvava mai. Il menu parte senza squadra («Scegli una
+    squadra»): ogni squadra, la prima compresa, si sceglie e si salva."""
+    solo(web, "prima")
+    squadre = web.registrata("/api/squadre")
+    for s in squadre:
+        s["mia"] = False
+    web.risposta("/api/squadre", squadre)
+    web.risposta("/api/stato", {**web.registrata("/api/stato"), "mia_squadra": None})
+    web.risposta("/api/mia-squadra", {"ok": True})                       # lo scenario non la registra (il server finto non salva)
+    salvate = _scritture(web, "/api/mia-squadra")
+    web.apri("/?vista=impostazioni&gruppo=squadra")
+    menu = principale(web).get_by_role("combobox", name="La tua squadra")
+    assert menu.input_value() == "", "il menu mostra già una squadra: sceglierla non sarebbe un cambio"
+    nome = squadre[0 if quale == "prima" else -1]["nome"]
+    menu.select_option(nome)
+    web.aspetta()
+    assert salvate == [{"nome": nome}], salvate
+    assert not web.errori_console, web.errori_console
+
+
+def test_la_mia_squadra_non_salvata_si_riprova_con_la_stessa_squadra(web):
+    """Revisione della #945: se il salvataggio della squadra non riesce, il menu restava sulla squadra scelta, e sceglierla di nuovo
+    non era un cambio: non si poteva riprovare. Ora torna a «Scegli una squadra», l'avviso dice cosa non va e la stessa squadra si
+    sceglie e si salva di nuovo."""
+    solo(web, "prima")
+    squadre = web.registrata("/api/squadre")
+    for s in squadre:
+        s["mia"] = False
+    web.risposta("/api/squadre", squadre)
+    web.risposta("/api/stato", {**web.registrata("/api/stato"), "mia_squadra": None})
+    web.risposta("/api/mia-squadra", {"detail": "Squadra non trovata"}, stato=400)
+    salvate = _scritture(web, "/api/mia-squadra")
+    web.apri("/?vista=impostazioni&gruppo=squadra")
+    menu = principale(web).get_by_role("combobox", name="La tua squadra")
+    nome = squadre[0]["nome"]
+    menu.select_option(nome)
+    web.pagina.get_by_role("status").filter(has_text="Squadra non trovata").first.wait_for(timeout=10000)
+    web.aspetta()
+    assert menu.input_value() == "", "dopo l'errore il menu resta sulla squadra non salvata"
+    menu.select_option(nome)
+    web.aspetta()
+    assert salvate == [{"nome": nome}, {"nome": nome}], salvate
+
+
 def test_le_altre_squadre_con_la_sola_mia_squadra_lo_dicono(web):
     """Con le rose della sola mia squadra la riga non c'è, ma la pagina si apre dal suo indirizzo: diceva «Importa prima le rose…»,
     falso perché le rose ci sono (#779). Ora dice che nella lega c'è solo la mia squadra e niente elenco."""
@@ -985,9 +1032,9 @@ def test_la_frase_sulla_prima_giornata_non_cita_un_altra_giornata(web):
     scelta.select_option("6")
     web.aspetta()
     assert salvate and salvate[-1]["prima_giornata_lega"] == 6
-    # il riquadro dei tempi senza i due menu, che elencano tutte le scelte
+    # il riquadro dei tempi senza i due menu, che elencano tutte le scelte, e senza la scelta scritta nel loro riquadro (#923)
     aiuto = scelta.evaluate("""s => { const c = s.closest('.carta').cloneNode(true);
-      c.querySelectorAll('select').forEach(x => x.remove()); return c.textContent; }""")
+      c.querySelectorAll('select, .menu-scelta').forEach(x => x.remove()); return c.textContent; }""")
     assert "Giornate" in aiuto, aiuto
     assert set(re.findall(r"\d+", aiuto)) <= {"1", "6"}, aiuto
 
@@ -1036,6 +1083,44 @@ def test_la_scadenza_si_cambia_e_si_salva_subito(web):
     principale(web).get_by_label("Quando si chiude la formazione?").select_option("30")
     web.aspetta()
     assert salvate and salvate[-1]["scadenza_minuti"] == 30
+
+
+ZOOM_200 = 195           # un telefono da 390 px con lo zoom del browser al 200%: la pagina vede 195 px (come in test_giornate.py)
+# La scelta di un menu come si vede nella pagina: i testi visibili del suo campo fuori dal <select> (le voci di un <select> chiuso non
+# hanno righe sullo schermo: il browser lo disegna da sé e non lo manda a capo), con un segno se escono dal loro elemento o dal campo.
+SCELTA_VISTA = """s => { const campo = s.closest('label'), destra = campo.getBoundingClientRect().right, visti = [];
+  const w = document.createTreeWalker(campo, NodeFilter.SHOW_TEXT);
+  for (let n = w.nextNode(); n; n = w.nextNode()) {
+    if (s.contains(n) || !n.data.trim()) continue;
+    const r = document.createRange(); r.selectNodeContents(n);
+    const righe = [...r.getClientRects()].filter(x => x.width > 0 && x.height > 0);
+    if (!righe.length) continue;
+    const el = n.parentElement;
+    visti.push({ testo: n.data.trim(), intero: el.scrollWidth <= el.clientWidth + 1 && righe.every(x => x.right <= destra + 1) });
+  }
+  return { scelta: s.selectedOptions[0] ? s.selectedOptions[0].textContent.trim() : '', visti }; }"""
+
+
+@pytest.mark.parametrize("tema", ["chiaro", "scuro"])
+def test_con_lo_zoom_al_200_i_menu_dei_tempi_si_leggono_interi(web, tema):
+    """Collaudo del 26/11 (#923), zoom al 200%: il menu della scadenza si leggeva «10 minuti prima dell…» e quello della prima
+    giornata «Dalla 1ª, con il camp…», perché un <select> non va a capo. La scelta si legge intera, su più righe se serve, e segue
+    il menu quando cambia; il menu resta quello del sistema, con la sua domanda come nome."""
+    solo(web, "prima")
+    web.apri("/?vista=impostazioni&gruppo=regole", larghezza=ZOOM_200, tema=tema)
+    domande = ("Quando si chiude la formazione?", "Da quale giornata di Serie A è partita la lega?")
+    for domanda in domande:
+        visto = principale(web).get_by_label(domanda).evaluate(SCELTA_VISTA)
+        assert visto["scelta"] and {"testo": visto["scelta"], "intero": True} in visto["visti"], (domanda, visto)
+    principale(web).get_by_label(domande[0]).select_option("30")
+    principale(web).get_by_label(domande[1]).select_option("1")
+    web.aspetta()
+    for domanda, scelta in zip(domande, ("30 minuti prima della prima partita", "Dalla 1ª, con il campionato")):
+        visto = principale(web).get_by_label(domanda).evaluate(SCELTA_VISTA)
+        assert visto["scelta"] == scelta and {"testo": scelta, "intero": True} in visto["visti"], (domanda, visto)
+    assert not web.scorre_di_lato()
+    gravi = web.violazioni_gravi()
+    assert not gravi, [(v["id"], v["nodi"][:2]) for v in gravi]
 
 
 # ---------------------------------------------------------------- conflitto (412) su regole e rose (#667)

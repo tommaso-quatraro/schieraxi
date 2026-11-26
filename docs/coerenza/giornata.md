@@ -39,7 +39,7 @@ Frasi esatte, schermata per schermata (italiano; l'inglese è in `fanta/web/test
 | Diario, correggi | «Giornata 8 · 11ª di Serie A: tocca i giocatori che hai schierato. Servono 11 titolari.» |
 | Diario, «Quando hai scelto diversamente» | «Giornata 8 · 11ª di Serie A: Rossi, Bianchi invece di Verdi, Neri» |
 | Diario, «Quanto ci abbiamo preso» | righe «Giornata 8 · 11ª di Serie A · …»; «Calcolato su 5 giornate, dalla Giornata 4 · 7ª di Serie A alla Giornata 8 · 11ª di Serie A.»; sotto le barre del grafico solo il numero della lega |
-| Da fare (testo del server) | «Giornata 7 · 10ª di Serie A: è finita, dimmi se hai schierato la consigliata.»; «È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale prima della Giornata 12 · 15ª di Serie A.» |
+| Da fare (testo del server) | «Giornata 7 · 10ª di Serie A: è finita, dimmi se hai schierato la consigliata.»; «È il momento di aste e scambi: se le rose sono cambiate, aggiornale.» (dalla #923 senza la giornata, che sta nella testata) |
 | Widget (iPhone) | forma corta; nel widget piccolo solo «Giornata 8»; etichetta di VoiceOver con la forma intera |
 | Calendario di Serie A | colonne «G11», lettori di schermo «11ª giornata di Serie A» |
 | Scheda, grafico dei voti | al passaggio sul punto «11ª giornata di Serie A: 6,5» |
