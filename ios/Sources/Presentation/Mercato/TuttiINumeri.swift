@@ -17,16 +17,23 @@ struct TuttiINumeri: View {
         taglia.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 96), spacing: 10)]
     }
 
+    /// Sul telefono in verticale una colonna sola; dove c'è spazio (iPad, telefono in orizzontale) due colonne nell'ordine di lettura,
+    /// come le carte in alto della scheda (#944): a tutta larghezza le righe «nome … valore» finivano lontane e le tessere in file
+    /// lunghe. «Dati fino al …», in fondo alle statistiche avanzate, resta l'ultima riga.
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            PilloleEtichette(etichette: etichette)
-            questaPartita
-            prossimePartite
-            forma
-            grafico
-            rendimento
-            stagione
-            avanzate
+        Colonne(spazio: 14) {
+            Group {
+                PilloleEtichette(etichette: etichette)
+                questaPartita
+                prossimePartite
+                forma
+                grafico
+                rendimento
+                stagione
+                avanzate
+            }
+            // ogni blocco parte dal bordo sinistro della sua colonna: `Colonne` mette al centro chi è più stretto della colonna
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

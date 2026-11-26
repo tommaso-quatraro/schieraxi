@@ -15,6 +15,8 @@ import SwiftUI
 private struct BordoSottoLaBarraVuota: ViewModifier {
     var misurata: ((CGRect, CGFloat) -> Void)?
     @Environment(\.dynamicTypeSize) private var dimensione
+    /// Sull'iPad le pagine a colonna hanno la barra senza titolo anche con il testo normale (#930).
+    @Environment(\.titoloNellaColonna) private var inColonna
     /// L'altezza della zona sopra la parte sicura, dall'alto della finestra: l'ora e la barra. 0 finché non è misurata.
     @State private var fondoBarra: CGFloat = 0
 
@@ -40,7 +42,7 @@ private struct BordoSottoLaBarraVuota: ViewModifier {
                             .accessibilityHidden(true)
                     }
                     .overlay(alignment: .top) {
-                        if TitoloPagina.barraSenzaTitolo(dimensione), fondoBarra > 0 {
+                        if TitoloPagina.barraSenzaTitolo(dimensione, inColonna: inColonna), fondoBarra > 0 {
                             FasciaSottoLaBarra(piena: fondoBarra, misurata: misurata)
                         }
                     }
