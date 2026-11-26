@@ -164,9 +164,10 @@ def test_volti_e_funzioni_lenti_non_fermano_la_prima_schermata(web):
     web.pagina.goto(web.server.indirizzo + "/", wait_until="load")
     _aspetta_il_campo(web, 7, "con volti e funzioni lenti la Formazione non si disegna")
     web.aspetta()
-    primo = web.pagina.evaluate(TITOLARI)[0]
-    volto = f"main #campo-formazione [data-giocatore='{primo}'] .avatar"
-    prima = web.pagina.locator(volto).inner_html()
+    # il primo volto della pagina (in panchina: sul campo ci sono i dischi, senza volto)
+    primo = web.pagina.evaluate("() => document.querySelector('main [data-giocatore] .avatar').closest('[data-giocatore]').dataset.giocatore")
+    volto = f"main [data-giocatore='{primo}'] .avatar"
+    prima = web.pagina.locator(volto).first.inner_html()
     web.pagina.evaluate("() => { document.querySelector('#campo-formazione').dataset.prova = 'prima'; }")
 
     rete.risposte["/api/avatar"] = (200, {"versione": 3, "tratti": {str(primo): {"p": 6, "c": 7, "a": "I", "b": 1, "f": 1}}})
@@ -180,14 +181,15 @@ def test_volti_e_funzioni_lenti_non_fermano_la_prima_schermata(web):
 
 
 def test_chi_sono_lento_si_parte_dall_account_salvato_e_la_risposta_dopo_vale(web):
-    """Con gli account: «chi sono» non risponde. Dopo circa 4 secondi la Formazione salvata di quell'account compare; quando la
-    risposta arriva e dice che la sessione è finita, compare la schermata di accesso (nessun dato resta in vista)."""
+    """Con gli account e la rete ferma (anche «chi sono»): dopo circa 4 secondi la Formazione salvata di quell'account compare (la
+    copia sta sotto il suo account: senza l'account salvato non si troverebbe); quando la risposta di «chi sono» arriva e dice che
+    la sessione è finita, compare la schermata di accesso (nessun dato resta in vista)."""
     solo_prima(web)
     rete = Rete(web.pagina)
     rete.risposte["/api/account/me"] = (200, UTENTE)
     web.apri("/")
     salvati = _titolari(web)
-    rete.ferme.add("/api/account/me")
+    rete.ferme.add("*")
     web.pagina.reload(wait_until="load")
     _aspetta_il_campo(web, 7, "con «chi sono» lento la Formazione salvata dell'account non compare")
     assert _titolari(web) == salvati

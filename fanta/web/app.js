@@ -417,8 +417,10 @@ function svgAvatar(x) {
 }
 // Le foto dei giocatori restano spente (il server le attiva solo con FANTA_FOTO=1); se accese, il ritaglio va sopra il volto illustrato.
 const fotoAccese = () => !!stato.fotoAttive;
+// `data-volto` (con squadra e ruolo): per ridisegnare il volto quando arrivano i tratti (ridisegnaVolti); non serve a chi ha già i suoi.
 function avatar(x) {
-  return `<span class="avatar" role="img" aria-label="${esc(x.nome || t("comune.giocatore"))}">${svgAvatar(x)}`
+  const volto = x.avatar ? "" : ` data-volto="${idAvatar(x)}" data-squadra="${esc(x.squadra || "")}" data-ruolo="${esc(x.ruolo || "")}"`;
+  return `<span class="avatar" role="img" aria-label="${esc(x.nome || t("comune.giocatore"))}"${volto}>${svgAvatar(x)}`
     + `</span>`;
 }
 // Un ritaglio che non arriva sparisce e lascia il volto illustrato (niente gestori in linea: la CSP non li permette).
@@ -789,6 +791,9 @@ async function caricaSquadre(seServono = false) {
 // volta; riuscite, la pagina di Impostazioni che ne dipende si ridisegna. Una lettura che non riesce ancora aspetta il segnale dopo.
 // Solo dopo un guasto della rete o del server (5xx): un rifiuto (4xx) rileggendo non cambia, e ripartirebbe a ogni risposta buona.
 let avvioDaRileggere = false, rileggoAvvio = false;
+// La prima lettura dello stato d'avvio (/api/stato, poi /api/squadre), finita bene o no: la Formazione e Giornate la aspettano prima
+// di chiedere i loro dati (senza rose o senza la tua squadra alcune rotte rispondono con un errore), intanto mostrano la copia.
+let avvioLetto = Promise.resolve();
 function segnaAvvioDaRileggere(e) { if (e && (e.rete || e.status >= 500)) avvioDaRileggere = true; }
 async function rileggiAvvio() {
   if (!avvioDaRileggere || rileggoAvvio) return;
@@ -801,8 +806,25 @@ async function rileggiAvvio() {
 window.addEventListener("online", () => rileggiAvvio());
 const miaSquadra = () => (stato.squadre || []).find(s => s.mia);
 
+// I tratti dei volti (/api/avatar). La copia dell'ultima lettura vale subito, così la prima schermata non li aspetta e i volti sono
+// già quelli giusti; quando arrivano, se sono cambiati, i volti in pagina si ridisegnano al loro posto (ridisegnaVolti). Se non
+// arrivano resta la copia; senza nemmeno quella, i volti vengono tutti dal seme.
 async function caricaTratti() {
-  try { stato.tratti = (await api("/api/avatar")).tratti || null; } catch { stato.tratti = null; }     // senza: volti tutti dal seme
+  const copia = leggiCache("tratti", true);
+  if (copia && !stato.tratti) stato.tratti = copia.dati;
+  try {
+    const tratti = (await api("/api/avatar")).tratti || null;
+    const cambiati = JSON.stringify(tratti) !== JSON.stringify(stato.tratti || null);
+    stato.tratti = tratti;
+    if (tratti) salvaCache("tratti", tratti); else rimuoviCache("tratti");
+    if (cambiati) ridisegnaVolti();
+  } catch { /* resta la copia, o niente */ }
+}
+// I volti in pagina e nel foglio di nuovo, con i tratti arrivati adesso: al loro posto, senza ridisegnare la schermata.
+function ridisegnaVolti() {
+  document.querySelectorAll(".avatar[data-volto]").forEach(e => {
+    e.innerHTML = svgAvatar({ id: Number(e.dataset.volto), squadra: e.dataset.squadra, ruolo: e.dataset.ruolo });
+  });
 }
 async function caricaFoto() {
   const tratti = caricaTratti();
@@ -1144,6 +1166,7 @@ function vistaFormazione() {
 // `scelta_non_letta`, = non letta (o non valutata): allora la schermata lo dice e non fa cambiare niente, perché un salvataggio
 // scriverebbe sopra una scelta che non si è vista.
 async function caricaGiornata() {
+  await avvioLetto;                                         // all'apertura, lo stato d'avvio (intanto si vede la copia salvata)
   // Account nuovo, senza rose (lo dice /api/stato, letto all'avvio): /api/formazione risponderebbe 409 e il browser lo scriverebbe fra
   // gli errori, quindi si chiede solo /api/oggi, che dà il benvenuto. Se le rose nel frattempo ci sono, la formazione si chiede dopo.
   // Lo stesso senza una giornata da giocare (`prossima_giornata` nullo): a campionato finito /api/oggi dice `campionato_finito` e
@@ -2649,7 +2672,12 @@ async function vistaGiornate() {
     const letto = !(stato.rigaStato && stato.rigaStato.offline);
     if (letto && stato.info && stato.info.rose_importate === false) { pagina(cartaSenzaRose()); return; }
   }
-  caricaConCache("giornate", "/api/diario", mostraGiornate, t("giornate.carico"));
+  // All'apertura lo stato d'avvio può essere ancora in arrivo (rete lenta): intanto la copia salvata, e il diario si chiede quando si
+  // sa se le rose ci sono (senza, la carta di prima, senza chiederlo)
+  caricaConCache("giornate", async () => {
+    await avvioLetto;
+    return stato.info && stato.info.rose_importate === false ? { senza_rose: true } : api("/api/diario");
+  }, (d, opz) => (d.senza_rose ? pagina(cartaSenzaRose()) : mostraGiornate(d, opz)), t("giornate.carico"), { daSalvare: d => !d.senza_rose });
 }
 
 // Sotto la riga: hai schierato la consigliata, o quanti cambi tuoi e quanto sono valsi (solo con la consigliata mostrata); altrimenti
@@ -4449,23 +4477,32 @@ function collegaAmministratore() {
 }
 
 // Prima di tutto: chi sono? Senza account sul server (come oggi) risponde «utente locale» e l'app parte come sempre.
+// Con la rete lenta (collaudo del 26/11) la prima schermata non lo aspetta più di ATTESA_CHI_SONO_MS, se nel browser c'è già qualcosa
+// di un accesso (l'account, le copie dei dati): si riparte dall'account salvato, come con il server spento, e la risposta, quando
+// arriva, vale lo stesso (chiSonoInRitardo). Senza niente di salvato, o tornando da Google o da un link d'invito, si aspetta: è la
+// risposta a dire quale schermata mostrare.
+const ATTESA_CHI_SONO_MS = 4000;
 async function controllaAccesso() {
-  let r, dati = null;
   const uscitoOvunque = leggiUscitoOvunque();
-  try {
-    r = await fetch("/api/account/me", { headers: { "X-Fanta": "1" } });
+  const chiesta = fetch("/api/account/me", { headers: { "X-Fanta": "1" } }).then(async r => {
+    let dati = null;
     try { dati = await r.json(); } catch { /* risposta vuota */ }
-  } catch { r = null; }
-  // Server non raggiungibile, o che non risponde lui (502-504 del proxy mentre riparte, una pagina d'errore che non è JSON): si
-  // riparte con l'ultimo utente conosciuto, così le copie salvate si aprono lo stesso e l'account resta quello (#654).
-  if (!r || r.status >= 500 || dati === null) {
-    try { stato.account = JSON.parse(localStorage.getItem("account") || "null"); } catch { stato.account = null; }
+    return { r, dati };
+  }, () => ({ r: null, dati: null }));
+  const daUnLink = () => { try { const q = new URLSearchParams(location.search); return q.has("social") || q.has("social_errore"); } catch { return false; } };
+  const conTempoMassimo = !daUnLink() && !invitoDaIndirizzo(location.search) && !invitoSalvato() && restanoCopie();
+  const tardi = {};
+  const risposta = conTempoMassimo ? await Promise.race([chiesta, new Promise(ok => setTimeout(() => ok(tardi), ATTESA_CHI_SONO_MS))]) : await chiesta;
+  if (risposta === tardi) {
+    riprendiAccountSalvato();
+    chiesta.then(chiSonoInRitardo);
     return true;
   }
-  if (dati && dati.registrazione) stato.registrazione = dati.registrazione;
-  stato.social = dati && Array.isArray(dati.social) ? dati.social : [];                    // servizi di accesso accesi sul server (per ora «google»)
-  stato.accessi = dati && dati.accessi ? dati.accessi : null;
-  stato.emailAttiva = !(dati && dati.email_attiva === false);                               // server vecchio (campo assente): come prima
+  const { r, dati } = risposta;
+  // Server non raggiungibile, o che non risponde lui (502-504 del proxy mentre riparte, una pagina d'errore che non è JSON): si
+  // riparte con l'ultimo utente conosciuto, così le copie salvate si aprono lo stesso e l'account resta quello (#654).
+  if (!r || r.status >= 500 || dati === null) { riprendiAccountSalvato(); return true; }
+  ricordaDatiAccesso(dati);
   const ritornoGoogle = leggiRitornoGoogle();                                              // se si torna da Google: codice o errore nell'indirizzo
   const invito = leggiInvitoDaLink();                                                      // link d'invito: `?invito=CODICE`
   if (r.status === 401 && dati && dati.multiutente) {
@@ -4478,22 +4515,52 @@ async function controllaAccesso() {
   if (r.ok && dati && dati.multiutente) {
     stato.account = dati.utente;
     if (usaLinguaDi(dati.utente && dati.utente.nome_utente)) return false;           // l'utente aveva scelto un'altra lingua: ricarico con la sua
-    stato.emailAccount = { email: dati.email || null, email_origine: dati.email_origine || null, email_in_attesa: dati.email_in_attesa || null };
-    // nel browser l'account non c'è (lo toglie ogni uscita, anche una sessione chiusa altrove): è un nuovo accesso, e l'iscrizione
-    // agli avvisi che il browser ha ancora torna al server se l'aveva fatta lui (rimandaAvvisi, all'avvio). Un'iscrizione senza il
-    // segno di chi l'ha fatta (di una versione di prima, #804): dopo un accesso nuovo non è di nessuno («-», nessun account ha quel
-    // numero), così anche alle aperture dopo resta spenta; solo una sessione già aperta prima del rilascio la prende come sua, e la
-    // rimanda una volta (il server può averla già tolta).
-    try {
-      if (!localStorage.getItem("account")) {
-        segnaAvvisiDaRimandare();
-        if (!localStorage.getItem(AVVISI_DI)) localStorage.setItem(AVVISI_DI, "-");
-      } else if (!localStorage.getItem(AVVISI_DI)) { segnaAvvisiDi(); segnaAvvisiDaRimandare(); }
-      localStorage.setItem("account", JSON.stringify(dati.utente));
-    } catch { /* niente memoria */ }
+    ricordaAccount(dati);
     if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, true);       // collega / conferma: si resta dentro
   }
   return true;
+}
+// L'ultimo account entrato in questo browser (senza risposta di «chi sono»): le sue copie dei dati si aprono e l'account resta quello.
+function riprendiAccountSalvato() {
+  try { stato.account = JSON.parse(localStorage.getItem("account") || "null"); } catch { stato.account = null; }
+}
+// Come si entra su questo server, dalla risposta di «chi sono».
+function ricordaDatiAccesso(dati) {
+  if (dati && dati.registrazione) stato.registrazione = dati.registrazione;
+  stato.social = dati && Array.isArray(dati.social) ? dati.social : [];                    // servizi di accesso accesi sul server (per ora «google»)
+  stato.accessi = dati && dati.accessi ? dati.accessi : null;
+  stato.emailAttiva = !(dati && dati.email_attiva === false);                               // server vecchio (campo assente): come prima
+}
+// L'account entrato (risposta di «chi sono» del server con gli account): la sua email e la sua copia nel browser.
+function ricordaAccount(dati) {
+  stato.account = dati.utente;
+  stato.emailAccount = { email: dati.email || null, email_origine: dati.email_origine || null, email_in_attesa: dati.email_in_attesa || null };
+  // nel browser l'account non c'è (lo toglie ogni uscita, anche una sessione chiusa altrove): è un nuovo accesso, e l'iscrizione
+  // agli avvisi che il browser ha ancora torna al server se l'aveva fatta lui (rimandaAvvisi, all'avvio). Un'iscrizione senza il
+  // segno di chi l'ha fatta (di una versione di prima, #804): dopo un accesso nuovo non è di nessuno («-», nessun account ha quel
+  // numero), così anche alle aperture dopo resta spenta; solo una sessione già aperta prima del rilascio la prende come sua, e la
+  // rimanda una volta (il server può averla già tolta).
+  try {
+    if (!localStorage.getItem("account")) {
+      segnaAvvisiDaRimandare();
+      if (!localStorage.getItem(AVVISI_DI)) localStorage.setItem(AVVISI_DI, "-");
+    } else if (!localStorage.getItem(AVVISI_DI)) { segnaAvvisiDi(); segnaAvvisiDaRimandare(); }
+    localStorage.setItem("account", JSON.stringify(dati.utente));
+  } catch { /* niente memoria */ }
+}
+// La risposta di «chi sono» arrivata dopo l'attesa, con l'app già partita dall'account salvato: si mette in pari senza ridisegnare.
+// Sessione finita: la schermata di accesso, come per ogni richiesta rifiutata. Un altro account (cambiato in un'altra scheda): lo si
+// ricorda e la pagina si ricarica, con le sue copie. Lo stesso account: i dati che usano le pagine dell'account (email, accessi) e la
+// sua lingua. Un guasto (rete, 5xx): resta l'account salvato.
+function chiSonoInRitardo({ r, dati }) {
+  if (!r || r.status >= 500 || !dati || accessoAperto) return;
+  if (r.status === 401 && dati.multiutente) { sessioneScaduta(); return; }
+  ricordaDatiAccesso(dati);
+  if (!r.ok || !dati.multiutente || !dati.utente) return;
+  const stesso = !!stato.account && String(stato.account.id) === String(dati.utente.id);
+  ricordaAccount(dati);
+  if (!stesso) location.reload();
+  else usaLinguaDi(dati.utente.nome_utente);
 }
 
 // ---------------------------------------------------------------- avvio
@@ -4543,14 +4610,27 @@ controllaAccesso().then(async entrato => {
   // via l'iscrizione di un altro account (#874); poi quella di chi è dentro torna al server dopo un nuovo accesso, o se l'ultima
   // volta non era arrivata (#800)
   lasciaAvvisiDiAltri().then(rimandaAvvisi);
-  Promise.all([caricaInfo().then(() => caricaSquadre(true)), caricaFoto(), caricaFunzioni()]).then(() => {
-    let condivisa = null;
-    try { condivisa = new URLSearchParams(location.search).get("condivisa"); } catch { /* indirizzo strano */ }
-    if (condivisa) {                                     // arrivo dal menu Condividi del telefono (share_target): stemma e maglia stanno lì
-      history.replaceState(null, "", "/");
-      iniziale = { vista: "impostazioni", gruppo: "squadra" };
-    }
-    vai(iniziale.vista, iniziale.gruppo || undefined, { voce: iniziale.voce, rosa: iniziale.rosa });
+  let condivisa = null;
+  try { condivisa = new URLSearchParams(location.search).get("condivisa"); } catch { /* indirizzo strano */ }
+  if (condivisa) {                                       // arrivo dal menu Condividi del telefono (share_target): stemma e maglia stanno lì
+    history.replaceState(null, "", "/");
+    iniziale = { vista: "impostazioni", gruppo: "squadra" };
+  }
+  // Stato d'avvio, volti e funzioni si chiedono insieme, ma la Formazione e Giornate non li aspettano (collaudo del 26/11: con la rete
+  // lenta la prima schermata restava vuota): mostrano subito la copia salvata e chiedono i loro dati quando lo stato d'avvio è
+  // arrivato (avvioLetto). La riga di stato parte dalla copia dell'ultima lettura. I volti si ridisegnano al loro posto quando arrivano
+  // i tratti (caricaTratti); le funzioni contano da quando arrivano (queste due schermate non ne dipendono). Le pagine di Impostazioni,
+  // che mostrano le squadre e le funzioni, li aspettano come prima.
+  const copiaStato = leggiCache("stato", true);
+  if (copiaStato && !stato.rigaStato) stato.rigaStato = pezziRigaStato(copiaStato.dati);
+  avvioLetto = caricaInfo().then(() => caricaSquadre(true));
+  const funzioni = caricaFunzioni();
+  caricaFoto();
+  const disegna = () => vai(iniziale.vista, iniziale.gruppo || undefined, { voce: iniziale.voce, rosa: iniziale.rosa });
+  const subito = dove(iniziale).vista !== "impostazioni";
+  if (subito) disegna();
+  Promise.all([avvioLetto, funzioni]).then(() => {
+    if (!subito) disegna();
     // dal menu Condividi si apre il foglio di stemma e maglia: la guida non gli prende il posto
     if (typeof primoAvvioSeServe === "function" && !condivisa) primoAvvioSeServe();
     if (condivisa === "1") apriStemmaMaglia(null, true);
