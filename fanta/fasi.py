@@ -292,6 +292,24 @@ def situazione(da_giocare: int, attesa_voti: bool, recupero: list[str], a_punteg
     return F("in_corso.voti") if attesa_voti else F("in_corso.finiti")
 
 
+# le righe di `situazione` con i nomi di chi aspetta il recupero -> la loro forma breve, con il numero al posto dei nomi (#911)
+_BREVI = {"in_corso.recupero": "in_corso.recupero_breve", "in_corso.voti_e_recupero": "in_corso.voti_e_recupero_breve"}
+
+
+def situazione_breve(frase) -> frasi.Frase | None:
+    """La riga sotto i punti in breve per il widget medio (#911, `in_corso.situazione_breve` di /api/widget), da `situazione_frase`
+    (`{chiave, param}`): «3 giocatori aspettano il recupero; mancano i voti ufficiali.» al posto di «Hanno giocato tutti tranne
+    A, B e C, che aspettano il recupero; mancano anche i voti ufficiali.», che con tre nomi nel medio non entra senza
+    rimpicciolirsi. Solo per le due righe con i nomi: le altre sono già corte (None, il widget mostra `situazione`). None anche
+    senza una chiave o senza un numero valido."""
+    if not isinstance(frase, dict):
+        return None
+    breve, n = _BREVI.get(frase.get("chiave")), (frase.get("param") or {}).get("n")
+    if breve is None or isinstance(n, bool) or not isinstance(n, int) or n < 1:
+        return None
+    return F(breve, n=n)
+
+
 def _previsti_condizionati(tit: list[fz.Giocatore], panc: list[fz.Giocatore], stato: dict[int, str], fv: dict[int, float],
                            voto: dict[int, float], previsione: dict[int, tuple[float, float, float]], regole: Regole,
                            modo: str = "senza_voto") -> float | None:

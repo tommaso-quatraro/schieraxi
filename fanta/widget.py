@@ -15,7 +15,7 @@ import json
 import sqlite3
 from datetime import datetime
 
-from . import avatar, calcolo, consigli, diario, funzioni, gestione, osservati, scelte, versioni
+from . import avatar, calcolo, consigli, diario, fasi, funzioni, gestione, osservati, scelte, versioni
 from .lega import Rose
 from .regole import Regole
 
@@ -143,6 +143,11 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
     corpo |= {k: o[k] for k in CAMPI_FASE if o.get(k) is not None}
     if isinstance(corpo.get("in_corso"), dict):              # una copia: il blocco di gestione.oggi non si tocca
         corpo["in_corso"] = {k: v for k, v in corpo["in_corso"].items() if k not in SENZA_IN_CORSO}
+        # la riga sotto i punti in breve per il widget medio, solo quando quella di Oggi ha i nomi di chi aspetta il recupero
+        # (#911); `situazione` resta com'è per i widget già installati
+        breve = fasi.situazione_breve(corpo["in_corso"].get("situazione_frase"))
+        if breve:
+            corpo["in_corso"] |= {"situazione_breve": breve, "situazione_breve_frase": breve.json()}
 
     corpo["diario"] = _diario(file_diario, regole)
 
