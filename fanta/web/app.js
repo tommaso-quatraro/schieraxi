@@ -255,8 +255,8 @@ function caricamento(testo = t("comune.calcolo_in_corso"), opz = {}) {
 const nPl = (n, uno, molti) => `${n} ${n === 1 ? uno : molti}`;
 // Con «troppe richieste» (429) il server dice quanto aspettare: lo diciamo anche noi.
 // Se il messaggio del server dice già quando riprovare («Si azzera tra...») non lo ripetiamo; sopra l'ora si arrotonda alle ore.
-const attesaTesto = s => s < 90 ? t("comune.attesa_secondi", { n: s }) : s < 3600 ? t("comune.attesa_minuti", { n: Math.ceil(s / 60) })
-  : t(Math.round(s / 3600) <= 1 ? "comune.attesa_ora" : "comune.attesa_ore", { n: Math.max(1, Math.round(s / 3600)) });
+const attesaTesto = s => s < 90 ? tp("comune.attesa_secondi", s) : s < 3600 ? tp("comune.attesa_minuti", Math.ceil(s / 60))
+  : tp("comune.attesa_ore", Math.max(1, Math.round(s / 3600)));
 const attesaDa = e => e && e.status === 429 && e.riprova && !/\btra\b/i.test(e.originale || e.message || "") ? t("comune.riprova_tra", { attesa: attesaTesto(e.riprova) }) : "";
 // Un errore mostrato a chi usa l'app. `role="alert"`: il lettore di schermo lo dice subito, e i test del browser riconoscono una
 // schermata che si rompe (la web cattura i suoi errori e non scrive in console). Solo per gli errori veri: avvisi, stati vuoti e
@@ -1772,13 +1772,13 @@ function riempiScheda(s, cal) {
         ${t(s.rendimento.sovra_rendimento > 0.3 ? "mercato.rend_cala" : s.rendimento.sovra_rendimento < -0.3 ? "mercato.rend_sblocca" : "mercato.rend_linea")}</div>` : ""}
     <h3>${t("mercato.stagione")}</h3><div class="statistiche">
       ${tile(`${st.presenze}/${st.giornate_giocate_serie_a}`, t("mercato.presenze"))}${tile(num(st.media_voto, 2), t("mercato.media_voto"))}${tile(num(st.fantamedia, 2), t("mercato.fantamedia"))}
-      ${tile(st.gol + st.rig_segnati, t("mercato.gol_rig", { n: st.rig_segnati }))}${tile(st.assist, tp("mercato.n_assist", st.assist))}${tile(`${st.ammonizioni}/${st.espulsioni}`, t("mercato.gialli_rossi"))}
+      ${tile(st.gol + st.rig_segnati, tp("mercato.n_gol_rig", st.gol + st.rig_segnati, { r: st.rig_segnati }))}${tile(st.assist, tp("mercato.n_assist", st.assist))}${tile(`${st.ammonizioni}/${st.espulsioni}`, t("mercato.gialli_rossi"))}
       ${c.ruolo === "P" ? tile(st.gol_subiti, t("mercato.gol_subiti")) + tile(st.rig_parati, t("mercato.rigori_parati")) : ""}</div>
     ${av && av.minuti ? `<h3>${t("mercato.statistiche_avanzate")}</h3><div class="statistiche">
       ${tile(num(av.xg, 2), t("mercato.gol_attesi_tot"))}${tile(num(av.xa, 2), t("mercato.assist_attesi_tot"))}${tile(`${av.minuti}'`, t("mercato.minuti"))}
       ${tile(num(av.per_90?.xg, 2), t("mercato.xg_90"))}${tile(num(av.per_90?.xa, 2), t("mercato.xa_90"))}${tile(num(av.per_90?.tiri, 1), t("mercato.tiri_90"))}
       ${tile(av.rigori_calciati, t("mercato.rigori_calciati"))}${tile(av.passaggi_chiave, t("mercato.passaggi_chiave"))}${tile(av.punizioni, t("mercato.punizioni"))}</div>
-      ${(av.stagioni_precedenti || []).map(p => `<div class="debole piccolo" style="margin-top:8px">${t("mercato.stagione_prec", { s: esc(p.stagione), m: p.minuti, g: p.gol, xg: num(p.xg), a: p.assist, xa: num(p.xa) })}</div>`).join("")}
+      ${(av.stagioni_precedenti || []).map(p => `<div class="debole piccolo" style="margin-top:8px">${t("mercato.stagione_prec_riga", { s: esc(p.stagione), m: p.minuti, gol: tp("mercato.prec_gol", p.gol, { xg: num(p.xg) }), assist: tp("mercato.prec_assist", p.assist, { xa: num(p.xa) }) })}</div>`).join("")}
       ${finoAl ? `<div class="debole piccolo" style="margin-top:12px">${finoAl}</div>` : ""}` : ""}`;
   numeri.removeAttribute("aria-busy");
 }
@@ -2356,8 +2356,14 @@ function cartaConsiglio(c) {
 // codici). Uguale sull'iPhone (`ParoleRegistro.taratura`).
 const MOTIVI_TARATURA = { non_migliora: "sd.tar_m_non_migliora", poche_giornate: "sd.tar_m_poche_giornate", fuori_soglia: "sd.tar_m_fuori_soglia",
   incoerente: "sd.tar_m_incoerente", peggiorata: "sd.tar_m_peggiorata", scadenza_vicina: "sd.tar_m_scadenza_vicina", spenta_a_mano: "sd.tar_m_spenta_a_mano" };
-// «15/1» dalla data del server («2027-01-15T10:00:00»), senza passare dal fuso orario; null se non è una data
-const giornoMese = s => { const m = /^\d{4}-(\d{2})-(\d{2})/.exec(typeof s === "string" ? s : ""); return m ? `${Number(m[2])}/${Number(m[1])}` : null; };
+// «15/1» dalla data del server («2027-01-15T10:00:00»), senza passare dal fuso orario; in inglese «15 Jan», con il mese a parole come
+// le altre date inglesi (#949). null se non è una data
+const giornoMese = s => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(typeof s === "string" ? s : "");
+  if (!m) return null;
+  if (LINGUA === "it") return `${Number(m[3])}/${Number(m[2])}`;
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))).toLocaleDateString(t("lingua.locale"), { day: "numeric", month: "short", timeZone: "UTC" });
+};
 function rigaTaratura(tar) {
   if (!tar) return "";
   const motivo = tar.motivo && Object.hasOwn(MOTIVI_TARATURA, tar.motivo) ? t(MOTIVI_TARATURA[tar.motivo], { n: Number(tar.giornate) || 0 }) : "";
@@ -2384,34 +2390,35 @@ async function apriStatoDati() {
   try {
     const s = await api("/api/stato-dati");
     if (numero !== ultimaScheda || $("#foglio").hidden) return;
-    // il nome di ogni riga (aggiornamenti e controlli) lo scrive il server, campo `etichetta` (fanta/stato_dati.py, fanta/controlli.py)
-    const agg = s.aggiornamenti.length ? s.aggiornamenti.map(a => `<div class="riga"><span>${esc(a.etichetta || a.cosa)}</span>
+    // il nome di ogni riga (aggiornamenti, controlli, fasce, funzioni) lo scrive il server, campo `etichetta` (fanta/stato_dati.py,
+    // fanta/controlli.py, fanta/uso.py) con la sua frase (`etichetta_frase`, #949): in inglese si traduce
+    const agg = s.aggiornamenti.length ? s.aggiornamenti.map(a => `<div class="riga"><span>${esc(testoDi(a, "etichetta") || a.cosa)}</span>
       <span class="debole piccolo">${a.quando ? esc(quando(a.quando)) : t("sd.mai")}</span></div>
       ${a.errori.map(e => `<div class="debole piccolo" style="color:var(--rosso)">${esc(e)}</div>`).join("")}`).join("") : `<div class="debole">${t("scambio.nessun_aggiornamento_registr")}</div>`;
     const c = s.calibrazione;
     const usoDal = s.uso ? parseData(s.uso.dal) : null, coppeFino = parseData(s.coppe_fino);        // solo il giorno
-    const gruppi = c.gruppi.map(g => `<div class="riga"><span>${esc(g.gruppo)}</span>
+    const gruppi = c.gruppi.map(g => `<div class="riga"><span>${esc(testoDi(g, "gruppo"))}</span>
       <span class="debole piccolo">${g.n ? `${tp("sd.n_giocatori", g.n)} · ${t("sd.hanno_giocato", { o: perc(g.osservato), p: perc(g.previsto) })}${g.indicativo ? t("sd.pochi_dati") : ""}${c.fattori && c.fattori[g.gruppo] ? ` · ${t("sd.correzione", { f: fNum(c.fattori[g.gruppo], { maximumFractionDigits: 3 }) })}` : ""}` : t("sd.nessun_dato")}</span></div>`).join("");
     apriFoglio(`
       <h2 style="margin:0 0 4px;font-size:var(--t-card)">${t("av.stato")}</h2>
       <div class="debole piccolo">${t("sd.riepilogo", { s: esc(s.stagione), g: s.partite.giocate, tot: s.partite.totali, v: s.voti, c: s.calciatori, f: s.foto })}</div>
       <div class="carta" style="margin-top:12px"><h2>${t("scambio.ultimi_aggiornamenti")}</h2>${agg}</div>
       <div class="carta" id="fonti-dati"><h2>${t("scambio.fonti_dei_dati")}</h2>
-        ${(s.fonti || []).map(f => `<div class="riga"><span>${esc(f.nome)}</span>
+        ${(s.fonti || []).map(f => `<div class="riga"><span>${esc(testoDi(f, "nome"))}</span>
           <button class="bottone secondario piccolo" data-fonte="${esc(f.id)}" data-acceso="${f.acceso ? "1" : "0"}">${t(f.acceso ? "sd.accesa_spegni" : "sd.spenta_accendi")}</button></div>
           ${f.acceso ? "" : `<div class="debole piccolo">${esc(testoDi(f, "messaggio") || "")}</div>`}`).join("")}
         <div class="debole piccolo" style="margin-top:12px">${t("scambio.accendere_una_fonte")}</div></div>
       ${s.uso ? `<div class="carta" id="uso-app"><h2>${t("scambio.quanto_usa_app")}</h2>
-        <div class="debole piccolo">${t("sd.uso_spiega", { dal: usoDal ? ` (${elidiGiorno(t("sd.dal", { d: esc(fData(usoDal, {})) }))})` : "", n: tp("sd.n_richieste", s.uso.richieste || 0) })}</div>
-        ${(s.uso.per_funzione || []).length ? (s.uso.per_funzione).map(f => `<div class="riga"><span>${esc(f.funzione)}</span><span class="debole piccolo">${tp("sd.n_volte", f.richieste)}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna_funzione")}</div>`}
+        <div class="debole piccolo">${t("sd.uso_spiega", { dal: usoDal ? ` (${elidiGiorno(t("sd.dal", { d: esc(fDataAnno(usoDal)) }))})` : "", n: tp("sd.n_richieste", s.uso.richieste || 0) })}</div>
+        ${(s.uso.per_funzione || []).length ? (s.uso.per_funzione).map(f => `<div class="riga"><span>${esc(testoDi(f, "etichetta") || f.funzione)}</span><span class="debole piccolo">${tp("sd.n_volte", f.richieste)}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna_funzione")}</div>`}
         <details><summary class="debole piccolo">${t("scambio.schermate_piu_usate")}</summary>
           ${(s.uso.per_rotta || []).slice(0, 15).map(r => `<div class="riga"><span class="piccolo">${esc(r.rotta)}</span><span class="debole piccolo">${tp("sd.n_volte", r.richieste)}</span></div>`).join("")}</details></div>` : ""}
       <div class="carta"><h2>${t("scambio.date_delle_coppe")}</h2>
-        <div class="debole piccolo">${elidiGiorno(t("sd.coppe_spiega", { d: coppeFino ? esc(fData(coppeFino, {})) : "–" }))}${coppeFino && coppeFino < new Date() ? ` — <b style="color:var(--arancio)">${t("scambio.scadute_vanno_inserite")}</b>` : ""}.</div></div>
+        <div class="debole piccolo">${elidiGiorno(t("sd.coppe_spiega", { d: coppeFino ? esc(fDataAnno(coppeFino)) : "–" }))}${coppeFino && coppeFino < new Date() ? ` — <b style="color:var(--arancio)">${t("scambio.scadute_vanno_inserite")}</b>` : ""}.</div></div>
       <div class="carta"><h2>${t("scambio.probabili_formazioni_raccolt")}</h2>
         ${s.probabili.length ? s.probabili.map(p => `<div class="riga"><span>${nomeGiornata(null, p.giornata)}</span><span class="debole piccolo">${tp("sd.n_giocatori", p.giocatori)} · ${p.rilevato ? esc(quando(p.rilevato)) : ""}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna")}</div>`}</div>
       <div class="carta"><h2>${t("scambio.controlli_sui_dati")}</h2>
-        ${(s.controlli || []).length ? s.controlli.filter(k => !(k.nome.startsWith("sentinella_") && k.esito === "ok")).map(k => `<div class="riga"><span>${esc(k.etichetta || k.nome)}</span><span class="piccolo" style="color:${k.esito === "ok" ? "var(--verde)" : k.esito === "errore" ? "var(--rosso)" : "var(--arancio)"}">${t(k.esito === "ok" ? "sd.a_posto" : k.esito === "errore" ? "sd.errore" : "sd.da_guardare")}</span></div>
+        ${(s.controlli || []).length ? s.controlli.filter(k => !(k.nome.startsWith("sentinella_") && k.esito === "ok")).map(k => `<div class="riga"><span>${esc(testoDi(k, "etichetta") || k.nome)}</span><span class="piccolo" style="color:${k.esito === "ok" ? "var(--verde)" : k.esito === "errore" ? "var(--rosso)" : "var(--arancio)"}">${t(k.esito === "ok" ? "sd.a_posto" : k.esito === "errore" ? "sd.errore" : "sd.da_guardare")}</span></div>
           ${k.esito === "ok" ? "" : `<div class="debole piccolo">${esc(k.dettaglio || "")}</div>`}`).join("") : `<div class="debole">${t("scambio.fanno_ogni_aggiornamento")}</div>`}</div>
       <div class="carta" id="affidabilita"><h2>${t("scambio.quanto_affidabile_modello")}</h2><div class="caricamento" style="padding:8px 0">${t("comune.carico")}</div></div>
       ${cartaRegistro(s.registro)}
@@ -3882,7 +3889,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
         mostraCodiceAccesso(t("accesso.password_cambiata"), r.codice_recupero, t("accesso.vai_accesso"), () => mostraAccesso(t("accesso.password_cambiata_accedi")));
       }
     } catch (e) {
-      const attesa = e.status === 429 && e.riprova ? (e.riprova < 90 ? t("accesso.riprova_secondi", { n: e.riprova }) : e.riprova < 3600 ? t("accesso.riprova_minuti", { n: Math.ceil(e.riprova / 60) }) : t("accesso.riprova_ore", { n: Math.max(1, Math.round(e.riprova / 3600)) })) : "";
+      const attesa = e.status === 429 && e.riprova ? (e.riprova < 90 ? tp("accesso.riprova_secondi", e.riprova) : e.riprova < 3600 ? tp("accesso.riprova_minuti", Math.ceil(e.riprova / 60)) : tp("accesso.riprova_ore", Math.max(1, Math.round(e.riprova / 3600)))) : "";
       mostraMessaggioAccesso((e.message || t("accesso.errore_generico")) + attesa, true);
       if ($("#ac-pw") && svuotaPassword(scheda, e.status)) $("#ac-pw").value = "";
       invia.disabled = false; invia.removeAttribute("aria-busy");

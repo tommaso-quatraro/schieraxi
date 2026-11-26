@@ -158,7 +158,7 @@ def test_index_ha_le_parti_fisse_traducibili():
 @pytest.mark.skipif(shutil.which("node") is None, reason="node non installato")
 def test_funzione_t_in_node():
     prova = TESTI_JS + """
-    const esito = [t("account.dal", { ruolo: "Utente", data: "1 gennaio" }), t("non.esiste"), t("accesso.riprova_secondi", { n: 5 })];
+    const esito = [t("account.dal", { ruolo: "Utente", data: "1 gennaio" }), t("non.esiste"), tp("accesso.riprova_secondi", 5)];
     LINGUA = "fr";                       // lingua senza traduzioni: si torna all'italiano
     esito.push(t("account.esci"));
     LINGUA = "en";

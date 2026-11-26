@@ -65,7 +65,7 @@ def test_le_frasi_nuove_hanno_italiano_e_inglese():
         it, en = NOTIFICHE[chiave]
         assert "non è più valida" in it and "no longer valid" in en
         f = F(chiave, giornata=nome_giornata(9, 6, avviso=True), ora="18:30")                  # la giornata con i due numeri (#299)
-        assert "Giornata 6 · 9ª di Serie A: " in str(f) and "Matchday 6 · Serie A matchday 9: " in f.in_lingua("en")
+        assert "Giornata 6 · 9ª di Serie A: " in str(f) and "Matchday 6 · Serie A 9: " in f.in_lingua("en")
         assert "{" not in str(f) and "{" not in f.in_lingua("en") and "18:30" in f.in_lingua("en")
     assert "dafare.formazione_non_valida" in CATALOGO
 

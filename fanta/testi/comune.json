@@ -93,19 +93,27 @@
     "it": " (riprova tra {attesa})",
     "en": " (try again in {attesa})"
   },
-  "comune.attesa_secondi": {
+  "comune.attesa_secondi.one": {
+    "it": "{n} secondo",
+    "en": "{n} second"
+  },
+  "comune.attesa_secondi.other": {
     "it": "{n} secondi",
     "en": "{n} seconds"
   },
-  "comune.attesa_minuti": {
+  "comune.attesa_minuti.one": {
+    "it": "{n} minuto",
+    "en": "{n} minute"
+  },
+  "comune.attesa_minuti.other": {
     "it": "{n} minuti",
     "en": "{n} minutes"
   },
-  "comune.attesa_ora": {
+  "comune.attesa_ore.one": {
     "it": "circa {n} ora",
     "en": "about {n} hour"
   },
-  "comune.attesa_ore": {
+  "comune.attesa_ore.other": {
     "it": "circa {n} ore",
     "en": "about {n} hours"
   }

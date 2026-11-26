@@ -38,7 +38,7 @@
   },
   "admin.invito_esito": {
     "it": "Invito per «{etichetta}», valido {giorni} giorni, una volta sola.",
-    "en": "Invitation for «{etichetta}», valid for {giorni} days, once only."
+    "en": "Invitation for “{etichetta}”, valid for {giorni} days, once only."
   },
   "admin.reset_titolo": {
     "it": "Password dimenticata",
@@ -89,7 +89,7 @@
   },
   "admin.blocca_conferma": {
     "it": "L'account «{nome}» non potrà più entrare e le sue sessioni si chiudono subito. I suoi dati restano e puoi sbloccarlo quando vuoi. Confermi?",
-    "en": "The account «{nome}» will no longer be able to sign in and its sessions end right away. Its data stays and you can unblock it whenever you want. Continue?",
+    "en": "The account “{nome}” will no longer be able to sign in and its sessions end right away. Its data stays and you can unblock it whenever you want. Continue?",
     "nota": "domanda del browser prima di bloccare (pulsanti OK e Annulla del sistema, come admin.annulla_conferma)"
   },
   "admin.blocca_fatto": {
@@ -110,7 +110,7 @@
   },
   "admin.sblocca_conferma": {
     "it": "L'account «{nome}» potrà di nuovo entrare con la sua password. Confermi?",
-    "en": "The account «{nome}» will be able to sign in again with its password. Continue?"
+    "en": "The account “{nome}” will be able to sign in again with its password. Continue?"
   },
   "admin.sblocca_fatto": {
     "it": "Account sbloccato: può di nuovo entrare",
@@ -130,7 +130,7 @@
   },
   "admin.elimina_conferma": {
     "it": "L'account «{nome}» e tutti i suoi dati (rose, regole, formazioni, avvisi) spariscono per sempre: non si può annullare. Confermi?",
-    "en": "The account «{nome}» and all its data (rosters, rules, line-ups, alerts) disappear for good: this cannot be undone. Continue?"
+    "en": "The account “{nome}” and all its data (rosters, rules, line-ups, alerts) disappear for good: this cannot be undone. Continue?"
   },
   "admin.elimina_fatto": {
     "it": "Account eliminato con tutti i suoi dati",
@@ -184,12 +184,12 @@
   },
   "admin.annulla_conferma": {
     "it": "L'invito per «{etichetta}» non varrà più: chi ha il link non potrà registrarsi. Confermi?",
-    "en": "The invitation for «{etichetta}» will stop working: whoever has the link won't be able to sign up. Continue?",
+    "en": "The invitation for “{etichetta}” will stop working: whoever has the link won't be able to sign up. Continue?",
     "nota": "domanda del browser prima di annullare (pulsanti OK e Annulla del sistema: per questo «Confermi?» e non «Vuoi annullarlo?»)"
   },
   "admin.annulla_conferma_usato": {
     "it": "L'invito per «{etichetta}» non varrà più: chi ha il link non potrà registrarsi. Chi è già entrato tiene il suo account. Confermi?",
-    "en": "The invitation for «{etichetta}» will stop working: whoever has the link won't be able to sign up. Whoever has already joined keeps their account. Continue?",
+    "en": "The invitation for “{etichetta}” will stop working: whoever has the link won't be able to sign up. Whoever has already joined keeps their account. Continue?",
     "nota": "come admin.annulla_conferma, per un invito già usato da qualcuno"
   },
   "admin.invito_annullato": {

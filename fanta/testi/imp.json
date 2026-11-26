@@ -29,11 +29,11 @@
   },
   "imp.avvisi_qui_aiuto": {
     "it": "Due avvisi: un promemoria prima della scadenza, se non hai spuntato «L'ho messa», e un avviso quando cambia la formazione da schierare",
-    "en": "Two alerts: a reminder before the deadline, if you haven't ticked «I've entered it», and an alert when the lineup to field changes"
+    "en": "Two alerts: a reminder before the deadline, if you haven't ticked “I've entered it”, and an alert when the lineup to field changes"
   },
   "imp.avvisi_qui_aiuto_app": {
     "it": "Un promemoria prima della scadenza, se non hai spuntato «L'ho messa»",
-    "en": "A reminder before the deadline, if you haven't ticked «I've entered it»",
+    "en": "A reminder before the deadline, if you haven't ticked “I've entered it”",
     "nota": "iPhone, sotto «Avvisi su questo dispositivo»: l'interruttore accende solo i promemoria dell'app; l'avviso quando cambia la formazione lo manda il server alla web (#906). Stesse parole della prima parte di imp.avvisi_qui_aiuto"
   },
   "imp.avvisi_qui_aiuto_web": {
@@ -84,6 +84,6 @@
   },
   "imp.aggiorna_spiega": {
     "it": "Scarica adesso listone, voti e probabili formazioni dalle fonti accese. Di solito succede da solo.",
-    "en": "Downloads the player list, ratings and probable lineups from the enabled sources now. It usually happens on its own."
+    "en": "Downloads the player list, grades and probable lineups from the enabled sources now. It usually happens on its own."
   }
 }
