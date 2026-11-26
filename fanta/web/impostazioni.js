@@ -3,12 +3,12 @@
 // pagina loro (Il tuo account, Informazioni, Gestione per chi gestisce il server). Al posto delle schede Squadra e Altro e dei gruppi
 // di prima: chi la apre vede al massimo una decina di controlli. Si carica dopo app.js e ne usa le funzioni.
 // Indirizzi: ?vista=impostazioni, ?vista=impostazioni&gruppo=<pagina> (rose, squadra, squadre, regole, account, informazioni,
-// gestione), ?vista=impostazioni&gruppo=squadre&rosa=<nome>. Gli indirizzi di prima (gruppi, Squadra, Altro) li traduce dove() in app.js.
+// scrivici, gestione), ?vista=impostazioni&gruppo=squadre&rosa=<nome>. Gli indirizzi di prima (gruppi, Squadra, Altro) li traduce dove() in app.js.
 
 // La schermata di un indirizzo già tradotto da dove(): {gruppo, rosa, sezione}.
 function vistaImpostazioni(d = {}) {
   const PAGINE = { rose: () => vistaImportaRose(), squadra: () => vistaRosa(""), squadre: () => (d.rosa ? vistaRosa(d.rosa) : vistaAltreSquadre()),
-    regole: () => vistaRegole(), account: paginaAccount, informazioni: paginaInformazioni, gestione: paginaGestione };
+    regole: () => vistaRegole(), account: paginaAccount, informazioni: paginaInformazioni, scrivici: paginaScrivici, gestione: paginaGestione };
   if (d.gruppo && Object.hasOwn(PAGINE, d.gruppo)) { PAGINE[d.gruppo](); return; }
   paginaImpostazioni(d.sezione);
 }
@@ -35,6 +35,7 @@ function paginaImpostazioni(sezione) {
     ${a ? `<div class="carta imp-sezione"><ul class="elenco">${rigaImp("account", t("imp.account"), esc(a.nome_visualizzato || a.nome_utente))}</ul></div>` : ""}
     <section class="carta imp-sezione" id="imp-aspetto" aria-labelledby="imp-aspetto-t"><h2 id="imp-aspetto-t">${t("imp.aspetto")}</h2>${schedaAspetto()}</section>
     <div class="carta imp-sezione"><ul class="elenco">${rigaImp("informazioni", t("imp.informazioni"), t("imp.informazioni_sub"))}
+      ${a ? rigaImp("scrivici", t("scrivici.voce"), t("scrivici.voce_sub")) : ""}
       ${soloAmministratore() ? rigaImp("gestione", t("imp.gestione"), t("imp.gestione_sub")) : ""}</ul></div>
   </div>`, { stato: false });
   collegaAspetto();
@@ -73,9 +74,106 @@ function paginaInformazioni() {
   mostraNovita($("#novita-elenco"));
 }
 
+// Scrivici (26/11/2026): un commento a chi gestisce il server, solo con un account (senza account c'è solo lui, sul suo computer).
+// La casella va a capo e tiene al massimo MAX_COMMENTO caratteri (il tetto del server); «Invia» resta spento finché è vuota.
+// Riuscito: la casella si svuota e sotto c'è «Grazie, l'abbiamo ricevuto.»; non riuscito: il messaggio del server (per esempio il
+// limite di 5 al giorno) in un role="alert", e il testo scritto resta. La versione è quella che mostra Informazioni.
+const MAX_COMMENTO = 2000;
+function paginaScrivici() {
+  nuovaRichiesta();
+  pagina(`<div class="imp-colonna"><div class="carta"><p>${t("scrivici.spiega")}</p>
+      <label class="accesso-campo"><span class="debole piccolo">${t("scrivici.campo")}</span>
+        <textarea class="campo-testo" id="scrivici-testo" maxlength="${MAX_COMMENTO}" rows="6"></textarea></label>
+      <div class="pulsanti"><button class="bottone" id="scrivici-invia" type="button" disabled>${t("scrivici.invia")}</button></div>
+      <p class="nota-pulsanti" id="scrivici-esito" role="status"></p><div id="scrivici-errore" role="alert"></div></div></div>`,
+  { titolo: t("scrivici.voce"), stato: false, indietro: indietroImp() });
+  const campo = $("#scrivici-testo"), invia = $("#scrivici-invia");
+  const mostra = (esito, errore) => { $("#scrivici-esito").textContent = esito; $("#scrivici-errore").innerHTML = errore ? `<div class="errore">${esc(errore)}</div>` : ""; };
+  campo.addEventListener("input", () => { invia.disabled = !campo.value.trim(); mostra("", ""); });
+  invia.addEventListener("click", async () => {
+    invia.disabled = true;
+    mostra("", "");
+    const versione = stato.info && stato.info.versione;
+    try {
+      await api("/api/feedback", { method: "POST", body: JSON.stringify({ testo: campo.value, ...(versione ? { versione: String(versione) } : {}) }) });
+      if (!document.body.contains(campo)) return;                        // nel frattempo si è aperta un'altra pagina
+      campo.value = "";
+      mostra(t("scrivici.grazie"), "");
+    } catch (e) {
+      if (!document.body.contains(campo)) return;
+      mostra("", e.message || t("scrivici.non_inviato"));
+      invia.disabled = !campo.value.trim();
+    }
+  });
+}
+
+// Gestione › «Commenti degli utenti» (Scrivici): il più recente in alto; per ognuno chi, quando (ora italiana), da dove e il testo
+// intero, che va a capo dove è andato a capo chi l'ha scritto, e «Segna come letto» su quelli nuovi. Il testo e il nome vengono
+// dagli utenti: entrano nella pagina SOLO come textContent, mai come HTML.
+const schedaCommenti = () => gestisceAccount() ? `<section class="carta" id="scheda-commenti" aria-labelledby="commenti-t">
+    <h2 id="commenti-t">${t("scrivici.titolo_gestione")}</h2><p class="debole piccolo">${t("scrivici.spiega_gestione")}</p>
+    <p class="piccolo" id="commenti-da-leggere"></p>
+    <div id="commenti-elenco" aria-busy="true"><div class="caricamento">${t("comune.carico")}</div></div></section>` : "";
+const DA_PIATTAFORMA = { web: "scrivici.da_web", ios: "scrivici.da_ios", android: "scrivici.da_android" };
+const quandoCommento = q => { const d = new Date(q); return Number.isNaN(d.getTime()) ? String(q || "")
+  : d.toLocaleString(t("lingua.locale"), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" }); };
+function rigaCommento(c, segnaLetto) {
+  const li = document.createElement("li"), testa = document.createElement("div"), testo = document.createElement("p");
+  const dove = [Object.hasOwn(DA_PIATTAFORMA, c.piattaforma) ? t(DA_PIATTAFORMA[c.piattaforma]) : "",
+    c.versione ? t("scrivici.versione", { v: c.versione }) : ""].filter(Boolean).join(", ");
+  testa.className = "debole piccolo";
+  testa.textContent = [c.utente, quandoCommento(c.quando), dove].filter(Boolean).join(" · ");
+  testo.className = "commento-testo";
+  testo.textContent = c.testo;
+  li.append(testa, testo);
+  const coda = document.createElement("div");
+  coda.className = "commento-coda";
+  if (c.letto) { coda.classList.add("debole", "piccolo"); coda.textContent = t("scrivici.letto"); }
+  else {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "azione-testo"; b.textContent = t("scrivici.segna_letto");
+    b.setAttribute("aria-label", t("scrivici.segna_letto_di", { utente: c.utente }));
+    b.addEventListener("click", () => segnaLetto(c, b));
+    coda.append(b);
+  }
+  li.append(coda);
+  return li;
+}
+async function caricaCommenti() {
+  const dove = $("#commenti-elenco");
+  if (!dove) return;
+  let daLeggere = 0;
+  const conta = () => { const p = $("#commenti-da-leggere"); if (p) p.textContent = daLeggere > 0 ? tp("scrivici.da_leggere", daLeggere) : ""; };
+  const segnaLetto = async (c, b) => {
+    b.disabled = true;
+    try {
+      await api(`/api/admin/feedback/${Number(c.id)}/letto`, { method: "POST" });
+      const coda = b.parentElement;
+      coda.classList.add("debole", "piccolo");
+      coda.textContent = t("scrivici.letto");
+      daLeggere = Math.max(0, daLeggere - 1);
+      conta();
+    } catch (e) { b.disabled = false; avviso(e.message || t("scrivici.non_segnato"), 5000); }
+  };
+  try {
+    const r = await api("/api/admin/feedback");
+    if (!document.body.contains(dove)) return;
+    daLeggere = Number(r.da_leggere) || 0;
+    conta();
+    const commenti = Array.isArray(r.commenti) ? r.commenti : [];
+    if (!commenti.length) { dove.innerHTML = `<p class="debole piccolo">${t("scrivici.nessuno")}</p>`; return; }
+    const ul = document.createElement("ul");
+    ul.className = "elenco commenti-elenco";
+    ul.setAttribute("aria-labelledby", "commenti-t");
+    ul.append(...commenti.map(c => rigaCommento(c, segnaLetto)));
+    dove.replaceChildren(ul);
+  } catch (e) { if (document.body.contains(dove)) dove.innerHTML = errore(e); }
+  finally { dove.removeAttribute("aria-busy"); }
+}
+
 // Gestione, solo per chi gestisce il server: l'aggiornamento dei dati (le frecce che stavano in testata), lo stato dei dati, inviti,
 // codici, utenti ed errori del server. Sul server senza account anche l'avviso con ntfy per l'app nativa. Con gli account, da
-// 1100 px due colonne larghe come le altre pagine (#894): gli strumenti a sinistra, «Errori recenti» a destra.
+// 1100 px due colonne larghe come le altre pagine (#894): gli strumenti a sinistra, «Commenti degli utenti» ed «Errori recenti» a destra.
 function paginaGestione() {
   nuovaRichiesta();
   const errori = schedaErrori();
@@ -86,12 +184,13 @@ function paginaGestione() {
     <div class="carta"><h2>${t("av.stato")}</h2><p class="debole piccolo">${t("av.stato_spiega")}</p>
       <div class="pulsanti"><button class="bottone secondario" id="apri-stato-dati" type="button">${t("av.apri_stato")}</button></div></div>
     ${stato.account ? "" : `<div class="carta" id="avvisi-nativa" aria-busy="true"><div class="caricamento">${t("comune.carico")}</div></div>`}
-    ${schedaAmministratore()}</div>${errori ? `<div class="gestione-errori">${errori}</div>` : ""}</div>`,
+    ${schedaAmministratore()}</div>${errori ? `<div class="gestione-errori">${schedaCommenti()}${errori}</div>` : ""}</div>`,
   { titolo: t("imp.gestione"), stato: false, indietro: indietroImp() });
   $("#aggiorna-dati").addEventListener("click", aggiornaDati);
   segnaAggiornamento(!!stato.aggiornoDati, true);      // server già occupato (letto prima): si rilegge subito, poi finché non finisce (#763)
   $("#apri-stato-dati").addEventListener("click", apriStatoDati);
   collegaAmministratore();
+  caricaCommenti();
   avvisiNativa();
 }
 

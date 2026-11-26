@@ -367,7 +367,7 @@ def _consigliata_cambiata(prev: pd.DataFrame, vecchio: dict | None, ora: dict, t
     return F("n.testo_cambiata", frase=frase, data=f"{chiusura:%d/%m}", ora=f"{chiusura:%H:%M}")
 
 
-def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_STATO,
+def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path | None = None,
           manda: Callable[..., bool] = invia, opzioni: dict | None = None, *, risparmia: bool = False,
           file_scelte: Path | None = None, file_promemoria: Path | None = None, guasti: list[str] | None = None) -> list[str]:
     """Dopo ogni aggiornamento delle probabili: l'avviso quando cambia la formazione da schierare perché un tuo titolare non gioca
@@ -404,6 +404,7 @@ def cambi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime |
         return []                                  # senza probabili non c'è niente da confrontare
     ora = istantanea(prev, ids)
     chiave = f"{stagione}/{giornata}"
+    file_stato = file_stato or FILE_STATO          # letto a ogni chiamata: le prove lo spostano (#934)
     stato = _json(file_stato)
     vecchio = stato.get("cambi", {}).get(chiave)
     cambiato = bool(vecchio) and bool(confronta(vecchio["giocatori"], ora))
@@ -587,7 +588,7 @@ def testi_promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, stagion
     return testi
 
 
-def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_PROMEMORIA,
+def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path | None = None,
                manda: Callable[..., bool] = invia, opzioni: dict | None = None, file_scelte: Path | None = None,
                guasti: list[str] | None = None, file_cambi: Path | None = None) -> list[str]:
     """Un avviso un'ora prima e uno un quarto d'ora prima della scadenza della formazione (la prima partita della giornata meno i
@@ -611,6 +612,7 @@ def promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datet
     if inizio is None or inizio <= adesso:
         return []
     minuti = (inizio - adesso).total_seconds() / 60
+    file_stato = file_stato or FILE_PROMEMORIA     # letto a ogni chiamata: le prove lo spostano (#934)
     file_cambi = file_cambi or file_stato.with_name(FILE_STATO.name)
     stato = _json(file_stato)
     mandati = stato.setdefault("promemoria", [])
@@ -719,9 +721,9 @@ def testo_avviso_scadenza(prev: pd.DataFrame, escono: list[int], entrano: list[s
     return F("n.testo_scadenza", frase=frase, punti=float(guadagno), ora=f"{chiusura:%H:%M}")
 
 
-def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path = FILE_PROMEMORIA,
+def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_stato: Path | None = None,
                     manda: Callable[..., bool] = invia, opzioni: dict | None = None, file_scelte: Path | None = None,
-                    file_cambi: Path = FILE_STATO) -> list[str]:
+                    file_cambi: Path | None = None) -> list[str]:
     """Avviso intelligente: da AVVISO_PRIMA_PREDEFINITO minuti prima della scadenza della formazione (per tutti: la vecchia scelta
     `avviso_prima` non conta più, #676), se le ultime probabili cambiano il consiglio rispetto a quello di riferimento, un avviso con
     il motivo in una frase (il tocco apre la Formazione). Di `opzioni` contano solo le ore tranquille.
@@ -745,6 +747,8 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
         return []
     minuti = (chiusura - adesso).total_seconds() / 60
     chiave = f"{stagione}/{giornata}"
+    file_stato = file_stato or FILE_PROMEMORIA     # letti a ogni chiamata: le prove li spostano (#934)
+    file_cambi = file_cambi or FILE_STATO
     stato = _json(file_stato)
     tutti = stato.get("scadenza") if isinstance(stato.get("scadenza"), dict) else {}
     mio = tutti.get(chiave) if isinstance(tutti.get(chiave), dict) else {}
