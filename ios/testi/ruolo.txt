@@ -4,3 +4,10 @@ ruolo.P_1
 ruolo.D_1
 ruolo.C_1
 ruolo.A_1
+
+# I ruoli al plurale, come NOMI_RUOLO della web: le righe della rosa e dei posti fissi in panchina nell'editor delle regole
+# (CampiRegole), e il nome del campo nei controlli prima di salvare (#889)
+ruolo.P_pl
+ruolo.D_pl
+ruolo.C_pl
+ruolo.A_pl

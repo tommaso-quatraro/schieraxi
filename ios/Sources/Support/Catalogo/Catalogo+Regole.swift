@@ -91,6 +91,9 @@ extension Catalogo {
         /// `regole.riconosciuto`
         static let riconosciuto = "Riconosciuto"
 
+        /// `regole.non_applicato`
+        static let nonApplicato = "Non applicato"
+
         /// `regole.da_riga`
         static func daRiga(r: String) -> String {
             "da: «\(r)»"
@@ -235,6 +238,21 @@ extension Catalogo {
 
         /// `regole.regole_salvate_consigli`
         static let regoleSalvateConsigli = "Regole salvate: i consigli ora le usano"
+
+        /// `regole.campo_vuoto`
+        static func campoVuoto(campo: String) -> String {
+            "«\(campo)» è vuoto: scrivi un numero"
+        }
+
+        /// `regole.fuori_limiti`
+        static func fuoriLimiti(campo: String, max: String, min: String) -> String {
+            "«\(campo)» deve essere tra \(min) e \(max)"
+        }
+
+        /// `regole.intero`
+        static func intero(campo: String) -> String {
+            "«\(campo)» deve essere un numero intero"
+        }
 
         /// `regole.nuovo`
         static let nuovo = "Nuovo"

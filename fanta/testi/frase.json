@@ -909,14 +909,14 @@
     "en": "{squadra}: {nome} appears twice, I kept it only once."
   },
   "frase.regole.panchina_posti_fissi": {
-    "it": "La tua panchina ha posti fissi per ruolo, {n} in tutto: cambia i posti di ogni ruolo in «Modifica i valori».",
-    "en": "Your bench has fixed spots per position, {n} in total: change the spots for each position in «Edit the values».",
-    "nota": "regolamento incollato: un numero della panchina che con i posti fissi per ruolo non si può salvare (#881)"
+    "it": "La tua panchina ha posti fissi per ruolo, {n} in tutto: cambia a mano i posti di ogni ruolo nei valori delle regole.",
+    "en": "Your bench has fixed spots per position, {n} in total: change the spots for each position by hand in the rule values.",
+    "nota": "regolamento incollato: un numero della panchina che con i posti fissi per ruolo non si può salvare (#881); senza il nome di un pulsante, vale per web e iPhone (#889)"
   },
   "frase.regole.panchina_somma_posti": {
-    "it": "I posti per ruolo letti nel regolamento sono {n} in tutto e la panchina è la loro somma: controlla i posti di ogni ruolo in «Modifica i valori».",
-    "en": "The spots per position read in the rulebook are {n} in total and the bench is their sum: check the spots for each position in «Edit the values».",
-    "nota": "regolamento incollato: un numero della panchina diverso dalla somma dei posti per ruolo letti nello stesso testo (#881)"
+    "it": "I posti per ruolo letti nel regolamento sono {n} in tutto e la panchina è la loro somma: controlla a mano i posti di ogni ruolo nei valori delle regole.",
+    "en": "The spots per position read in the rulebook are {n} in total and the bench is their sum: check the spots for each position by hand in the rule values.",
+    "nota": "regolamento incollato: un numero della panchina diverso dalla somma dei posti per ruolo letti nello stesso testo (#881); senza il nome di un pulsante, vale per web e iPhone (#889)"
   },
   "frase.rose.codice_assente": {
     "it": "codice {codice} non presente nel listone",
