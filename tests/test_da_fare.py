@@ -239,6 +239,21 @@ def test_per_differenze_minime_nessun_cambio_proposto(mondo):
     assert d["alternativa"]["id"] == 12 and d["differenza"] == da_fare.SOGLIA_CAMBIO
 
 
+def test_per_chi_e_infortunato_o_squalificato_il_cambio_si_propone_anche_sotto_la_soglia(mondo):
+    """Decisione del coordinatore sulla #928: la soglia vale solo per chi è in dubbio o va in panchina. Per un titolare infortunato
+    o squalificato il cambio che la consigliata fa si propone sempre (decisione in cima e «cambio pronto», come prima), con il
+    numero vero della formazione anche se piccolo: la panchina può già coprirlo quasi del tutto."""
+    la_consigliata_cambia(mondo, (6, 14))
+    salvati = list(range(1, 12))
+    mondo.valori[frozenset(salvati)], mondo.valori[_con(salvati, 6, 14)] = 65.3, 65.6
+    d = next(x for x in vai(mondo) if x["id"] == "dubbio:6")
+    assert d["alternativa"]["id"] == 14 and d["differenza"] == 0.3 and d["azione"] == "Sostituisci" and "decisione" in d
+    assert d["priorita"] == 1 and d["testo"] == "Bianchi è infortunato. Meglio g14."
+    mondo.valori[_con(salvati, 6, 14)] = 65.3                                   # la panchina lo copre del tutto: si propone lo stesso
+    d = next(x for x in vai(mondo) if x["id"] == "dubbio:6")
+    assert d["alternativa"]["id"] == 14 and d["differenza"] == 0.0
+
+
 def test_la_soglia_e_quella_della_consigliata_e_degli_avvisi():
     assert da_fare.SOGLIA_CAMBIO == da_fare.consigli.SOGLIA_CAMBIO_PUNTI == notifiche.SOGLIA_AVVISO_PUNTI == 1.0
 

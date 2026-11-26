@@ -152,6 +152,35 @@ def test_cambio_pronto_con_il_vero_dubbi_quando_la_consigliata_lo_toglie(tmp_pat
     assert "Il tuo Castro parte dalla panchina. Meglio Bonny" in mandati[0][1]
 
 
+def _formazione_che_vale(monkeypatch, con_castro: float, con_bonny: float) -> None:
+    """La valutazione della formazione con Castro o con Bonny fra i titolari (gli altri 10 uguali)."""
+    monkeypatch.setattr(consigli, "valuta", lambda db, regole, rose, titolari, *a, **k: {
+        "punteggio_atteso": con_bonny if 2 in titolari else con_castro})
+
+
+def test_infortunato_o_squalificato_cambio_pronto_anche_per_pochi_decimi(tmp_path, monkeypatch):
+    """Decisione del coordinatore sulla #928: per un titolare infortunato o squalificato l'avviso parte come prima anche se la
+    panchina lo copre quasi del tutto, con il numero vero della formazione (+0,3). La soglia di un punto vale solo per chi va in
+    panchina o è in dubbio."""
+    for stato, frase in (("infortunato", "è infortunato"), ("squalificato", "è squalificato")):
+        mandati, manda = _scena_vera(monkeypatch, stato, consigliata=[2], panchina=[1])
+        _formazione_che_vale(monkeypatch, con_castro=65.0, con_bonny=65.3)
+        fs = tmp_path / f"{stato}.json"
+        scelte.salva(ST, 9, CON_CASTRO, "4-4-2", fs)
+        notifiche.cambi(_db(), Regole(), ROSE, ADESSO, tmp_path / f"n-{stato}.json", manda, file_scelte=fs)
+        assert len(mandati) == 1 and f"Il tuo Castro {frase}. Meglio Bonny (+0,3 punti attesi)." in mandati[0][1], mandati
+
+
+def test_in_panchina_per_pochi_decimi_niente_cambio_pronto(tmp_path, monkeypatch):
+    """Chi parte dalla panchina nelle probabili: sotto un punto atteso per la formazione il cambio non si propone."""
+    mandati, manda = _scena_vera(monkeypatch, "panchina", consigliata=[2], panchina=[1])
+    _formazione_che_vale(monkeypatch, con_castro=65.0, con_bonny=65.3)
+    fs = tmp_path / "s.json"
+    scelte.salva(ST, 9, CON_CASTRO, "4-4-2", fs)
+    notifiche.cambi(_db(), Regole(), ROSE, ADESSO, tmp_path / "n.json", manda, file_scelte=fs)
+    assert not [m for m in mandati if m[0] == "SchieraXI · cambio pronto"]
+
+
 def test_niente_cambio_pronto_se_la_consigliata_lo_tiene(tmp_path, monkeypatch):
     """Come «Da fare» (#266): se la formazione consigliata tiene Castro titolare, l'avviso non propone di toglierlo."""
     mandati, manda = _scena_vera(monkeypatch, "panchina", consigliata=[1], panchina=[2])

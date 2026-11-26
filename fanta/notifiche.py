@@ -298,7 +298,8 @@ def _cambi_pronti(db: sqlite3.Connection, regole: Regole, rose: Rose, prev: pd.D
                   gia: set[str], chiave: str, file_scelte: Path | None, formazione: dict | None = None) -> list[dict]:
     """«Cambio pronto»: per ogni tuo titolare (quello della tua scelta salvata, se si può ancora schierare, altrimenti il consigliato)
     che ora è infortunato, squalificato o in panchina, chi mettere al suo posto (lo stesso calcolo di «Da fare» in Oggi: solo se la
-    consigliata lo toglie).
+    consigliata lo toglie; per chi è in panchina solo da `da_fare.SOGLIA_CAMBIO` punti attesi della formazione in su, per chi è
+    infortunato o squalificato sempre), con i punti attesi della formazione in più (`differenza` della voce).
     Ogni cambio una volta sola: la chiave è giornata, giocatore e motivo. Senza un sostituto non c'è niente da proporre.
     `formazione`: la consigliata già calcolata da `cambi` (None = la legge «Da fare», dalla cache)."""
     from . import da_fare, scelte

@@ -27,8 +27,9 @@ ORE_FORMAZIONE = 12            # la formazione non salvata si segnala da qui all
 ORE_URGENTE = 3
 SOGLIA_GUADAGNO = 1.5          # punti in più (stagione) sotto cui uno svincolato o uno scambio non si nomina nemmeno; le regole
 #                                di buon senso (soglie per ruolo sulle prossime giornate, titolarità, costo...) stanno in buon_senso.py
-SOGLIA_CAMBIO = consigli.SOGLIA_CAMBIO_PUNTI     # punti attesi della formazione in più sotto cui un cambio di titolare non si propone:
-#                                la soglia della consigliata che cambia e degli avvisi (sotto è il su e giù normale, «differenze minime»)
+SOGLIA_CAMBIO = consigli.SOGLIA_CAMBIO_PUNTI     # punti attesi della formazione in più sotto cui il cambio di un titolare in dubbio o
+#                                in panchina non si propone: la soglia della consigliata che cambia e degli avvisi (sotto è il su e giù
+#                                normale, «differenze minime»). Non vale per infortunati e squalificati (decisione sulla #928)
 CONSIGLI = ("dubbio", "copertura", "svincolato", "scambio")      # le voci che sono consigli: al massimo buon_senso.MAX_CONSIGLI
 GIORNI_SOSTA = 10              # fra l'ultima partita di una giornata e la prima della successiva: da qui in su è una sosta
 GIORNI_DATI = 3
@@ -98,8 +99,9 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
     Formazione non si contraddicono.
     Il cambio proposto ha `differenza`: quanto cambiano i punti attesi della FORMAZIONE con lui al posto del titolare (la
     valutazione di POST /api/formazione/valuta, come «Sostituisci» e «Metti in campo»), non la differenza fra i due giocatori: un
-    titolare che rischia di non giocare lo copre già la panchina (collaudo del 26/11: «+1,1» in cima, «+0,1» sotto il campo). Sotto
-    SOGLIA_CAMBIO il cambio non si propone (differenze minime): la voce resta, senza «Meglio» e senza «Sostituisci».
+    titolare che rischia di non giocare lo copre già la panchina (collaudo del 26/11: «+1,1» in cima, «+0,1» sotto il campo). Per chi
+    è in dubbio o va in panchina, sotto SOGLIA_CAMBIO il cambio non si propone (differenze minime): la voce resta, senza «Meglio» e
+    senza «Sostituisci». Per chi è infortunato o squalificato si propone sempre, con il suo numero anche se piccolo.
     `formazione`: la consigliata (`consigli.formazione`) se chi chiama l'ha già calcolata (l'avviso «cambio pronto», notifiche.py)."""
     s = rose.squadra(rose.mia_squadra or "")
     prev, _, _ = consigli.previsioni(db, regole)
@@ -153,7 +155,9 @@ def _dubbi(db, regole: Regole, rose: Rose, giornata: int, file_scelte: Path | No
         differenza = None
         if alt and consigli.da_schierare(x, alt, sistema)["id"] == alt["id"]:
             differenza = float(frasi.differenza(punti([alt["id"] if j == i else j for j in titolari]), punti(titolari)))
-        if differenza is not None and differenza >= SOGLIA_CAMBIO:
+        # la soglia vale per chi è in dubbio o va in panchina; per chi è infortunato o squalificato il cambio si propone sempre
+        # (decisione del coordinatore sulla #928), con il numero vero della formazione anche se piccolo
+        if differenza is not None and (fuori or differenza >= SOGLIA_CAMBIO):
             usati.add(alt["id"])
             testo = F(chiave + "_alt", nome=x["nome"], alt=alt["nome"], **param)       # «Adams A.» finisce già col punto: ne basta uno
             extra["alternativa"] = {"id": alt["id"], "nome": alt["nome"], "ruolo": alt["ruolo"], "punti_attesi": alt["punti_attesi"]}
