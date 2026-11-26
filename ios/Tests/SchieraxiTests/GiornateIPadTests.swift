@@ -67,4 +67,35 @@ struct GiornateIPadTests {
         #expect(vm.scelta == "2026-27-9")
         #expect(vm.pagina?.aDestra(scelta: vm.scelta) == .giornata("2026-27-9"))
     }
+
+    // MARK: la riga scelta (#919)
+
+    /// Contrasto WCAG fra due colori pieni (0xRRGGBB).
+    private func contrasto(_ a: UInt32, _ b: UInt32) -> Double {
+        func luminanza(_ n: UInt32) -> Double {
+            func lineare(_ v: UInt32) -> Double {
+                let x = Double(v) / 255
+                return x <= 0.04045 ? x / 12.92 : pow((x + 0.055) / 1.055, 2.4)
+            }
+            return 0.2126 * lineare((n >> 16) & 0xff) + 0.7152 * lineare((n >> 8) & 0xff) + 0.0722 * lineare(n & 0xff)
+        }
+        let (x, y) = (luminanza(a), luminanza(b))
+        return (max(x, y) + 0.05) / (min(x, y) + 0.05)
+    }
+
+    @Test("La riga scelta a sinistra ha un grigio suo: nomi, punti e testi grigi restano sopra 4,5:1 in chiaro e in scuro")
+    func rigaSceltaLeggibile() {
+        // prima la selezione di iOS riempiva la riga del colore principale e i testi grigi sparivano (foto della corsa 45760638734)
+        #expect(contrasto(Tema.secondarioChiaro, Tema.rigaSceltaChiaro) >= 4.5, "testo grigio, chiaro")
+        #expect(contrasto(Tema.secondarioScuro, Tema.rigaSceltaScuro) >= 4.5, "testo grigio, scuro")
+        #expect(contrasto(0x000000, Tema.rigaSceltaChiaro) >= 4.5, "nome e punti, chiaro")
+        #expect(contrasto(0xFFFFFF, Tema.rigaSceltaScuro) >= 4.5, "nome e punti, scuro")
+    }
+
+    @Test("La riga scelta si distingue dalle altre righe della scheda")
+    func rigaSceltaSiVede() {
+        // le schede: bianco in chiaro, #1C1C1E in scuro (`Color.sfondoScheda`)
+        #expect(contrasto(0xFFFFFF, Tema.rigaSceltaChiaro) >= 1.4)
+        #expect(contrasto(0x1C1C1E, Tema.rigaSceltaScuro) >= 1.4)
+    }
 }

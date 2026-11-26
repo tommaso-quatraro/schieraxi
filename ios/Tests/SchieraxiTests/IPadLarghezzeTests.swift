@@ -3,16 +3,41 @@ import SwiftUI
 import Testing
 @testable import Schieraxi
 
+/// Un dispositivo, con le sue classi di dimensione e la larghezza libera di una pagina (dentro i margini sicuri), in punti.
+struct DispositivoDiProva: Sendable, CustomTestStringConvertible {
+    let nome: String
+    let orizzontale: UserInterfaceSizeClass?
+    let verticale: UserInterfaceSizeClass?
+    let larghezza: CGFloat
+    /// È l'iPad largo e alto (`SpazioIPad`)?
+    let iPad: Bool
+
+    var testDescription: String { nome }
+
+    static let tutti: [DispositivoDiProva] = [
+        DispositivoDiProva(nome: "iPhone in verticale", orizzontale: .compact, verticale: .regular, larghezza: 402, iPad: false),
+        // più largo della colonna da 720: prima della #919 Impostazioni e Cerca si stringevano di ~15 punti per lato
+        DispositivoDiProva(nome: "iPhone 16 Pro in orizzontale", orizzontale: .compact, verticale: .compact, larghezza: 874, iPad: false),
+        // larghezza «regular»: prima della #919 Giornate passava all'elenco con il dettaglio
+        DispositivoDiProva(nome: "iPhone Pro Max in orizzontale", orizzontale: .regular, verticale: .compact, larghezza: 956, iPad: false),
+        DispositivoDiProva(nome: "iPad in Slide Over", orizzontale: .compact, verticale: .regular, larghezza: 375, iPad: false),
+        DispositivoDiProva(nome: "misura non ancora nota", orizzontale: nil, verticale: nil, larghezza: 1032, iPad: false),
+        DispositivoDiProva(nome: "iPad 11 pollici in verticale", orizzontale: .regular, verticale: .regular, larghezza: 834, iPad: true),
+        DispositivoDiProva(nome: "iPad 13 pollici in verticale", orizzontale: .regular, verticale: .regular, larghezza: 1032, iPad: true),
+    ]
+}
+
 /// L'iPad come la web larga (#896): le pagine a elenco in una colonna di al massimo 720 punti (`.imp-colonna`), Giornate con
-/// l'elenco largo al massimo 420 punti e la giornata a destra, la barra laterale subito con il testo molto grande. Sull'iPhone,
-/// più stretto della colonna, non cambia niente. Qui i conti; l'aspetto si guarda nelle foto dell'iPad.
+/// l'elenco largo al massimo 420 punti e la giornata a destra, con il testo molto grande la barra in basso come sul telefono.
+/// Tutto solo sull'iPad largo e alto (#919): un iPhone in orizzontale supera i 720 punti ma resta com'era. Qui i conti; l'aspetto
+/// si guarda nelle foto dell'iPad.
 @MainActor
 @Suite("iPad: colonne larghe come la web, iPhone invariato")
 struct IPadLarghezzeTests {
 
     // MARK: pagine a elenco
 
-    @Test("Sull'iPhone e fino a 720 punti nessun margine in più", arguments: [CGFloat(320), 390, 440, 719, 720])
+    @Test("Fino a 720 punti nessun margine in più", arguments: [CGFloat(320), 390, 440, 719, 720])
     func strettaSenzaMargine(larghezza: CGFloat) {
         #expect(LarghezzaPagina.margine(larghezza: larghezza) == 0)
     }
@@ -33,10 +58,49 @@ struct IPadLarghezzeTests {
         #expect(LarghezzaPagina.margine(larghezza: -5) == 0)
     }
 
-    @Test("Le misure sono quelle della web larga: colonna 720, segmenti 520")
-    func misureDellaWeb() {
-        #expect(LarghezzaPagina.colonna == 720)
-        #expect(LarghezzaPagina.segmenti == 520)
+    @Test("La larghezza libera è quella dentro i margini sicuri")
+    func larghezzaLibera() {
+        let iPhoneOrizzontale = EdgeInsets(top: 0, leading: 62, bottom: 21, trailing: 62)
+        #expect(LarghezzaPagina.libera(larghezza: 874, margini: iPhoneOrizzontale) == 750)
+        // una pagina dentro una NavigationStack già stretta a 720 (Impostazioni, Cerca): niente da aggiungere
+        let giaStretta = EdgeInsets(top: 0, leading: 156, bottom: 0, trailing: 156)
+        #expect(LarghezzaPagina.libera(larghezza: 1032, margini: giaStretta) == 720)
+        #expect(LarghezzaPagina.margine(larghezza: LarghezzaPagina.libera(larghezza: 1032, margini: giaStretta)) == 0)
+        #expect(LarghezzaPagina.libera(larghezza: 100, margini: giaStretta) == 0)
+    }
+
+    // MARK: solo l'iPad largo e alto (#919)
+
+    @Test("L'iPad largo e alto è solo quello con larghezza e altezza «regular»", arguments: DispositivoDiProva.tutti)
+    func ipadLargoEAlto(d: DispositivoDiProva) {
+        #expect(SpazioIPad.largoEAlto(orizzontale: d.orizzontale, verticale: d.verticale) == d.iPad)
+    }
+
+    @Test("La colonna da 720 punti solo sull'iPad largo e alto, anche se un iPhone in orizzontale è più largo",
+          arguments: DispositivoDiProva.tutti)
+    func colonnaSoloSullIPad(d: DispositivoDiProva) {
+        let m = LarghezzaPagina.margineColonna(larghezza: d.larghezza, orizzontale: d.orizzontale, verticale: d.verticale)
+        if d.iPad {
+            #expect(m == LarghezzaPagina.margine(larghezza: d.larghezza))
+            #expect(m > 0)
+        } else {
+            #expect(m == 0)
+        }
+    }
+
+    @Test("Segmenti da 520 punti e riga di stemma e maglia da 400 solo sull'iPad largo e alto", arguments: DispositivoDiProva.tutti)
+    func larghezzeMassimeSoloSullIPad(d: DispositivoDiProva) {
+        let segmenti = LarghezzaPagina.massimaSuIPad(LarghezzaPagina.segmenti, orizzontale: d.orizzontale, verticale: d.verticale)
+        let immagini = LarghezzaPagina.massimaSuIPad(LarghezzaPagina.immaginiRosa, orizzontale: d.orizzontale,
+                                                     verticale: d.verticale)
+        #expect(segmenti == (d.iPad ? CGFloat(520) : nil))
+        #expect(immagini == (d.iPad ? CGFloat(400) : nil))
+    }
+
+    @Test("Giornate: elenco e dettaglio affiancati solo sull'iPad largo e alto; sugli iPhone la pagina del telefono",
+          arguments: DispositivoDiProva.tutti)
+    func giornateSoloSullIPad(d: DispositivoDiProva) {
+        #expect(GiornateView.elencoEDettaglio(orizzontale: d.orizzontale, verticale: d.verticale) == d.iPad)
     }
 
     // MARK: Giornate
@@ -54,25 +118,32 @@ struct IPadLarghezzeTests {
         #expect(ElencoEDettaglio.larghezzaElenco(totale: .infinity) == 0)
     }
 
-    // MARK: barra con il testo grande
+    // MARK: barra con il testo molto grande
 
-    @Test("Sull'iPad con il testo molto grande si parte dalla barra laterale")
-    func barraLateraleIPad() {
-        #expect(RadiceView.barraLateraleSubito(orizzontale: .regular, verticale: .regular, testo: .accessibility1))
-        #expect(RadiceView.barraLateraleSubito(orizzontale: .regular, verticale: .regular, testo: .accessibility5))
+    @Test("Con il testo molto grande la barra va in basso, come sul telefono, solo sull'iPad largo e alto",
+          arguments: DispositivoDiProva.tutti)
+    func barraInBassoConTestoMoltoGrande(d: DispositivoDiProva) {
+        for testo in [DynamicTypeSize.accessibility1, .accessibility3, .accessibility5] {
+            #expect(RadiceView.barraInBasso(orizzontale: d.orizzontale, verticale: d.verticale, testo: testo) == d.iPad)
+        }
     }
 
-    @Test("Con il testo normale, sull'iPhone e sull'iPad stretto la barra resta quella di iOS")
-    func barraDiSistema() {
-        // iPad con il testo normale o grande ma non molto grande
-        #expect(!RadiceView.barraLateraleSubito(orizzontale: .regular, verticale: .regular, testo: .large))
-        #expect(!RadiceView.barraLateraleSubito(orizzontale: .regular, verticale: .regular, testo: .xxxLarge))
-        // iPhone in verticale, iPad in Split View stretta
-        #expect(!RadiceView.barraLateraleSubito(orizzontale: .compact, verticale: .regular, testo: .accessibility3))
-        // iPhone grande in orizzontale
-        #expect(!RadiceView.barraLateraleSubito(orizzontale: .regular, verticale: .compact, testo: .accessibility3))
-        // iPhone piccolo in orizzontale, misura non ancora nota
-        #expect(!RadiceView.barraLateraleSubito(orizzontale: .compact, verticale: .compact, testo: .accessibility5))
-        #expect(!RadiceView.barraLateraleSubito(orizzontale: nil, verticale: nil, testo: .accessibility5))
+    @Test("Con il testo normale o grande la barra resta quella di iOS", arguments: DispositivoDiProva.tutti)
+    func barraDiSistema(d: DispositivoDiProva) {
+        for testo in [DynamicTypeSize.large, .xxxLarge] {
+            #expect(!RadiceView.barraInBasso(orizzontale: d.orizzontale, verticale: d.verticale, testo: testo))
+            #expect(RadiceView.classeDellaBarra(orizzontale: d.orizzontale, verticale: d.verticale, testo: testo)
+                    == d.orizzontale, "la TabView vede la larghezza vera")
+        }
+    }
+
+    @Test("La barra in basso: la TabView vede la larghezza «compact» solo sull'iPad con il testo molto grande")
+    func classeDellaBarra() {
+        #expect(RadiceView.classeDellaBarra(orizzontale: .regular, verticale: .regular, testo: .accessibility5) == .compact)
+        #expect(RadiceView.classeDellaBarra(orizzontale: .regular, verticale: .regular, testo: .large) == .regular)
+        // iPhone Pro Max in orizzontale con il testo molto grande: come prima
+        #expect(RadiceView.classeDellaBarra(orizzontale: .regular, verticale: .compact, testo: .accessibility5) == .regular)
+        #expect(RadiceView.classeDellaBarra(orizzontale: .compact, verticale: .regular, testo: .accessibility5) == .compact)
+        #expect(RadiceView.classeDellaBarra(orizzontale: nil, verticale: nil, testo: .accessibility5) == nil)
     }
 }
