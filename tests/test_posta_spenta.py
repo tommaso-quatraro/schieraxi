@@ -66,12 +66,12 @@ def test_web_non_propone_l_email_se_non_parte():
     assert "stato.emailAttiva = !(dati && dati.email_attiva === false);" in APP      # server vecchio senza il campo: come prima
     assert 'if (stato.emailAttiva === false && !e.email) return `<div class="debole piccolo">${t("account.email_spenta")}</div>`;' in APP
     assert 'stato.emailAttiva !== false && (extra.sub === "email" || extra.sub === "codice")' in APP     # recupero: niente scheda «email»
-    assert '(stato.emailAttiva === false && modo === "invito" ? "" : CAMPO_EMAIL("ac-email", modo === "invito"))' in APP
+    assert '(stato.emailAttiva === false && modo !== "email" ? "" : CAMPO_EMAIL("ac-email", modo !== "email"))' in APP      # invito e aperta
     assert 'const email = $("#ac-email") ? v("#ac-email").trim() : "";' in APP      # registrazione senza il campo: nessun errore
 
 
 # ---------------------------------------------------------------- iscrizione con email (revisione del 2/11/2026)
-@pytest.mark.parametrize("modo", ["aperta", "email"])
+@pytest.mark.parametrize("modo", ["email"])          # dal 26/11/2026 `aperta` crea l'account subito: test_registrazione_aperta.py
 def test_iscrizione_con_email_a_posta_spenta_lo_dice_uguale_per_tutti(spenta, monkeypatch, modo):
     registra(cliente(), "giulia")                              # un account già presente
     monkeypatch.setenv("FANTA_REGISTRAZIONE", modo)

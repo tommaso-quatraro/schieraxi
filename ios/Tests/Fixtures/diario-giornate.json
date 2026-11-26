@@ -18,7 +18,11 @@
                     {"id": 5, "p_voto": 0.8, "fv_atteso": 6.9, "fv": null}, {"id": 2, "p_voto": 0.9, "fv_atteso": 6.0, "fv": 7.0}],
       "consigliata_di_allora": "mostrata", "nota_consigliata": null, "nota_consigliata_frase": null,
       "fatti_e_attesi": {"formazione": "schierata", "atteso": 71.7, "fatti": 74.5, "differenza": 2.8, "meglio": [], "peggio": [],
-                         "testo": null, "frase": null}
+                         "testo": null, "frase": null},
+      "spiegazione_punti": {"formazione": "schierata",
+                            "righe": ["Al posto di Attaccante Cinque non è entrato nessuno dalla panchina.", "Modificatore difesa: +1,5."],
+                            "righe_frasi": [{"chiave": "diario.punti_nessuno", "param": {"nomi": "Attaccante Cinque"}},
+                                            {"chiave": "diario.punti_modificatore", "param": {"d": "+1.5"}}]}
     },
     {
       "stagione": "2026-27", "giornata": 10, "giornata_lega": 7, "modificabile": true,
@@ -28,7 +32,8 @@
                     "titolari": [{"id": 1, "nome": "Portiere Uno", "ruolo": "P"}]},
       "automatica": null, "istantanea": null, "giocatori": [{"id": 1, "fv_atteso": 6.2, "fv": 6.0}],
       "fatti_e_attesi": {"formazione": "schierata", "atteso": 70.0, "fatti": 68.0, "differenza": -2.0, "meglio": [], "peggio": [],
-                         "testo": null, "frase": null}
+                         "testo": null, "frase": null},
+      "spiegazione_punti": null
     },
     {
       "stagione": "2026-27", "giornata": 9, "giornata_lega": 6, "modificabile": true,

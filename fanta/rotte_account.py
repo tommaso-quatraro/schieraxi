@@ -291,6 +291,7 @@ class Iscrizione(Credenziali):
     invito: str = Field(default="", max_length=100)               # facoltativo: con FANTA_REGISTRAZIONE=aperta si entra senza
     email: str | None = Field(default=None, max_length=300)       # facoltativa: i client vecchi non la mandano
     accetto_termini: bool | None = None                           # facoltativo: assente = client vecchio (si iscrive, senza traccia); false = errore
+    sito: str = Field(default="", max_length=200)                 # la trappola: il campo che una persona non vede (`account.trappola`)
 
 
 # `endpoint_push` (facoltativo, sulle rotte che chiudono tutto: cambio password e recupero): l'indirizzo delle notifiche web di
@@ -385,6 +386,7 @@ def me(request: Request, utente: Utente = Depends(utente_corrente)):
             corpo |= social.profilo_email(db, utente.id, account_email.email_di(db, utente.id))
             corpo["social"] = social.provider_attivi()
             corpo["email_attiva"] = posta.attiva()       # False: le rotte che mandano un codice per email rispondono 503 `posta_spenta`
+            corpo["registrazione"] = account_email.modo_registrazione()   # Gestione: gli inviti servono solo se non è `aperta`
             if social.google_attivo():
                 corpo["accessi"] = social.accessi(db, utente.id)
     return corpo
@@ -392,7 +394,11 @@ def me(request: Request, utente: Utente = Depends(utente_corrente)):
 
 @router.post("/api/account/registra", dependencies=[Depends(_attivo)])
 def registra(dati: Iscrizione, request: Request, risposta: Response):
-    """Crea l'account con un invito. Il codice di recupero compare solo qui: l'app deve farlo salvare."""
+    """Crea l'account: con la registrazione aperta basta nome utente e password, altrimenti serve l'invito. Il codice di recupero
+    compare solo qui: l'app deve farlo salvare. Il campo `sito` pieno (la trappola della web) ferma tutto prima di cominciare."""
+    if dati.sito.strip():
+        with closing(account.apri()) as db:
+            account.trappola(db, ip_reale(request))
     modo = account_email.modo_registrazione()
     if not account_email.invito_classico(modo, dati.invito):
         with closing(account.apri()) as db, account.uno_alla_volta(ip_reale(request)):    # l'account nasce alla conferma del codice
@@ -401,7 +407,7 @@ def registra(dati: Iscrizione, request: Request, risposta: Response):
     email = account_email.normalizza_email(dati.email) if dati.email else None       # indirizzo sbagliato: errore PRIMA di creare l'account
     with closing(account.apri()) as db:
         utente, token, recupero = account.registra(db, dati.nome_utente, dati.password, dati.invito, ip_reale(request), _dispositivo(request),
-                                                  accetto_termini=dati.accetto_termini)
+                                                  accetto_termini=dati.accetto_termini, senza_invito=modo == "aperta")
         email_non_salvata = bool(email) and not posta.attiva()      # posta spenta: il codice non può arrivare, l'email non resta «in attesa»
         if email and not email_non_salvata:          # la verifica parte a parte: se non si riesce, l'account c'è lo stesso
             try:
@@ -600,11 +606,13 @@ def _avviso_posti(db) -> dict:
     """La frase che chi gestisce legge prima di creare un invito (#894), quando chi lo riceve può trovare le registrazioni chiuse
     finché il tetto (MAX_UTENTI) non si alza: tutti i posti presi (`admin.posti_pieni`), oppure i posti liberi già tutti promessi
     agli inviti aperti (`admin.posti_promessi`, con 3 utenti su 4 e un invito aperto un secondo invito non troverebbe posto).
+    Con la registrazione aperta gli inviti non servono: solo i posti pieni, detti per chi si iscrive (`admin.posti_pieni_aperta`).
     `{avviso, avviso_frase}`, null tutti e due se un invito in più trova posto."""
     utenti, massimo = db.execute("SELECT COUNT(*) FROM utenti").fetchone()[0], account.max_utenti()
-    promessi = account.posti_negli_inviti(db)
+    aperta = account_email.modo_registrazione() == "aperta"
+    promessi = 0 if aperta else account.posti_negli_inviti(db)
     if utenti >= massimo:
-        avviso = frasi.F("admin.posti_pieni", n=utenti, massimo=massimo)
+        avviso = frasi.F("admin.posti_pieni_aperta" if aperta else "admin.posti_pieni", n=utenti, massimo=massimo)
     elif promessi and utenti + promessi >= massimo:
         avviso = frasi.F("admin.posti_promessi", n=promessi, utenti=utenti, massimo=massimo)
     else:

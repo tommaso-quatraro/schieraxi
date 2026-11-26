@@ -77,7 +77,8 @@ struct TitolareGiornata: Identifiable, Equatable, Sendable {
     }
 }
 
-/// La giornata aperta: gli 11 della formazione che conta, cosa hai cambiato rispetto alla consigliata e la correzione.
+/// La giornata aperta: gli 11 della formazione che conta, da dove vengono i punti, cosa hai cambiato rispetto alla consigliata e la
+/// correzione.
 struct DettaglioGiornata: Equatable, Sendable {
     /// «La tua formazione (3-4-3)», «La consigliata alla scadenza (…)», «La consigliata (…)», «La consigliata rifatta… (…)».
     let titolo: String
@@ -86,6 +87,10 @@ struct DettaglioGiornata: Equatable, Sendable {
     /// Sopra la tabella: la frase del server su chi ha fatto meglio o peggio del previsto (`fatti_e_attesi.testo`, #672).
     let scarti: String?
     let titolari: [TitolareGiornata]
+    /// Sotto la tabella, una per riga: da dove vengono i punti (riserve entrate, modificatore difesa, partita rinviata), le frasi
+    /// del server (`spiegazione_punti.righe`, #900) così come sono. Vuoto se il server non ne manda (niente da spiegare, o server
+    /// di prima).
+    let perche: [String]
     /// «Al posto di X hai messo Y.» (solo con la consigliata mostrata).
     let cambi: String?
     /// La tua formazione senza la consigliata di allora: il confronto non c'è, e lo dice la frase del server (`nota_consigliata`).
@@ -224,8 +229,10 @@ struct PaginaGiornate {
         // formazione al posto dei cambi, altrimenti sotto il titolo. Un server di prima non la manda: niente frase.
         let senzaConfronto = tipo == .tua && cambi == nil ? v.notaConsigliata : nil
         let nota = tipo != .tua ? v.notaConsigliata : nil
-        // chi ha fatto meglio o peggio del previsto: la frase del server (`fatti_e_attesi.testo`, #672), sopra la tabella come la web
-        return DettaglioGiornata(titolo: titolo, nota: nota, scarti: v.fattiEAttesi?.testo, titolari: titolari, cambi: cambi,
+        // chi ha fatto meglio o peggio del previsto: la frase del server (`fatti_e_attesi.testo`, #672), sopra la tabella come la web;
+        // da dove vengono i punti: le frasi del server (`spiegazione_punti.righe`, #900), sotto la tabella come la web
+        return DettaglioGiornata(titolo: titolo, nota: nota, scarti: v.fattiEAttesi?.testo, titolari: titolari,
+                                 perche: v.spiegazionePunti?.righe ?? [], cambi: cambi,
                                  senzaConfronto: senzaConfronto, correggibile: v.siPuoCambiare)
     }
 }

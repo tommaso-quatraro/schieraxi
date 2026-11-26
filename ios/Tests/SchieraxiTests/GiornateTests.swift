@@ -339,10 +339,12 @@ struct GiornateTests {
         {"giornate": [{"stagione": "2026-27", "giornata": 11, "giornata_lega": 8}, {"stagione": "2026-27", "giornata": 10, "giornata_lega": 7}]}
         """#
 
-    /// Un server che alla prima lettura del diario manda `prima` e poi sempre `dopo`.
+    /// Un server che alla prima lettura del diario manda `prima` e poi sempre `dopo`. Contano solo le letture del diario:
+    /// `/api/stato`, che la pagina legge insieme alle giornate (#913) e a volte arriva prima, ha una risposta sua.
     private static func server(prima: String, dopo: String) -> ServerDiProva {
         let letture = Scatola<Int>()
-        return ServerDiProva { _, _, _ in
+        return ServerDiProva { _, percorso, _ in
+            guard percorso.hasPrefix("/api/diario") else { return Data("{}".utf8) }
             let n = (letture.valore ?? 0) + 1
             letture.valore = n
             return Data((n == 1 ? prima : dopo).utf8)

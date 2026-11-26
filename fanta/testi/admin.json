@@ -3,6 +3,15 @@
     "it": "Amministrazione",
     "en": "Administration"
   },
+  "admin.iscrizioni_titolo": {
+    "it": "Iscrizioni",
+    "en": "Sign-ups"
+  },
+  "admin.iscrizioni_aperte": {
+    "it": "Le iscrizioni sono aperte: chi vuole si registra da solo dalla schermata d'accesso, finché ci sono posti.",
+    "en": "Sign-ups are open: anyone can sign up from the sign-in screen while there are places left.",
+    "nota": "Gestione con la registrazione aperta, al posto di «Nuovo invito» (gli inviti non servono)"
+  },
   "admin.invito_titolo": {
     "it": "Nuovo invito",
     "en": "New invitation"

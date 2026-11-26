@@ -1,4 +1,5 @@
-"""Attacchi all'iscrizione con email (modo `aperta`): scoprire quali nomi esistono, bloccare l'iscrizione di un altro bruciandogli i codici."""
+"""Attacchi all'iscrizione con email (codice per posta prima dell'account: dal 26/11/2026 solo il modo `email`, prima anche `aperta`):
+scoprire quali nomi esistono, bloccare l'iscrizione di un altro bruciandogli i codici. Ogni iscrizione porta un invito suo."""
 import re
 
 import pytest
@@ -28,7 +29,7 @@ def da(ip):
 
 
 def _crea(web, posta_finta, monkeypatch, nome="anna", email="anna@example.com"):
-    modo(monkeypatch, "aperta")
+    modo(monkeypatch, "email")
     iscrivi(web, nome, email)
     assert conferma(web, email, codice_di(posta_finta[-1])).status_code == 200
     posta_finta.clear()
@@ -98,7 +99,7 @@ def test_stesso_lavoro_per_nome_occupato_e_libero(web, posta_finta, monkeypatch)
 def test_chi_brucia_i_codici_di_un_altro_non_blocca_la_sua_iscrizione(web, posta_finta, monkeypatch, multiutente):
     """Attacco: uno richiede l'iscrizione con l'email della vittima e brucia 3 codici sbagliando i tentativi, così la vittima non
     riceve più codici per un giorno. Il blocco è per indirizzo IP di chi sbaglia (e serve il suo segreto): la vittima non ne risente."""
-    modo(monkeypatch, "aperta")
+    modo(monkeypatch, "email")
     spia = da("6.6.1.1")
     for giro in range(account_email.CODICI_BRUCIATI[0]):
         multiutente.t += account.ORA + 1

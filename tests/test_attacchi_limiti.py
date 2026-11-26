@@ -176,12 +176,13 @@ def test_dopo_tre_codici_bruciati_niente_altri_codici_per_un_giorno(web, posta_f
 
 
 def test_iscrizioni_a_vuoto_non_chiudono_le_iscrizioni_a_tutti(web, posta_finta, monkeypatch):
-    monkeypatch.setenv("FANTA_REGISTRAZIONE", "aperta")
+    monkeypatch.setenv("FANTA_REGISTRAZIONE", "email")
     monkeypatch.setattr(account_email, "ISCRIZIONI_GLOBALI", (3, 24 * account.ORA))
     for i in range(10):                                                           # richieste che non mandano niente (nome non valido)
         da(f"7.8.{i}.1").post("/api/account/registra", json={"nome_utente": "a b", "password": PASSWORD, "email": f"x{i}@example.com"})
-    r = da("6.6.6.6").post("/api/account/registra", json={"nome_utente": "anna", "password": PASSWORD, "email": "anna@example.com"})
-    assert r.status_code == 200 and ultimi(posta_finta, "anna@example.com")
+    r = da("6.6.6.6").post("/api/account/registra", json={"nome_utente": "anna", "password": PASSWORD, "email": "anna@example.com",
+                                                         "invito": invito()})
+    assert r.status_code == 200 and r.json()["verifica_email"] and ultimi(posta_finta, "anna@example.com")
 
 
 def test_inviti_sbagliati_da_pochi_indirizzi_non_bloccano_tutti(web):
