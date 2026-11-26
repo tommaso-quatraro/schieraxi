@@ -65,7 +65,9 @@ di recupero e in **Il tuo account** non si può collegare un'email.
   fra quanto riprovare («I dati sono stati aggiornati da poco: riprova fra 9 minuti.») e non parte.
 - **Stato dei dati** (**Apri lo stato dei dati**): da dove arrivano i dati, se qualche fonte ha dato errore e quanto è affidabile
   il modello. Le fonti si accendono e si spengono da qui: sotto ogni fonte spenta c'è cosa non arriva, e una volta sola sotto
-  l'elenco cosa fa l'app senza e le condizioni d'uso.
+  l'elenco cosa fa l'app senza e le condizioni d'uso. La scelta vale subito, anche per i risultati in diretta (ESPN e la
+  funzione «Risultati in diretta»): non serve riavviare il server. **Quanto si usa l'app** conta le richieste delle ultime 4
+  settimane per funzione e, sotto **Le schermate più usate**, per parte dell'app (per esempio «Formazione», «La mia lega»).
 - Quando i dati non si aggiornano da giorni, chi gestisce vede in cima alla Formazione la decisione «I dati delle partite non
   si aggiornano da N giorni.» con **Controlla**, che apre **Impostazioni › Gestione**: lì **Apri lo stato dei dati** dice quale
   fonte si è fermata. Gli altri utenti non la vedono.
