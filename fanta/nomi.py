@@ -22,7 +22,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from .frasi import F, elenco
+from .frasi import F, elenco, nome_club, nome_ruolo
 from .listone import Calciatore
 
 
@@ -395,6 +395,7 @@ class Indice:
             # nome abbreviato, ma ruolo E squadra indicati sono i suoi e nessun altro va bene: è lui
             metodo = "esatto"
         avviso = elenco([
-            F("nomi.ruolo_diverso", indicato=ruolo, listone=c.ruolo) if d == "ruolo"
-            else F("nomi.squadra_diversa", indicata=squadra, listone=c.squadra) for d in discordanze], sep="; ")
+            F("nomi.ruolo_diverso", indicato=nome_ruolo(ruolo), listone=nome_ruolo(c.ruolo)) if d == "ruolo"
+            else F("nomi.squadra_diversa", indicata=squadra, listone=nome_club(c.squadra, c.squadra_slug)) for d in discordanze],
+            sep="; ")
         return Esito(c, metodo, avviso=avviso)

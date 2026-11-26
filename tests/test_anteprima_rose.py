@@ -458,8 +458,26 @@ def test_l_importazione_manda_le_frasi_degli_avvisi_come_l_anteprima(ambiente):
         assert r.status_code == 200, r.text
         esito = r.json()
         assert len(esito["avvisi_frasi"]) == len(esito["avvisi"]) > 0
-        pinco = esito["avvisi_frasi"][next(i for i, x in enumerate(esito["avvisi"]) if "'Pinco Pallino'" in x)]
+        pinco = esito["avvisi_frasi"][next(i for i, x in enumerate(esito["avvisi"]) if "«Pinco Pallino»" in x)]
         assert pinco["chiave"] == "rose.non_riconosciuto" and pinco["param"]["nome"] == "Pinco Pallino"
+
+
+def test_l_esito_di_aggiorna_le_rose_parla_semplice_e_solo_delle_squadre_del_file(ambiente):
+    """Collaudo del 26/11: l'esito di Aggiorna le rose era pieno di sigle («(C, ROM)», «rosa diversa dalle regole (P 2/3…)»,
+    nomi fra apici) e dava avvisi anche sulle squadre che il file non toccava. Ora frasi come nell'anteprima, solo per le
+    squadre del file."""
+    a, _ = nuovo_utente("utentea")
+    assert importa(a, "Mia\nP\tSommer\t1\nAltra\nC\tPinco Pallino\t3\n").status_code == 200
+    esito = importa(a, "Mia\nP\tSommer\t1\nRossi\t7\nPellegrini\t5\nKean\tJUV\t9\n").json()
+    avvisi = esito["avvisi"]
+    assert not [x for x in avvisi if "Altra" in x], avvisi                    # la squadra che il file non tocca
+    assert "Mia: mancano 2 portieri, 7 difensori, 8 centrocampisti e 5 attaccanti." in avvisi, avvisi
+    assert "Mia: 1 giocatore senza ruolo." in avvisi, avvisi
+    assert "Mia: non so chi è «Rossi»: potrebbe essere uno fra Rossi (difensore, Genoa) e Rossi (attaccante, Lecce)." in avvisi
+    assert "Mia: ho riconosciuto Pellegrini Lu. dal nome scritto abbreviato: controlla che sia lui." in avvisi, avvisi
+    assert "Mia: Kean: squadra diversa: nel file JUV, nel listone Fiorentina." in avvisi, avvisi
+    assert not [x for x in avvisi if "'" in x or "/" in x or "(D," in x], avvisi      # niente apici, conti «P 1/3», sigle di ruolo
+    assert len(esito["avvisi_frasi"]) == len(avvisi) and all(esito["avvisi_frasi"])
 
 
 def test_senza_account_l_anteprima_funziona_e_non_salva(dati_isolati, calciatori, monkeypatch):

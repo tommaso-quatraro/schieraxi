@@ -79,7 +79,7 @@ def test_rosters_i_ruoli_si_controllano_come_per_l_excel(ridotto):
     cal = [Calciatore(c, nome_di(c), "P", "", "INT", "inter", 1, 1, 1) for c in codici_del_file(ridotto)]
     nuove = lega.da_import(rose.estrai(rose.griglie_da_bytes(ridotto.encode()), Indice(cal), ROSA))
     avvisi = lega.controlla(nuove, _regole())
-    assert any("Real Esempio: rosa diversa dalle regole" in a for a in avvisi)        # tutti portieri: lo si vede
+    assert "Real Esempio: 22 portieri in più." in avvisi, avvisi                             # tutti portieri: lo si vede
 
 
 def _regole():
@@ -144,8 +144,8 @@ def test_codice_non_nel_listone_e_segnalato_con_squadra_e_codice(ridotto):
     assert [(r.testo, r.costo) for r in non] == [("Codice 7550", 1), ("Codice 4751", 1)]      # tenuti in rosa, col loro costo
     nuove = lega.da_import(squadre)
     persi = [g for s in nuove.squadre for g in s.giocatori if g.id is None]
-    assert [g.nome for g in persi] == ["Codice 7550", "Codice 4751"] and "non presente nel listone" in persi[0].avviso
-    assert any("'Codice 7550' non riconosciuto" in a for a in lega.controlla(nuove, _regole()))     # e lo vede anche il controllo della lega
+    assert [g.nome for g in persi] == ["Codice 7550", "Codice 4751"] and persi[0].avviso == "il codice 7550 non è nel listone"
+    assert any("non so chi è «Codice 7550»" in a for a in lega.controlla(nuove, _regole()))     # e lo vede anche il controllo della lega
 
 
 def test_stesso_codice_in_due_squadre_e_doppione_nella_stessa(ridotto, indice_file):
@@ -168,7 +168,7 @@ def test_squadre_poche_o_con_pochi_portieri_hanno_gli_avvisi_dell_excel(ridotto,
     corto = "\n".join(ridotto.splitlines()[:30]) + "\n"          # Real Esempio con 24 giocatori e FC UNDER con 1
     nuove = lega.da_import(leggi(corto.encode(), indice_file))
     avvisi = lega.controlla(nuove, _regole())
-    assert any(a.startswith("Under Prova: rosa diversa dalle regole") for a in avvisi)
+    assert any(a.startswith("Under Prova: mancano ") for a in avvisi), avvisi
 
 
 # ---------------------------------------------------------------- CSV a colonne (non «rosters») in tante codifiche
