@@ -155,6 +155,17 @@ struct SchedaGiocatoreComeLaWebTests {
         let soloGioca = try giocatore(#", "fv_atteso_medio_ruolo": 6.9, "perche_numero": [{"chiave": "gioca", "testo": "gioca il 62%: dubbio", "effetto": null}]"#)
         let senzaAltri = try #require(LetturaScheda.perche(soloGioca), "con la media del ruolo resta la frase di riferimento")
         #expect(senzaAltri.righe.isEmpty)
+        // revisione della #945: un infortunato o uno squalificato ha dal server il solo motivo «gioca» («infortunato: non gioca»);
+        // tolto quello, «Nessun motivo spicca…» sarebbe falso: il riquadro non c'è, come sulla web
+        for stato in ["infortunato", "squalificato"] {
+            let fuori = try giocatore(#", "stato": "\#(stato)", "p_voto": 0, "fv_atteso_medio_ruolo": 6.9, "perche_numero": [{"chiave": "gioca", "testo": "\#(stato): non gioca", "effetto": null}]"#)
+            #expect(LetturaScheda.perche(fuori) == nil, "\(stato): niente «Nessun motivo spicca…»")
+            let conEtichetta = try giocatore(#", "p_voto": 0, "etichetta": {"codice": "\#(stato)", "testo": "\#(stato.capitalized)", "tono": "negativo"}, "fv_atteso_medio_ruolo": 6.9, "perche_numero": [{"chiave": "gioca", "testo": "\#(stato): non gioca", "effetto": null}]"#)
+            #expect(LetturaScheda.perche(conEtichetta) == nil, "\(stato), dall'etichetta del server")
+            let conAltri = try giocatore(#", "stato": "\#(stato)", "fv_atteso_medio_ruolo": 6.9, "perche_numero": [{"chiave": "gioca", "testo": "\#(stato): non gioca", "effetto": null}, {"chiave": "voti", "testo": "voti sopra la media del ruolo", "effetto": 0.5}]"#)
+            let restano = try #require(LetturaScheda.perche(conAltri), "\(stato): con un altro motivo il riquadro resta")
+            #expect(restano.righe.map(\.chiave) == ["voti"])
+        }
         let durante = try giocatore(motivi + #", "stato_partita": "in_corso""#)
         let inCorso = try #require(LetturaScheda.perche(durante))
         #expect(inCorso.righe.map(\.chiave) == ["gol"])

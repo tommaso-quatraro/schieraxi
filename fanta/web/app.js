@@ -1659,6 +1659,10 @@ function htmlScheda(c, pr, fz) {
   // il motivo «gioca N%» mai fra i motivi del numero (#923): prima della partita «gioca N%» sta accanto al numero, con la parola
   // dello stato sotto, e la riga lo diceva una seconda volta («gioca il 62%: dubbio»); a partita cominciata non serve più
   const prSenzaGioca = pr && Array.isArray(pr.perche_numero) ? { ...pr, perche_numero: pr.perche_numero.filter(m => m.chiave !== "gioca") } : pr;
+  // un infortunato o uno squalificato ha dal server il solo motivo «gioca» («infortunato: non gioca», fanta/perche.py): tolto quello,
+  // il riquadro direbbe «Nessun motivo spicca…», falso. Non c'è: lo stato si legge accanto al numero (revisione della #945)
+  const nonGioca = !!pr && [pr.stato, codiceStato(pr)].some(s => s === "infortunato" || s === "squalificato");
+  const senzaPerche = nonGioca && Array.isArray(prSenzaGioca.perche_numero) && !prSenzaGioca.perche_numero.length;
   const nota = pr ? notaStato(pr, stato) : "";
   const partita = pr && pr.avversario ? t(pr.in_casa ? "formazione.partita_casa" : "formazione.partita_fuori", { avv: `<span style="text-transform:capitalize">${esc(pr.avversario)}</span>`, quando: quando(pr.data_partita) }) : "";
   const cifre = !pr ? `<div class="attenzione">${t("mercato.nessuna_previsione_per")}</div>`
@@ -1680,7 +1684,7 @@ function htmlScheda(c, pr, fz) {
     ${cifre}
     ${nota ? `<p class="scheda-nota">${esc(nota)}</p>` : ""}
     ${perche ? `<div class="scheda-pezzo" id="perche-titolare"><h3>${t("formazione.perche_titolare")}</h3><p>${perche}</p></div>` : ""}
-    ${pr && !finitaP ? bloccoPerche(prSenzaGioca) : ""}
+    ${pr && !finitaP && !senzaPerche ? bloccoPerche(prSenzaGioca) : ""}
     <div class="scheda-pezzo" id="scheda-voti" aria-busy="true"><h3>${t("formazione.ultimi_voti")}</h3><div class="debole piccolo">${t("comune.carico")}</div></div>
     ${fz && fz.sostituibile(Number(c.id)) ? `<div class="pulsanti"><button class="bottone" type="button" data-sostituisci="${Number(c.id)}"${fz.pronta() ? "" : " disabled"}>${t("formazione.sostituisci")}</button></div>`
       : fz && fz.entrabile(Number(c.id)) ? `<div class="pulsanti"><button class="bottone" type="button" data-metti-in-campo="${Number(c.id)}"${fz.pronta() ? "" : " disabled"}>${t("formazione.metti_in_campo")}</button></div>`

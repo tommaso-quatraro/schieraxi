@@ -221,6 +221,28 @@ def test_la_scheda_di_chi_non_e_fra_gli_11_ha_metti_in_campo():
     assert "data-metti-in-campo" not in fermo and 'id="scheda-fermo"' in fermo
 
 
+@pytest.mark.parametrize("stato", ["infortunato", "squalificato"])
+def test_la_scheda_di_chi_non_gioca_non_ha_perche_questo_numero(stato):
+    """Revisione della #945: per un infortunato o uno squalificato il server manda un motivo solo, «gioca» («infortunato: non
+    gioca», fanta/perche.py). Tolto quello, il riquadro restava con «Nessun motivo spicca…», falso: non c'è e basta. Lo stato si
+    legge già accanto al numero."""
+    motivi = [{"chiave": "gioca", "testo": f"{stato}: non gioca", "effetto": None}]
+    etichetta = {"codice": stato, "testo": stato.capitalize(), "tono": "negativo"}
+    html = _scheda(_giocatore(stato=stato, p_voto=0.0, etichetta=etichetta, perche_numero=motivi, fv_atteso_medio_ruolo=6.1),
+                   sostituibile=False)
+    assert 'class="perche"' not in html and "Nessun motivo" not in _testo(html), _testo(html)
+    assert stato.capitalize() in _testo(html)                              # lo stato resta, accanto al numero
+    # con un altro motivo del numero il riquadro c'è, senza «gioca»
+    altri = motivi + [{"chiave": "voti", "testo": "voti sopra la media del ruolo", "effetto": 0.5}]
+    con_altri = _scheda(_giocatore(stato=stato, p_voto=0.0, etichetta=etichetta, perche_numero=altri, fv_atteso_medio_ruolo=6.1),
+                        sostituibile=False)
+    assert 'class="perche"' in con_altri and "voti sopra la media del ruolo" in con_altri and "non gioca" not in con_altri
+    # chi gioca, senza motivi che spiccano: la frase di riferimento resta
+    dubbio = _scheda(_giocatore(p_voto=0.65, perche_numero=[{"chiave": "gioca", "testo": "gioca il 65%: dubbio", "effetto": None}],
+                                fv_atteso_medio_ruolo=6.1))
+    assert 'class="perche"' in dubbio and "gioca il 65%" not in dubbio
+
+
 def test_la_scheda_a_partita_in_corso_e_finita():
     motivi = [{"chiave": "forma", "testo": "È in forma.", "effetto": 0.4}, {"chiave": "gioca", "testo": "Gioca al 65%.", "effetto": None}]
     base = _giocatore(p_voto=0.65, perche_numero=motivi, fv_atteso_medio_ruolo=6.1)

@@ -99,9 +99,15 @@ enum LetturaScheda {
     /// «Perché questo numero» dentro la scheda: niente a partita finita, e mai il motivo «gioca» (#923, come `htmlScheda` della
     /// web): prima della partita «gioca N%» sta accanto al numero con la parola dello stato, e la riga «gioca il 62%: dubbio» lo
     /// diceva una seconda volta; a partita cominciata non serve più. nil con un server che non manda i motivi.
+    /// Un infortunato o uno squalificato ha dal server il solo motivo «gioca» («infortunato: non gioca», fanta/perche.py): tolto
+    /// quello, il riquadro direbbe «Nessun motivo spicca…», falso. Allora niente riquadro: lo stato si legge accanto al numero
+    /// (revisione della #945, come `htmlScheda`).
     static func perche(_ g: Giocatore) -> PercheNumero? {
         guard !statiFinita.contains(g.statoPartita ?? ""), g.assente != true else { return nil }
-        return PercheNumero(motivi: g.motiviNumero?.filter { $0.chiave != "gioca" }, mediaRuolo: g.mediaRuolo)
+        let motivi = g.motiviNumero?.filter { $0.chiave != "gioca" }
+        let nonGioca = [g.stato, ParolaStato(g)?.codice].contains { $0 == "infortunato" || $0 == "squalificato" }
+        if nonGioca, motivi?.isEmpty == true { return nil }
+        return PercheNumero(motivi: motivi, mediaRuolo: g.mediaRuolo)
     }
 
     // MARK: «Tutti i numeri»
