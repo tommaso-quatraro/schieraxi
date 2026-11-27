@@ -749,11 +749,15 @@ def _con_parte(voci: list[dict]) -> list[dict]:
 def registro_server():
     """Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà),
     con in più gli ultimi eventi importanti (registrazioni, recuperi, eliminazioni, cambi di ruolo...) anche se tanti tentativi
-    sbagliati li hanno spinti più indietro. Ogni errore e ogni richiesta lenta ha accanto il nome della parte dell'app (`parte`, `parte_frase`)."""
+    sbagliati li hanno spinti più indietro. Ogni errore e ogni richiesta lenta ha accanto il nome della parte dell'app (`parte`, `parte_frase`).
+    Un file del registro che c'è ma non si legge: 503 con il suo nome (la causa è nel log del servizio), mai un elenco vuoto."""
     contatori = registro.contatori.riepilogo()
+    try:
+        errori, sicurezza = registro.ultimi(registro.FILE_ERRORI, 30), registro.ultimi_sicurezza(30, nascondi_indirizzi=True)
+    except registro.RegistroIlleggibile as e:         # mai «Nessun evento» per un file che non si legge: 503 con il suo nome
+        raise HTTPException(503, f"Non riesco a leggere il registro del server ({e.nome}): controlla i permessi del file sul server.") from e
     return {"contatori": contatori | {"piu_lente": _con_parte(contatori["piu_lente"])},
-            "errori": _con_parte(registro.ultimi(registro.FILE_ERRORI, 30)),
-            "sicurezza": registro.ultimi_sicurezza(30, nascondi_indirizzi=True)}
+            "errori": _con_parte(errori), "sicurezza": sicurezza}
 
 
 class SceltaFonte(BaseModel):
@@ -805,10 +809,12 @@ def scegli_funzione(dati: SceltaFunzione, utente: Utente = Depends(solo_amminist
     return {"funzioni": funzioni.stato()}
 
 
-@router.post("/api/admin/reset-password", dependencies=[Depends(_attivo), Depends(solo_amministratore)])
-def reset_password(dati: DaResettare):
+@router.post("/api/admin/reset-password", dependencies=[Depends(_attivo)])
+def reset_password(dati: DaResettare, chi: Utente = Depends(solo_amministratore)):
+    """Il codice per chi ha perso la password. Per il proprio account o per un account comune; quello di un altro amministratore
+    no (403), come blocca ed elimina."""
     with closing(account.apri()) as db:
-        codice = account.crea_reset(db, dati.nome_utente)
+        codice = account.crea_reset(db, dati.nome_utente, chi=chi)
     return {"codice": codice, "valido_ore": int(account.DURATA_RESET.total_seconds() // 3600)}
 
 

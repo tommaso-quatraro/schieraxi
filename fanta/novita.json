@@ -1,5 +1,27 @@
 [
   {
+    "versione": "1.605",
+    "data": "2026-11-27T13:46:30",
+    "titolo": "Gestione: permessi degli amministratori più stretti e inviti più sicuri",
+    "voci": [
+      "Gestione: il codice di «Password dimenticata» e l'importazione delle rose per conto di un altro non valgono più per un altro amministratore, come già Blocca ed Elimina.",
+      "Un invito da amministratore chiede conferma e la casella si spegne dopo ogni invito; un doppio tocco su «Crea l'invito», «Genera il codice» o «Aggiorna i dati» non fa più due richieste.",
+      "Errori recenti si aggiorna anche dopo inviti e codici, e se il server non legge il suo registro lo dice invece di «Nessun evento»."
+    ],
+    "tecnico": [
+      "account.crea_reset(..., chi=Utente): 403 account.RESET_ALTRO_AMMINISTRATORE (err.reset_altro_amministratore) per l'account di un altro amministratore, il proprio sì; l'evento reset_creato ha da=chi.nome_utente. POST /api/admin/reset-password passa chi (solo_amministratore come parametro).",
+      "server.importa_per_conto_di: dalla web (da_chi) 403 account.ROSE_ALTRO_AMMINISTRATORE (err.rose_altro_amministratore) sull'account di un altro amministratore, prima del tetto di frequenza; il proprio sì; dal comando importa-per-conto-di (da_chi None) sì.",
+      "registro.ultimi: salta solo FileNotFoundError; un altro OSError scrive la causa nel log del servizio (logger fanta.registro) e alza RegistroIlleggibile. GET /api/admin/registro risponde 503 «Non riesco a leggere il registro del server ({nome}): …» (err.registro_illeggibile); la web lo mostra con role=alert.",
+      "Web (collegaAmministratore): spentoMentre per #adm-invito e #adm-reset; confirm(admin.invito_admin_conferma) con #adm-admin accesa e spunta tolta dopo l'invito; caricaRegistro dopo invito, annullamento e codice; #adm-registro senza aria-live. aggiornaDati: chiedoAggiornamento e #aggiorna-dati spento durante il POST, riacceso nel finally se l'aggiornamento non è partito."
+    ],
+    "titolo_en": "Management: stricter administrator permissions and safer invitations",
+    "voci_en": [
+      "Management: the “\u0001” code and importing rosters on someone's behalf no longer work for another administrator, as already for Block and Delete.",
+      "An administrator invitation asks for confirmation and the box clears after each invitation; a double tap on “\u0001”, “\u0001” or “\u0001” no longer sends two requests.",
+      "Recent errors also refreshes after invitations and codes, and if the server cannot read its log it says so instead of “\u0001”."
+    ]
+  },
+  {
     "versione": "1.604",
     "data": "2026-11-27T13:31:14",
     "titolo": "La web non resta più vuota se l'ultimo pezzo dell'app arriva in ritardo",
