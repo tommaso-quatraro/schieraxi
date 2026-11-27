@@ -38,7 +38,7 @@ def _node(codice: str):
     ("accedi", 403, True),
     ("accedi", 400, False),
     ("accedi", 429, False),                # attesa: quello che hai scritto resta
-    ("recupero", 403, True),               # codice di recupero sbagliato
+    ("recupero", 403, False),              # codice di recupero sbagliato: la password è quella nuova, resta (collaudo del 27/11)
     ("recupero", 422, False),
 ])
 def test_la_password_si_svuota_solo_se_rifiutata_e_mai_registrandosi(scheda, stato, svuota):

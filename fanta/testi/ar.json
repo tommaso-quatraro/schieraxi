@@ -100,6 +100,11 @@
     "it": "Chi è «{nome}» ({squadra})?",
     "en": "Who is “{nome}” ({squadra})?"
   },
+  "ar.nome_scritto": {
+    "it": "«{nome}»",
+    "en": "“{nome}”",
+    "nota": "in testa a un dubbio dell'anteprima, il nome come era scritto nelle rose; le virgolette di ogni lingua (in inglese erano «» accanto a “”, collaudo del 27/11)"
+  },
   "ar.scegli_chi": {
     "it": "Scegli chi è",
     "en": "Choose who it is"

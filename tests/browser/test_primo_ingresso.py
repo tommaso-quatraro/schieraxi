@@ -136,6 +136,7 @@ def test_primo_avvio_al_telefono_dice_da_dove_prendere_le_rose_e_la_conferma_si_
     titolo_della_guida(web, "Le rose")
     testo = " ".join(guida(web).inner_text().split())
     assert "Esporta le rose da Leghe" in testo and "basta anche solo la tua squadra" in testo, testo[:400]
+    assert "nella pagina delle rose della tua lega" in testo, testo[:400]              # dove si fa su Leghe (collaudo del 27/11)
     controlla_le_rose(web)
     assert guida(web).get_by_text("Qual è la tua squadra?").is_visible()
     assert passo_evidenziato(web).startswith("La tua squadra"), passo_evidenziato(web)
@@ -506,3 +507,134 @@ def test_registrazione_aperta_senza_invito_porta_al_primo_avvio(web):
     titolo_della_guida(web, "Le rose")
     # niente errori, tranne il «chi sono» di prima della registrazione (401: nessuna sessione)
     assert all("/api/account/me" in e and "401" in e for e in web.errori_console + web.richieste_fallite), (web.errori_console, web.richieste_fallite)
+
+
+# ---------------------------------------------------------------- il testo incollato resta (collaudo dell'amico nuovo del 27/11)
+TESTO_ROSE = "Squadra di prova 1\nCarnesecchi\nMaignan\nBastoni\n"
+
+
+def testo_delle_rose(web):
+    return guida(web).get_by_label("Testo delle rose")
+
+
+def riapri_la_guida(web) -> None:
+    web.pagina.locator("main").get_by_role("button", name="Importa le rose").click(timeout=10000)
+    titolo_della_guida(web, "Le rose")
+
+
+def test_il_testo_delle_rose_resta_se_chiudi_la_guida_o_ricarichi_finche_non_salvi(web):
+    """Il testo incollato nel passo «Le rose» spariva chiudendo la guida con la ✕ (o ricaricando la pagina). Ora resta in questo
+    browser come bozza e torna quando si riapre la guida; salvate le rose, la bozza se ne va."""
+    solo_prima(web)
+    lega = account_senza_rose(web)
+    anteprima_finta(web, lega, 2)
+    web.apri("/", larghezza=390)
+    titolo_della_guida(web, "Le rose")
+    testo_delle_rose(web).fill(TESTO_ROSE)
+    web.pagina.locator(".foglio-chiudi").click()
+    web.aspetta()
+    riapri_la_guida(web)
+    assert testo_delle_rose(web).input_value() == TESTO_ROSE
+    web.pagina.reload(wait_until="load")
+    web.aspetta()
+    riapri_la_guida(web)
+    assert testo_delle_rose(web).input_value() == TESTO_ROSE
+    guida(web).get_by_role("button", name="Controlla le rose").click(timeout=10000)
+    titolo_della_guida(web, "Controlla prima di salvare")
+    guida(web).get_by_role("button", name="Conferma e salva").click(timeout=10000)
+    titolo_della_guida(web, "La tua squadra")
+    guida(web).locator('[data-pa-passo="rose"]').click()
+    titolo_della_guida(web, "Le rose")
+    assert testo_delle_rose(web).input_value() == "", "la bozza resta anche dopo aver salvato le rose"
+
+
+def test_indietro_nel_primo_avvio_chiude_la_guida_e_resta_nell_app(web):
+    """Con l'app aperta da un link (il link d'invito) Indietro durante il primo avvio usciva dall'app, su una pagina bianca. Ora la
+    guida ha la sua voce nella cronologia: Indietro la chiude e si resta sulla Formazione, con il testo incollato da ritrovare."""
+    solo_prima(web)
+    account_senza_rose(web)
+    web.apri("/", larghezza=390)
+    titolo_della_guida(web, "Le rose")
+    indirizzo = web.pagina.url
+    testo_delle_rose(web).fill(TESTO_ROSE)
+    web.pagina.evaluate("() => history.back()")
+    web.pagina.locator("#foglio").wait_for(state="hidden", timeout=10000)
+    web.aspetta()
+    assert web.pagina.url == indirizzo, web.pagina.url
+    riapri_la_guida(web)
+    assert testo_delle_rose(web).input_value() == TESTO_ROSE
+    web.pagina.locator(".foglio-chiudi").click()           # chiusa con la ✕, Indietro non deve trovare una voce della guida rimasta
+    web.pagina.locator("#foglio").wait_for(state="hidden", timeout=10000)
+    web.pagina.wait_for_function("() => !(history.state && history.state.primoAvvio)", timeout=5000)
+    assert web.pagina.url == indirizzo and "Importa le rose" in web.testo_principale(), web.testo_principale()[:300]
+    assert not web.errori_console, web.errori_console
+
+
+def test_dopo_una_ricarica_o_un_salvataggio_la_guida_non_lascia_voci_morte(web):
+    """Revisione della #986: ricaricata la pagina con la guida aperta, o ridisegnata la Formazione sotto la guida dopo il salvataggio
+    delle rose, il primo `vai()` riscriveva la voce della guida senza `primoAvvio` e la guida ne aggiungeva un'altra: restava una
+    voce morta e serviva un Indietro in più per uscire. Ora la voce resta una sola e Indietro chiude la guida."""
+    solo_prima(web)
+    lega = account_senza_rose(web)
+    anteprima_finta(web, lega, 2)
+    web.apri("/", larghezza=390)
+    titolo_della_guida(web, "Le rose")
+    voci = web.pagina.evaluate("() => history.length")
+    web.pagina.reload(wait_until="load")
+    web.aspetta()
+    titolo_della_guida(web, "Le rose")
+    assert web.pagina.evaluate("() => [history.length, !!(history.state && history.state.primoAvvio)]") == [voci, True]
+    controlla_le_rose(web)
+    guida(web).get_by_role("button", name="Conferma e salva").click(timeout=10000)
+    titolo_della_guida(web, "La tua squadra")
+    web.aspetta()
+    assert web.pagina.evaluate("() => [history.length, !!(history.state && history.state.primoAvvio)]") == [voci, True]
+    web.pagina.evaluate("() => history.back()")
+    web.pagina.locator("#foglio").wait_for(state="hidden", timeout=10000)
+    assert web.pagina.evaluate("() => !!(history.state && history.state.primoAvvio)") is False
+
+
+def test_la_bozza_se_ne_va_anche_con_le_squadre_di_esempio(web):
+    """Revisione della #986: la bozza del testo delle rose si toglieva solo confermando l'anteprima della guida. Con «Usa le squadre di
+    esempio» le rose sono salvate: la bozza se ne va, e il passo «Le rose» riaperto è vuoto."""
+    solo_prima(web)
+    lega = account_senza_rose(web)
+
+    def esempi(route):
+        lega["salvate"] = True
+        _rispondi(route, {"ok": True})
+    web.pagina.route(_rotta("/api/onboarding/demo"), esempi)
+    web.risposta("/api/account/me", UTENTE)
+    web.apri("/", larghezza=390)
+    titolo_della_guida(web, "Le rose")
+    testo_delle_rose(web).fill(TESTO_ROSE)
+    guida(web).get_by_role("button", name="Usa le squadre di esempio").click(timeout=10000)
+    titolo_della_guida(web, "La tua squadra")
+    guida(web).locator('[data-pa-passo="rose"]').click()
+    titolo_della_guida(web, "Le rose")
+    assert testo_delle_rose(web).input_value() == "", "la bozza resta dopo le squadre di esempio"
+
+
+def test_in_inglese_il_nome_scritto_del_dubbio_ha_le_virgolette_inglesi(web):
+    """In inglese l'anteprima mescolava «Pio Esposito» (il nome scritto, in testa al dubbio) e “Pio Esposito” (nelle frasi): ora
+    sono tutte “ ”, come le frasi del catalogo inglese."""
+    solo_prima(web)
+    lega = account_senza_rose(web)
+    anteprima_finta(web, lega, 1)
+    dubbio = {"testo": "Pio Esposito", "nome": "Esposito F.P.", "stato": "da_controllare", "id": 9999, "riga": 0,
+              "alternative": [{"id": 9999, "nome": "Esposito F.P.", "ruolo": "A", "squadra": "INT"}]}
+    squadra = {"nome": "Squadra di prova 1", "nuova": True, "totale": 1, "attesi": 25, "mancano": {}, "in_piu": {}, "senza_ruolo": 0,
+               "crediti_residui": None, "avvisi": [], "giocatori": [dubbio]}
+    web.pagina.route(_rotta("/api/rose/anteprima"), lambda r: _rispondi(r, {
+        "squadre": [squadra], "avvisi": [], "avvisi_frasi": [], "mia_squadra": None, "totale_squadre": 1, "sicuri": 0,
+        "da_controllare": 1, "non_trovati": 0, "differenze": {"prima_importazione": True, "nessuna_differenza": False, "testo": ""},
+        "riepilogo": ""}))
+    web.memoria({"lingua": "en"})
+    web.apri("/", larghezza=390)
+    titolo_della_guida(web, "The rosters")
+    guida(web).get_by_label("Roster text").fill("Squadra di prova 1\nPio Esposito\n")
+    guida(web).get_by_role("button", name="Check the rosters").click(timeout=10000)
+    testa = guida(web).locator(".ar-dubbio-testa b").first
+    testa.wait_for(timeout=10000)
+    assert testa.inner_text().strip() == "“Pio Esposito”"
+    assert "«" not in guida(web).inner_text(), guida(web).inner_text()[:500]

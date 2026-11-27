@@ -314,6 +314,12 @@ CATALOGO: dict[str, str] = {
     # {elenco} = un elenco di `rose.<ruolo>` («1 portiere e 4 difensori»), {n} = quanti mancano in tutto
     "rose.mancano_in_squadra.one": "{squadra}: manca {elenco}.",
     "rose.mancano_in_squadra.other": "{squadra}: mancano {elenco}.",
+    # la rosa non basta per nessun modulo (consigli.rosa_incompleta, collaudo dell'amico nuovo del 27/11): la Formazione dice la causa
+    # vera; {elenco} come sopra, {n} = quanti mancano in tutto. Senza il nome di un pulsante: vale per la web e per l'iPhone
+    "formazione.rosa_incompleta.one": "Non si riesce a formare una squadra: secondo le regole della lega, alla rosa di {squadra} "
+                                      "manca {elenco}.",
+    "formazione.rosa_incompleta.other": "Non si riesce a formare una squadra: secondo le regole della lega, alla rosa di {squadra} "
+                                        "mancano {elenco}.",
     "rose.in_piu_in_squadra": "{squadra}: {elenco} in più.",
     "rose.senza_ruolo_in_squadra.one": "{squadra}: {n} giocatore senza ruolo.",
     "rose.senza_ruolo_in_squadra.other": "{squadra}: {n} giocatori senza ruolo.",

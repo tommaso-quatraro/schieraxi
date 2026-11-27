@@ -66,6 +66,7 @@ def lenta(ambiente, monkeypatch):  # noqa: F811 (fixture importata)
     monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
     monkeypatch.setattr(limiti, "_adesso", lambda: ORA_FISSA)
     monkeypatch.setattr(calcolo, "ATTESA_MAX", 0)       # qui si provano i tetti della coda: 202 subito, senza l'attesa (#907, in test_calcolo_attesa.py)
+    monkeypatch.setattr(consigli, "rosa_incompleta", lambda s, regole: None)     # rose di prova corte: qui conta la coda, non la rosa
     stato = {"via": threading.Event()}
 
     def finta(db, s, giornata, regole, simulazioni):

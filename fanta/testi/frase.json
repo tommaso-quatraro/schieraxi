@@ -968,6 +968,16 @@
     "it": "{squadra}: mancano {elenco}.",
     "en": "{squadra}: {elenco} missing."
   },
+  "frase.formazione.rosa_incompleta.one": {
+    "it": "Non si riesce a formare una squadra: secondo le regole della lega, alla rosa di {squadra} manca {elenco}.",
+    "en": "A team cannot be formed: under your league's rules, the {squadra} roster is missing {elenco}.",
+    "nota": "Formazione con una rosa che non basta per nessun modulo (collaudo dell'amico nuovo del 27/11); {elenco} = «1 portiere e 6 difensori»"
+  },
+  "frase.formazione.rosa_incompleta.other": {
+    "it": "Non si riesce a formare una squadra: secondo le regole della lega, alla rosa di {squadra} mancano {elenco}.",
+    "en": "A team cannot be formed: under your league's rules, the {squadra} roster is missing {elenco}.",
+    "nota": "come sopra, con più di un giocatore mancante"
+  },
   "frase.rose.in_piu_in_squadra": {
     "it": "{squadra}: {elenco} in più.",
     "en": "{squadra}: {elenco} too many."

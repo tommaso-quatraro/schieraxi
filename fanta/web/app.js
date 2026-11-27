@@ -204,7 +204,9 @@ async function api(percorso, opzioni = {}) {
         const testo = dati && typeof dati.detail === "string" ? dati.detail
           : dati === null && r.status >= 502 && r.status <= 504 ? t("comune.server_non_risponde")
           : r.status >= 500 ? t("comune.errore_server", { n: r.status }) : t("comune.errore_n", { n: r.status });
-        const e = new Error(traduciErrore(testo)); e.originale = testo; e.status = r.status; e.riprova = Number(r.headers.get("Retry-After")) || 0;
+        // con la frase con la chiave (campo facoltativo `frase`, dal 27/11/2026) si traduce da lei; senza, dal testo italiano
+        const tradotto = dati && dati.frase && typeof dati.detail === "string" ? traduciFrase(dati.frase, testo) : traduciErrore(testo);
+        const e = new Error(tradotto); e.originale = testo; e.status = r.status; e.riprova = Number(r.headers.get("Retry-After")) || 0;
         e.codice = dati && typeof dati.codice === "string" ? dati.codice : "";            // nome breve dell'errore (accesso con Google)
         if (dati && Array.isArray(dati.social)) stato.social = dati.social;
         if (dati && typeof dati.email_attiva === "boolean") stato.emailAttiva = dati.email_attiva;
@@ -292,7 +294,8 @@ const cartaSenzaRose = (titolo = t("comune.prima_rose")) => `<div class="carta b
 const funzioneSpenta = e => !!e && e.status === 404 && typeof e.funzione === "string";
 const cartaFunzioneSpenta = e => `<div class="carta" role="status"><h2>${t("dieta.non_disponibile")}</h2><p class="debole">${esc(e.message)}</p>
   <div class="pulsanti"><button class="bottone" type="button" data-vai="formazione">${t("dieta.torna_formazione")}</button></div></div>`;
-const erroreVista = e => senzaRose(e) ? cartaSenzaRose() : funzioneSpenta(e) ? cartaFunzioneSpenta(e) : errore(e) + `<div class="pulsanti"><button class="bottone secondario" type="button" data-riprova>${t("comune.riprova")}</button></div>`;
+// `altri`: pulsanti in più accanto a «Riprova», nella stessa fila (solo per un errore vero)
+const erroreVista = (e, altri = "") => senzaRose(e) ? cartaSenzaRose() : funzioneSpenta(e) ? cartaFunzioneSpenta(e) : errore(e) + `<div class="pulsanti"><button class="bottone secondario" type="button" data-riprova>${t("comune.riprova")}</button>${altri}</div>`;
 
 // ---------------------------------------------------------------- copia sul telefono delle ultime risposte
 // L'app mostra subito i dati vecchi e li sostituisce con quelli nuovi appena arrivano: si apre senza attese.
@@ -418,7 +421,8 @@ async function caricaConCache(chiave, percorso, mostra, testo, { daSalvare = () 
         if (e.rete && !daSola) alRitornoDellaRete(() => { if (ancoraValida(mia) && $("#nota-cache")) leggi(true); });
         return false;
       }
-      pagina(erroreVista(e) + (!senzaRose(e) && /rosa|squadra/i.test(e.originale || e.message) ? `<button class="bottone" type="button" data-imp-gruppo="lega">${t("comune.vai_lega")}</button>` : ""));
+      // «Apri La mia lega» nella stessa fila di «Riprova», con lo spazio fra i due (prima stava sotto, attaccato: collaudo del 27/11)
+      pagina(erroreVista(e, /rosa|squadra/i.test(e.originale || e.message) ? `<button class="bottone" type="button" data-imp-gruppo="lega">${t("comune.vai_lega")}</button>` : ""));
       return false;
     }
   };
@@ -767,8 +771,11 @@ function vai(vista, gruppo, opz = {}) {
     // una voce nuova nella cronologia per ogni schermata nuova; la prima schermata e i ridisegni della stessa la sostituiscono
     const indirizzo = indirizzoVista(d.vista, d.gruppo, d.rosa), voce = { vista: d.vista, gruppo: d.gruppo || null, rosa: d.rosa || null };
     try {
-      // sostituendo la voce si tiene da dove era arrivata (`da`): è ancora la stessa pagina
-      if (!history.state || ora === indirizzo || opz.sostituisci) history.replaceState({ ...voce, da: (history.state && history.state.da) || null }, "", indirizzo);
+      // sostituendo la voce si tiene da dove era arrivata (`da`): è ancora la stessa pagina. E il segno della voce del primo avvio
+      // (`primoAvvio`, primoavvio.js): senza, dopo una ricarica o un ridisegno sotto la guida la guida ne aggiungeva un'altra e restava
+      // una voce morta (revisione della #986)
+      const guida = ora === indirizzo && history.state && history.state.primoAvvio ? { primoAvvio: true } : {};   // solo se l'indirizzo resta
+      if (!history.state || ora === indirizzo || opz.sostituisci) history.replaceState({ ...voce, da: (history.state && history.state.da) || null, ...guida }, "", indirizzo);
       else history.pushState({ ...voce, da: ora }, "", indirizzo);
     } catch { /* niente cronologia (pagina aperta da un file): si cambia schermata lo stesso */ }
   }
@@ -783,7 +790,9 @@ function vai(vista, gruppo, opz = {}) {
 }
 // Indietro e Avanti del browser (e del mouse): la schermata di quella voce, come un clic sulla sua scheda (il foglio si chiude con lei).
 window.addEventListener("popstate", ev => {
-  if (location.pathname + location.search === indirizzoMostrato) return;   // è cambiata solo la parte dopo «#» (link «Vai al contenuto»): niente da ridisegnare
+  // stesso indirizzo: è cambiata solo la parte dopo «#» (link «Vai al contenuto»), niente da ridisegnare; oppure si è lasciata la voce
+  // del primo avvio, che allora si chiude (primoavvio.js)
+  if (location.pathname + location.search === indirizzoMostrato) { if (typeof paIndietro === "function") paIndietro(ev.state); return; }
   chiudiFoglio();
   const q = new URLSearchParams(location.search);                          // voce senza stato: si legge l'indirizzo
   const v = ev.state && ev.state.vista ? ev.state : { vista: q.get("vista"), gruppo: q.get("gruppo"), voce: q.get("voce"), rosa: q.get("rosa") };
@@ -1057,6 +1066,15 @@ function mostraSenzaRose(opz) {
   if (typeof primoAvvioSeServe === "function") primoAvvioSeServe();
 }
 
+// La tua rosa non basta per nessun modulo (campo `rosa_incompleta` di /api/oggi, collaudo dell'amico nuovo del 27/11): uno stato, non
+// un errore con «Riprova». La frase del server dice quanti giocatori mancano per ruolo; «Aggiorna le rose» porta dove si carica la rosa.
+function mostraRosaIncompleta(o, opz) {
+  clearInterval(timerConto);
+  pagina(`<div class="carta benvenuto" role="status" id="rosa-incompleta"><h2>${t("formazione.rosa_incompleta")}</h2>
+    <p class="debole">${esc(testoDi(o.rosa_incompleta))}</p>
+    <div class="pulsanti"><button class="bottone" type="button" data-imp-gruppo="rose">${t("lega.voce_importa")}</button></div></div>`, opz);
+}
+
 // Campionato finito (#656, campo `campionato_finito` di /api/oggi): nessuna giornata da preparare fino al calendario nuovo. La testa
 // della giornata finita con il riepilogo dell'ultima (nelle 48 ore, se il server lo manda) e la frase del server al posto della prossima;
 // con un recupero dell'ultima giornata ancora da giocare, lo stesso riquadro della fase «finita» per scegliere come contarlo (nel riepilogo).
@@ -1286,9 +1304,14 @@ async function caricaGiornata() {
   }
   const senzaRose = !!stato.info && stato.info.rose_importate === false;
   const senzaGiornata = !!stato.info && stato.info.prossima_giornata === null;
-  const [o, letta] = await Promise.all([api("/api/oggi"), senzaRose || senzaGiornata ? null : api("/api/formazione").catch(e => e)]);
+  // La tua rosa non basta per nessun modulo (`rosa_incompleta`, collaudo dell'amico nuovo del 27/11): /api/formazione risponderebbe
+  // 400 a ogni apertura, e la causa la dice /api/oggi. Lo stato d'avvio può essere vecchio: vale quello che dice Oggi (sotto); se
+  // Oggi non lo dice più, la formazione si chiede dopo.
+  const rosaCorta = !!stato.info && stato.info.rosa_incompleta === true;
+  const [o, letta] = await Promise.all([api("/api/oggi"), senzaRose || senzaGiornata || rosaCorta ? null : api("/api/formazione").catch(e => e)]);
   if (o.senza_rose) return { o, f: null };
   if (o.campionato_finito) return { o, f: null };
+  if (o.rosa_incompleta) return { o, f: null };
   const f = letta || await api("/api/formazione");
   if (f instanceof Error) throw f;
   const b = { o, f };
@@ -1384,6 +1407,7 @@ function mostraFormazione(b, squadra, opz = {}) {
   if (b.senza_squadra) { mostraSenzaSquadra(opz); return; }
   if (o && o.senza_rose) { mostraSenzaRose(opz); return; }
   if (o && o.campionato_finito) { mostraCampionatoFinito(o, opz); return; }
+  if (o && o.rosa_incompleta && !f) { mostraRosaIncompleta(o, opz); return; }
   const l = livelloBase(f);
   const consigliato = l.moduli.find(m => m.modulo === l.modulo) || l.moduli[0];
   const fermi = giocatoriFermi(f);
@@ -3859,7 +3883,8 @@ const soloAmministratore = () => !stato.account || stato.account.ruolo === "ammi
 // All'uscita su questo dispositivo non deve restare niente dell'utente: copie dei dati, archivio scambi, copie dell'app del service worker.
 // `tieniAccesso`: resta sessionStorage, che tiene solo i passi dell'accesso in corso (codice d'invito, ritorno da Google).
 async function svuotaDatiLocali({ tieniAccesso = false } = {}) {
-  try { Object.keys(localStorage).filter(k => k.startsWith("cache:") || ["archivio-scambi", "vista", "account"].includes(k)).forEach(k => localStorage.removeItem(k)); }
+  // con le copie dei dati anche la bozza del testo delle rose del primo avvio (primoavvio.js): contiene i nomi della lega
+  try { Object.keys(localStorage).filter(k => k.startsWith("cache:") || ["archivio-scambi", "vista", "account", "bozza-rose"].includes(k)).forEach(k => localStorage.removeItem(k)); }
   catch { /* niente memoria */ }
   if (!tieniAccesso) try { sessionStorage.clear(); } catch { /* niente memoria */ }
   try { if (window.caches) await Promise.all((await caches.keys()).map(k => caches.delete(k))); } catch { /* niente copie */ }
@@ -3973,11 +3998,12 @@ function entraNellApp() {
   location.reload();
 }
 
-// Dopo un errore la password si svuota solo se è stata rifiutata (accesso o codice sbagliato: 401/403). In «Registrati» mai: la
-// password è nuova e il rifiuto riguarda altro (invito non valido o già usato, registrazioni chiuse, #580). Un errore di compilazione
-// (400, 422), una casella non spuntata o l'attesa (429) non fanno perdere quello che hai scritto.
+// Dopo un errore la password si svuota solo in «Accedi», se è stata rifiutata (401/403): era quella sbagliata. In «Registrati» e in
+// «Password dimenticata» mai: la password è nuova e il rifiuto riguarda altro (invito non valido o già usato, registrazioni chiuse,
+// #580; un codice di recupero sbagliato: svuotata, al tocco dopo usciva «La password deve avere almeno 10 caratteri», collaudo del
+// 27/11). Un errore di compilazione (400, 422), una casella non spuntata o l'attesa (429) non fanno perdere quello che hai scritto.
 function svuotaPassword(scheda, codiceHttp) {
-  return scheda !== "registra" && (codiceHttp === 401 || codiceHttp === 403);
+  return scheda === "accedi" && (codiceHttp === 401 || codiceHttp === 403);
 }
 
 // La pagina di accesso copre tutto: finché non si entra, dell'app non si vede (e non si carica) niente.
@@ -4019,6 +4045,25 @@ function contaAttesa(bottone, secondi, frase) {
   }, 1000);
 }
 
+// Quello che hai scritto resta finché la pagina è aperta (collaudo del 27/11: da «Registrati» ad «Accedi» e ritorno nome utente,
+// email e password sparivano): un gruppo di campi per scheda e passo, solo in memoria (mai salvato nel browser), senza la trappola
+// e le caselle. Si legge quando si lascia il passo (così vale anche una password svuotata dopo un rifiuto) e si dimentica quando
+// compare il codice di recupero (account creato o password cambiata).
+const campiScritti = new Map();
+function ricordaCampi(el) {
+  const passo = el.dataset.passo, form = el.querySelector("#accesso-form");
+  if (!passo || !form) return;
+  campiScritti.set(passo, Object.fromEntries([...form.querySelectorAll("input")]
+    .filter(i => i.id && i.id !== "ac-sito" && !["checkbox", "hidden"].includes(i.type)).map(i => [i.id, i.value])));
+}
+function rimettiCampi(el, passo) {
+  el.dataset.passo = passo;
+  for (const [id, valore] of Object.entries(campiScritti.get(passo) || {})) {
+    const campo = valore ? el.querySelector(`#accesso-form input[id="${id}"]`) : null;
+    if (campo) campo.value = valore;
+  }
+}
+
 // `extra.errore`: il messaggio è un errore (un accesso con Google non riuscito), non un avviso.
 function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
   accessoAperto = true;
@@ -4035,6 +4080,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
     el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", t("accesso.nome_aria"));
     document.body.appendChild(el);
   }
+  ricordaCampi(el);
   // grafica B (spec §9): un modulo centrato senza carta; il nome è quello disegnato della testata, per i lettori di schermo «SchieraXI»
   el.innerHTML = `<div class="accesso-corpo${primaVolta ? " primo" : ""}">
     <div class="accesso-marchio">${marchio(72, true)}</div>
@@ -4048,6 +4094,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
     ${scheda === "accedi" ? `<p class="accesso-legale"><a href="#" id="accesso-dimenticata">${t("accesso.scheda_recupero")}</a></p>` : ""}
     ${scheda === "recupero" ? `<p class="accesso-legale"><a href="#" id="accesso-torna">${t("accesso.torna")}</a></p>` : ""}
     <p class="debole piccolo accesso-legale">${linkLegali()}</p></div>`;
+  rimettiCampi(el, `${scheda}/${extra.sub || ""}`);
   el.querySelectorAll("#accesso-schede button").forEach(b => b.addEventListener("click", () => mostraAccesso("", b.dataset.s)));
   const vaiA = (id, scheda_) => { const a = el.querySelector(id); if (a) a.addEventListener("click", ev => { ev.preventDefault(); mostraAccesso("", scheda_); }); };
   vaiA("#accesso-dimenticata", "recupero"); vaiA("#accesso-torna", "accedi");
@@ -4289,6 +4336,8 @@ function collegaCopiaCodice(codice) {
   $("#copia-codice").addEventListener("click", async () => avviso(await copiaTesto(codice) ? t("codice.copiato") : t("codice.non_copio")));
 }
 function mostraCodiceAccesso(titolo, codice, continua, dopo) {
+  campiScritti.clear();                                  // account creato o password cambiata: niente da ritrovare
+  delete $("#accesso").dataset.passo;
   $("#accesso").innerHTML = `<div class="accesso-corpo"><h1 class="accesso-titolo">${esc(titolo)}</h1>
     <h2>${t("codice.titolo")}</h2>${htmlCodiceUnaVolta(codice)}
     <label class="interruttore"><span>${t("codice.salvato")}</span><input type="checkbox" id="codice-salvato"></label>

@@ -294,14 +294,16 @@ def migliori_della_giornata(titolari: list[dict]) -> list[dict]:
 
 def formazione_di_oggi(db: sqlite3.Connection, regole: Regole, rose: Rose) -> dict:
     """La consigliata come la usa Oggi: se con questa rosa non si forma una squadra (per esempio in un reparto nessuno gioca, per i
-    rinvii) una formazione vuota, e il resto della schermata si mostra lo stesso. Può alzare InCalcolo (202)."""
+    rinvii) una formazione vuota, e il resto della schermata si mostra lo stesso. Se la rosa non basta per nessun modulo
+    (consigli.RosaIncompleta) la formazione vuota ha anche la frase, in `rosa_incompleta`. Può alzare InCalcolo (202)."""
     s = rose.squadra(rose.mia_squadra or "")
     if not s:
         raise ValueError("Indica la tua squadra in «La mia squadra».")
     try:
         return consigli.formazione(db, regole, rose)
-    except ValueError:
-        return {"titolari": [], "panchina": [], "modulo": "–", "punteggio_atteso": None, "squadra": s.nome}
+    except ValueError as e:
+        vuota = {"titolari": [], "panchina": [], "modulo": "–", "punteggio_atteso": None, "squadra": s.nome}
+        return vuota | {"rosa_incompleta": e.args[0]} if isinstance(e, consigli.RosaIncompleta) else vuota
 
 
 def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | None = None, file_scelte=None,
@@ -394,6 +396,8 @@ def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | 
         logging.getLogger(__name__).warning("Oggi: blocco delle partite rinviate non calcolato (%s) in %s", type(e).__name__,
                                             registro_giornate._dove(e))
         corpo["rinvio"] = None
+    if f.get("rosa_incompleta"):                        # la rosa non basta per una formazione: uno stato da mostrare, non un errore
+        corpo["rosa_incompleta"] = {"testo": str(f["rosa_incompleta"]), "frase": frasi.di(f["rosa_incompleta"])}
     if not scadenza_mostrata(corpo):                    # la giornata da preparare non ha ancora le date (#552)
         testo = F("giornata.senza_data")
         corpo["senza_data"] = {"testo": testo, "frase": frasi.di(testo)}

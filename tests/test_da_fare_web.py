@@ -49,7 +49,7 @@ def test_bersagli_di_tocco_da_44_px():
 
 def test_senza_rose_e_un_benvenuto_non_un_errore():
     assert "if (o.senza_rose)" in APP and "data-importa-rose" in APP
-    assert "const erroreVista = e => senzaRose(e) ? cartaSenzaRose()" in APP     # Formazione, Mercato, Scambi: stato vuoto
+    assert re.search(r"const erroreVista = \(?e\b.*? => senzaRose\(e\) \? cartaSenzaRose\(\)", APP)     # Formazione, Mercato, Scambi: stato vuoto
     assert "nessuna rosa" in APP and ".benvenuto" in CSS
 
 

@@ -51,6 +51,28 @@ def test_interruttore_anche_per_il_file_e_fuoco_sull_esito(web, tmp_path):
     assert len(chieste) == 2 and all(parse_qs(urlsplit(u).query).get("sostituisci_tutto") == ["true"] for u in chieste), chieste
 
 
+def test_salvate_le_rose_da_qui_la_bozza_del_primo_avvio_se_ne_va(web, tmp_path):
+    """Revisione della #986: la bozza del testo delle rose del primo avvio (`bozza-rose` nel browser) si toglieva solo confermando
+    nella guida. Salvate le rose da Impostazioni › Aggiorna le rose restava, e tornava nella guida riaperta."""
+    if web.fase != "prima":
+        pytest.skip("conta la pagina delle rose, non la fase della giornata")
+    chieste: list[str] = []
+    rispondi(web, "/api/rose/anteprima/file", ANTEPRIMA, chieste)
+    rispondi(web, "/api/rose/file", ESITO, chieste)
+    web.memoria({"bozza-rose": "Mia\nSommer\n"})
+    web.apri("/?vista=impostazioni&gruppo=rose")
+    p = web.pagina
+    assert p.evaluate("() => localStorage.getItem('bozza-rose')") == "Mia\nSommer\n"
+    file = tmp_path / "rose.csv"
+    file.write_text("Mia\nSommer\n", encoding="utf-8")
+    with p.expect_file_chooser() as scelta:
+        p.get_by_role("button", name="Scegli il file (Excel o CSV)").click()
+    scelta.value.set_files(str(file))
+    p.get_by_role("button", name="Conferma e salva").click()
+    p.get_by_role("heading", name="Cosa è cambiato").wait_for(timeout=10000)
+    assert p.evaluate("() => localStorage.getItem('bozza-rose')") is None
+
+
 def test_il_pulsante_del_testo_si_chiama_come_nella_guida(web):
     if web.fase != "prima":
         pytest.skip("conta la pagina delle rose, non la fase della giornata")

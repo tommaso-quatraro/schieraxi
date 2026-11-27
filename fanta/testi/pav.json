@@ -19,6 +19,11 @@
     "it": "Esporta le rose da Leghe (Excel, CSV o testo copiato), poi incolla qui il testo o scegli il file. Per cominciare basta anche solo la tua squadra.",
     "en": "Export the rosters from Leghe (Excel, CSV or copied text), then paste the text here or choose the file. To get started, your own team alone is enough."
   },
+  "pav.dove_su_leghe": {
+    "it": "Su Leghe le trovi nella pagina delle rose della tua lega, sul sito: da lì scarichi il file Excel o copi il testo.",
+    "en": "On Leghe you find them on your league's rosters page, on the website: from there you download the Excel file or copy the text.",
+    "nota": "sotto la spiegazione del passo «Le rose»: dove si fa su Leghe (collaudo del 27/11), con le parole della guida e di «Aggiorna le rose» (lega.non_hai_file)"
+  },
   "pav.testo_delle_rose": {
     "it": "Testo delle rose",
     "en": "Roster text"

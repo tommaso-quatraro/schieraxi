@@ -119,3 +119,58 @@ def test_registrazione_aperta_password_dimenticata_parte_dal_codice(web):
     web.pagina.locator("#accesso-dimenticata").click()
     web.pagina.locator("#ac-codice").wait_for(timeout=10000)
     assert web.pagina.locator("#accesso-metodi button[data-m='codice'][aria-pressed='true']").count() == 1
+
+
+# ---------------------------------------------------------------- quello che hai scritto resta (collaudo dell'amico nuovo del 27/11)
+def _rispondi(route, corpo, stato=200):
+    route.fulfill(status=stato, content_type="application/json; charset=utf-8", body=json.dumps(corpo, ensure_ascii=False))
+
+
+def test_password_dimenticata_con_il_codice_sbagliato_la_password_nuova_resta(web):
+    """Un codice sbagliato (403) svuotava la password nuova: corretto il codice, al tocco dopo usciva «La password deve avere almeno
+    10 caratteri». Ora quello che hai scritto resta: si corregge il codice e si rimanda, con la stessa password nuova."""
+    solo_prima(web)
+    mandati = []
+
+    def recupero(route):
+        mandati.append(json.loads(route.request.post_data))
+        if len(mandati) == 1:
+            _rispondi(route, {"detail": "Nome utente o codice non validi"}, 403)
+        else:
+            _rispondi(route, {"codice_recupero": "NUOVO-CODICE-DI-PROVA"})
+    web.risposta("/api/account/me", SENZA_SESSIONE, stato=401)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/account/recupero", recupero)
+    web.pagina.goto(web.server.indirizzo + "/", wait_until="load")
+    aspetta_accesso(web)
+    web.pagina.locator("#accesso-dimenticata").click()
+    web.pagina.locator("#ac-codice").wait_for(timeout=10000)
+    web.pagina.locator("#ac-nome").fill("amico")
+    web.pagina.locator("#ac-codice").fill("CODICE-SBAGLIATO")
+    web.pagina.locator("#ac-pw").fill("una-password-nuova-1")
+    web.pagina.locator("#accesso-invia").click()
+    web.pagina.locator("#accesso-msg [role=alert]").wait_for(timeout=10000)
+    assert web.pagina.locator("#ac-pw").input_value() == "una-password-nuova-1"
+    assert web.pagina.locator("#ac-nome").input_value() == "amico"
+    web.pagina.locator("#ac-codice").fill("CODICE-GIUSTO")
+    web.pagina.locator("#accesso-invia").click()
+    web.pagina.get_by_text("NUOVO-CODICE-DI-PROVA").wait_for(timeout=10000)
+    assert [m["nuova"] for m in mandati] == ["una-password-nuova-1"] * 2, mandati
+
+
+def test_registrati_poi_accedi_e_di_nuovo_registrati_i_campi_restano(web):
+    """Passare ad «Accedi» e tornare a «Registrati» cancellava nome utente, email e password già scritti. Ora restano finché la
+    pagina è aperta; anche «Accedi» ritrova quello che ci avevi scritto."""
+    solo_prima(web)
+    apri_registrati(web, SENZA_SESSIONE)
+    scritti = {"#ac-invito": "PROVA-1234", "#ac-nome": "amico", "#ac-email": "amico@esempio.invalid", "#ac-pw": "una-password-lunga-9"}
+    for campo, valore in scritti.items():
+        web.pagina.locator(campo).fill(valore)
+    web.pagina.locator("#accesso-schede button[data-s='accedi']").click()
+    web.pagina.locator("#accesso-dimenticata").wait_for(timeout=10000)
+    web.pagina.locator("#ac-nome").fill("amico-vecchio")
+    web.pagina.locator("#accesso-schede button[data-s='registra']").click()
+    web.pagina.locator("#ac-letto").wait_for(timeout=10000)
+    assert {c: web.pagina.locator(c).input_value() for c in scritti} == scritti
+    web.pagina.locator("#accesso-schede button[data-s='accedi']").click()
+    web.pagina.locator("#accesso-dimenticata").wait_for(timeout=10000)
+    assert web.pagina.locator("#ac-nome").input_value() == "amico-vecchio"

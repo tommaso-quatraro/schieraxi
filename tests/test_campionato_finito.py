@@ -105,7 +105,9 @@ def test_a_campionato_finito_oggi_e_widget_200_formazione_dice_la_frase(lega_fin
     for percorso in ("/api/formazione", "/api/formazione/testo", "/api/osservati", "/api/mercato", "/api/calendario"):
         r = c.get(percorso)
         assert r.status_code == 409, (percorso, r.status_code, r.text)
-        assert r.json() == {"detail": o["campionato_finito"]["testo"], "codice": "campionato_finito"}, percorso
+        # dal 27/11/2026 anche la frase con la chiave (campo facoltativo `frase` degli errori), la stessa di Oggi
+        assert r.json() == {"detail": o["campionato_finito"]["testo"], "codice": "campionato_finito",
+                            "frase": o["campionato_finito"]["frase"]}, percorso
 
 
 def test_senza_calendario_resta_il_messaggio_di_sempre(lega_finita, monkeypatch):

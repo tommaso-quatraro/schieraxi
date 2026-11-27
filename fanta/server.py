@@ -557,8 +557,11 @@ def _errore_valore(request: Request, e: ValueError):
         codice = getattr(type(e), "codice", None)           # nome breve dell'errore per i client (es. «formazione_non_valida»), facoltativo
         # 422 per i dati oltre i tetti (regole_testo.TestoTroppoLungo, regole.RegoleTroppoGrandi); 409 a campionato finito (consigli.CampionatoFinito)
         stato = getattr(type(e), "stato", 400)
+        # un messaggio scritto come frase con la chiave (fanta/frasi.py) porta anche `frase`: la web lo traduce (campo facoltativo)
+        frase = frasi.di(e.args[0]) if len(e.args) == 1 else None
         return JSONResponse(status_code=stato if stato in (400, 409, 422) else 400,
-                            content={"detail": str(e)[:500]} | ({"codice": codice} if isinstance(codice, str) else {}))
+                            content={"detail": str(e)[:500]} | ({"codice": codice} if isinstance(codice, str) else {})
+                            | ({"frase": frase} if frase else {}))
     codice = secrets.token_hex(4)               # lo stesso codice nel log del servizio: chi gestisce l'app ritrova il caso
     passi = traceback.extract_tb(e.__traceback__)
     dove = f"{Path(passi[-1].filename).name}:{passi[-1].lineno}" if passi else "?"
@@ -805,12 +808,21 @@ def stato(request: Request, ctx: Contesto = Depends(lega_corrente)):
             "errori_ultimo": _errori_per(json.loads(ultimo["dettaglio"]) if ultimo and ultimo["dettaglio"] else [],
                                          _e_amministratore(request)),
             "mia_squadra": r.mia_squadra if r else None, "rose_importate": bool(r and r.squadre),
+            # la tua rosa non basta per nessun modulo (consigli.rosa_incompleta): la web non chiede la Formazione, che risponderebbe
+            # 400, e mostra la frase che le manda Oggi (`rosa_incompleta`)
+            "rosa_incompleta": _rosa_incompleta(r, rg),
             "nome_lega": rg.nome_lega, "aggiornamento_in_corso": in_corso,
             "versione": (_novita() or [{"versione": "?"}])[0]["versione"],
             "sorgente": testi_legali.sorgente(),          # indirizzo del codice sorgente (AGPL); "" se non impostato
         }
     finally:
         db.close()
+
+
+def _rosa_incompleta(r: lega.Rose | None, rg: regole.Regole) -> bool:
+    """Se la tua squadra c'è e con la sua rosa non si forma una squadra (consigli.rosa_incompleta). Solo conti sulla rosa: niente calcoli."""
+    s = r.squadra(r.mia_squadra) if r and r.mia_squadra else None
+    return bool(s and consigli.rosa_incompleta(s, rg))
 
 
 SALUTE_PER_IP = (600, 3600)          # richieste e secondi per indirizzo: il controllo esterno chiede ogni pochi minuti

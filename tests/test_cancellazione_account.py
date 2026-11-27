@@ -410,6 +410,7 @@ def formazione_in_coda(ambiente, calciatori, ora_fissa, monkeypatch):
     monkeypatch.setattr(server.listone, "carica", lambda *a, **k: (calciatori, "oggi"))
     monkeypatch.setattr(consigli, "stagione_corrente", lambda: "2026-27")
     monkeypatch.setattr(consigli, "prossima_giornata", lambda db, st, adesso=None: 9)
+    monkeypatch.setattr(consigli, "rosa_incompleta", lambda s, regole: None)     # rosa di prova corta: qui conta la coda, non la rosa
     stato = {"via": threading.Event(), "finiti": 0}
 
     def pronta(db, s, giornata, regole, simulazioni):

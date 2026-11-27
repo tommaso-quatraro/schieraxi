@@ -8,7 +8,7 @@ import sqlite3
 import threading
 import time
 import weakref
-from collections import OrderedDict
+from collections import Counter, OrderedDict
 from collections.abc import Collection
 from dataclasses import asdict, dataclass, replace
 from datetime import date, datetime, timedelta
@@ -22,10 +22,10 @@ from . import modello, perche_scelta, rinvii, scelte, squalifiche, stato_dati, t
 from .aggiorna import Stagione
 from .blocco import BloccoFile
 from .frasi import F
-from .lega import Rose, Squadra
+from .lega import POSTI_DEL_RUOLO, Rose, Squadra
 from .notifiche import SOGLIA_AVVISO_PUNTI
 from .percorsi import RADICE, scrivi_sicuro
-from .regole import GIORNATE_SERIE_A, Regole, serie_a_a_lega
+from .regole import GIORNATE_SERIE_A, RUOLI, Regole, serie_a_a_lega
 
 LOG = logging.getLogger(__name__)
 
@@ -463,6 +463,33 @@ class FormazioneImpossibile(ValueError):
     guasto: `formazione` lo ricorda come un risultato (stessa chiave, stesso esito) e chi legge solo la cache, il widget, lo trova (#651)."""
 
 
+class RosaIncompleta(FormazioneImpossibile):
+    """Con i giocatori riconosciuti della rosa nessun modulo ammesso si riempie: mancano giocatori per le regole della lega (collaudo
+    dell'amico nuovo del 27/11, 9 giocatori incollati). La frase dice quanti per ruolo; `codice` va nel 400 per i client."""
+    codice = "rosa_incompleta"
+
+
+def rosa_incompleta(s: Squadra, regole: Regole) -> frasi.Frase | None:
+    """La frase della rosa che non basta per una formazione: «Non si riesce a formare una squadra: secondo le regole della lega, alla
+    rosa di Mia mancano 1 portiere e 6 difensori.». Solo se con i giocatori riconosciuti nessun modulo ammesso si riempie (un
+    portiere e i giocatori di movimento del modulo) e alla rosa mancano giocatori per le regole (`regole.rosa`, contati come
+    l'anteprima e «La mia squadra»: `lega.problemi_rosa`). Altrimenti None: una rosa incompleta che forma una squadra si calcola."""
+    riconosciuti = Counter(g.ruolo for g in s.giocatori if g.id is not None)
+    for m in regole.moduli:
+        try:
+            d, c, a = fz.modulo_in_numeri(m)
+        except ValueError:
+            continue
+        if all(riconosciuti.get(r, 0) >= n for r, n in (("P", 1), ("D", d), ("C", c), ("A", a))):
+            return None
+    conta = Counter(g.ruolo for g in s.giocatori)
+    mancano = [(r, regole.rosa[r] - conta.get(r, 0)) for r in RUOLI if conta.get(r, 0) < regole.rosa.get(r, 0)]
+    if not mancano:
+        return None
+    return F("formazione.rosa_incompleta", squadra=s.nome, n=sum(n for _, n in mancano),
+             elenco=frasi.elenco([F(POSTI_DEL_RUOLO[r], n=n) for r, n in mancano], con_e=True))
+
+
 IMPOSSIBILE = "formazione_impossibile"      # la voce della cache che ricorda l'esito: {IMPOSSIBILE: messaggio per l'utente}
 SIMULAZIONI = 600                           # quelle della consigliata che vedono tutti (Formazione, Oggi, widget, avvisi)
 
@@ -479,6 +506,9 @@ def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra:
     giornata = giornata or giornata_da_giocare(db, stagione, regole, adesso)
     if giornata is None:
         raise senza_giornata(db, stagione, adesso)
+    incompleta = rosa_incompleta(s, regole)          # la causa vera, prima del calcolo: non «in qualche ruolo nessuno gioca»
+    if incompleta:
+        raise RosaIncompleta(incompleta)
     # La consigliata già mostrata per questa squadra e giornata (#335): resta finché la migliore non vale almeno SOGLIA_CAMBIO_PUNTI in
     # più o un suo titolare non gioca più (`stabile`); dopo la scadenza resta e basta. Tutti passano di qui (Formazione, Oggi, widget,
     # Da fare, avvisi, copia alla scadenza): leggono la stessa.
