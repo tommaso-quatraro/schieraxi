@@ -1,5 +1,28 @@
 [
   {
+    "versione": "1.614",
+    "data": "2026-11-27T17:41:41",
+    "titolo": "iPhone: accesso più chiaro dopo troppi tentativi e a sessione finita",
+    "voci": [
+      "iPhone, accesso: dopo «troppi tentativi» l'attesa vale solo per quello che stavi facendo; «Password dimenticata», «Registrati» e «Continua con Google» non restano spenti.",
+      "iPhone: se un limite del giorno dice già quando si azzera (per esempio in Scrivici), il tempo non si ripete due volte.",
+      "iPhone: quando il server chiude la sessione, la schermata di accesso dice «La sessione è finita: accedi di nuovo.», come la web; e il telefono su cui entri viene riconosciuto, così poi rientri anche se qualcuno prova password sul tuo nome."
+    ],
+    "tecnico": [
+      "iPhone: ModuloAccesso.attesa (fine e passo del 429) al posto dello @State della vista; vale solo nel passo in cui è nata e ModuloAccesso.vai la toglie, come contaAttesa della web.",
+      "iPhone: ErroreApi.errorDescription non aggiunge «Riprova tra …» quando la frase del server contiene la parola «tra» (ErroreApi.diceGiaLAttesa, come attesaDa della web): Scrivici, err.limite_oggi, err.troppe_ora.",
+      "iPhone: SessioneAccount.chiudiPerSessioneFinita prepara accesso.sessione_finita (catalogo, nuova chiave in ios/testi/accesso.txt) per la schermata di accesso quando un 401 confermato chiude una sessione che c'era, come avviso «attenzione» (AvvisoAccesso: colore attenzione e icona d'avviso, senza vibrazione d'errore; le conferme restano verdi); non dopo Esci, né senza una sessione.",
+      "iPhone: il campo dispositivo di POST /api/account/accedi e registra (nativo) si salva nel Keychain (servizio it.schieraxi.app.dispositivo, un elemento per server; Accesso.dispositivoValido) e ServerHTTP lo rimanda in X-Fanta-Dispositivo su accedi, registra e recupero (docs/API.md 1.4b). Esci non lo toglie.",
+      "Web: solo il commento di spiegaRegistrazione (il modo predefinito è invito, non aperta). Registro di coerenza: riga 110 corretta, riga 124 nuova."
+    ],
+    "titolo_en": "iPhone: clearer sign-in after too many attempts and when the session ends",
+    "voci_en": [
+      "iPhone, sign in: after “\u0001” the wait only applies to what you were doing; “\u0001”, “\u0001” and “\u0001” no longer stay disabled.",
+      "iPhone: when a daily limit already says when it resets (for example in Write to us), the time is no longer repeated twice.",
+      "iPhone: when the server ends your session, the sign-in screen says “\u0001”, like the web; and the phone you sign in on is recognised, so you can get back in later even if someone is trying passwords on your name."
+    ]
+  },
+  {
     "versione": "1.613",
     "data": "2026-11-27T17:21:43",
     "titolo": "Il promemoria del quarto d'ora prima arriva anche se il server si ferma",
