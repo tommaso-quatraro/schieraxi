@@ -131,7 +131,7 @@ struct TitoloPaginaTests {
 
     @Test("Pulsanti distruttivi nelle liste: icona e testo dello stesso rosso", arguments: [
         ("LegaPagine.swift", "Label(Catalogo.Lega.archiviaRiparti"),
-        ("RegoleEditor.swift", "Label(\"Togli la fascia\""),
+        ("RegoleEditor.swift", "Label(nomi.togli"),
     ])
     func distruttiviStessoColore(file: String, etichetta: String) throws {
         let righe = try Self.righe(Self.cartellaLega.appendingPathComponent(file))

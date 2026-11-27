@@ -108,7 +108,7 @@ struct RegoleSalvataggioTests {
         await vm.carica()
         for m in vm.moduliAttivi { vm.alternaModulo(m) }
         await vm.salva()
-        #expect(vm.esito == "Scegli almeno un modulo.")
+        #expect(vm.esito == Catalogo.Regole.scegliAlmenoModulo)
         vm.alternaModulo("4-4-2")
         #expect(vm.esito == nil, "il campo è cambiato: l'errore di prima non vale più")
         #expect(vm.esitoRiuscito)
@@ -132,7 +132,7 @@ struct RegoleSalvataggioTests {
         await vm.carica()
         for m in vm.moduliAttivi { vm.alternaModulo(m) }
         #expect(await vm.salva() == false)
-        #expect(vm.esito == "Scegli almeno un modulo.")
+        #expect(vm.esito == Catalogo.Regole.scegliAlmenoModulo)
         #expect(!vm.esitoRiuscito)
         #expect(vm.modificato)
         vm.alternaModulo("4-4-2")
