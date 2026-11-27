@@ -97,11 +97,13 @@ simbolo, «ieri», di oggi «18:30»: con il testo molto grande sta su una riga 
 ora italiana, contata dall'istante della voce: a mezzanotte «dati delle 23:30» diventa «dati di ieri 23:30»). Nel Formazione piccolo
 e medio la riga c'è anche con «2 da controllare», sopra, e con il testo normale ci stanno tutte e due, anche sull'iPad: per fare
 posto cedono prima il titolo del piccolo (resta il simbolo con la giornata), nel medio «punti attesi» e la fascia su due righe
-(«attesi · tra 65 e 81» su una), poi la fascia («72,7 attesi»); «da controllare» per ultimo, solo con il testo molto grande, e la
-copia mai (`DisposizioneWidget.proveFormazione`). Quindi nel medio, con la copia salvata e il testo molto grande, «da controllare»
-cede alla data della copia (comportamento accettato nel collaudo del 25/11, #838, #871): una copia vecchia che sembra attuale è
-peggio, e «da controllare» lo dicono il grande e la schermata di blocco. Test in `WidgetOraCopiaTests`; foto: `-DATI salvati` (copia di due giorni prima)
-e `salvati_oggi` (copia di oggi), giri `iphone_salvati`, `iphone_salvati_testo_grande` e `ipad_salvati` di `scripts/screenshot_widget.sh`.
+(«attesi · tra 65 e 81» su una), poi la fascia («72,7 attesi»); per ultima, solo con il testo molto grande, la data della copia, e
+«da controllare» mai (`DisposizioneWidget.proveFormazione`). Prima di cedere la data si accorcia in larghezza («dati di mer 25» →
+«mer 25») e «2 da controllare» diventa «2 da vedere». Fino al 27/11 era il contrario (collaudo del 25/11, #838, #871): con il testo
+grande piccolo e medio tenevano la sola data e perdevano «2 da controllare»; deciso nella #959 che i titolari da controllare sono più
+utili della data. Test in `WidgetOraCopiaTests`; foto: `-DATI salvati` (copia di due giorni prima)
+e `salvati_oggi` (copia di oggi), giri `iphone_salvati`, `iphone_salvati_testo_grande`, `ipad_salvati` e `ipad_salvati_testo_grande`
+di `scripts/screenshot_widget.sh`.
 
 ## Collegamento automatico (Apple ID gratuito + SideStore)
 
