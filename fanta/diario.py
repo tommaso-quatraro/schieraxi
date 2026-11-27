@@ -1139,9 +1139,10 @@ def _letto(x: float) -> float:
     return float(Decimal(x).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
 
 
-def _formazione_che_conta(voce: dict) -> tuple[str, dict] | None:
-    """La formazione dei punti della giornata, come nella riga della pagina Giornate e nel riepilogo della Formazione: la tua
-    (`schierata`), altrimenti la copia della consigliata fatta alla scadenza (`automatica`), altrimenti la consigliata."""
+def formazione_che_conta(voce: dict) -> tuple[str, dict] | None:
+    """La formazione dei punti della giornata, come nella riga della pagina Giornate, nel riepilogo della Formazione e in «Attesi e
+    fatti» del widget (`widget._diario`): la tua (`schierata`), altrimenti la copia della consigliata fatta alla scadenza
+    (`automatica`), altrimenti la consigliata. ("schierata" | "automatica" | "consigliata", la riga), None se non ce n'è una."""
     return next(((k, voce[k]) for k in ("schierata", "automatica", "consigliata") if isinstance(voce.get(k), dict)), None)
 
 
@@ -1158,7 +1159,7 @@ def _frase_scarti(meglio: list[dict], peggio: list[dict]):
 
 def fatti_e_attesi(voce: dict) -> dict | None:
     """Per la pagina Giornate (#672): i punti fatti e attesi della formazione che conta (`formazione`: "schierata", "automatica" o
-    "consigliata", vedi `_formazione_che_conta`), la `differenza` (fatti meno attesi, positiva = meglio del previsto) e chi dei suoi
+    "consigliata", vedi `formazione_che_conta`), la `differenza` (fatti meno attesi, positiva = meglio del previsto) e chi dei suoi
     titolari ha fatto meglio (`meglio`) o peggio (`peggio`) del suo fantavoto atteso di almeno SOGLIA_SCARTO punti, al massimo
     MAX_SCARTI per parte, dalla differenza più grande: `{id, nome, ruolo, atteso, preso, differenza}`. L'atteso di un giocatore è quello mostrato prima della
     scadenza (istantanea), se c'è, altrimenti quello rifatto con i soli dati di prima (`giocatori`): gli stessi numeri della tabella
@@ -1166,7 +1167,7 @@ def fatti_e_attesi(voce: dict) -> dict | None:
     chi aveva la partita rinviata e ha il voto della regola della lega (`giocatori[].rinvio`: d'ufficio o nessuno, non del campo).
     Le differenze sono quelle dei numeri come la pagina li scrive (`_letto`). `testo` e `frase`: la frase su `meglio` e `peggio`,
     null se sono vuoti. None se la formazione non ha i punti."""
-    chi = _formazione_che_conta(voce)
+    chi = formazione_che_conta(voce)
     if chi is None or _numero(chi[1].get("atteso")) is None or _numero(chi[1].get("reale")) is None:
         return None
     nome, f = chi
@@ -1238,7 +1239,7 @@ def spiegazione_punti(voce: dict) -> dict | None:
     rinviata, chi è entrato al posto di chi, chi è rimasto senza sostituto, modificatore difesa), con `righe_frasi` per tradurle.
     Una voce scritta prima del dettaglio (o che non si è potuta completare, `dettaglio` null) ha una frase sola che lo dice, ma solo
     se i conti non tornano con i voti degli 11. None se non c'è niente da spiegare."""
-    chi = _formazione_che_conta(voce)
+    chi = formazione_che_conta(voce)
     if chi is None or _numero(chi[1].get("reale")) is None:
         return None
     nome, f = chi

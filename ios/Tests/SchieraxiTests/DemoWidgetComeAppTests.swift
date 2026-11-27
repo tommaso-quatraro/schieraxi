@@ -122,10 +122,13 @@ struct DemoWidgetComeAppTests {
         #expect(w.partiteInGioco.isEmpty)
     }
 
-    @Test("«Attesi e fatti» del widget sono le giornate del Diario dell'app (la tua formazione se c'era)")
+    /// La formazione che conta è quella del server (`diario.formazione_che_conta`): la tua, altrimenti la copia fatta alla
+    /// scadenza (`automatica`), altrimenti la consigliata, come la riga della pagina Giornate.
+    @Test("«Attesi e fatti» del widget sono le giornate del Diario dell'app (la tua formazione, o la copia alla scadenza, se c'era)")
     func diarioComeLApp() throws {
         let attese = try elenco(try app("/api/diario"), "giornate").map { g -> String in
-            let e = (g["schierata"] as? [String: Any]) ?? (g["consigliata"] as? [String: Any]) ?? [:]
+            let e = (g["schierata"] as? [String: Any]) ?? (g["automatica"] as? [String: Any])
+                ?? (g["consigliata"] as? [String: Any]) ?? [:]
             return "G\(g["giornata_lega"] as? Int ?? 0): \(punti(e["atteso"])) → \(punti(e["reale"]))"
         }
         let w = try widget()

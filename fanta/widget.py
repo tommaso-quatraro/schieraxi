@@ -191,14 +191,17 @@ def costruisci(db: sqlite3.Connection, regole: Regole, rose: Rose, file_diario, 
 
 
 def _diario(file_diario, regole: Regole, db: sqlite3.Connection) -> list[dict]:
-    """Punti attesi contro punti fatti nelle ultime giornate (dal diario; con la formazione schierata se c'è, altrimenti la
+    """Punti attesi contro punti fatti nelle ultime giornate, dal diario, con la formazione che conta come nella pagina Giornate e
+    nel riepilogo di Oggi (`diario.formazione_che_conta`: la tua, altrimenti la copia fatta alla scadenza, altrimenti la
     consigliata). `giornata_lega` e `stagione` come in /api/diario: il widget scrive lo stesso numero dell'app (null fuori dalla
     stagione in corso), e non ha le voci che l'app non mostra (`diario.sospesa`)."""
     voci = diario.elenco(file_diario, regole, db)["giornate"][:MAX_DIARIO]
-    return [{"giornata": v["giornata"], "giornata_lega": v.get("giornata_lega"), "stagione": v["stagione"],
-             "attesi": (v.get("schierata") or v["consigliata"])["atteso"],
-             "fatti": (v.get("schierata") or v["consigliata"])["reale"],
-             "intervallo": (v.get("schierata") or v["consigliata"]).get("intervallo")} for v in voci]
+    out = []
+    for v in voci:
+        _, f = diario.formazione_che_conta(v)
+        out.append({"giornata": v["giornata"], "giornata_lega": v.get("giornata_lega"), "stagione": v["stagione"],
+                    "attesi": f["atteso"], "fatti": f["reale"], "intervallo": f.get("intervallo")})
+    return out
 
 
 def _dati(db: sqlite3.Connection) -> dict:
