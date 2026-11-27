@@ -5,15 +5,28 @@ import logging
 import sqlite3
 from datetime import datetime
 
+from . import frasi
 from .punteggio import BONUS_E_MALUS, COLONNA_VOTO, fantavoto
 from .regole import Regole
 
 LOG = logging.getLogger(__name__)
 
+FUORI_DAL_LISTONE = "Questo giocatore non è più nel listone di Serie A."
+
+
+class FuoriDalListone(LookupError):
+    """Il giocatore non è nel listone: uscito dalla Serie A (la Rosa lo tiene) o un codice che non esiste. Il messaggio è la frase
+    per chi usa l'app (`FUORI_DAL_LISTONE`, `err.fuori_listone` nel catalogo): la rotta della scheda risponde 404 con quella."""
+
+
+SOGLIA_RENDIMENTO = 0.3       # punti a partita sopra (o sotto) le occasioni oltre i quali si dice «cala» (o «si sblocca»)
+
 
 def rendimento(avanzate: dict | None, ruolo: str, con_voto: int, regole) -> dict | None:
     """Quanto il giocatore rende sopra (o sotto) le occasioni che ha avuto: (gol - xG) e (assist - xA) valutati
-    con i bonus della lega, per partita con voto. Positivo = sta avendo fortuna/precisione, tende a calare."""
+    con i bonus della lega, per partita con voto. Positivo = sta avendo fortuna/precisione, tende a calare.
+    `tendenza` lo dice con un codice (prima lo decidevano i client con la stessa soglia): `cala` sopra +0,3, `sblocca` sotto
+    −0,3, `in_linea` altrimenti, sul numero con due decimali, quello che si vede; `testo` e `frase` sono la frase del catalogo."""
     if not avanzate or not avanzate.get("minuti") or not con_voto:
         return None
     gol, xg = avanzate.get("gol") or 0, avanzate.get("xg") or 0.0
@@ -21,8 +34,19 @@ def rendimento(avanzate: dict | None, ruolo: str, con_voto: int, regole) -> dict
     b = regole.bonus
     if ruolo not in b.gol:
         return None
-    extra = (b.gol[ruolo] * (gol - xg) + b.assist * (ass - xa)) / con_voto
-    return {"sovra_rendimento": round(extra, 2), "gol_meno_xg": round(gol - xg, 2), "assist_meno_xa": round(ass - xa, 2)}
+    sovra = round((b.gol[ruolo] * (gol - xg) + b.assist * (ass - xa)) / con_voto, 2)
+    tendenza = "cala" if sovra > SOGLIA_RENDIMENTO else "sblocca" if sovra < -SOGLIA_RENDIMENTO else "in_linea"
+    frase = frasi.F({"cala": "rendimento.cala", "sblocca": "rendimento.sblocca", "in_linea": "rendimento.in_linea"}[tendenza])
+    return {"sovra_rendimento": sovra, "gol_meno_xg": round(gol - xg, 2), "assist_meno_xa": round(ass - xa, 2),
+            "tendenza": tendenza, "testo": frase, "frase": frasi.di(frase)}
+
+
+def prossime_partite(calendario: dict, previsione: dict | None, calciatore: dict) -> list[dict]:
+    """Le prossime partite della squadra del giocatore dal calendario (`gestione.calendario`): la squadra della previsione o, senza
+    previsione, quella del listone (prima la web le mostrava solo con la previsione e l'iPhone ripiegava sul listone). [] se la
+    squadra non è nel calendario."""
+    squadra = (previsione or {}).get("squadra") or calciatore.get("squadra_slug")
+    return next((s["partite"] for s in calendario.get("squadre", []) if squadra and s["squadra"] == squadra), [])
 
 
 def con_voto_fino_al(db: sqlite3.Connection, calciatore_id: int, stagione: str, giorno: str | None,
@@ -80,7 +104,7 @@ def scheda(db: sqlite3.Connection, calciatore_id: int, stagione: str, regole: Re
     """La scheda del giocatore; voti, fantamedia e andamento con le regole della lega (`regole`)."""
     c = db.execute("SELECT * FROM calciatori WHERE id = ?", (calciatore_id,)).fetchone()
     if not c:
-        raise ValueError(f"calciatore {calciatore_id} non nel listone")
+        raise FuoriDalListone(FUORI_DAL_LISTONE)
     voti = _voti(db, calciatore_id, stagione, c["ruolo"], regole)
     calcolabile = c["ruolo"] in regole.bonus.gol       # senza: niente fantamedia né andamento (vedi `_voti`)
     giornate_giocate = db.execute("SELECT COUNT(DISTINCT giornata) FROM partite WHERE stagione = ? AND giocata = 1",
@@ -94,6 +118,7 @@ def scheda(db: sqlite3.Connection, calciatore_id: int, stagione: str, regole: Re
         "fantamedia": round(sum(v["fv"] for v in con_voto) / n, 2) if n and calcolabile else None,
         **{k: sum(v[k] for v in voti) for k in ("gol", "assist", "ammonizioni", "espulsioni", "gol_subiti",
                                                  "rig_segnati", "rig_sbagliati", "rig_parati", "autogol")},
+        "gol_con_rigori": sum(v["gol"] + v["rig_segnati"] for v in voti),     # la tessera «gol (N rig.)»: i client non sommano
         "titolare": sum(1 for v in voti if not v["subentrato"]),
         "ultime_5_fv": [v["fv"] for v in voti[-5:]],
     }

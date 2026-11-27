@@ -1822,7 +1822,10 @@ def giocatore(calciatore_id: int = FPath(ge=1, le=MAX_ID_CALCIATORE), ctx: Conte
     db = _db()
     try:
         r = _regole(ctx)
-        s = scheda.scheda(db, calciatore_id, consigli.stagione_corrente(), r)      # fantavoti con i bonus della lega
+        try:
+            s = scheda.scheda(db, calciatore_id, consigli.stagione_corrente(), r)      # fantavoti con i bonus della lega
+        except scheda.FuoriDalListone as e:          # uscito dalla Serie A: la frase per chi usa l'app, non il codice interno
+            raise HTTPException(404, str(e)) from None
         try:
             prev, giornata, _ = consigli.previsioni(db, r)
             if calciatore_id in prev.index:
@@ -1839,6 +1842,12 @@ def giocatore(calciatore_id: int = FPath(ge=1, le=MAX_ID_CALCIATORE), ctx: Conte
         con_voto = scheda.con_voto_fino_al(db, calciatore_id, consigli.stagione_corrente(), (s["avanzate"] or {}).get("dati_fino_al"),
                                            r.fonte_voto)
         s["rendimento"] = scheda.rendimento(s["avanzate"], s["calciatore"]["ruolo"], con_voto, r)
+        # le prossime partite della sua squadra, anche senza previsione (prima i client le cercavano nel calendario da sé)
+        try:
+            calendario = gestione.calendario(db, regole=r)
+        except (consigli.CampionatoFinito, consigli.SenzaCalendario):     # nessuna giornata da giocare: nessuna partita
+            calendario = {}
+        s["prossime_partite"] = scheda.prossime_partite(calendario, s.get("previsione"), s["calciatore"])
         # di chi è nella lega
         rs = lega.carica(ctx.rose)
         s["proprietario"] = next((sq.nome for sq in (rs.squadre if rs else []) for g in sq.giocatori
@@ -2103,7 +2112,9 @@ def rosa(response: Response, squadra: str | None = None, ctx: Contesto = Depends
     giocatori = []
     for g in s.giocatori:
         q, slug = quot.get(g.id, (None, None))
-        x = asdict(g) | {"quotazione": q, "squadra_slug": slug}
+        # uscito dal listone (ceduto all'estero): non ha una scheda (404 di /api/giocatore) e i client lo dicono al tocco. Lo decide il
+        # server: la quotazione vuota non basta (un giocatore del listone può non averla). Senza codice o senza listone non si sa
+        x = asdict(g) | {"quotazione": q, "squadra_slug": slug, "fuori_listone": bool(quot) and g.id is not None and g.id not in quot}
         if g.id in schede:
             x["previsione"] = schede[g.id]
         giocatori.append(x)

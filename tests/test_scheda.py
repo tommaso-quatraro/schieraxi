@@ -143,3 +143,94 @@ def test_la_rotta_della_scheda_usa_le_regole_della_lega(tmp_path, monkeypatch):
 def test_la_rotta_della_scheda_con_un_ruolo_sconosciuto_non_da_500(tmp_path, monkeypatch):
     r = _client(tmp_path, monkeypatch, ruoli={7: "X"}).get("/api/giocatore/7")
     assert r.status_code == 200 and r.json()["stagione"]["fantamedia"] is None
+
+
+# ---------------------------------------------------------------- giocatore uscito dal listone, rendimento, gol, prossime partite (27/11/2026)
+def test_un_giocatore_uscito_dal_listone_ha_una_frase_per_chi_usa_l_app(tmp_path, monkeypatch):
+    """La Rosa tiene anche chi è uscito dal listone (ceduto all'estero): toccandolo la scheda diceva «calciatore 999 non nel
+    listone», il testo interno dell'eccezione. Ora 404 con una frase del catalogo, che la web traduce (`err.fuori_listone`)."""
+    r = _client(tmp_path, monkeypatch).get("/api/giocatore/999")
+    assert r.status_code == 404, r.text
+    assert r.json()["detail"] == "Questo giocatore non è più nel listone di Serie A."
+    with pytest.raises(scheda.FuoriDalListone):
+        scheda.scheda(archivio.apri(tmp_path / "fanta.sqlite"), 999, ST, LEGA)
+
+
+def test_la_rosa_dice_chi_e_uscito_dal_listone(tmp_path, monkeypatch):
+    """`fuori_listone` di GET /api/rosa lo decide il server (revisione della #985): prima web e iPhone lo deducevano da
+    `quotazione` vuota, ma un giocatore del listone può non avere la quotazione (qui Verdi) e non è fuori. Chi non è riconosciuto
+    (senza codice) non si sa; senza nessun listone nell'archivio nemmeno: nessuno è «fuori»."""
+    from fanta import lega
+    c = _client(tmp_path, monkeypatch)
+    lega.salva(lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(7, "Verdi", "D", "GEN"), lega.GiocatoreRosa(999, "Partito", "A", "GEN"),
+                                               lega.GiocatoreRosa(None, "Sconosciuto", "C", None, riconosciuto="non trovato")])],
+                         "Mia"), tmp_path / "rose.json")
+    g = {x["nome"]: x for x in c.get("/api/rosa").json()["giocatori"]}
+    assert g["Verdi"]["quotazione"] is None and g["Verdi"]["fuori_listone"] is False
+    assert g["Partito"]["fuori_listone"] is True
+    assert g["Sconosciuto"]["fuori_listone"] is False
+    db = archivio.apri(tmp_path / "fanta.sqlite")
+    db.execute("DELETE FROM calciatori")
+    db.commit()
+    db.close()
+    assert not any(x["fuori_listone"] for x in c.get("/api/rosa").json()["giocatori"])
+
+
+def _avanzate(gol, xg, assist=0, xa=0.0):
+    return {"minuti": 900, "gol": gol, "xg": xg, "assist": assist, "xa": xa}
+
+
+@pytest.mark.parametrize("gol, xg, tendenza, testo", [
+    (5, 2.0, "cala", "Sta segnando più di quanto crea: è probabile che cali."),           # +3 gol su 10 partite, bonus 3: +0,9
+    (1, 4.0, "sblocca", "Crea più di quanto segna: è probabile che si sblocchi."),        # −0,9
+    (3, 2.0, "in_linea", "In linea con le occasioni che ha."),                            # +0,3: la soglia non basta
+    (2, 3.0, "in_linea", "In linea con le occasioni che ha."),                            # −0,3
+])
+def test_il_rendimento_dice_cala_sblocca_o_in_linea_con_la_frase(gol, xg, tendenza, testo):
+    """«Gol e assist rispetto alle occasioni»: frase e colore li decidevano web e iPhone con la soglia 0,3 sul numero. Ora il
+    server manda il codice (`tendenza`) e la frase con la sua chiave, come le altre frasi; i client li mostrano."""
+    r = scheda.rendimento(_avanzate(gol, xg), "A", 10, Regole())
+    assert r["tendenza"] == tendenza and r["testo"] == testo
+    assert r["frase"] == {"chiave": f"rendimento.{tendenza}", "param": {}}
+
+
+def test_la_soglia_del_rendimento_vale_sul_numero_mostrato():
+    """Il numero si mostra con due decimali: +0,304 si legge «+0,30» e non può dire «cala» (il client confrontava già quello)."""
+    r = scheda.rendimento(_avanzate(0, 0.0, assist=3, xa=0.0), "A", 9.868, Regole())     # 3 assist × 1 / 9,868 = 0,304
+    assert r["sovra_rendimento"] == 0.3 and r["tendenza"] == "in_linea"
+
+
+def test_la_stagione_ha_i_gol_con_i_rigori_gia_sommati(tmp_path):
+    """La tessera «gol (N rig.)» sommava gol e rigori segnati nei client: il server manda il numero pronto."""
+    db = archivio.apri(tmp_path / "fanta.sqlite")
+    _giocatori(db)
+    st = scheda.scheda(db, 9, ST, LEGA)["stagione"]
+    assert (st["gol"], st["rig_segnati"], st["gol_con_rigori"]) == (1, 2, 3)
+
+
+CALENDARIO = {"giornate": [9, 10], "squadre": [
+    {"squadra": "genoa", "media": 2.5, "partite": [{"giornata": 9, "avversario": "como", "in_casa": True, "difficolta": 2, "data": None},
+                                                    {"giornata": 10, "avversario": "inter", "in_casa": False, "difficolta": 3, "data": None}]},
+    {"squadra": "inter", "media": 3.0, "partite": [{"giornata": 9, "avversario": "lazio", "in_casa": False, "difficolta": 3, "data": None}]},
+]}
+
+
+def test_le_prossime_partite_sono_della_squadra_della_previsione_o_del_listone():
+    """La web le mostrava solo con la previsione, l'iPhone ripiegava sulla squadra del listone: ora le sceglie il server."""
+    genoa, inter = CALENDARIO["squadre"][0]["partite"], CALENDARIO["squadre"][1]["partite"]
+    assert scheda.prossime_partite(CALENDARIO, None, {"squadra_slug": "genoa"}) == genoa
+    assert scheda.prossime_partite(CALENDARIO, {"squadra": "inter"}, {"squadra_slug": "genoa"}) == inter
+    assert scheda.prossime_partite(CALENDARIO, None, {"squadra_slug": "salernitana"}) == []
+    assert scheda.prossime_partite(CALENDARIO, None, {"squadra_slug": None}) == []
+
+
+def test_la_scheda_manda_le_prossime_partite_anche_senza_previsione(tmp_path, monkeypatch):
+    from fanta import consigli, gestione
+    c = _client(tmp_path, monkeypatch)                            # nel test non c'è la previsione (consigli.previsioni fallisce)
+    monkeypatch.setattr(gestione, "calendario", lambda *a, **k: CALENDARIO)
+    s = c.get("/api/giocatore/7").json()
+    assert "previsione" not in s and s["prossime_partite"] == CALENDARIO["squadre"][0]["partite"]
+    # a campionato finito (o senza calendario) nessuna partita, e la scheda si apre lo stesso
+    monkeypatch.setattr(gestione, "calendario", lambda *a, **k: (_ for _ in ()).throw(consigli.CampionatoFinito("finito")))
+    r = c.get("/api/giocatore/7")
+    assert r.status_code == 200 and r.json()["prossime_partite"] == []

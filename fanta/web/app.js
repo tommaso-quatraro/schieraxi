@@ -1830,6 +1830,9 @@ const slugQualunque = s => SIGLE[s] ? s : SIGLE[normNome(s)] ? normNome(s) : s;
 // qui solo la parola del catalogo e la freccia. Un valore che non conosciamo, o un server di prima senza il campo: niente andamento.
 const ANDAMENTO = { in_crescita: ["↗", "positivo", "mercato.in_crescita"], in_calo: ["↘", "negativo", "mercato.in_calo"],
   stabile: ["→", "", "mercato.stabile"], pochi_dati: ["→", "", "mercato.pochi_dati"] };
+// «Gol e assist rispetto alle occasioni»: dal codice del server (`rendimento.tendenza`) il colore del numero e, solo per un server di
+// prima senza la frase (`rendimento.testo`), la frase del catalogo
+const RENDIMENTO = { cala: ["positivo", "mercato.rend_cala"], sblocca: ["negativo", "mercato.rend_sblocca"], in_linea: ["", "mercato.rend_linea"] };
 function formaGiocatore(voti, andamento) {
   const ultimi = voti.slice(-5);
   if (!ultimi.length) return null;
@@ -1926,7 +1929,8 @@ function htmlScheda(c, pr, fz) {
       <div id="scheda-numeri-corpo" aria-busy="true"><div class="debole piccolo">${t("comune.carico")}</div></div></details>`;
 }
 
-// Gli ultimi voti e «Tutti i numeri», quando arriva la scheda intera (/api/giocatore). `cal`: il calendario, per le prossime partite.
+// Gli ultimi voti e «Tutti i numeri», quando arriva la scheda intera (/api/giocatore). `cal`: il calendario, per le prossime partite
+// di un server di prima, che non le manda nella scheda.
 function riempiScheda(s, cal) {
   const voti = $("#scheda-voti"), numeri = $("#scheda-numeri-corpo");
   if (!voti || !numeri) return;
@@ -1935,7 +1939,15 @@ function riempiScheda(s, cal) {
   voti.innerHTML = `<h3>${t("formazione.ultimi_voti")}</h3>${forma ? forma.pallini : `<div class="debole">${t("mercato.nessuna_presenza_questa")}</div>`}`;
   voti.removeAttribute("aria-busy");
   const grafico = graficoVoti(s.voti || [], st.giornate_giocate_serie_a);
-  const prossime = cal && pr ? (cal.squadre.find(x => x.squadra === pr.squadra) || { partite: [] }).partite : [];
+  // le prossime partite le manda il server, anche senza previsione; un server di prima no: allora dal calendario, della squadra
+  // della previsione o, senza, di quella del listone (come l'iPhone)
+  const squadraCal = (pr && pr.squadra) || c.squadra_slug;
+  const prossime = Array.isArray(s.prossime_partite) ? s.prossime_partite
+    : cal && squadraCal ? (cal.squadre.find(x => x.squadra === squadraCal) || { partite: [] }).partite : [];
+  // «Gol e assist rispetto alle occasioni»: il codice e la frase del server (scheda.rendimento); la soglia 0,3 solo per un server di prima
+  const rend = s.rendimento, tendenza = !rend ? null : Object.hasOwn(RENDIMENTO, rend.tendenza || "") ? rend.tendenza
+    : rend.sovra_rendimento > 0.3 ? "cala" : rend.sovra_rendimento < -0.3 ? "sblocca" : "in_linea";
+  const golConRigori = st.gol_con_rigori ?? st.gol + st.rig_segnati;
   const iniziataP = !!pr && PARTITA_INIZIATA.includes(pr.stato_partita);
   const nonGioca = !!pr && nonGiocaDiSicuro(parolaStato(pr));              // infortunato o squalificato: niente partita, gol o cartellini
   const tile = (valore, etichetta) => `<div><b>${valore}</b><span>${etichetta}</span></div>`;
@@ -1957,13 +1969,13 @@ function riempiScheda(s, cal) {
       <div class="debole piccolo" style="margin-top:8px">${t("mercato.colori_verde_partita")}</div>` : ""}
     ${forma && forma.testo ? `<h3>${t("mercato.forma")}</h3><div class="riga"><span class="debole piccolo">${t("mercato.andamento")}</span><b class="${forma.classe}">${forma.freccia} ${forma.testo}</b></div>` : ""}
     ${grafico}
-    ${s.rendimento ? `<h3>${t("mercato.rende_sopra_sotto")}</h3>
-      <div class="grande ${s.rendimento.sovra_rendimento > 0.3 ? "positivo" : s.rendimento.sovra_rendimento < -0.3 ? "negativo" : ""}">${segno(s.rendimento.sovra_rendimento, 2)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.punti_partita")}</span></div>
-      <div class="debole piccolo">${t("mercato.rendimento_riga", { g: segno(s.rendimento.gol_meno_xg), a: segno(s.rendimento.assist_meno_xa) })}
-        ${t(s.rendimento.sovra_rendimento > 0.3 ? "mercato.rend_cala" : s.rendimento.sovra_rendimento < -0.3 ? "mercato.rend_sblocca" : "mercato.rend_linea")}</div>` : ""}
+    ${rend ? `<h3>${t("mercato.rende_sopra_sotto")}</h3>
+      <div class="grande ${RENDIMENTO[tendenza][0]}">${segno(rend.sovra_rendimento, 2)} <span class="debole" style="font-size:var(--t-corpo);font-weight:400">${t("mercato.punti_partita")}</span></div>
+      <div class="debole piccolo">${t("mercato.rendimento_riga", { g: segno(rend.gol_meno_xg), a: segno(rend.assist_meno_xa) })}
+        ${typeof rend.testo === "string" && rend.testo ? esc(testoDi(rend)) : t(RENDIMENTO[tendenza][1])}</div>` : ""}
     <h3>${t("mercato.stagione")}</h3><div class="statistiche">
       ${tile(`${st.presenze}/${st.giornate_giocate_serie_a}`, t("mercato.presenze"))}${tile(num(st.media_voto, 2), t("mercato.media_voto"))}${tile(num(st.fantamedia, 2), t("mercato.fantamedia"))}
-      ${tile(st.gol + st.rig_segnati, tp("mercato.n_gol_rig", st.gol + st.rig_segnati, { r: st.rig_segnati }))}${tile(st.assist, tp("mercato.n_assist", st.assist))}${tile(`${st.ammonizioni}/${st.espulsioni}`, t("mercato.gialli_rossi"))}
+      ${tile(golConRigori, tp("mercato.n_gol_rig", golConRigori, { r: st.rig_segnati }))}${tile(st.assist, tp("mercato.n_assist", st.assist))}${tile(`${st.ammonizioni}/${st.espulsioni}`, t("mercato.gialli_rossi"))}
       ${c.ruolo === "P" ? tile(st.gol_subiti, t("mercato.gol_subiti")) + tile(st.rig_parati, t("mercato.rigori_parati")) : ""}</div>
     ${av && av.minuti ? `<h3>${t("mercato.statistiche_avanzate")}</h3><div class="statistiche">
       ${tile(num(av.xg, 2), t("mercato.gol_attesi_tot"))}${tile(num(av.xa, 2), t("mercato.assist_attesi_tot"))}${tile(`${av.minuti}'`, t("mercato.minuti"))}
@@ -2378,7 +2390,10 @@ async function vistaRosa(nome) {
         const prezzi = [x.costo != null ? t("scambio.costo_n", { c: x.costo }) : "", x.quotazione != null ? t("scambio.quotazione_n", { q: x.quotazione }) : ""];
         const partita = pezziRiga([[[sigla(x.squadra), p ? vsAt(p) : ""].filter(Boolean).join(" "), p && p.data_partita ? quando(p.data_partita) : ""]
           .filter(Boolean).join(" · "), prezzi.filter(Boolean).join(" · ")]);
-        return `<li class="riga-gioc"><button class="voce voce-g" ${x.id ? `data-giocatore="${x.id}"` : "disabled"}>
+        // uscito dal listone (ceduto all'estero; lo decide il server, `fuori_listone`): non ha una scheda, il tocco lo dice
+        // (err.fuori_listone, la frase del 404 del server); come RigaRosa dell'iPhone. Un server di prima non lo manda: la quotazione vuota
+        const fuoriListone = typeof x.fuori_listone === "boolean" ? x.fuori_listone : x.quotazione == null;
+        return `<li class="riga-gioc"><button class="voce voce-g" ${!x.id ? "disabled" : fuoriListone ? "data-fuori-listone" : `data-giocatore="${x.id}"`}>
           ${volto(p || { id: x.id, nome: x.nome, ruolo: x.ruolo, squadra: slug })}
           <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo || "?"))}</span><span class="nome-t">${esc(x.nome)}</span></span>
             <span class="dettaglio">${lineetta(slug)}${partita}</span>
@@ -2405,6 +2420,7 @@ async function vistaRosa(nome) {
         <div class="debole piccolo" style="margin-top:12px">${elidiGiorno(t("scambio.rose_aggiornate", { data: parseData(r.aggiornato) ? esc(fDataEstesa(parseData(r.aggiornato))) : "–" }))}</div>
       </div></div>`, { titolo: r.nome, stato: false, indietro });          // il titolo è il nome della squadra (pagina() lo scrive con esc)
     collegaSceltaMia();
+    for (const b of document.querySelectorAll("#contenuto [data-fuori-listone]")) b.addEventListener("click", () => avviso(t("err.fuori_listone"), 5000));
     const vf = $("#vedi-formazione");
     if (vf) vf.addEventListener("click", () => { stato.squadraVista = r.nome; vai("formazione", undefined, { focoTitolo: true }); });
     // spento finché la richiesta non torna (#833): un secondo tocco mandava il nome vecchio, già cambiato, e il server diceva
