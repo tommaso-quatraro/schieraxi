@@ -1,7 +1,7 @@
 #!/bin/bash
 # Fotografa i widget nel simulatore (lanciato da .github/workflows/screenshot.yml).
 # L'app di anteprima (target AnteprimaWidget) mostra i tre widget (oggi, formazione, dubbi) con dati finti:
-# -GALLERIA <widget>[-blocco], -DATI pieni|vuoto|in_corso|in_corso_recupero|finita|campionato_finito|senza_formazione|salvati,
+# -GALLERIA <widget>[-blocco], -DATI pieni|vuoto|in_corso|in_corso_recupero|finita|campionato_finito|senza_formazione|senza_probabili|salvati,
 # -ASPETTO scuro|chiaro (l'aspetto del giro, che l'anteprima usa qualunque cosa dica il simulatore: vedi giro).
 # Uso: scripts/screenshot_widget.sh <AnteprimaWidget.app per il simulatore> <cartella dei PNG>
 APP="${1:?manca il percorso di AnteprimaWidget.app}"
@@ -98,6 +98,11 @@ giro "$UDID_IPHONE" iphone_senza_formazione dark 600 oggi:senza_formazione oggi-
 giro "$UDID_IPHONE" iphone_senza_formazione_chiaro light 600 oggi:senza_formazione formazione:senza_formazione dubbi:senza_formazione
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_senza_formazione_testo_grande dark 600 oggi:senza_formazione oggi-blocco:senza_formazione formazione:senza_formazione dubbi:senza_formazione
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_testo_grande dark 600 formazione oggi dubbi formazione-blocco oggi-blocco
+# Probabili non ancora uscite e nessun titolare da controllare: nel piccolo di Prossima giornata «probabili non uscite» non si taglia
+# mai con «…» (intera, senza simbolo o il solo simbolo), anche con il testo molto grande; nel rettangolo «3-4-3 · 72,7 punti attesi»
+# perde parole intere invece di andare a capo.
+giro "$UDID_IPHONE" iphone_senza_probabili dark 600 oggi:senza_probabili oggi-blocco:senza_probabili
+DIMENSIONE=accessibility-extra-large giro "$UDID_IPHONE" iphone_senza_probabili_testo_grande dark 600 oggi:senza_probabili oggi-blocco:senza_probabili
 # Copia salvata (#834), di due giorni prima («dati di mer 18 …») e di oggi («dati delle …»): la riga c'è sempre, nel Formazione
 # anche con «da controllare» (con il testo normale tutte e due), e non si taglia, nemmeno con il testo molto grande.
 giro "$UDID_IPHONE" iphone_salvati dark 600 formazione:salvati oggi:salvati dubbi:salvati formazione:salvati_oggi

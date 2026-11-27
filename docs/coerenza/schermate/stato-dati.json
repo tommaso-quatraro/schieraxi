@@ -64,6 +64,15 @@
       "stato": "fatto"
     },
     {
+      "id": 128,
+      "schermata": "Stato dei dati, ultimi aggiornamenti: le righe d'errore (collaudo in inglese del 27/11/2026)",
+      "web": "sotto una riga che non riesce la frase del server (`errori`, tradotta con `errori_frasi`): «Non riuscito ven 27 nov alle 11:31: Fantacalcio.it non risponde.», dopo un giorno «Fermo da 3 giorni, non riesce da mar 24 nov alle 08:03: il dettaglio è nel registro del server.»; nella riga generale «Non riusciti: Listone e quotazioni, Calendario.». Mai il messaggio tecnico («ProxyError: HTTPSConnectionPool…»), che resta nel registro del server (`apriStatoDati`)",
+      "iphone": "uguale: mostra il testo di `errori` com'è (`StatoDatiView`), e il server lo scrive già nella forma nuova",
+      "forma": "web",
+      "chi": "**fatto**: prova `tests/browser/test_stato_dati_errori.py` e i test del server; sull'iPhone nessun cambio di codice, da vedere sul telefono",
+      "stato": "fatto"
+    },
+    {
       "id": 130,
       "schermata": "Stato dei dati: «Quanto ci azzecca il modello» e la prova del modello (27/11/2026)",
       "web": "sotto il titolo «Giornate già giocate con le probabili raccolte: N.» e «Se «hanno giocato» e «previsto» sono lontani, l'app corregge da sola i numeri di partenza (…)» (`sd.corregge`); ogni gruppo «312 giocatori · hanno giocato 94% · previsto 91% · correzione ×1,03» («hanno giocato» anche con un giocatore solo; la correzione è quella che il modello usa, dal campo `calibrazione.fattori`, `sd.correzione`); nella prova del modello i punti della formazione del modello in verde quando valgono almeno quelli da fantamedia (classe `positivo`); sotto il grafico la legenda «modello», «da fantamedia», «massimo possibile» e «dalla 5ª alla 12ª giornata di Serie A» (`avv.giornate_da_a`), per i lettori di schermo «Punti delle formazioni giornata per giornata: modello, fantamedia e massimo possibile» (`apriStatoDati`, `mostraAffidabilita`)",

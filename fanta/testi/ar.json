@@ -66,7 +66,7 @@
   },
   "ar.rosa_completa": {
     "it": "Rosa completa",
-    "en": "Full squad"
+    "en": "Full roster"
   },
   "ar.manca": {
     "it": "Manca {n} {ruolo}",
@@ -114,7 +114,7 @@
   },
   "ar.togli": {
     "it": "Toglilo dalla rosa",
-    "en": "Remove from the squad"
+    "en": "Remove from the roster"
   },
   "ar.cerca_per": {
     "it": "Cerca il giocatore giusto per «{nome}»",
@@ -150,7 +150,7 @@
   },
   "ar.c_e_scritto": {
     "it": "Nella rosa di {squadra} c'è scritto «{nome}».",
-    "en": "The {squadra} squad lists “{nome}”.",
+    "en": "The {squadra} roster lists “{nome}”.",
     "nota": "solo iPhone: sotto il campo della pagina che cerca il giocatore giusto (anteprima delle rose, giocatori da sistemare)"
   },
   "ar.giocatore_giusto": {
