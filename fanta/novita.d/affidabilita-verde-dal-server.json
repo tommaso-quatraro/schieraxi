@@ -1,0 +1,14 @@
+{
+  "titolo": "Stato dei dati: il verde sui punti del modello lo decide il server",
+  "voci": [
+    "Stato dei dati, «Quanto è affidabile il modello»: i punti della formazione del modello sono verdi quando valgono almeno quelli scelti con la fantamedia. Ora lo decide il server, una volta sola, e la web e l'iPhone lo mostrano uguale."
+  ],
+  "titolo_en": "Data status: the server decides the green on the model's points",
+  "voci_en": [
+    "Data status, “How reliable the model is”: the model's lineup points are green when they are at least as many as those chosen by fantasy average. Now the server decides it, once, and the web and the iPhone show it the same way."
+  ],
+  "tecnico": [
+    "GET /api/affidabilita: campo nuovo `sintesi.modello_batte_fantamedia` (booleano, `affidabilita.batte_fantamedia`): vero se `punti_modello` >= `punti_fantamedia` confrontati con un decimale, come si mostrano; falso se ne manca uno. Una prova scritta prima (senza il campo) lo riceve dalla rotta (`affidabilita.per_i_client`), senza rifare la prova. Nessun campo tolto o rinominato; docs/API.md e docs/openapi.json aggiornati (#982).",
+    "Web (`mostraAffidabilita`, `modelloBatteFantamedia`) e iPhone (`SintesiAffidabilita.batteFantamedia`) leggono il campo; con un server di prima, senza il campo, fanno il confronto di prima."
+  ]
+}

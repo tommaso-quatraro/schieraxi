@@ -53,12 +53,30 @@ def sintesi(righe: list[dict]) -> dict:
         v = [r[chiave] for r in righe if r.get(chiave) is not None and not (isinstance(r[chiave], float) and math.isnan(r[chiave]))]
         return sum(v) / len(v) if v else None
     radice = lambda q: round(math.sqrt(q), 2) if q is not None else None      # noqa: E731
-    return {"giornate": len(righe),
-            "errore_modello": radice(media("quadratico_modello")), "errore_fantamedia": radice(media("quadratico_fantamedia")),
-            "errore_ruolo": radice(media("quadratico_ruolo")),
-            "errore_fantamedia_stagione": radice(media("quadratico_fantamedia_stagione")),
-            "punti_modello": _arr(media("punti_modello")), "punti_fantamedia": _arr(media("punti_fantamedia")),
-            "punti_perfetta": _arr(media("punti_perfetta"))}
+    s = {"giornate": len(righe),
+         "errore_modello": radice(media("quadratico_modello")), "errore_fantamedia": radice(media("quadratico_fantamedia")),
+         "errore_ruolo": radice(media("quadratico_ruolo")),
+         "errore_fantamedia_stagione": radice(media("quadratico_fantamedia_stagione")),
+         "punti_modello": _arr(media("punti_modello")), "punti_fantamedia": _arr(media("punti_fantamedia")),
+         "punti_perfetta": _arr(media("punti_perfetta"))}
+    return s | {"modello_batte_fantamedia": batte_fantamedia(s)}
+
+
+def batte_fantamedia(s: dict) -> bool:
+    """Vero se i punti della formazione del modello valgono almeno quelli da fantamedia (web e iPhone li mostrano in verde).
+    Si confrontano come si mostrano, con un decimale: con «70,0» e «70,0» il modello non perde. Falso se manca uno dei due.
+    Prima lo decidevano i client confrontando i due numeri (#982)."""
+    modello, fantamedia = _arr(s.get("punti_modello")), _arr(s.get("punti_fantamedia"))
+    return modello is not None and fantamedia is not None and modello >= fantamedia
+
+
+def per_i_client(d: dict) -> dict:
+    """La prova come la manda `GET /api/affidabilita`: a un file scritto prima di #982, senza `modello_batte_fantamedia` nella
+    sintesi, lo aggiunge (la prova si rifà solo con una giornata nuova). Il verdetto già scritto resta com'è."""
+    s = d.get("sintesi")
+    if isinstance(s, dict) and "modello_batte_fantamedia" not in s:
+        return d | {"sintesi": s | {"modello_batte_fantamedia": batte_fantamedia(s)}}
+    return d
 
 
 def _arr(x):
