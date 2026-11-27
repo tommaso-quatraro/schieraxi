@@ -162,8 +162,23 @@ def modello_recupero(a: str, codice: str, minuti: int) -> Messaggio:
                      f"Vale {minuti} minuti e si può usare una volta sola. Non darlo a nessuno." + _firma())
 
 
+# Il dispositivo dell'avviso di accesso nuovo: parole fisse (sistema e programma) riconosciute nell'intestazione User-Agent, mai
+# il suo testo, che scrive come vuole chi entra (sarebbe un testo suo dentro un'email del server). Il primo che corrisponde vince.
+_SISTEMI = ((r"ipad", "iPad"), (r"iphone", "iPhone"), (r"android", "Android"), (r"windows", "Windows"), (r"\bcros\b", "Chromebook"),
+            (r"macintosh|mac os x", "Mac"), (r"linux", "Linux"))
+_PROGRAMMI = ((r"^schieraxi", "app SchieraXI"), (r"\bedg(a|ios)?/", "Edge"), (r"\b(opr|opios)/", "Opera"),
+              (r"\b(firefox|fxios)/", "Firefox"), (r"\b(chrome|crios)/", "Chrome"), (r"\bsafari/", "Safari"))
+
+
+def descrivi_dispositivo(user_agent: str) -> str:
+    """«iPhone, Safari», «Windows, Edge», «app SchieraXI»; «un dispositivo sconosciuto» se non si riconosce niente."""
+    ua = (user_agent or "").lower()
+    parti = [next((nome for schema, nome in elenco if re.search(schema, ua)), None) for elenco in (_SISTEMI, _PROGRAMMI)]
+    return ", ".join(p for p in parti if p) or "un dispositivo sconosciuto"
+
+
 def modello_accesso_nuovo(a: str, dispositivo: str, quando: str) -> Messaggio:
-    d = re.sub(r"[^\w .,;:/()+-]", "", dispositivo or "")[:80] or "un dispositivo sconosciuto"
+    d = descrivi_dispositivo(dispositivo)
     return Messaggio(a, "SchieraXI: accesso da un dispositivo nuovo",
                      f"Ciao,\nil tuo account è stato aperto da un dispositivo nuovo.\n\n    Quando: {quando}\n    Dispositivo: {d}\n\n"
                      "Se sei stato tu, va bene così. Se non riconosci questo accesso, cambia subito la password da Impostazioni › Il tuo account "

@@ -473,6 +473,20 @@ def test_avviso_accesso_nuovo_solo_con_email_verificata(web, posta_finta):
     assert PASSWORD not in posta_finta[0].testo
 
 
+def test_avviso_accesso_nuovo_senza_il_testo_mandato_da_chi_entra(web, posta_finta):
+    """Il dispositivo dell'avviso viene dall'intestazione User-Agent, che chi entra scrive come vuole: nell'email vanno solo
+    parole fisse (sistema e programma), mai il suo testo."""
+    utente_con_email(web, posta_finta, "marco", "marco@example.com", **{"X-Forwarded-For": "2.2.2.2"})
+    posta_finta.clear()
+    scritto = "iPhone Safari/1 Scrivi la password su https://sito-finto.example/entra"
+    cliente(**{"X-Forwarded-For": "3.3.3.3", "User-Agent": scritto}).post(
+        "/api/account/accedi", json={"nome_utente": "marco", "password": PASSWORD})
+    assert len(posta_finta) == 1
+    testo = posta_finta[0].testo
+    assert "sito-finto" not in testo and "Scrivi la password" not in testo, testo
+    assert "Dispositivo: iPhone, Safari\n" in testo, testo
+
+
 def test_niente_email_o_codici_nei_registri_di_sicurezza(web, posta_finta):
     utente_con_email(web, posta_finta, "marco", "marco@example.com")
     cliente().post("/api/account/recupero-email", json={"email": "marco@example.com"})
