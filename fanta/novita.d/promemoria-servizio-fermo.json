@@ -1,0 +1,14 @@
+{
+  "titolo": "Il promemoria del quarto d'ora prima arriva anche se il server si ferma",
+  "voci": [
+    "Il promemoria di un quarto d'ora prima della chiusura della formazione arriva anche quando la parte del server che lo manda si ferma all'improvviso: lo manda un secondo controllo, al massimo un minuto e mezzo più tardi. Prima poteva saltare, per esempio con la chiusura alle 20:43 e quella parte del server ferma dalle 20:25."
+  ],
+  "titolo_en": "The fifteen-minute reminder arrives even if the server stops",
+  "voci_en": [
+    "The reminder fifteen minutes before the lineup closes arrives even when the part of the server that sends it stops suddenly: a second check sends it, at most a minute and a half later. Before, it could be skipped, for example with the lineup closing at 20:43 and that part of the server stopped since 20:25."
+  ],
+  "tecnico": [
+    "avvisi_utenti.promemoria_dal_cron: il cron non rifà il giro solo se il segno (promemoria-servizio.json) è del turno di 10 minuti in corso. Segno del turno prima: aspetta il giro del servizio fino a ATTESA_CRON (90 secondi) dopo il minuto tondo, riguardando il segno ogni PASSO_CRON (5 secondi) ed uscendo appena arriva; poi subentra, con la riga «promemoria: il servizio non fa il giro da N minuti, lo fa il cron». Segno più vecchio: subentra subito. Tolta la soglia SEGNO_FRESCO (15 minuti sull'età del segno): con il servizio fermo subito dopo un giro lasciava un turno senza nessun giro (scadenza alle 20:43, giri alle 20:20 e alle 20:40, fuori dalla finestra del quarto d'ora prima, da 4 a 20 minuti).",
+    "fanta promemoria: il tempo passato ad aspettare il servizio esce dal tempo del giro del cron (_avvisi_per_utente(funzione, max_secondi) -> esegui(max_secondi=secondi_del_giro - attesa)), così il timeout di promemoria.sh non ferma il giro a metà del lavoro di un utente. promemoria_dal_cron riceve l'orologio come funzione (adesso) e l'attesa (dormi) per le prove. Un giro fatto da tutti e due (servizio più lento dell'attesa) non manda doppioni: blocco per utente e stato «già mandato», provato in tests/test_promemoria_servizio.py."
+  ]
+}
