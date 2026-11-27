@@ -417,6 +417,7 @@ def test_se_la_copia_non_riesce_il_testo_della_formazione_compare_da_copiare_a_m
     alto = riquadro.evaluate("e => e.scrollHeight <= e.clientHeight + 1")
     assert alto, "il testo non sta tutto nel riquadro"
     assert not web.scorre_di_lato() and not web.errori_mostrati() and not web.errori_console
+    assert not web.violazioni_gravi(), web.violazioni_gravi()
 
 
 # ---------------------------------------------------------------- le decisioni in cima: al massimo due, solo con un'azione

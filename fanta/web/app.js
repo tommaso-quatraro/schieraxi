@@ -1151,7 +1151,7 @@ function daCopiareAMano(testo) {
   box.focus({ preventScroll: true });
   box.select();
   box.setSelectionRange(0, testo.length);                  // Safari dell'iPhone non seleziona con select() un campo di sola lettura
-  box.scrollIntoView({ block: "nearest" });
+  box.scrollIntoView({ block: "center" });                  // al centro: in fondo lo coprirebbe la barra delle sezioni
 }
 
 async function copiaTesto(testo) {
