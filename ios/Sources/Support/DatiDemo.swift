@@ -1264,7 +1264,8 @@ private extension LegaDemo {
                           "punti_modello": base + 3, "punti_fantamedia": base, "punti_perfetta": base + 9, "n": 200])
         }
         return json(["calcolato": "2026-10-28T00:38:07", "ultima": "2026-27/8", "righe": righe,
-                     "sintesi": ["giornate": 8, "errore_modello": 1.6, "errore_fantamedia": 1.82, "punti_modello": 71.7, "punti_fantamedia": 70.6, "punti_perfetta": 77.8]])
+                     "sintesi": ["giornate": 8, "errore_modello": 1.6, "errore_fantamedia": 1.82, "punti_modello": 71.7, "punti_fantamedia": 70.6, "punti_perfetta": 77.8,
+                                 "modello_batte_fantamedia": true] as [String: Any]])
     }
 
     static func stagione() -> String {

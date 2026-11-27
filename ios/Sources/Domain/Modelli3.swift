@@ -22,6 +22,17 @@ struct SintesiAffidabilita: Decodable, Equatable {
     let puntiModello: Double?
     let puntiFantamedia: Double?
     let puntiPerfetta: Double?
+    /// `modello_batte_fantamedia` (#982): il server dice se i punti del modello valgono almeno quelli da fantamedia. Nil con un
+    /// server di prima.
+    let modelloBatteFantamedia: Bool?
+
+    /// I punti della formazione del modello in verde, come la web (classe `positivo`): lo decide il server. Con un server di prima,
+    /// senza il campo, il confronto dei due numeri che faceva la web; senza uno dei due numeri, no.
+    var batteFantamedia: Bool {
+        if let deciso = modelloBatteFantamedia { return deciso }
+        guard let modello = puntiModello, let fantamedia = puntiFantamedia else { return false }
+        return modello >= fantamedia
+    }
 }
 
 /// `/api/affidabilita`: la prova del modello sulle giornate passate (vuota se non è ancora stata fatta).
