@@ -1348,20 +1348,41 @@ def test_un_412_su_altri_dati_non_toglie_l_if_match_alle_scritture_sulla_scelta(
 
 
 # ---------------------------------------------------------------- tastiera: dopo un comando il fuoco non si perde
-def test_da_tastiera_il_menu_del_modulo_tiene_il_fuoco_dopo_ogni_scelta(web):
+def test_da_tastiera_il_menu_del_modulo_salva_solo_alla_conferma_e_tiene_il_fuoco(web):
+    """Con il menu chiuso ogni freccia cambia la voce. Difetto del 27/11: ogni freccia salvava, e una seconda freccia durante il
+    salvataggio riportava indietro il menu. Ora le frecce scorrono le voci (il modulo scritto sul menu le segue) e si salva alla
+    conferma: Invio, o il fuoco che lascia il menu. Col tocco e col mouse si salva alla scelta, come prima
+    (test_il_modulo_e_un_menu_e_un_altro_modulo_si_salva)."""
     solo(web, "prima")
-    server_con_memoria(web, None)
+    mem = server_con_memoria(web, None)
     web.apri("/", larghezza=PC)
+    f = web.registrata("/api/formazione")
+    titolari = {m["modulo"]: sorted(m["titolari"]) for m in f["moduli"]}
+    menu = lambda: principale(web).get_by_label("Modulo")             # noqa: E731
+    valori = menu().locator("option").evaluate_all("os => os.map(o => o.value)")
+    inizio = menu().evaluate("s => s.selectedIndex")
     scritte = scritture(web)
-    principale(web).get_by_label("Modulo").focus()
+    menu().focus()
+    web.pagina.keyboard.press("ArrowDown")
     web.pagina.keyboard.press("ArrowDown")
     web.aspetta()
-    assert len(scritte) == 1 and _ha_il_fuoco(principale(web).get_by_label("Modulo")), "dopo la prima freccia il fuoco non è sul menu"
-    primo = principale(web).get_by_label("Modulo").input_value()
-    web.pagina.keyboard.press("ArrowDown")
+    assert not scritte, "le frecce hanno salvato prima della conferma"
+    scelto = valori[inizio + 2]
+    assert menu().input_value() == scelto
+    assert principale(web).locator(".menu-modulo .menu-scelta-testo").inner_text() == scelto
+    web.pagina.keyboard.press("Enter")
     web.aspetta()
-    assert len(scritte) == 2 and principale(web).get_by_label("Modulo").input_value() != primo
-    assert _ha_il_fuoco(principale(web).get_by_label("Modulo"))
+    assert len(scritte) == 1 and sorted(scritte[0][2]["titolari"]) == titolari[scelto], scritte
+    assert menu().input_value() == scelto and _ha_il_fuoco(menu()), "dopo Invio il fuoco non è sul menu"
+    # una freccia, poi il fuoco esce dal menu (Tab): si salva lo stesso, una volta
+    web.pagina.keyboard.press("ArrowUp")
+    web.aspetta()
+    assert len(scritte) == 1
+    web.pagina.keyboard.press("Tab")
+    web.aspetta()
+    assert len(scritte) == 2 and sorted(scritte[1][2]["titolari"]) == titolari[valori[inizio + 1]], scritte
+    assert sorted(mem["scelta"]["titolari"]) == titolari[valori[inizio + 1]]
+    assert not web.errori_mostrati() and not web.errori_console
 
 
 def test_da_tastiera_spunta_torna_alla_consigliata_e_sostituisci_non_lasciano_il_fuoco_nel_vuoto(web):

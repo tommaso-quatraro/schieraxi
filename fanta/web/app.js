@@ -1590,14 +1590,38 @@ function mostraFormazione(b, squadra, opz = {}) {
       </div></div>`,
       { ...opz, stato: false, daCache: mantieniScroll ? null : opz.daCache, sostituisce: opz.sostituisce || mantieniScroll });
     const bottone = (id, fn) => { const e = $(id); if (e) e.addEventListener("click", fn); };
+    // Il menu del modulo salva alla conferma. Col tocco e col mouse il cambio arriva a menu chiuso, con la voce scelta: si salva
+    // subito. Con la tastiera a menu chiuso ogni freccia (o lettera) cambia la voce e il browser manda un cambio per ognuna: prima
+    // ogni freccia salvava, e una freccia durante il salvataggio riportava indietro il menu. Ora quei cambi scorrono soltanto (il
+    // modulo scritto sul menu li segue) e si salva con Invio o quando il fuoco lascia il menu. Un cambio è della tastiera se arriva
+    // nello stesso giro del tasto: dove le frecce aprono il menu (Safari, Chrome sul Mac) arriva dopo, alla chiusura, e salva subito.
     const sel = $("#modulo");
-    if (sel) sel.addEventListener("change", () => {
-      const scelto = l.moduli.find(x => x.modulo === sel.value);
-      if (!scelto || sc.sola || !libero()) { disegna(true); return; }
-      if (!mia) { sc.manuale = scelto === consigliato ? null : scelto; disegna(true); }
-      else if (scelto === consigliato) tornaConsigliata();
-      else salvaTitolari([...scelto.titolari]);
-    });
+    if (sel) {
+      const testo = sel.closest(".menu-scelta")?.querySelector(".menu-scelta-testo");
+      let daTastiera = false, inSospeso = false;
+      const conferma = () => {
+        inSospeso = false;
+        if (sel.value === VOCE_TUA) { if (testo) testo.textContent = m.modulo; return; }    // la formazione già in pagina
+        const scelto = l.moduli.find(x => x.modulo === sel.value);
+        if (!scelto || sc.sola || !libero()) { disegna(true); return; }
+        if (!mia) { sc.manuale = scelto === consigliato ? null : scelto; disegna(true); }
+        else if (scelto === consigliato) tornaConsigliata();
+        else salvaTitolari([...scelto.titolari]);
+      };
+      const SCORRONO = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown"];
+      sel.addEventListener("keydown", e => {
+        if (e.key === "Enter") { if (inSospeso) { e.preventDefault(); conferma(); } return; }
+        // con Alt+freccia e lo spazio il menu si apre: il cambio arriva alla chiusura
+        daTastiera = !e.altKey && !e.ctrlKey && !e.metaKey && (SCORRONO.includes(e.key) || (e.key.length === 1 && e.key !== " "));
+        if (daTastiera) setTimeout(() => { daTastiera = false; }, 0);
+      });
+      sel.addEventListener("change", () => {
+        if (!daTastiera) { conferma(); return; }
+        inSospeso = true;
+        if (testo) testo.textContent = sel.value === VOCE_TUA ? m.modulo : sel.value;
+      });
+      sel.addEventListener("blur", () => { if (inSospeso && stato.scelta === sc && document.body.contains(sel)) conferma(); });
+    }
     document.querySelectorAll("#decisioni [data-df]").forEach(el => el.addEventListener("click", () => {
       const v = decisioni[Number(el.dataset.df)];
       if (!v) return;
