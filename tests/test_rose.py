@@ -4,6 +4,8 @@ import pytest
 import openpyxl
 
 from fanta import rose
+from fanta.listone import Calciatore
+from fanta.nomi import Indice
 
 ROSA_PICCOLA = {"P": 1, "D": 1, "C": 1, "A": 1}
 
@@ -165,6 +167,110 @@ def test_uno_per_riga_costo_numero_o_riga_vuota_fra_i_giocatori_non_aprono_squad
     squadre = _da_testo(testo, indice)
     assert list(squadre) == ["Alfa"], testo
     assert len(squadre["Alfa"].righe) == 4 and "Pinco Pallino" in squadre["Alfa"].righe[1].testo
+
+
+# ---------- fantasquadre che si chiamano come una squadra di Serie A («Roma», «AS Roma», «Inter») ----------
+def _giocatori(squadra):
+    return [r.testo for r in squadra.righe]
+
+
+def test_excel_affiancate_squadra_che_si_chiama_come_un_club(indice):
+    """Nell'Excel con le squadre affiancate «Roma | costo» non era un titolo: i suoi giocatori finivano in «Squadra senza nome»,
+    e quelli di «Inter» (sotto «Lupi», dopo il totale e una riga vuota) dentro «Lupi». In cima a un blocco, dopo il totale o
+    dopo una riga vuota il nome di un club è il titolo di una squadra."""
+    griglia = [
+        ["Lupi", "costo", None, "Roma", "costo"],
+        ["Carnesecchi", 43, None, "Martinez Jo.", 58],
+        ["Bastoni", 17, None, "N'Dicka", 12],
+        ["totale", 60, None, "totale", 70],
+        [None, None, None, None, None],
+        ["AS Roma", "costo", None, "Tigri", "costo"],
+        ["Sommer", 10, None, "Barella", 35],
+        ["Kean", 30, None, "Thuram", 20],
+        ["totale", 40, None, "totale", 55],
+    ]
+    avvisi = []
+    squadre = _per_nome(rose.estrai([("ROSE", griglia)], indice, avvisi=avvisi))
+    assert {n: _giocatori(s) for n, s in squadre.items()} == {
+        "Lupi": ["Carnesecchi", "Bastoni"], "Roma": ["Martinez Jo.", "N'Dicka"],
+        "AS Roma": ["Sommer", "Kean"], "Tigri": ["Barella", "Thuram"]}
+    assert squadre["Lupi"].totale_speso == 60 and squadre["AS Roma"].totale_speso == 40
+    assert avvisi == []
+
+
+def test_testo_uno_per_riga_squadra_che_si_chiama_come_un_club(indice):
+    """Nel testo con un nome per riga «Roma» dopo la riga vuota diventava la squadra di Serie A del giocatore sopra, e i giocatori
+    sotto si univano alla squadra di prima, senza avviso."""
+    squadre = _da_testo("Lupi\nSommer\nBastoni\n\nRoma\nKean\nThuram\n", indice)
+    assert {n: _giocatori(s) for n, s in squadre.items()} == {"Lupi": ["Sommer", "Bastoni"], "Roma": ["Kean", "Thuram"]}
+    assert squadre["Lupi"].righe[1].squadra is None                       # «Roma» non è la squadra di Bastoni
+    # in prima riga, dopo i crediti, dopo un giocatore che ha già la sua squadra, dopo una rosa completa (solo nomi)
+    assert list(_da_testo("AS Roma\nSommer\nKean\n", indice)) == ["AS Roma"]
+    assert list(_da_testo("Lupi\nSommer\nCrediti residui: 5\nRoma\nKean\n", indice)) == ["Lupi", "Roma"]
+    squadre = _da_testo("Lupi\nP\nSommer\nInter\n10\nInter\nA\nKean\nFiorentina\n30\n", indice)
+    assert list(squadre) == ["Lupi", "Inter"] and squadre["Lupi"].righe[0].squadra == "Inter"
+    assert list(_da_testo("Lupi\nSommer\nBastoni\nBarella\nKean\nRoma\nThuram\nDimarco\n", indice, ROSA_PICCOLA)) == ["Lupi", "Roma"]
+    # nel testo con la squadra di Serie A sotto ogni giocatore, quella resta del giocatore
+    squadre = _da_testo("Lupi\nP\nSommer\nInter\n10\nD\nN'Dicka\nRoma\n12\n", indice)
+    assert list(squadre) == ["Lupi"] and [r.squadra for r in squadre["Lupi"].righe] == ["Inter", "Roma"]
+
+
+def test_tabella_con_il_club_accanto_ai_giocatori_squadra_che_si_chiama_come_un_club(indice):
+    """Con il club scritto sulla riga di ogni giocatore, una riga con il solo nome di un club non può essere il club di nessuno:
+    è il titolo di una squadra, anche senza riga vuota prima."""
+    squadre = _da_testo("Lupi\nP\tSommer\tInter\t10\nRoma\nA\tKean\tFiorentina\t30\nD\tN'Dicka\tRoma\t5\n", indice)
+    assert {n: _giocatori(s) for n, s in squadre.items()} == {"Lupi": ["Sommer"], "Roma": ["Kean", "N'Dicka"]}
+    assert squadre["Roma"].righe[1].squadra == "Roma"
+    # una riga di giocatore senza il nome (club e costo) in mezzo alla rosa non apre una squadra che si porta via il resto
+    squadre = _da_testo("Lupi\nP\tSommer\tInter\t10\n\t\tRoma\t5\nA\tKean\tFiorentina\t30\n", indice)
+    assert {n: _giocatori(s) for n, s in squadre.items()} == {"Lupi": ["Sommer", "Kean"]}
+
+
+def test_squadra_gia_salvata_che_si_chiama_come_un_club_e_un_titolo(indice):
+    """Il nome di una squadra già salvata della lega è un titolo anche dove la struttura del file non lo dice. Senza, il testo
+    resta com'era ma l'anteprima lo dice con un avviso chiaro."""
+    testo = "Lupi\nSommer\nBastoni\nRoma\nKean\n"
+    squadre = _da_testo(testo, indice, squadre_note={"Roma", "Lupi"})
+    assert {n: _giocatori(s) for n, s in squadre.items()} == {"Lupi": ["Sommer", "Bastoni"], "Roma": ["Kean"]}
+    griglia = [["Lupi", "costo"], ["Sommer", 10], ["Bastoni", 5], ["Roma", None], ["Kean", 30]]
+    squadre = _per_nome(rose.estrai([("ROSE", griglia)], indice, squadre_note={"Roma"}))
+    assert {n: _giocatori(s) for n, s in squadre.items()} == {"Lupi": ["Sommer", "Bastoni"], "Roma": ["Kean"]}
+    avvisi = []
+    squadre = _da_testo(testo, indice, avvisi=avvisi)
+    assert list(squadre) == ["Lupi"] and squadre["Lupi"].club_dubbi == ["Roma"]
+    assert avvisi == ["Lupi: manca una riga vuota fra le squadre? «Roma» si chiama come una squadra di Serie A e l'ho preso per "
+                      "quella: se è una vostra squadra, lascia una riga vuota prima del suo nome e controlla di nuovo."]
+    avvisi = []
+    rose.estrai([("ROSE", griglia)], indice, avvisi=avvisi)
+    assert [a.chiave for a in avvisi] == ["rose.club_forse_squadra"] and "«Roma»" in avvisi[0]
+
+
+def test_listone_diviso_per_club_non_diventa_una_lega(calciatori):
+    """Un foglio diviso per squadra di Serie A (un titolo per club e sotto i suoi giocatori) non è una lega con squadre che si
+    chiamano come i club: si salta come il listone."""
+    romanisti = [Calciatore(100 + i, nome, "C", "", "ROM", "roma", 10, 10, 100) for i, nome in enumerate(["Bacedi", "Fiorlani", "Ruschetto"])]
+    indice = Indice(calciatori + romanisti)
+    griglia = [["Inter", None], ["Sommer", 10], ["Bastoni", 12], ["Barella", 20], [None, None],
+               ["Roma", None], ["N'Dicka", 12], ["Bacedi", 3], ["Fiorlani", 4], ["Ruschetto", 5]]
+    ok = [["Lupi", "costo"], ["Kean", 3], ["Thuram", 3]]
+    assert list(_per_nome(rose.estrai([("Rose", ok), ("Per club", griglia)], indice))) == ["Lupi"]
+    # una lega vera con due squadre che si chiamano come i club ha giocatori di tante squadre: resta una lega
+    lega_vera = [["Inter", None], ["Sommer", 10], ["Kean", 12], ["Bacedi", 20], [None, None],
+                 ["Roma", None], ["N'Dicka", 12], ["Barella", 3], ["Carnesecchi", 4]]
+    assert list(_per_nome(rose.estrai([("Rose", lega_vera)], indice))) == ["Inter", "Roma"]
+
+
+@pytest.mark.parametrize("con_intestazione", [True, False])
+def test_csv_colonna_fantasquadra_con_il_nome_di_un_club(indice, con_intestazione):
+    """CSV con la fantasquadra su ogni riga: la squadra «Roma» dava il club «Roma» a tutti i suoi giocatori (con l'intestazione)
+    o finiva con le altre in «Squadra senza nome» (senza)."""
+    testo = ("Fantasquadra;Ruolo;Calciatore;Squadra;Costo\n" if con_intestazione else "") + (
+        "Roma;P;Sommer;Inter;2\nRoma;D;Bastoni;Inter;3\nRoma;A;Kean;Fiorentina;3\n"
+        "Lupi;P;Carnesecchi;Atalanta;1\nLupi;C;Barella;Inter;9\nLupi;A;Thuram;Inter;14\n")
+    squadre = _per_nome(rose.estrai(rose.griglie_da_bytes(testo.encode()), indice))
+    assert {n: _giocatori(s) for n, s in squadre.items()} == {"Roma": ["Sommer", "Bastoni", "Kean"],
+                                                              "Lupi": ["Carnesecchi", "Barella", "Thuram"]}
+    assert [r.squadra for r in squadre["Roma"].righe] == ["Inter", "Inter", "Fiorentina"]
 
 
 def test_csv_con_punto_e_virgola(tmp_path, indice):

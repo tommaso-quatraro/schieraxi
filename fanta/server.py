@@ -2251,7 +2251,7 @@ def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto
     lette, avvisi = _leggi_rose(riconosciute, correzioni, prima)
     nuove = lega.da_import(lette, prima, sostituisci_tutto)
     anteprima_rose.scegli_mia(nuove, mia_squadra)              # facoltativa: la squadra dell'utente scelta nell'anteprima
-    limiti.controlla_rose(ctx, nuove)                          # con gli account: al massimo 20 squadre da 40 giocatori
+    limiti.controlla_rose(ctx, nuove, lette)                   # con gli account: al massimo 20 squadre da 40 giocatori
     nuove.stagione = consigli.stagione_corrente()
     if copia_datata and not rovinate:                          # dopo i controlli; un file rovinato lo tiene già rose.json.rovinato (#723)
         _copia_datata_delle_rose(ctx)
@@ -2392,7 +2392,7 @@ def _anteprima(griglie, sostituisci_tutto: bool, correzioni: list[dict] | None, 
     if avviso:                                                     # gli stessi avvisi dell'importazione: rose rovinate, esempi tolti
         avvisi.insert(0, avviso)
     nuove = lega.da_import(lette, prima, sostituisci_tutto)
-    limiti.controlla_rose(ctx, nuove)                              # stessi tetti dell'importazione
+    limiti.controlla_rose(ctx, nuove, lette)                       # stessi tetti dell'importazione
     risposta = anteprima_rose.anteprima(lette, avvisi, r, prima, nuove)
     response.headers["ETag"] = etag                               # da rimandare con If-Match all'importazione
     response.headers["Cache-Control"] = "no-store"

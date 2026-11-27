@@ -930,6 +930,14 @@
     "it": "{squadra}: manca una riga vuota fra le squadre? {nomi} non sono nel listone: se uno è il nome di una squadra, lascia una riga vuota prima e controlla di nuovo.",
     "en": "{squadra}: is a blank line missing between the teams? {nomi} are not in the player list: if one is a team name, leave a blank line before it and check again."
   },
+  "frase.rose.club_forse_squadra.one": {
+    "it": "{squadra}: manca una riga vuota fra le squadre? {nomi} si chiama come una squadra di Serie A e l'ho preso per quella: se è una vostra squadra, lascia una riga vuota prima del suo nome e controlla di nuovo.",
+    "en": "{squadra}: is a blank line missing between the teams? {nomi} has the same name as a Serie A club and I took it for that: if it is one of your teams, leave a blank line before its name and check again."
+  },
+  "frase.rose.club_forse_squadra.other": {
+    "it": "{squadra}: manca una riga vuota fra le squadre? {nomi} si chiamano come squadre di Serie A e li ho presi per quelle: se uno è una vostra squadra, lascia una riga vuota prima del suo nome e controlla di nuovo.",
+    "en": "{squadra}: is a blank line missing between the teams? {nomi} have the same names as Serie A clubs and I took them for those: if one is one of your teams, leave a blank line before its name and check again."
+  },
   "frase.regole.panchina_posti_fissi": {
     "it": "La tua panchina ha posti fissi per ruolo, {n} in tutto: cambia a mano i posti di ogni ruolo nei valori delle regole.",
     "en": "Your bench has fixed spots per position, {n} in total: change the spots for each position by hand in the rule values.",
