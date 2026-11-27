@@ -1141,6 +1141,7 @@ def _altri_amministratori_attivi(db: sqlite3.Connection, utente_id: int) -> int:
 
 BLOCCATO = "Questo account è bloccato: chiedi a chi gestisce SchieraXI."
 AMMINISTRATORE_DAL_SERVER = "Un amministratore si blocca, si sblocca o si elimina solo sul server, dalla riga di comando"
+ROSE_ALTRO_AMMINISTRATORE = "Le rose di un altro amministratore si importano solo sul server, dalla riga di comando."
 
 
 def utente_comune(db: sqlite3.Connection, utente_id: int) -> Utente:

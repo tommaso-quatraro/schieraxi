@@ -2750,7 +2750,7 @@
   },
   "/api/admin/utenti/{utente_id}/rose": {
    "post": {
-    "description": "Solo l'amministratore dell'app: importa le rose di un utente che l'ha chiesto. Risponde come l'importazione normale.",
+    "description": "Solo l'amministratore dell'app: importa le rose di un utente che l'ha chiesto. Risponde come l'importazione normale.\nLe proprie sì; quelle di un altro amministratore no (403, come blocca ed elimina): solo dalla riga di comando.",
     "parameters": [
      {
       "in": "path",
