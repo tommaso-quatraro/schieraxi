@@ -1,5 +1,33 @@
 [
   {
+    "versione": "1.617",
+    "data": "2026-11-27T18:51:40",
+    "titolo": "Primi passi più chiari: la rosa incompleta si spiega e quello che scrivi non si perde",
+    "voci": [
+      "Formazione: se alla tua rosa mancano giocatori, l'app dice quanti ne mancano per ruolo secondo le regole della tua lega, con «Aggiorna le rose». Prima diceva «in qualche ruolo nessuno gioca questa giornata».",
+      "Primo avvio: il testo delle rose che hai incollato resta su questo dispositivo finché non le salvi, anche se chiudi la guida, torni indietro o ricarichi la pagina. Indietro chiude la guida senza uscire dall'app.",
+      "Primo avvio: «Prova con gli esempi» sta sotto «Controlla le rose», e una riga dice dove trovi le rose su Leghe.",
+      "Password dimenticata: con un codice sbagliato la password nuova che hai scritto resta; correggi il codice e riprova.",
+      "Registrati: se passi ad «Accedi» e torni indietro, nome utente, email e password che avevi scritto restano.",
+      "In inglese l'anteprima delle rose usa le stesse virgolette ovunque."
+    ],
+    "tecnico": [
+      "fanta/consigli.py: `rosa_incompleta(s, regole)` (con i giocatori riconosciuti nessun modulo ammesso si riempie e alla rosa mancano giocatori per `regole.rosa`, contati come `lega.problemi_rosa`) e `RosaIncompleta(FormazioneImpossibile)` con `codice = \"rosa_incompleta\"`: `formazione()` la alza dopo la giornata e prima del calcolo, frase `formazione.rosa_incompleta` (fanta/frasi.py, catalogo `frase.formazione.rosa_incompleta.*`). GET /api/formazione: 400 `{detail, codice: \"rosa_incompleta\", frase}` (le app già installate leggono il 400 di sempre, con la frase giusta). fanta/server.py `_errore_valore`: un 400/409/422 il cui messaggio è una frase con la chiave porta anche `frase` (campo facoltativo; anche il 409 `campionato_finito`), e `api()` della web traduce l'errore da lì.",
+      "fanta/gestione.py: `formazione_di_oggi` tiene la frase nella formazione vuota; GET /api/oggi la manda in `rosa_incompleta: {testo, frase}`. GET /api/stato: `rosa_incompleta` (booleano, solo conti sulla rosa). La web con `rosa_incompleta` non chiede /api/formazione (niente 400 nella console) e mostra lo stato con «Aggiorna le rose»; la pagina d'errore ha «Riprova» e «Apri La mia lega» nella stessa fila con lo spazio fra i due. docs/API.md aggiornato; python -m fanta verifica uguale prima e dopo (non passa da consigli.formazione).",
+      "fanta/web/primoavvio.js: bozza del testo delle rose in localStorage (`bozza-rose`, con try/catch e copia in memoria), tolta alla conferma dell'anteprima e da `svuotaDatiLocali`; la guida aperta ha una voce della cronologia (`history.state.primoAvvio`, stesso indirizzo): il popstate di app.js la chiude (`paIndietro`), chiusa in altri modi la voce si toglie (`paTogliVoce`). Gli esempi passano in `coda`, dopo i pulsanti del passo; riga `pav.dove_su_leghe`.",
+      "fanta/web/app.js: `svuotaPassword` solo in «Accedi»; `ricordaCampi`/`rimettiCampi`: i campi dell'accesso per scheda e passo, solo in memoria, senza trappola e caselle, dimenticati con il codice di recupero. fanta/web/anteprima.js: testa del dubbio con `ar.nome_scritto` (in inglese “ ”)."
+    ],
+    "titolo_en": "Clearer first steps: an incomplete roster is explained and what you type is not lost",
+    "voci_en": [
+      "Lineup: if your roster is missing players, the app says how many are missing per position under your league's rules, with “Update the rosters”. Before, it said “in some role nobody plays this matchday”.",
+      "Getting started: the roster text you pasted stays on this device until you save the rosters, even if you close the guide, go back or reload the page. Back closes the guide without leaving the app.",
+      "Getting started: “Try the examples” is below “Check the rosters”, and a line says where to find the rosters on Leghe.",
+      "Forgot password: with a wrong code the new password you typed stays; fix the code and try again.",
+      "Sign up: if you switch to “Sign in” and come back, the username, email and password you had typed stay.",
+      "In English the roster preview uses the same quotation marks everywhere."
+    ]
+  },
+  {
     "versione": "1.616",
     "data": "2026-11-27T18:28:22",
     "titolo": "iPhone: La mia lega come la web",
