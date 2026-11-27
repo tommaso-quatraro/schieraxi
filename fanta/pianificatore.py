@@ -25,6 +25,7 @@ import contextlib
 import json
 import logging
 import os
+import re
 import threading
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -44,6 +45,17 @@ TENUTI = 60                                        # giri ricordati nello stato
 GIRI_RISULTATI = (("1", timedelta(minutes=150)), ("2", timedelta(hours=4)))   # dopo il calcio d'inizio
 MARGINE_RISULTATI = timedelta(hours=12)            # oltre, ci pensa l'aggiornamento completo
 CHIAVE_RISULTATI = archivio.PASSO_SERA                # la riga del giro della sera in `aggiornamenti`
+# Nel registro l'errore di un giro della sera accorciato e senza i parametri degli indirizzi (dopo «?» o «#»: possono portare
+# chiavi): Stato dei dati, per un guasto che non è la rete, rimanda lì (revisione della #975)
+REGISTRO_MAX = 300
+_PARAMETRI = re.compile(r"(https?://[^\s?#'\"]+)[?#][^\s'\")]*")
+
+
+def per_il_registro(errore: str) -> str:
+    """Un errore della corsa («risultati 12: VotiCalati: giornata 12: …») per il registro: senza i parametri degli indirizzi e al
+    massimo REGISTRO_MAX caratteri."""
+    testo = _PARAMETRI.sub(lambda m: m.group(1), str(errore))
+    return testo[:REGISTRO_MAX]
 
 
 def acceso() -> bool:
@@ -191,9 +203,9 @@ def aggiorna_risultati(giornate: list[int], scrivi: Callable[[str], None] = lamb
                 archivio.segna_passo(db, CHIAVE_RISULTATI, _ora(), "; ".join(agg.errori),
                                      tipo="rete" if agg.solo_rete else "dati", fonte="fantacalcio")
                 db.commit()
-                # nel registro solo il passo e il tipo d'errore («risultati 12: ConnectionError»), mai il resto del messaggio
-                LOG.warning("pianificatore: risultati della sera non riusciti (%s)",
-                            ", ".join(": ".join(e.split(": ")[:2]) for e in agg.errori))
+                # nel registro il messaggio accorciato e senza parametri degli indirizzi («risultati 12: VotiCalati: giornata 12: …»):
+                # per un guasto che non è la rete Stato dei dati rimanda qui
+                LOG.warning("pianificatore: risultati della sera non riusciti (%s)", "; ".join(per_il_registro(e) for e in agg.errori))
                 return False
             archivio.segna_passo(db, CHIAVE_RISULTATI, _ora())         # cambia la «versione» dei dati: il riscaldamento ricalcola
             db.commit()
