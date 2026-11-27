@@ -136,6 +136,28 @@ def test_i_messaggi_tradotti_esistono_nel_server():
             assert any(modello.match(t) for t in testi), (k, v)
 
 
+# Messaggi che finiscono con una frase intera presa da fuori, che ha già il suo punto («Hai finito lo spazio… (50 MB). {2}»)
+FINISCONO_CON_UNA_FRASE = {"err.spazio_finito"}
+
+
+def test_i_messaggi_del_server_finiscono_con_il_punto():
+    """Collaudo del 27/11: alcuni messaggi del server finivano senza punto («La password non è giusta», «Invito non valido o
+    scaduto», «La password deve avere almeno 10 caratteri»), altri con. Ora ogni messaggio intero finisce con il punto, in
+    italiano e in inglese («:» se introduce un elenco, o «?» e «!»). Non contano i pezzi che entrano in un altro messaggio
+    (`err.p_*`) e le righe di un elenco, che cominciano con la minuscola o con le virgolette («il bonus per l'assist deve essere
+    tra 1 e 3», «“Crediti iniziali” deve essere un numero»); contano quelli che cominciano con un nome («{1} non è valido: …»).
+    Che il server scriva proprio questo testo lo controlla test_i_messaggi_tradotti_esistono_nel_server."""
+    it, en = _dizionario("it"), _dizionario("en")
+    senza = []
+    for k, v in it.items():
+        if not k.startswith(("err.", "srv.")) or k.startswith("err.p_") or k in FINISCONO_CON_UNA_FRASE:
+            continue
+        if not (v[:1].isupper() or v.startswith("{")):
+            continue
+        senza += [(k, lingua, testo) for lingua, testo in (("it", v), ("en", en[k])) if not re.search(r"[.:?!]$", testo)]
+    assert not senza, f"{len(senza)} messaggi senza il punto finale: {senza[:10]}"
+
+
 def test_eta_minima_uguale_alle_pagine_legali():
     assert f"const ETA_MINIMA = {testi_legali.ETA_MINIMA};" in TESTI_JS
 

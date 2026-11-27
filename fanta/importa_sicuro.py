@@ -38,11 +38,11 @@ FIGLIO = Path(__file__).with_name("_excel_figlio.py")
 
 # parti che un file di rose non ha bisogno di avere
 PROIBITE = ("vbaproject", "macros/", "activex", "embeddings/", "externallinks/", "oleobject", "customui")
-ERRORE_FILE = "File Excel non leggibile: è rovinato, protetto da password o non è un vero file .xlsx"
-PESANTE = "Il file Excel è troppo pesante da leggere: carica solo il foglio con le rose"
-GRANDE_APERTO = "Il file Excel è troppo grande una volta aperto: carica solo il foglio con le rose"
+ERRORE_FILE = "File Excel non leggibile: è rovinato, protetto da password o non è un vero file .xlsx."
+PESANTE = "Il file Excel è troppo pesante da leggere: carica solo il foglio con le rose."
+GRANDE_APERTO = "Il file Excel è troppo grande una volta aperto: carica solo il foglio con le rose."
 RICONOSCIMENTO_LUNGO = ("Il riconoscimento dei giocatori ha richiesto troppo tempo: riprova fra qualche minuto e, se succede "
-                        "ancora, lascia solo le rose")      # testo e CSV oltre il tempo massimo: anche corti, col server carico
+                        "ancora, lascia solo le rose.")      # testo e CSV oltre il tempo massimo: anche corti, col server carico
 PEZZO_USCITA = 64 * 1024                 # byte letti alla volta dall'uscita del processo che legge l'Excel
 TROPPE_CELLE = 5                         # uscita del processo figlio: oltre il tetto di celle (vedi _excel_figlio.py)
 _ENTITA = re.compile(rb"<!(?:DOCTYPE|ENTITY)", re.IGNORECASE)
@@ -58,24 +58,24 @@ def controlla_zip(percorso: Path) -> None:
     with z:
         parti = z.infolist()
         if not parti or len(parti) > MAX_PARTI:
-            raise ValueError("Il file Excel ha una struttura strana: salvalo di nuovo da Excel come .xlsx normale")
+            raise ValueError("Il file Excel ha una struttura strana: salvalo di nuovo da Excel come .xlsx normale.")
         if sum(p.file_size for p in parti) > MAX_DECOMPRESSO or any(p.file_size > MAX_PARTE for p in parti):
             raise ValueError(GRANDE_APERTO)
         for p in parti:
             nome = p.filename.lower()
             if p.flag_bits & 0x1:
-                raise ValueError("Il file Excel è protetto da password: toglila e riprova")
+                raise ValueError("Il file Excel è protetto da password: toglila e riprova.")
             if nome.startswith(("/", "\\")) or ".." in nome.split("/") or "\\" in nome or ":" in nome:
-                raise ValueError("Il file Excel contiene nomi di parti non ammessi")
+                raise ValueError("Il file Excel contiene nomi di parti non ammessi.")
             if any(x in nome for x in PROIBITE):
-                raise ValueError("Il file contiene macro, oggetti incorporati o collegamenti esterni: salvalo come .xlsx normale, senza macro")
+                raise ValueError("Il file contiene macro, oggetti incorporati o collegamenti esterni: salvalo come .xlsx normale, senza macro.")
             if p.file_size > 1024 * 1024 and p.file_size / max(1, p.compress_size) > RAPPORTO_MAX:
-                raise ValueError("Il file Excel è fatto in modo sospetto (si gonfia troppo quando lo apro)")
+                raise ValueError("Il file Excel è fatto in modo sospetto (si gonfia troppo quando lo apro).")
         tipi = _leggi(z, "[Content_Types].xml")
         if tipi is None:
             raise ValueError(ERRORE_FILE)
         if b"macroenabled" in tipi.lower() or b"vbaproject" in tipi.lower():
-            raise ValueError("Il file contiene macro: salvalo come .xlsx normale, senza macro")
+            raise ValueError("Il file contiene macro: salvalo come .xlsx normale, senza macro.")
         for p in parti:
             if p.filename.lower().endswith((".xml", ".rels", ".vml")):
                 _controlla_xml(z, p)
@@ -104,7 +104,7 @@ def _controlla_xml(z: zipfile.ZipFile, parte: zipfile.ZipInfo) -> None:
                     _controlla_testa(pezzo[:300])
                 blocco = resto + pezzo
                 if _ENTITA.search(blocco):
-                    raise ValueError("Il file Excel contiene dichiarazioni XML non ammesse: salvalo di nuovo da Excel")
+                    raise ValueError("Il file Excel contiene dichiarazioni XML non ammesse: salvalo di nuovo da Excel.")
                 resto = blocco[-16:]
     except (zipfile.BadZipFile, RuntimeError, OSError, EOFError):
         raise ValueError(ERRORE_FILE) from None
@@ -112,10 +112,10 @@ def _controlla_xml(z: zipfile.ZipFile, parte: zipfile.ZipInfo) -> None:
 
 def _controlla_testa(testa: bytes) -> None:
     if testa[:2] in (b"\xff\xfe", b"\xfe\xff") or testa[:1] == b"\x00" or testa[1:2] == b"\x00":
-        raise ValueError("Il file Excel usa una codifica non ammessa: salvalo di nuovo da Excel come .xlsx normale")
+        raise ValueError("Il file Excel usa una codifica non ammessa: salvalo di nuovo da Excel come .xlsx normale.")
     d = _DICHIARAZIONE.match(testa)
     if d and d.group(1).lower() not in (b"utf-8", b"utf8", b"us-ascii", b"ascii"):
-        raise ValueError("Il file Excel usa una codifica non ammessa: salvalo di nuovo da Excel come .xlsx normale")
+        raise ValueError("Il file Excel usa una codifica non ammessa: salvalo di nuovo da Excel come .xlsx normale.")
 
 
 class FogliExcel(rose.Fogli):
@@ -192,7 +192,7 @@ def _esegui_lettore(comando: list[str]) -> tuple[int | None, bytes | None]:
 
 
 def testo_troppo_lungo() -> str:
-    return f"Il testo è troppo lungo (massimo {MAX_TESTO // 1000} mila caratteri): incolla solo le rose"
+    return f"Il testo è troppo lungo (massimo {MAX_TESTO // 1000} mila caratteri): incolla solo le rose."
 
 
 def riconoscimento_lungo(excel: bool) -> str:
@@ -221,8 +221,8 @@ def controlla_griglie(griglie: list[tuple[str, list[list[str]]]]) -> None:
     """Righe, colonne e celle massime per testo e CSV (l'Excel viene già tagliato e fermato dal processo che lo legge)."""
     for _, g in griglie:
         if len(g) > MAX_RIGHE:
-            raise ValueError(f"Il file ha troppe righe (massimo {MAX_RIGHE}): carica solo le rose")
+            raise ValueError(f"Il file ha troppe righe (massimo {MAX_RIGHE}): carica solo le rose.")
         if any(len(r) > MAX_COLONNE for r in g):
-            raise ValueError(f"Il file ha troppe colonne (massimo {MAX_COLONNE}): carica solo le rose")
+            raise ValueError(f"Il file ha troppe colonne (massimo {MAX_COLONNE}): carica solo le rose.")
     if celle(griglie) > limiti.valore("MAX_CELLE_IMPORTAZIONE"):            # lo stesso tetto dell'Excel (conta solo con FANTA_ più basso)
         raise ValueError(testo_troppo_lungo())

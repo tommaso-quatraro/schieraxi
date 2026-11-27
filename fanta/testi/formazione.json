@@ -111,6 +111,11 @@
     "it": "Non riesco a copiare: tieni premuto sul testo",
     "en": "I cannot copy: press and hold on the text"
   },
+  "formazione.da_copiare": {
+    "it": "Formazione da copiare",
+    "en": "Lineup to copy",
+    "nota": "il nome del riquadro con il testo della formazione, che compare quando la copia non riesce"
+  },
   "formazione.al_posto_di": {
     "it": "Al posto di {nome}",
     "en": "Instead of {nome}"
@@ -162,6 +167,11 @@
   "formazione.opzione_modulo": {
     "it": "{modulo} · {punti} punti",
     "en": "{modulo} · {punti} points"
+  },
+  "formazione.opzione_tua": {
+    "it": "{modulo} · {punti} punti · la tua",
+    "en": "{modulo} · {punti} points · yours",
+    "nota": "la voce del menu del modulo con la formazione cambiata a mano, quando non è una di quelle calcolate dal server"
   },
   "formazione.stato_e_consigliata": {
     "it": "È la consigliata.",

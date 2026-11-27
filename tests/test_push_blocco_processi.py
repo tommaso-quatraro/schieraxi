@@ -24,7 +24,7 @@ from test_cancellazione_account import ambiente, elimina, nuovo_utente, sola_let
 RADICE = Path(__file__).resolve().parent.parent
 CHIAVI = {"p256dh": "P" * 40, "auth": "A" * 20}
 A, B, C, D = ({"endpoint": f"https://8.8.8.8/push/{n}", "keys": CHIAVI} for n in "abcd")
-OCCUPATO = "Un'altra operazione sulle notifiche è ancora in corso: riprova fra qualche secondo"
+OCCUPATO = "Un'altra operazione sulle notifiche è ancora in corso: riprova fra qualche secondo."
 
 # Il secondo processo: fa l'operazione chiesta, ma subito dopo aver letto push.json scrive «letto» e aspetta il «via».
 FIGLIO = r"""

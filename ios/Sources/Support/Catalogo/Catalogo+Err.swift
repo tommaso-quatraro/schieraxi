@@ -37,7 +37,7 @@ extension Catalogo {
         static let pRegolaVotoUfficioRinviate = "Voto d'ufficio delle partite rinviate"
 
         /// `err.indica_squadra`
-        static let indicaSquadra = "Indica la tua squadra in «La mia squadra»"
+        static let indicaSquadra = "Indica la tua squadra in «La mia squadra»."
 
         /// `err.formazione_chiusa`
         static let formazioneChiusa = "La giornata è già iniziata: la formazione non si può più cambiare."

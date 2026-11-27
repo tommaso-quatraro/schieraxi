@@ -100,6 +100,8 @@ struct StatoAggiornamento: Decodable, Equatable {
     let inCorso: Bool?
     let righe: [String]?
     let errori: [String]?
+    /// Vero a giro finito se non è arrivato nessun dato (collaudo del 27/11/2026); un server di prima non lo manda.
+    let nessunDatoNuovo: Bool?
 }
 
 struct IconaServer: Decodable, Equatable {

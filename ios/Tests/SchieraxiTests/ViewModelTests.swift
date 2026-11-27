@@ -191,7 +191,7 @@ final class FormazioneViewModelTests: XCTestCase {
         let scelta = f0.titolari.map(\.id).map { $0 == 6523 ? 6994 : $0 }
         let srv = ServerDiProva { metodo, percorso, _ in
             if percorso.hasPrefix("/api/formazione/valuta") {
-                throw ErroreApi.codificato(codice: ValiditaScelta.codiceNonValida, messaggio: "Servono 11 titolari diversi, tutti della rosa")
+                throw ErroreApi.codificato(codice: ValiditaScelta.codiceNonValida, messaggio: "Servono 11 titolari diversi, tutti della rosa.")
             }
             if percorso.hasPrefix("/api/scelta") {
                 if metodo == "DELETE" { return Data("{\"ok\": true}".utf8) }

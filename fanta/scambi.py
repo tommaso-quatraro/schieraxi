@@ -262,7 +262,7 @@ class Scambio:
 def _ids(rose: Rose, nome: str) -> list[int]:
     s = rose.squadra(nome)
     if not s:
-        raise ValueError(f"Squadra non trovata: {nome}")
+        raise ValueError(f"Squadra non trovata: {nome}.")
     return [g.id for g in s.giocatori if g.id is not None]
 
 
@@ -273,18 +273,18 @@ def _quot(v: Valori, ids: list[int]) -> int:
 def analizza(v: Valori, regole: Regole, rose: Rose, mia: str, altra: str, do: list[int], ricevo: list[int]) -> Scambio:
     a, b = _ids(rose, mia), _ids(rose, altra)
     if rose.squadra(mia).nome == rose.squadra(altra).nome:
-        raise ValueError("Scegli un'altra squadra: non puoi scambiare con te stesso")
+        raise ValueError("Scegli un'altra squadra: non puoi scambiare con te stesso.")
     if len(set(do)) != len(do) or len(set(ricevo)) != len(ricevo) or len(do) != len(ricevo) or not do:
-        raise ValueError("Lo scambio deve essere tra lo stesso numero di giocatori, senza ripetizioni")
+        raise ValueError("Lo scambio deve essere tra lo stesso numero di giocatori, senza ripetizioni.")
     if any(i not in v.info.index for i in list(do) + list(ricevo)):
-        raise ValueError("Uno dei giocatori non è nel listone di Serie A: non si può valutare")
+        raise ValueError("Uno dei giocatori non è nel listone di Serie A: non si può valutare.")
     if not set(do) <= set(a):
-        raise ValueError(f"Non tutti i giocatori da dare sono in {mia}")
+        raise ValueError(f"Non tutti i giocatori da dare sono in {mia}.")
     if not set(ricevo) <= set(b):
-        raise ValueError(f"Non tutti i giocatori da ricevere sono in {altra}")
+        raise ValueError(f"Non tutti i giocatori da ricevere sono in {altra}.")
     ruoli = lambda ids: sorted(v.info.at[i, "ruolo"] for i in ids if i in v.info.index)  # noqa: E731
     if ruoli(do) != ruoli(ricevo):
-        raise ValueError("Lo scambio cambia il numero di giocatori per ruolo: le rose non resterebbero valide")
+        raise ValueError("Lo scambio cambia il numero di giocatori per ruolo: le rose non resterebbero valide.")
     a2 = [i for i in a if i not in do] + ricevo
     b2 = [i for i in b if i not in ricevo] + do
     prima_a, dopo_a = valore_rosa(a, v, regole), valore_rosa(a2, v, regole)
@@ -324,7 +324,7 @@ def proponi(v: Valori, regole: Regole, rose: Rose, mia: str, altra: str | None =
     inizio = time.monotonic()
     a = _ids(rose, mia)
     if altra is not None and rose.squadra(altra) is None:
-        raise ValueError(f"Squadra non trovata: {altra}")
+        raise ValueError(f"Squadra non trovata: {altra}.")
     altre = [s.nome for s in rose.squadre if s.nome != rose.squadra(mia).nome
              and (altra is None or s.nome == rose.squadra(altra).nome)]
     base_a = valore_rosa(a, v, regole)

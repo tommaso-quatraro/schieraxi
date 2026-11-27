@@ -17,4 +17,5 @@ def test_errore_a_tutta_pagina_ha_il_pulsante_riprova():
 def test_errore_429_dice_quanto_aspettare():
     assert "const attesaDa" in JS
     assert "e.status === 429 && e.riprova" in JS
-    assert "const errore = e => `<div class=\"errore\" role=\"alert\">${esc(e.message || e)}${attesaDa(e)}</div>`;" in JS
+    # cosa mostra l'errore con l'attesa (la frase del server e poi «Riprova tra 10 secondi.») lo prova, eseguendo il codice,
+    # tests/test_web_attese.py::test_l_errore_con_l_attesa_sono_due_frasi_come_sull_iphone (revisione della #968)

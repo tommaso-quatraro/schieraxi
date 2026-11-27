@@ -91,7 +91,7 @@ def test_registrazione_aperta_la_trappola_non_si_vede_e_non_si_raggiunge(web):
 def test_registrazione_aperta_al_completo_lo_dice_e_la_password_resta(web):
     """Posti finiti: il messaggio del server, come errore, e quello che si è scritto resta."""
     solo_prima(web)
-    web.risposta("/api/account/registra", {"detail": "Iscrizioni chiuse: siamo al completo"}, stato=403)
+    web.risposta("/api/account/registra", {"detail": "Iscrizioni chiuse: siamo al completo."}, stato=403)
     apri_registrati(web)
     web.pagina.locator("#ac-nome").fill("amico")
     web.pagina.locator("#ac-pw").fill("una-password-lunga-9")
@@ -99,7 +99,7 @@ def test_registrazione_aperta_al_completo_lo_dice_e_la_password_resta(web):
     web.pagina.locator("#accesso-invia").click()
     errore = web.pagina.locator("#accesso-msg [role=alert]")
     errore.wait_for(timeout=10000)
-    assert errore.inner_text().strip() == "Iscrizioni chiuse: siamo al completo"
+    assert errore.inner_text().strip() == "Iscrizioni chiuse: siamo al completo."
     assert web.pagina.locator("#ac-pw").input_value() == "una-password-lunga-9"
 
 
