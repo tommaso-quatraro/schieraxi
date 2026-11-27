@@ -1,5 +1,27 @@
 [
   {
+    "versione": "1.606",
+    "data": "2026-11-27T14:30:51",
+    "titolo": "Formazione: si aggiorna da sola alla scadenza, e il menu del modulo dice la tua",
+    "voci": [
+      "Formazione sulla web aperta alla scadenza: pochi secondi dopo si aggiorna da sola e si chiude, senza ricaricare la pagina. Si aggiorna anche quando torni sull'app dopo la scadenza o dopo più di 5 minuti, e quando un cambio non riesce perché una partita è già cominciata. «Formazione chiusa» compare solo a scadenza passata, non più mezzo minuto prima.",
+      "Menu del modulo dopo un cambio fatto a mano: in cima c'è la tua formazione con i suoi punti («4-3-3 · 71,0 punti · la tua»), scelta; scegliendo il modulo «consigliato» torni alla consigliata. Prima restava scelta la voce consigliata e sceglierla non faceva niente.",
+      "Con la tastiera, nel menu del modulo le frecce scorrono le voci e il modulo si cambia con Invio (o uscendo dal menu), non a ogni freccia.",
+      "Se «Copia per l'app della lega» non riesce, il testo della formazione compare sotto il pulsante, già selezionato, da copiare a mano."
+    ],
+    "tecnico": [
+      "Web, `mostraFormazione`: una rilettura che chiede prima al server con la pagina com'è (`vistaFormazione(inPagina)`, opzione nuova `inPagina` di `caricaConCache`: con i dati uguali niente ridisegno, la copia salvata solo se il server non risponde) 5 secondi dopo la scadenza della formazione in pagina (`scadenzaDi`, una volta per scadenza, `scadenzaRiletta`) e al `visibilitychange` se la scadenza è passata o i dati hanno più di 5 minuti; dopo un rifiuto `giocatore_bloccato` di POST /api/formazione/valuta o DELETE /api/scelta si rilegge come dopo `formazione_chiusa`. `testoConto` arrotonda in su i minuti che mancano.",
+      "Menu del modulo: la voce `VOCE_TUA` (testo `formazione.opzione_tua`) quando gli 11 in pagina non sono quelli di un modulo calcolato; con la tastiera i `change` arrivati nello stesso giro di un tasto non salvano, si salva con Invio o `blur`. Copia non riuscita: riquadro `#da-copiare` (testo `formazione.da_copiare`). Nessuna rotta cambiata; l'iPhone non cambia in questo lavoro. Con un salvataggio in volo «Copia per l'app della lega» non copia (`libero()`); dopo un salvataggio riuscito i dati contano come appena letti (`sc.letta`)."
+    ],
+    "titolo_en": "Lineup: it updates by itself at the deadline, and the formation menu shows yours",
+    "voci_en": [
+      "Lineup on the web open at the deadline: a few seconds later it updates by itself and closes, without reloading the page. It also updates when you come back to the app after the deadline or after more than 5 minutes, and when a change fails because a match has already started. “Lineup closed” appears only once the deadline has passed, no longer half a minute early.",
+      "Formation menu after a change made by hand: at the top there is your lineup with its points (“4-3-3 · 71.0 points · yours”), selected; choosing the “recommended” formation takes you back to the recommended lineup. Before, the recommended entry stayed selected and choosing it did nothing.",
+      "With the keyboard, the arrows move through the formation menu and the formation changes with Enter (or when leaving the menu), not at every arrow.",
+      "If “Copy for the league app” fails, the lineup text appears below the button, already selected, to copy by hand."
+    ]
+  },
+  {
     "versione": "1.605",
     "data": "2026-11-27T13:46:30",
     "titolo": "Gestione: permessi degli amministratori più stretti e inviti più sicuri",
