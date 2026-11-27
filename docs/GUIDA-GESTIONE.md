@@ -101,6 +101,8 @@ Chi è già entrato con quell'invito tiene il suo account. Gli inviti usati, sca
   amministratore si blocca o si elimina solo con i comandi qui sotto. L'ultimo amministratore che non è bloccato non si blocca,
   non si elimina e non si declassa. Ogni blocco, sblocco ed eliminazione lascia una riga negli eventi di sicurezza di
   **Errori recenti** («Account bloccato · luca»); nel registro di sicurezza del server la riga dice anche chi l'ha fatto.
+  Dopo ogni blocco, sblocco ed eliminazione la pagina rilegge da sola utenti, **Commenti degli utenti** (i commenti di un account
+  eliminato vanno via con lui) ed **Errori recenti**.
   Sul server, via ssh, dalla cartella dell'app, gli stessi passi con la conferma del nome (anche per gli amministratori):
   `.venv/bin/python -m fanta utente-blocca <nome>`, `utente-sblocca <nome>` e `utente-elimina <nome>`.
 - **Errori recenti**: le richieste dall'ultimo riavvio con le rifiutate e gli errori del server, tempo medio e massimo, gli
@@ -132,7 +134,10 @@ di recupero e in **Il tuo account** non si può collegare un'email.
   occupato con un aggiornamento (dei dati o di una versione nuova), il pulsante è spento con una frase che lo dice e si riaccende
   da sé quando ha finito; se l'aggiornamento parte con l'app già aperta, il pulsante premuto risponde «Aggiornamento già in
   corso». Con tutte le fonti spente lo dice e non parte. Fra un giro e il successivo passano almeno 10 minuti: premuto prima, dice
-  fra quanto riprovare («I dati sono stati aggiornati da poco: riprova fra 9 minuti.») e non parte.
+  fra quanto riprovare («I dati sono stati aggiornati da poco: riprova fra 9 minuti.») e non parte. Finito con dei problemi,
+  l'avviso dice «Aggiornato, ma con problemi:» e sotto una frase per riga, per esempio «Fantacalcio.it non risponde: riprova più
+  tardi.»; il dettaglio tecnico sta nel registro del server e in **Stato dei dati**. Un giro in cui non arriva nessuna pagina non
+  cambia l'ora dei dati («dati del …»): l'avviso «I dati delle partite non si aggiornano da …» resta finché i dati non arrivano.
 - **Stato dei dati** (**Apri lo stato dei dati**): da dove arrivano i dati, se qualche fonte ha dato errore e quanto è affidabile
   il modello. Le fonti si accendono e si spengono da qui: sotto ogni fonte spenta c'è cosa non arriva, e una volta sola sotto
   l'elenco cosa fa l'app senza e le condizioni d'uso. La scelta vale subito, anche per i risultati in diretta (ESPN e la

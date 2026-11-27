@@ -421,7 +421,15 @@ def _dati_non_validi(_, e: RequestValidationError) -> JSONResponse:
                     for err in e.errors()})
     return JSONResponse(status_code=422, content={"detail": DATI_NON_VALIDI, "campi": campi[:20]},
                         headers={"Cache-Control": "no-store"})
-_aggiornamento = {"in_corso": False, "righe": [], "errori": []}
+
+
+def stato_aggiornamento_iniziale() -> dict:
+    """Lo stato di «Aggiorna i dati» (GET /api/aggiorna) all'avvio del server e all'inizio di ogni giro: gli stessi campi di un
+    giro finito (docs/API.md), anche `errori_frasi` (revisione della #956)."""
+    return {"in_corso": False, "righe": [], "errori": [], "errori_frasi": []}
+
+
+_aggiornamento = stato_aggiornamento_iniziale()
 _blocco = threading.Lock()
 
 
@@ -875,14 +883,26 @@ def avvia_aggiornamento():
         _blocco.release()
         return GIA_IN_CORSO
 
+    # Chi ha premuto legge una frase del catalogo per fatto (`errori`, con `errori_frasi` per tradurla: aggiorna.Aggiornamento.per_utente),
+    # mai l'errore tecnico (collaudo d'insieme del 26/11: «ProxyError: HTTPSConnectionPool…» copriva lo schermo). Il dettaglio resta per
+    # chi gestisce il server: nel registro, in `righe` della stessa risposta (rotta solo per l'amministratore, nessun client le mostra)
+    # e in Stato dei dati. Errori senza una loro frase: una frase generica, così l'avviso non dice «Dati aggiornati».
     def lavoro():
         global _aggiorna_finito_alle
+        registro = logging.getLogger("uvicorn.error")
+        per_utente: list = []
         try:
-            _aggiornamento["errori"] = aggiorna.esegui(scrivi=_aggiornamento["righe"].append)
+            errori = aggiorna.esegui(scrivi=_aggiornamento["righe"].append, per_utente=per_utente)
+            for e in errori:
+                registro.warning("Aggiorna i dati: %s", str(e)[:1000])
+            if errori and not per_utente:
+                per_utente.append(frasi.F("aggiorna.parte_non_aggiornata_generica"))
             _scalda()
-        except Exception as e:  # noqa: BLE001 - va riportato all'app, non deve far cadere il server
-            _aggiornamento["errori"].append(str(e))
+        except Exception:  # noqa: BLE001 - va riportato all'app, non deve far cadere il server
+            registro.exception("Aggiorna i dati: aggiornamento fermato")
+            per_utente.append(frasi.F("aggiorna.errore_server"))
         finally:
+            _aggiornamento.update(errori=[str(f) for f in per_utente], errori_frasi=frasi.lista(per_utente))
             _aggiorna_finito_alle = _orologio_aggiorna()       # prima di lasciare il lucchetto: la pausa parte da qui
             _aggiornamento["in_corso"] = False
             try:
@@ -890,7 +910,7 @@ def avvia_aggiornamento():
             finally:
                 _blocco.release()
 
-    _aggiornamento.update(in_corso=True, righe=[], errori=[])
+    _aggiornamento.update(stato_aggiornamento_iniziale(), in_corso=True)
     threading.Thread(target=lavoro, daemon=True).start()
     return {"avviato": True}
 

@@ -440,6 +440,15 @@ CATALOGO: dict[str, str] = {
     "uso.parte_widget": "Widget dell'iPhone",
     "uso.parte_controllo": "Controllo del server",
     "uso.parte_altro": "Altre richieste",
+    # «Aggiorna i dati» finito con dei problemi (collaudo d'insieme del 26/11/2026): `errori` di GET /api/aggiorna, una frase per
+    # fatto (aggiorna.Aggiornamento.per_utente); il dettaglio tecnico resta nel registro e in Stato dei dati. {fonte} = il nome di
+    # una fonte («Fantacalcio.it»), {fonti} = un elenco «A, B e C» delle fonti che non hanno risposto
+    "aggiorna.non_risponde": "{fonte} non risponde: riprova più tardi.",
+    "aggiorna.non_rispondono": "{fonti} non rispondono: riprova più tardi.",
+    "aggiorna.parte_non_aggiornata": "Una parte dei dati di {fonte} non si è aggiornata: il dettaglio è in Stato dei dati.",
+    "aggiorna.parte_non_aggiornata_generica": "Una parte dei dati non si è aggiornata: il dettaglio è in Stato dei dati.",
+    "aggiorna.controlli": "I controlli sui dati hanno trovato un problema: il dettaglio è in Stato dei dati.",
+    "aggiorna.errore_server": "L'aggiornamento si è fermato per un errore del server: il dettaglio è nel registro.",
 }
 
 
