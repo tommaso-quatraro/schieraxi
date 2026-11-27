@@ -77,7 +77,7 @@ def test_solo_il_titolare(titolare):
 def test_il_titolare_non_blocca_ne_elimina_se_stesso(titolare):
     io = titolare.get("/api/account/me").json()["utente"]["id"]
     r = titolare.post(f"/api/admin/utenti/{io}/blocca")
-    assert r.status_code == 400 and r.json()["detail"] == "Non puoi bloccare il tuo account", r.text
+    assert r.status_code == 400 and r.json()["detail"] == "Non puoi bloccare il tuo account.", r.text
     r = titolare.delete(f"/api/admin/utenti/{io}")
     assert r.status_code == 400 and "Il tuo account" in r.json()["detail"], r.text
     assert titolare.get("/api/account/me").status_code == 200

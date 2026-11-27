@@ -37,8 +37,8 @@ PROVE_PER_IP = (30, account.QUARTO_D_ORA)    # codici provati (giusti o no) da u
 USA_E_GETTA = {"mailinator.com", "guerrillamail.com", "guerrillamail.net", "10minutemail.com", "yopmail.com", "tempmail.com",
                "temp-mail.org", "trashmail.com", "throwawaymail.com", "sharklasers.com", "getnada.com", "dispostable.com",
                "maildrop.cc", "fakeinbox.com", "mailnesia.com", "tempail.com"}
-NON_VALIDO = "Codice non valido o scaduto"
-EMAIL_NON_VALIDA = "Indirizzo email non valido"
+NON_VALIDO = "Codice non valido o scaduto."
+EMAIL_NON_VALIDA = "Indirizzo email non valido."
 RISPOSTA_INVIO = {"ok": True, "scade_minuti": int(DURATA_CODICE.total_seconds() // 60)}
 
 
@@ -52,7 +52,7 @@ def normalizza_email(testo) -> str:
     if not posta.indirizzo_valido(e) or e.count("@") != 1:
         raise ErroreAccount(EMAIL_NON_VALIDA)
     if e.rsplit("@", 1)[1] in USA_E_GETTA:
-        raise ErroreAccount("Questo servizio di email temporanee non è accettato: usa il tuo indirizzo vero")
+        raise ErroreAccount("Questo servizio di email temporanee non è accettato: usa il tuo indirizzo vero.")
     return e
 
 
@@ -310,7 +310,7 @@ def _recupera_con_email(db, email, codice, nuova, ip, adesso, tieni_push=None) -
     riga = _codice_vivo(db, "recupero", adesso, utente_id=riga_utente["id"]) if riga_utente else None
     if not _prova_codice(db, riga, codice, adesso, _chi_prova(ip)):
         account._fallimento("recupero", email or "-", ip)
-        raise ErroreAccount("Email o codice non validi", 403)
+        raise ErroreAccount("Email o codice non validi.", 403)
     if riga_utente["bloccato"]:                      # codice giusto (ora usato) ma account bloccato: password, sessioni e Google restano
         account.negato_bloccato(riga_utente["nome_utente"], via="recupero_email")
     limite.annulla(db, righe)
@@ -320,7 +320,7 @@ def _recupera_con_email(db, email, codice, nuova, ip, adesso, tieni_push=None) -
                         (account.hash_password(nuova), _hash_codice(nuovo), riga_utente["id"]))
     db.commit()
     if cambio.rowcount != 1:
-        raise ErroreAccount("Email o codice non validi", 403)
+        raise ErroreAccount("Email o codice non validi.", 403)
     account._riuscito(db, [], "recupero", email or "-", ip)
     account.esci_da_tutti(db, riga_utente["id"], scollega_social=True, tieni_push=tieni_push)
     evento("recupero", nome=riga_utente["nome_utente"], ip=ip, via="email")
@@ -399,7 +399,7 @@ def _iscrivi(db, nome_utente, password, email_grezza, invito, ip, adesso, accett
     nome = account.valida_nome(nome_utente)                   # prima dei tetti: un modulo scritto male non consuma tentativi
     account.valida_password(password, nome)
     if not email_grezza:
-        raise ErroreAccount("Per iscriverti serve un indirizzo email: ti mandiamo un codice per confermarlo")
+        raise ErroreAccount("Per iscriverti serve un indirizzo email: ti mandiamo un codice per confermarlo.")
     email = normalizza_email(email_grezza)
     limite.troppi(db, _chiave("iscrizioni-globali"), *ISCRIZIONI_GLOBALI)     # si conta solo quando parte davvero un codice
     inv = _invito_vivo(db, invito, adesso, ip)
@@ -474,7 +474,7 @@ def conferma_iscrizione(db: sqlite3.Connection, email_grezza, codice, ip: str | 
     try:
         ruolo = "utente"
         if db.execute("SELECT 1 FROM utenti WHERE nome_utente = ?", (dati["nome"],)).fetchone():     # ora l'email è provata: si può dire
-            raise ErroreAccount("Questo nome utente è già preso: ricomincia l'iscrizione con un altro nome")
+            raise ErroreAccount("Questo nome utente è già preso: ricomincia l'iscrizione con un altro nome.")
         if dati.get("invito"):                                # modo `email`: l'invito si usa adesso, e solo se vale ancora
             inv = db.execute("SELECT * FROM inviti WHERE codice_hash = ?", (dati["invito"],)).fetchone()
             if not account.invito_vivo(inv, adesso):
@@ -493,7 +493,7 @@ def conferma_iscrizione(db: sqlite3.Connection, email_grezza, codice, ip: str | 
         db.commit()
     except sqlite3.IntegrityError:                           # nome o email presi un attimo prima
         db.rollback()
-        raise ErroreAccount("Questo nome utente o questo indirizzo sono già in uso: ricomincia l'iscrizione") from None
+        raise ErroreAccount("Questo nome utente o questo indirizzo sono già in uso: ricomincia l'iscrizione.") from None
     except BaseException:
         if db.in_transaction:
             db.rollback()

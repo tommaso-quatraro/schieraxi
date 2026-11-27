@@ -1,5 +1,53 @@
 [
   {
+    "versione": "1.608",
+    "data": "2026-11-27T15:46:58",
+    "titolo": "iPhone: il promemoria si vede anche con l'app aperta e il tocco apre la Formazione",
+    "voci": [
+      "Sull'iPhone il promemoria prima della scadenza si vede e suona anche con l'app aperta, come sulla web; toccandolo si apre la Formazione invece della schermata dove avevi lasciato l'app.",
+      "I promemoria dell'app per iPhone sono sempre in italiano, come il resto dell'app, anche se sulla web hai scelto l'inglese.",
+      "L'avviso «C'è una versione nuova» dice la versione come la trovi in Impostazioni › Informazioni, senza sigle.",
+      "Impostazioni › Avvisi: tornando nell'app, l'interruttore «Avvisi su questo dispositivo» dice subito se hai tolto o ridato il permesso nelle impostazioni dell'iPhone. Se una modifica non si salva, compare solo il motivo, come sulla web."
+    ],
+    "tecnico": [
+      "GET /api/oggi: `testi_promemoria` nella lingua della richiesta (`?lingua=` o `Accept-Language`, `lingua.della_richiesta`) e non più nella `lingua` di /api/avvisi; l'iPhone manda sempre `Accept-Language: it` e il suo promemoria di riserva (`oggi.prossima_chiude`) è in italiano. Nessun campo tolto o rinominato; docs/API.md aggiornato.",
+      "iPhone: `DelegatoAvvisi` (UNUserNotificationCenterDelegate) messo in `SchieraxiApp.init`: con l'app aperta banner, elenco e suono; il tocco su `fanta-60`/`fanta-15` porta dove porta `schieraxi://formazione` (`Notifiche.destinazione`, `AvvisiToccati`, `Navigazione.vai`).",
+      "iPhone: catalogo `avv.versione_nuova_titolo` e `avv.versione_nuova_testo` (solo app) con la versione «1.0.N» al posto di «(build-N)»; `AvvisiDispositivoViewModel.rileggiPermesso` al ritorno in primo piano; `erroreSalvataggio` è il solo messaggio dell'errore; la riga del certificato in Gestione viene dal catalogo (`avv.certificato_aiuto`, solo app), cita `avv.certificato_ore` (prima «Rinnovala con SideStore») e dice cosa fa il promemoria con le ore tranquille (`Notifiche.promemoriaCertificato`); in Gestione la riga di chi gestisce dice le versioni «1.0.N». Nuovo `tests/test_versione_app_ios.py`: «1.0.» uguale in ipa.yml, genera_sorgente.py e `NuovaVersione.versione`."
+    ],
+    "titolo_en": "iPhone: the reminder shows even with the app open and tapping it opens the Lineup",
+    "voci_en": [
+      "On the iPhone the reminder before the deadline shows and plays a sound even with the app open, as on the web; tapping it opens the Lineup instead of the screen where you left the app.",
+      "The reminders of the iPhone app are always in Italian, like the rest of the app, even if you chose English on the web.",
+      "The “A new version is out” alert («C'è una versione nuova») says the version as you find it in Settings › About (Impostazioni › Informazioni), without codes.",
+      "Settings › Alerts (Impostazioni › Avvisi): when you come back to the app, the “Alerts on this device” switch («Avvisi su questo dispositivo») shows right away whether you removed or granted the permission in the iPhone settings. If a change is not saved, only the reason appears, as on the web."
+    ]
+  },
+  {
+    "versione": "1.607",
+    "data": "2026-11-27T15:13:36",
+    "titolo": "Aggiorna i dati dice quando non arriva niente, e i messaggi finiscono con il punto",
+    "voci": [
+      "Gestione, «Aggiorna i dati»: se non arriva nessun dato, per esempio perché nessuna fonte risponde, l'avviso dice «Nessun dato nuovo:» con sotto le frasi una per riga, non più «Aggiornato, ma con problemi».",
+      "Premuto di nuovo entro 10 minuti, «Aggiorna i dati» dice «Hai appena provato: riprova fra 9 minuti.» al posto di «I dati sono stati aggiornati da poco», che non era vero se non era arrivato niente.",
+      "I messaggi d'errore che arrivano dal server (accesso, iscrizione, rose, scambi, immagini e gli altri) finiscono con il punto, per esempio «La password non è giusta.».",
+      "Un errore con un'attesa finisce con una frase a sé, per esempio «Il server è molto occupato. Riprova tra 10 secondi.», e con i dati salvati la nota dice «Dati salvati il 17 nov alle 10:05, potrebbero non essere aggiornati.» dopo il motivo, non più fra parentesi."
+    ],
+    "tecnico": [
+      "GET /api/aggiorna: campo nuovo nessun_dato_nuovo (booleano), vero a giro finito se nessun passo ha scaricato niente, con la stessa regola che lascia ferma l'ora dei dati (aggiorna.Aggiornamento.dati_nuovi, da scaricati), e se il giro si ferma per un'eccezione; falso all'avvio e durante il giro (stato_aggiornamento_iniziale). aggiorna.esegui ha il parametro esito (esito[\"dati_nuovi\"]). Contratto in docs/API.md; i client che non conoscono il campo restano come prima.",
+      "POST /api/aggiorna: la pausa di 10 minuti risponde «Hai appena provato: riprova fra N minuti.» (srv.aggiorna_pausa); «Aggiornamento già in corso.» ha il punto e la sua chiave (srv.aggiorna_gia_in_corso). Stessi campi di prima.",
+      "Web e iPhone: con nessun_dato_nuovo vero la testa dell'avviso è aggiorna.nessun_dato («Nessun dato nuovo: {errori}», le frasi una per riga) o, senza frasi, aggiorna.nessun_dato_niente; AggiornaDatiViewModel legge il campo (StatoAggiornamento.nessunDatoNuovo, facoltativo).",
+      "Messaggi del server: 148 chiavi err.* che finivano senza punto lo hanno ora in italiano e in inglese, e lo stesso testo nel server (account, rotte_account, account_email, social, server, importa_sicuro, scarica_immagine, scambi, scambi_multi, diario, push, backup e altri); anche tre messaggi fuori dal catalogo («Immagine troppo grande (massimo 4 MB).», «L'indirizzo rimanda ad altri indirizzi troppe volte.», «Servono 11 titolari diversi.»). «https://» fra virgolette in err.indirizzo_completo ed err.indirizzo_https. Le righe di un elenco («il bonus per l'assist deve essere tra …», «“Crediti iniziali” deve essere un numero») e i pezzi err.p_* restano senza; restano come sono anche i messaggi tecnici fuori dal catalogo («Accesso richiesto» del 401, «Fonte sconosciuta», «Funzione sconosciuta»). Nuovo controllo tests/test_testi.py::test_i_messaggi_del_server_finiscono_con_il_punto. Un client che confrontava il testo esatto di uno di questi messaggi va aggiornato: web e iPhone non lo fanno (mostrano il testo del server; l'iPhone toglie l'invito a riprovare con o senza il punto).",
+      "Web: comune.riprova_tra è « Riprova tra {attesa}.» e errore() con l'attesa del 429 mostra la frase del server senza il suo invito a riprovare (senzaInvitoARiprovare), come ErroreApi.errorDescription dell'iPhone. comune.cache_errore è «{errore} Dati salvati il {giorno} alle {ora}, potrebbero non essere aggiornati.», con {errore} chiuso dal punto (conPunto in app.js, DatiVecchi.frase sull'iPhone)."
+    ],
+    "titolo_en": "Refresh the data says when nothing arrives, and messages end with a full stop",
+    "voci_en": [
+      "Management, “\u0001”: if no data arrives, for example because no source responds, the message says “\u0001” with the sentences below, one per line, instead of “\u0001”.",
+      "Pressed again within 10 minutes, “\u0001” says “\u0001” instead of “\u0001”, which was not true if nothing had arrived.",
+      "The error messages that come from the server (sign-in, sign-up, rosters, trades, images and the others) end with a full stop, for example “\u0001”.",
+      "An error with a waiting time ends with a sentence of its own, for example “\u0001”, and with saved data the note says “\u0001” after the reason, no longer in brackets."
+    ]
+  },
+  {
     "versione": "1.606",
     "data": "2026-11-27T14:30:51",
     "titolo": "Formazione: si aggiorna da sola alla scadenza, e il menu del modulo dice la tua",

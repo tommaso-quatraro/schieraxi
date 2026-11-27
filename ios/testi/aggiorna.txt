@@ -4,5 +4,7 @@
 aggiorna.avviato
 aggiorna.ok
 aggiorna.problemi
+aggiorna.nessun_dato
+aggiorna.nessun_dato_niente
 aggiorna.non_so
 aggiorna.in_corso
