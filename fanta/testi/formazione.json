@@ -314,5 +314,10 @@
   "formazione.copia_ferma": {
     "it": "Finché non arrivano quelli nuovi la formazione non si può cambiare.",
     "en": "Until fresh data arrive the lineup can't be changed."
+  },
+  "formazione.rosa_incompleta": {
+    "it": "Completa la rosa",
+    "en": "Complete your roster",
+    "nota": "titolo della Formazione quando la rosa non basta per nessun modulo (`rosa_incompleta` di /api/oggi, collaudo del 27/11); sotto la frase del server con quanti giocatori mancano"
   }
 }

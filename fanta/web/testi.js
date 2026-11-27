@@ -873,6 +873,7 @@ const TESTI = {
     "formazione.non_salvata_rete": "La formazione non è stata salvata perché non riesco a collegarmi: torna sulla Formazione e riprova.",
     "formazione.non_salvata": "La formazione non è stata salvata: torna sulla Formazione e controllala.",
     "formazione.copia_ferma": "Finché non arrivano quelli nuovi la formazione non si può cambiare.",
+    "formazione.rosa_incompleta": "Completa la rosa",
 
     "frase.tempo.meno_di_un_ora": "meno di un'ora",
     "frase.tempo.ore.one": "{n} ora",
@@ -2904,6 +2905,7 @@ const TESTI = {
     "formazione.non_salvata_rete": "Your lineup was not saved because I can't connect: go back to Lineup and try again.",
     "formazione.non_salvata": "Your lineup was not saved: go back to Lineup and check it.",
     "formazione.copia_ferma": "Until fresh data arrive the lineup can't be changed.",
+    "formazione.rosa_incompleta": "Complete your roster",
 
     "frase.tempo.meno_di_un_ora": "less than an hour",
     "frase.tempo.ore.one": "{n} hour",

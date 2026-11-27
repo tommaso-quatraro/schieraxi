@@ -290,7 +290,8 @@ const cartaSenzaRose = (titolo = t("comune.prima_rose")) => `<div class="carta b
 const funzioneSpenta = e => !!e && e.status === 404 && typeof e.funzione === "string";
 const cartaFunzioneSpenta = e => `<div class="carta" role="status"><h2>${t("dieta.non_disponibile")}</h2><p class="debole">${esc(e.message)}</p>
   <div class="pulsanti"><button class="bottone" type="button" data-vai="formazione">${t("dieta.torna_formazione")}</button></div></div>`;
-const erroreVista = e => senzaRose(e) ? cartaSenzaRose() : funzioneSpenta(e) ? cartaFunzioneSpenta(e) : errore(e) + `<div class="pulsanti"><button class="bottone secondario" type="button" data-riprova>${t("comune.riprova")}</button></div>`;
+// `altri`: pulsanti in più accanto a «Riprova», nella stessa fila (solo per un errore vero)
+const erroreVista = (e, altri = "") => senzaRose(e) ? cartaSenzaRose() : funzioneSpenta(e) ? cartaFunzioneSpenta(e) : errore(e) + `<div class="pulsanti"><button class="bottone secondario" type="button" data-riprova>${t("comune.riprova")}</button>${altri}</div>`;
 
 // ---------------------------------------------------------------- copia sul telefono delle ultime risposte
 // L'app mostra subito i dati vecchi e li sostituisce con quelli nuovi appena arrivano: si apre senza attese.
@@ -416,7 +417,8 @@ async function caricaConCache(chiave, percorso, mostra, testo, { daSalvare = () 
         if (e.rete && !daSola) alRitornoDellaRete(() => { if (ancoraValida(mia) && $("#nota-cache")) leggi(true); });
         return false;
       }
-      pagina(erroreVista(e) + (!senzaRose(e) && /rosa|squadra/i.test(e.originale || e.message) ? `<button class="bottone" type="button" data-imp-gruppo="lega">${t("comune.vai_lega")}</button>` : ""));
+      // «Apri La mia lega» nella stessa fila di «Riprova», con lo spazio fra i due (prima stava sotto, attaccato: collaudo del 27/11)
+      pagina(erroreVista(e, /rosa|squadra/i.test(e.originale || e.message) ? `<button class="bottone" type="button" data-imp-gruppo="lega">${t("comune.vai_lega")}</button>` : ""));
       return false;
     }
   };
@@ -1052,6 +1054,15 @@ function mostraSenzaRose(opz) {
   if (typeof primoAvvioSeServe === "function") primoAvvioSeServe();
 }
 
+// La tua rosa non basta per nessun modulo (campo `rosa_incompleta` di /api/oggi, collaudo dell'amico nuovo del 27/11): uno stato, non
+// un errore con «Riprova». La frase del server dice quanti giocatori mancano per ruolo; «Aggiorna le rose» porta dove si carica la rosa.
+function mostraRosaIncompleta(o, opz) {
+  clearInterval(timerConto);
+  pagina(`<div class="carta benvenuto" role="status" id="rosa-incompleta"><h2>${t("formazione.rosa_incompleta")}</h2>
+    <p class="debole">${esc(testoDi(o.rosa_incompleta))}</p>
+    <div class="pulsanti"><button class="bottone" type="button" data-imp-gruppo="rose">${t("lega.voce_importa")}</button></div></div>`, opz);
+}
+
 // Campionato finito (#656, campo `campionato_finito` di /api/oggi): nessuna giornata da preparare fino al calendario nuovo. La testa
 // della giornata finita con il riepilogo dell'ultima (nelle 48 ore, se il server lo manda) e la frase del server al posto della prossima;
 // con un recupero dell'ultima giornata ancora da giocare, lo stesso riquadro della fase «finita» per scegliere come contarlo (nel riepilogo).
@@ -1281,9 +1292,14 @@ async function caricaGiornata() {
   }
   const senzaRose = !!stato.info && stato.info.rose_importate === false;
   const senzaGiornata = !!stato.info && stato.info.prossima_giornata === null;
-  const [o, letta] = await Promise.all([api("/api/oggi"), senzaRose || senzaGiornata ? null : api("/api/formazione").catch(e => e)]);
+  // La tua rosa non basta per nessun modulo (`rosa_incompleta`, collaudo dell'amico nuovo del 27/11): /api/formazione risponderebbe
+  // 400 a ogni apertura, e la causa la dice /api/oggi. Lo stato d'avvio può essere vecchio: vale quello che dice Oggi (sotto); se
+  // Oggi non lo dice più, la formazione si chiede dopo.
+  const rosaCorta = !!stato.info && stato.info.rosa_incompleta === true;
+  const [o, letta] = await Promise.all([api("/api/oggi"), senzaRose || senzaGiornata || rosaCorta ? null : api("/api/formazione").catch(e => e)]);
   if (o.senza_rose) return { o, f: null };
   if (o.campionato_finito) return { o, f: null };
+  if (o.rosa_incompleta) return { o, f: null };
   const f = letta || await api("/api/formazione");
   if (f instanceof Error) throw f;
   const b = { o, f };
@@ -1379,6 +1395,7 @@ function mostraFormazione(b, squadra, opz = {}) {
   if (b.senza_squadra) { mostraSenzaSquadra(opz); return; }
   if (o && o.senza_rose) { mostraSenzaRose(opz); return; }
   if (o && o.campionato_finito) { mostraCampionatoFinito(o, opz); return; }
+  if (o && o.rosa_incompleta && !f) { mostraRosaIncompleta(o, opz); return; }
   const l = livelloBase(f);
   const consigliato = l.moduli.find(m => m.modulo === l.modulo) || l.moduli[0];
   const fermi = giocatoriFermi(f);
