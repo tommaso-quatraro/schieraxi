@@ -71,6 +71,23 @@ struct LaMiaLegaComeLaWebTests {
         #expect(vm.squadreNonArrivate)
     }
 
+    /// Revisione della #974: mentre il server riparte il proxy risponde con la sua pagina 502 (senza il JSON del server). La web
+    /// mostra la riga spenta per ogni `status >= 500` (`squadreNonArrivate` in `app.js`), l'iPhone la faceva sparire.
+    @Test("Server che riparte: una risposta 5xx senza il JSON del server vale come «non raggiungibile», come la web",
+          arguments: [502, 503, 504, 500])
+    func miaSquadraServerCheRiparte(codice: Int) async {
+        let vm = LegaViewModel(server: ServerDiProva.chePrecipita(.risposta(codice)))
+        await vm.carica()
+        #expect(vm.squadreNonArrivate)
+    }
+
+    @Test("Una risposta sotto il 500 senza il JSON del server (il 403 di un Wi-Fi pubblico) no: niente riga, come la web")
+    func rifiutoSenzaJson() async {
+        let vm = LegaViewModel(server: ServerDiProva.chePrecipita(.risposta(403)))
+        await vm.carica()
+        #expect(!vm.squadreNonArrivate)
+    }
+
     @Test("Un rifiuto del server con il suo motivo non è «senza rete»: niente riga, come la web sotto i 500")
     func rifiutoDelServer() async {
         let vm = LegaViewModel(server: ServerDiProva.chePrecipita(.troppiTentativi("Troppe richieste.", riprovaTra: nil)))
@@ -143,15 +160,31 @@ struct LaMiaLegaComeLaWebTests {
         #expect(ParoleAffidabilita.riga(riga) == "5ª giornata di Serie A: modello 70,1, da fantamedia 66,4, massimo possibile 88,0")
     }
 
-    @Test("Sotto la legenda le giornate del grafico, dalla prima all'ultima, con l'apostrofo davanti all'8ª e all'11ª")
+    @Test("Sotto la legenda le giornate del grafico: la prima e l'ultima riga, con l'apostrofo davanti all'8ª e all'11ª")
     func giornateDelGrafico() throws {
         let a = try Self.affidabilita(#"""
-        [{"giornata": 12, "punti_modello": 72.4}, {"giornata": 5, "punti_modello": 70.1}, {"giornata": 9, "punti_modello": 71.0}]
+        [{"giornata": 5, "punti_modello": 70.1}, {"giornata": 9, "punti_modello": 71.0}, {"giornata": 12, "punti_modello": 72.4}]
         """#)
         #expect(ParoleAffidabilita.giornate(a.righe ?? []) == "dalla 5ª alla 12ª giornata di Serie A")
-        let b = try Self.affidabilita(#"[{"giornata": 8, "punti_modello": 70.1}, {"giornata": 11, "punti_modello": 71.0}]"#)
-        #expect(ParoleAffidabilita.giornate(b.righe ?? []) == "dall'8ª all'11ª giornata di Serie A")
         #expect(ParoleAffidabilita.giornate([]) == nil)
+    }
+
+    /// Revisione della #974: la web (`mostraAffidabilita`) prende la prima e l'ultima riga nell'ordine del server, solo quelle con
+    /// `punti_modello`. Con la giornata più bassa e la più alta, a inizio stagione (le ultime della stagione prima e le prime di
+    /// questa) l'iPhone scriveva «dalla 1ª alla 38ª».
+    @Test("Le giornate come la web: prima e ultima riga nell'ordine del server, solo quelle con i punti del modello")
+    func giornateComeLaWeb() throws {
+        let senzaPunti = try Self.affidabilita(#"""
+        [{"giornata": 7}, {"giornata": 8, "punti_modello": 70.1}, {"giornata": 11, "punti_modello": 71.0}, {"giornata": 12}]
+        """#)
+        #expect(ParoleAffidabilita.giornate(senzaPunti.righe ?? []) == "dall'8ª all'11ª giornata di Serie A")
+        let aCavallo = try Self.affidabilita(#"""
+        [{"giornata": 36, "punti_modello": 70.1}, {"giornata": 38, "punti_modello": 71.0}, {"giornata": 1, "punti_modello": 69.0},
+         {"giornata": 2, "punti_modello": 72.0}]
+        """#)
+        #expect(ParoleAffidabilita.giornate(aCavallo.righe ?? []) == "dalla 36ª alla 2ª giornata di Serie A")
+        let nessuna = try Self.affidabilita(#"[{"giornata": 3}, {"giornata": 4}]"#)
+        #expect(ParoleAffidabilita.giornate(nessuna.righe ?? []) == nil)
     }
 
     @Test("Il verde sui punti del modello quando valgono almeno quelli da fantamedia (classe `positivo` della web)")
