@@ -11,6 +11,16 @@
     "it": "Aggiornato, ma con problemi: {errori}",
     "en": "Updated, but with problems: {errori}"
   },
+  "aggiorna.nessun_dato": {
+    "it": "Nessun dato nuovo: {errori}",
+    "en": "No new data: {errori}",
+    "nota": "«Aggiorna i dati» finito senza nessun dato arrivato (`nessun_dato_nuovo` di GET /api/aggiorna, collaudo del 27/11/2026); {errori} = le frasi del server, una per riga (comincia con un a capo)"
+  },
+  "aggiorna.nessun_dato_niente": {
+    "it": "Nessun dato nuovo: non c'era niente di più recente da scaricare.",
+    "en": "No new data: there was nothing more recent to download.",
+    "nota": "come aggiorna.nessun_dato, ma senza nessun problema (`errori` vuota): i passi non avevano niente da chiedere alle fonti"
+  },
   "aggiorna.ok": {
     "it": "Dati aggiornati",
     "en": "Data updated"

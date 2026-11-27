@@ -46,9 +46,9 @@ def aggiorna(db: sqlite3.Connection, utente_id: int, passo: str | None = None, s
     """Cambia passo, stato o tipo (solo i campi indicati). Valori sconosciuti o una lega Mantra: errore chiaro in italiano."""
     leggi(db, utente_id, ha_rose)
     if passo is not None and passo not in PASSI:
-        raise ErroreAccount("Passo sconosciuto della procedura guidata")
+        raise ErroreAccount("Passo sconosciuto della procedura guidata.")
     if stato is not None and stato not in STATI:
-        raise ErroreAccount("Stato sconosciuto della procedura guidata")
+        raise ErroreAccount("Stato sconosciuto della procedura guidata.")
     if tipo is not None and tipo not in TIPI:
         raise ErroreAccount("Per ora SchieraXI funziona solo con le leghe classic: la Mantra non è ancora supportata.")
     campi = {"passo": passo, "stato": stato, "tipo": tipo, "demo": None if demo is None else int(demo)}

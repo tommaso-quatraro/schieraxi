@@ -125,7 +125,7 @@ def _risolvi_host(host: str) -> list[str]:
     try:
         return esecutore.submit(scarica_immagine._risolvi, host, 443).result(timeout=TEMPO_DNS)
     except concurrent.futures.TimeoutError:
-        raise ValueError("Nome non risolto in tempo") from None
+        raise ValueError("Nome non risolto in tempo.") from None
     finally:
         esecutore.shutdown(wait=False)
 
@@ -139,20 +139,20 @@ def _forma_endpoint(ep: str) -> str:
         parti = urlsplit(ep)
         porta = parti.port
     except ValueError:
-        raise ValueError("Iscrizione non valida") from None
+        raise ValueError("Iscrizione non valida.") from None
     host = (parti.hostname or "").lower()
     if (parti.scheme.lower() != "https" or not host or parti.username is not None or parti.password is not None or porta not in (None, 443)
             or any(ord(c) < 33 or ord(c) == 127 for c in ep) or host.endswith(".")):
-        raise ValueError("Iscrizione non valida")
+        raise ValueError("Iscrizione non valida.")
     try:
         ip = ipaddress.ip_address(host)
     except ValueError:
         ip = None
     if ip is not None:
         if str(ip) != host or not indirizzo_pubblico(host):          # solo la forma canonica e solo indirizzi pubblici
-            raise ValueError("Iscrizione non valida")
+            raise ValueError("Iscrizione non valida.")
     elif not _NOME_SITO.match(host) or host.endswith((".local", ".internal", ".lan", ".localhost", ".home.arpa", ".localdomain", ".intranet")):
-        raise ValueError("Iscrizione non valida")
+        raise ValueError("Iscrizione non valida.")
     return host
 
 
@@ -176,16 +176,16 @@ def indirizzi_verificati(host: str) -> list[str]:
         if voce and voce[1] and ora - voce[0] < DURATA_CACHE_DNS:
             return list(voce[1])
         if voce and not voce[1] and ora - voce[0] < DURATA_CACHE_NEGATIVA:
-            raise ValueError("Nome non risolto")
+            raise ValueError("Nome non risolto.")
     try:
         trovati = _risolvi_host(host)
     except (OSError, ValueError):                    # ValueError: tempo finito (`_risolvi_host`)
         trovati = []
     if not trovati:
         _ricorda(host, ora, [])
-        raise ValueError("Nome non risolto")
+        raise ValueError("Nome non risolto.")
     if not all(indirizzo_pubblico(i) for i in trovati):
-        raise ValueError("Indirizzo non pubblico")
+        raise ValueError("Indirizzo non pubblico.")
     _ricorda(host, ora, trovati)
     return list(trovati)
 
@@ -306,19 +306,19 @@ class SessioneFissata:
                 conn.close()
         if self.fine is not None and _orologio() >= self.fine:
             raise TimeoutError("Tempo dell'invio finito") from ultimo
-        raise ConnectionError("Servizio di notifica non raggiungibile") from ultimo
+        raise ConnectionError("Servizio di notifica non raggiungibile.") from ultimo
 
 
 def _valida(sub: dict) -> dict:
     ep, k = sub.get("endpoint"), sub.get("keys") or {}
     if not isinstance(ep, str) or len(ep) > 600:
-        raise ValueError("Iscrizione non valida")
+        raise ValueError("Iscrizione non valida.")
     try:
         indirizzi_verificati(_forma_endpoint(ep))          # anche il nome deve portare a un indirizzo pubblico, subito
     except ValueError:
-        raise ValueError("Iscrizione non valida") from None
+        raise ValueError("Iscrizione non valida.") from None
     if not isinstance(k.get("p256dh"), str) or not isinstance(k.get("auth"), str) or len(k["p256dh"]) > 200 or len(k["auth"]) > 100:
-        raise ValueError("Iscrizione non valida")
+        raise ValueError("Iscrizione non valida.")
     valida = {"endpoint": ep, "keys": {"p256dh": k["p256dh"], "auth": k["auth"]}}
     if sub.get("iphone") is True:          # la web gira su un iPhone (iPad e Mac si presentano come «Macintosh»): su_iphone_viva
         valida["iphone"] = True
@@ -327,7 +327,7 @@ def _valida(sub: dict) -> dict:
 
 _blocco_iscrizioni = threading.Lock()          # leggere-modificare-scrivere una alla volta: due iscrizioni insieme non si perdono
 ATTESA_BLOCCO = 10.0                           # secondi: leggere e riscrivere push.json dura millisecondi; oltre, Occupato
-OCCUPATO = "Un'altra operazione sulle notifiche è ancora in corso: riprova fra qualche secondo"
+OCCUPATO = "Un'altra operazione sulle notifiche è ancora in corso: riprova fra qualche secondo."
 
 
 class Occupato(TimeoutError):

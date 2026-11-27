@@ -42,7 +42,7 @@ def nome_file(creato: str) -> str:
 
 
 def _non_valido(nome: str) -> str:
-    return f"{nome} non è valido: controlla di aver scelto il file di backup giusto"
+    return f"{nome} non è valido: controlla di aver scelto il file di backup giusto."
 
 
 def _troppo_annidato(d: Any, massimo: int = MAX_PROFONDITA) -> bool:
@@ -354,16 +354,16 @@ def stringi_permessi(cartella: Path) -> list[str]:
 def controlla(backup: Any) -> dict[str, Any]:
     """Controlla il backup per intero senza toccare niente. Restituisce i file da ripristinare (ripuliti dove serve) o alza ValueError."""
     if not isinstance(backup, dict) or backup.get("formato") != FORMATO:
-        raise ValueError("Questo non è un backup di SchieraXI")
+        raise ValueError("Questo non è un backup di SchieraXI.")
     if not isinstance(backup.get("versione"), int) or backup["versione"] > VERSIONE:
-        raise ValueError("Il backup viene da una versione più nuova dell'app: aggiorna l'app e riprova")
+        raise ValueError("Il backup viene da una versione più nuova dell'app: aggiorna l'app e riprova.")
     file = backup.get("file")
     if not isinstance(file, dict) or not file:
-        raise ValueError("Il backup è vuoto")
+        raise ValueError("Il backup è vuoto.")
     pulito: dict[str, Any] = {}
     for nome, contenuto in file.items():
         if nome not in CONTROLLI:
-            raise ValueError(f"Il backup contiene un file che non conosco: {str(nome)[:60]}")
+            raise ValueError(f"Il backup contiene un file che non conosco: {str(nome)[:60]}.")
         try:
             if _troppo_annidato(contenuto):
                 raise ValueError("troppo annidato")

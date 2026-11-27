@@ -55,12 +55,50 @@ final class LegaViewModelTests: XCTestCase {
         XCTAssertFalse(vm.messaggio?.contains("; ") ?? true, "mai più le frasi unite con «; »")
     }
 
-    func testAggiornamentoGiaInCorsoSulServer() async {
-        let s = ServerDiProva { _, _, _ in Data(#"{"avviato": false, "messaggio": "Aggiornamento già in corso"}"#.utf8) }
+    /// Collaudo del 27/11: con tutte le fonti giù il server non ha portato niente, ma l'avviso diceva «Aggiornato, ma con
+    /// problemi: …». Con `nessun_dato_nuovo` del server la testa è quella della web, «Nessun dato nuovo:» (`aggiorna.nessun_dato`),
+    /// con sotto le stesse frasi una per riga.
+    func testAggiornamentoSenzaNessunDatoArrivatoNonDiceAggiornato() async {
+        let s = ServerDiProva { metodo, _, _ in
+            metodo == "POST" ? Data(#"{"avviato": true}"#.utf8)
+                : Data(#"{"in_corso": false, "nessun_dato_nuovo": true, "errori": ["Sito Uno, Sito Due e Sito Tre non rispondono: riprova più tardi."]}"#.utf8)
+        }
         let vm = AggiornaDatiViewModel(server: s)
         vm.pausa = 0
         await vm.avvia()
-        XCTAssertEqual(vm.messaggio, "Aggiornamento già in corso")
+        XCTAssertEqual(vm.messaggio, "Nessun dato nuovo: \nSito Uno, Sito Due e Sito Tre non rispondono: riprova più tardi.")
+        XCTAssertFalse(vm.messaggio?.contains("Aggiornato") ?? true)
+    }
+
+    /// Niente da scaricare e nessun problema: non «Dati aggiornati», ma la frase della web (`aggiorna.nessun_dato_niente`).
+    func testAggiornamentoSenzaDatiNuoviESenzaProblemi() async {
+        let s = ServerDiProva { metodo, _, _ in
+            metodo == "POST" ? Data(#"{"avviato": true}"#.utf8) : Data(#"{"in_corso": false, "nessun_dato_nuovo": true, "errori": []}"#.utf8)
+        }
+        let vm = AggiornaDatiViewModel(server: s)
+        vm.pausa = 0
+        await vm.avvia()
+        XCTAssertEqual(vm.messaggio, Catalogo.Aggiorna.nessunDatoNiente)
+        XCTAssertEqual(vm.messaggio, "Nessun dato nuovo: non c'era niente di più recente da scaricare.")
+    }
+
+    /// Con `nessun_dato_nuovo` falso, o senza il campo (un server di prima), la testa resta quella di sempre.
+    func testAggiornamentoConDatiArrivatiTieneLaTestaDiSempre() async {
+        for corpo in [#"{"in_corso": false, "nessun_dato_nuovo": false, "errori": []}"#, #"{"in_corso": false, "errori": []}"#] {
+            let s = ServerDiProva { metodo, _, _ in metodo == "POST" ? Data(#"{"avviato": true}"#.utf8) : Data(corpo.utf8) }
+            let vm = AggiornaDatiViewModel(server: s)
+            vm.pausa = 0
+            await vm.avvia()
+            XCTAssertEqual(vm.messaggio, Catalogo.Aggiorna.ok, corpo)
+        }
+    }
+
+    func testAggiornamentoGiaInCorsoSulServer() async {
+        let s = ServerDiProva { _, _, _ in Data(#"{"avviato": false, "messaggio": "Aggiornamento già in corso."}"#.utf8) }
+        let vm = AggiornaDatiViewModel(server: s)
+        vm.pausa = 0
+        await vm.avvia()
+        XCTAssertEqual(vm.messaggio, "Aggiornamento già in corso.")
         XCTAssertEqual(s.quante("GET /api/aggiorna"), 0, "se non è partito non si sta ad aspettare")
     }
 
@@ -101,9 +139,9 @@ final class LegaViewModelTests: XCTestCase {
     }
 
     func testAggiornamentoNonPartito() async {
-        let vm = AggiornaDatiViewModel(server: ServerDiProva.chePrecipita(.server("Richiesta non permessa")))
+        let vm = AggiornaDatiViewModel(server: ServerDiProva.chePrecipita(.server("Richiesta non permessa.")))
         await vm.avvia()
-        XCTAssertEqual(vm.messaggio, "Richiesta non permessa")
+        XCTAssertEqual(vm.messaggio, "Richiesta non permessa.")
         XCTAssertFalse(vm.inCorso)
     }
 
@@ -229,10 +267,10 @@ final class LegaViewModelTests: XCTestCase {
     }
 
     func testGiaInCorsoAlToccoNonSpegneIlPulsante() async {
-        let s = ServerDiProva { _, _, _ in Data(#"{"avviato": false, "messaggio": "Aggiornamento già in corso"}"#.utf8) }
+        let s = ServerDiProva { _, _, _ in Data(#"{"avviato": false, "messaggio": "Aggiornamento già in corso."}"#.utf8) }
         let vm = AggiornaDatiViewModel(server: s)
         await vm.avvia()
-        XCTAssertEqual(vm.messaggio, "Aggiornamento già in corso", "il messaggio del server, come prima")
+        XCTAssertEqual(vm.messaggio, "Aggiornamento già in corso.", "il messaggio del server, come prima")
         XCTAssertFalse(vm.pulsanteSpento, "senza una rilettura dello stato il pulsante non resta spento")
     }
 

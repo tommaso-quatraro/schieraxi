@@ -93,7 +93,7 @@ struct SceltaMiaSquadraTests {
     /// `SquadreViewModel.impostaMia`, le squadre si rileggono anche quando il salvataggio non riesce.
     @Test("Il server rifiuta (anche con 412): il suo motivo, la pagina resta quella e le squadre si rileggono")
     func rifiuto() async throws {
-        for (errore, frase) in [(ErroreApi.server("Squadra non trovata"), "Squadra non trovata"),
+        for (errore, frase) in [(ErroreApi.server("Squadra non trovata."), "Squadra non trovata."),
                                 (ErroreApi.conflitto, ErroreApi.conflitto.localizedDescription)] {
             let s = Self.server(rifiuto: errore)
             let lega = LegaViewModel(server: s)
