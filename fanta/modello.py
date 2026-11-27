@@ -139,19 +139,17 @@ def _date_giornata(partite: pd.DataFrame, stagione: str, giornata: int) -> list[
 
 def inizio_giornata(partite: pd.DataFrame, stagione: str, giornata: int) -> str:
     """Quando si chiude la formazione della giornata, come è scritto nel calendario `partite`: la prima partita che conta per la
-    scadenza, con la regola di `avvisi.prima_partita` (dall'inizio del turno, turno.py). Prima era la prima partita della giornata:
-    con una partita anticipata di settimane (Supercoppa, coppe: #659, #695) la previsione si fermava lì e non vedeva le giornate
-    giocate nel frattempo; lo stesso con un anticipo di metà settimana e con una rinviata rimasta con la data vecchia. (Filtrare
-    per numero di giornata sbaglierebbe con i recuperi giocati settimane dopo.) «9999» se nessuna partita della giornata ha una data."""
+    scadenza, con la regola unica di `turno.prima_che_conta` (quella di `avvisi.prima_partita`). Prima era la prima partita della
+    giornata: con una partita anticipata di settimane (Supercoppa, coppe: #659, #695) la previsione si fermava lì e non vedeva le
+    giornate giocate nel frattempo; lo stesso con un anticipo di metà settimana e con una rinviata rimasta con la data vecchia.
+    (Filtrare per numero di giornata sbaglierebbe con i recuperi giocati settimane dopo.) «9999» se nessuna partita ha una data."""
     date = _date_giornata(partite, stagione, giornata)
-    if not date:
+    primo = turno.prima_che_conta(((d, giocata) for d, giocata, _ in date),
+                                  (d for d, _, _ in _date_giornata(partite, stagione, giornata - 1)),
+                                  (d for d, _, _ in _date_giornata(partite, stagione, giornata + 1)))
+    if primo is None:
         return "9999"
-    precedente = turno.inizio(d for d, _, _ in _date_giornata(partite, stagione, giornata - 1))
-    prossimo = turno.inizio(d for d, _, _ in _date_giornata(partite, stagione, giornata + 1))
-    inizio_turno = turno.inizio((d for d, _, _ in date), prossimo)
-    valide = [(d, testo) for d, giocata, testo in date if turno.conta_per_scadenza(d, giocata, inizio_turno, precedente, prossimo)]
-    primo = min(d for d, _ in valide)
-    return min(testo for d, testo in valide if d == primo)
+    return min(testo for d, _, testo in date if d == primo)
 
 
 def carica(db: sqlite3.Connection) -> Dati:
