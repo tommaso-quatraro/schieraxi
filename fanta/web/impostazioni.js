@@ -17,12 +17,20 @@ function vistaImpostazioni(d = {}) {
 const rigaImp = (gruppo, nome, sotto) => `<li><button class="voce imp-voce" type="button" data-imp-gruppo="${gruppo}">
   <span><span class="nome">${nome}</span>${sotto ? `<span class="dettaglio">${sotto}</span>` : ""}</span><span class="debole" aria-hidden="true">›</span></button></li>`;
 
+// La stessa riga spenta, senza la freccia: c'è ma adesso non si apre (`sotto` dice quando).
+const rigaImpSpenta = (nome, sotto) => `<li><button class="voce imp-voce" type="button" disabled>
+  <span><span class="nome">${nome}</span><span class="dettaglio">${sotto}</span></span></button></li>`;
+
 // La pagina di Impostazioni. `sezione` (avvisi, lega, aspetto: un indirizzo di prima che portava lì) si porta in vista.
+// Senza le squadre perché la lettura non è arrivata (senza rete: `stato.squadreNonArrivate`) «La mia squadra» resta, spenta, con la
+// frase che dice quando si apre (collaudo d'insieme del 26/11: spariva e lasciava un buco); tornata la rete la pagina si ridisegna
+// (ridisegnaImpostazioniAvvio). «Le altre squadre» resta nascosta finché le squadre non arrivano.
 function paginaImpostazioni(sezione) {
   nuovaRichiesta();
   const squadre = stato.squadre || [], mia = miaSquadra(), conRose = squadre.length > 0;
   const lega = [rigaImp("rose", t("lega.voce_importa"), t("lega.voce_importa_sub")),
-    conRose ? rigaImp("squadra", t("lega.mia_squadra"), mia ? esc(mia.nome) : t("imp.mia_squadra_nessuna")) : "",
+    conRose ? rigaImp("squadra", t("lega.mia_squadra"), mia ? esc(mia.nome) : t("imp.mia_squadra_nessuna"))
+      : stato.squadreNonArrivate ? rigaImpSpenta(t("lega.mia_squadra"), t("imp.mia_squadra_senza_rete")) : "",
     rigaImp("regole", t("imp.regole"), t("imp.regole_sub")),
     // il numero delle altre, senza la mia (#779): è quello dell'elenco che la riga apre (vistaAltreSquadre)
     conRose && squadre.length > 1 && funz("squadre_altrui") ? rigaImp("squadre", t("imp.altre_squadre"), tp("lega.n_squadre", squadre.filter(s => !s.mia).length)) : ""].join("");

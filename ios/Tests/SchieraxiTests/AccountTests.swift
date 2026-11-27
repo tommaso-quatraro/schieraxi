@@ -663,6 +663,44 @@ final class SessioneAccountTests: XCTestCase {
         XCTAssertNil(archivio.leggi(server: server.indirizzo))
     }
 
+    /// #940: prima la password (il server la controlla e non tocca niente), poi la domanda, poi l'eliminazione; dopo, la schermata
+    /// di accesso dice una volta che account e dati non ci sono più, come la web.
+    func testEliminaControllaPrimaLaPasswordSenzaToccareNiente() async throws {
+        let server = serverAccount()
+        archivio.salva("tok", server: server.indirizzo)
+        let s = sessione(server)
+        try await s.controllaPerEliminare(password: "Prova-Finta-Zero")
+        XCTAssertEqual(server.quante("/api/account/elimina/controlla"), 1)
+        XCTAssertFalse(server.richieste.contains("POST /api/account/elimina"), "il controllo non elimina")
+        let corpo = try XCTUnwrap(server.corpiInviati(a: "/elimina/controlla").first)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: corpo) as? [String: Any])
+        XCTAssertEqual(json["password"] as? String, "Prova-Finta-Zero")
+        XCTAssertNotNil(archivio.leggi(server: server.indirizzo), "solo il controllo: l'account c'è ancora")
+        XCTAssertNil(s.prendiAvvisoAccesso())
+        try await s.elimina(password: "Prova-Finta-Zero")
+        XCTAssertEqual(s.stato, .daAccedere)
+        XCTAssertEqual(s.prendiAvvisoAccesso(), "Il tuo account e tutti i tuoi dati sono stati eliminati.")
+        XCTAssertNil(s.prendiAvvisoAccesso(), "una volta sola")
+    }
+
+    func testControlloConPasswordSbagliataNonChiudeNiente() async {
+        let server = serverAccount(extra: { _, p in
+            if p == "/api/account/elimina/controlla" { throw ErroreApi.server("La password non è giusta") }
+            return nil
+        })
+        archivio.salva("tok", server: server.indirizzo)
+        let s = sessione(server)
+        do {
+            try await s.controllaPerEliminare(password: "no")
+            XCTFail("doveva lanciare")
+        } catch {
+            XCTAssertEqual(SchermataAccesso.testoErrore(error), "La password non è giusta")
+        }
+        XCTAssertNotNil(archivio.leggi(server: server.indirizzo))
+        XCTAssertNil(s.prendiAvvisoAccesso())
+        XCTAssertEqual(pulizie, 0)
+    }
+
     func testEliminaConPasswordSbagliataNonTocchiaNiente() async {
         let server = serverAccount(extra: { _, p in
             if p == "/api/account/elimina" { throw ErroreApi.accessoRichiesto("Password non corretta") }
@@ -776,18 +814,21 @@ final class ConfiguraLegaTests: XCTestCase {
 
 /// Gli errori con messaggio del server (429) si leggono una volta sola, con il tempo che manca in parole.
 final class ErroriDelServerTests: XCTestCase {
+    /// Le parole della web (`attesaTesto` in app.js, #940): prima «1 secondi», «75 minuti», «6 h 55 min», «3 giorni».
     func testIlTempoInParole() {
+        XCTAssertEqual(ErroreApi.tempoLeggibile(1), "1 secondo")
         XCTAssertEqual(ErroreApi.tempoLeggibile(30), "30 secondi")
         XCTAssertEqual(ErroreApi.tempoLeggibile(600), "10 minuti")
-        XCTAssertEqual(ErroreApi.tempoLeggibile(415 * 60), "6 h 55 min")
-        XCTAssertEqual(ErroreApi.tempoLeggibile(3 * 3600), "3 h")
-        XCTAssertEqual(ErroreApi.tempoLeggibile(72 * 3600), "3 giorni")
+        XCTAssertEqual(ErroreApi.tempoLeggibile(75 * 60), "circa 1 ora")
+        XCTAssertEqual(ErroreApi.tempoLeggibile(415 * 60), "circa 7 ore")
+        XCTAssertEqual(ErroreApi.tempoLeggibile(3 * 3600), "circa 3 ore")
+        XCTAssertEqual(ErroreApi.tempoLeggibile(72 * 3600), "circa 72 ore")
     }
 
     func testIlLimiteDiRicercheNonHaDoppioniNeRetePrivata() {
         let e = ErroreApi.troppiTentativi("Per oggi hai già fatto 20 ricerche di scambi. Riprova domani.", riprovaTra: 415 * 60)
         let testo = e.errorDescription ?? ""
-        XCTAssertEqual(testo, "Per oggi hai già fatto 20 ricerche di scambi. Riprova tra 6 h 55 min.")
+        XCTAssertEqual(testo, "Per oggi hai già fatto 20 ricerche di scambi. Riprova tra circa 7 ore.")
         XCTAssertFalse(testo.localizedCaseInsensitiveContains("rete privata"))
         XCTAssertEqual(testo.components(separatedBy: "Riprova").count - 1, 1, "una volta sola")
         XCTAssertTrue(e.eLimite)

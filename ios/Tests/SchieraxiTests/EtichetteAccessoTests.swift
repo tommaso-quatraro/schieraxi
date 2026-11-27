@@ -76,7 +76,10 @@ struct EtichetteCampiTests {
                 #expect(!etichetta.isEmpty, "\(passo) \(campo)")
                 #expect(!etichetta.contains(":"), "\(passo) \(campo): «\(etichetta)», la spiegazione va sotto il campo")
                 #expect(etichetta.count <= 36, "\(passo) \(campo): «\(etichetta)» è troppo lunga")
-                if campo != .email { #expect(m.aiuto(campo, modo) == nil, "\(passo) \(campo): niente spiegazione sotto") }
+                // sotto il campo solo l'email facoltativa e, in Registrati, le regole del nome (#940)
+                if campo != .email && !(campo == .nome && passo == .registra) {
+                    #expect(m.aiuto(campo, modo) == nil, "\(passo) \(campo): niente spiegazione sotto")
+                }
             }
         }
     }
@@ -87,6 +90,16 @@ struct EtichetteCampiTests {
         let m = registrazione(modo)
         #expect(m.etichetta(.email, modo) == "Email (facoltativa)")
         #expect(m.aiuto(.email, modo) == "Serve a recuperare la password.")
+    }
+
+    @Test("Registrati: le regole del nome utente sotto il campo, prima di sbagliare, come la web (#940); per entrare no",
+          arguments: [ModalitaRegistrazione.invito, .email, .aperta])
+    func regoleDelNome(modo: ModalitaRegistrazione) {
+        let regole = "Da 3 a 32 caratteri: lettere senza accenti, numeri, punto, trattino o trattino basso. "
+            + "Comincia con una lettera o un numero."
+        #expect(registrazione(modo).aiuto(.nome, modo) == regole)
+        #expect(ModuloAccesso(scheda: .accedi).aiuto(.nome, modo) == nil)
+        #expect(ModuloAccesso(scheda: .recupera, metodo: .codice).aiuto(.nome, modo) == nil)
     }
 
     @Test("Email obbligatoria per registrarsi (modo «email»): «Email», senza spiegazione")
@@ -153,7 +166,7 @@ struct SuggerimentoCampiTests {
     func suggerimento() throws {
         var m = registrazione(.invito)
         #expect(m.suggerimento(.email, .invito) == "Serve a recuperare la password.")
-        #expect(m.suggerimento(.nome, .invito) == nil)
+        #expect(m.suggerimento(.nome, .invito) == ModuloAccesso.aiutoNome, "le regole del nome, finché il nome va bene (#940)")
         m.email = "non-una-email"
         let problema = try #require(m.problema(.email))
         #expect(m.suggerimento(.email, .invito) == problema)

@@ -19,6 +19,10 @@
     "it": "La password attuale non è giusta",
     "en": "The current password is wrong"
   },
+  "err.password_sbagliata": {
+    "it": "La password non è giusta",
+    "en": "The password is wrong"
+  },
   "err.posta_spenta": {
     "it": "Su questo server l'invio delle email è spento: il codice non può arrivare. Per la password usa il codice di recupero.",
     "en": "Sending emails is turned off on this server: the code cannot arrive. For your password use the recovery code."
