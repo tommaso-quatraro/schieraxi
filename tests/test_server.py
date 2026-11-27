@@ -195,7 +195,7 @@ def test_aggiorna_dall_app_non_parte_con_l_aggiornamento_programmato_in_corso(cl
     chiamate, tenuto = [], []
     monkeypatch.setattr(server.aggiorna, "esegui", lambda **k: chiamate.append(bool(tenuto)) or [])
     monkeypatch.setattr(server.pianificatore, "blocco_processo", lambda: contextlib.nullcontext(False))
-    assert client.post("/api/aggiorna").json() == {"avviato": False, "messaggio": "Aggiornamento già in corso"}
+    assert client.post("/api/aggiorna").json() == {"avviato": False, "messaggio": "Aggiornamento già in corso."}
     assert chiamate == [] and not server._aggiornamento["in_corso"]
 
     @contextlib.contextmanager
@@ -247,10 +247,11 @@ def test_aggiorna_dall_app_non_si_rilancia_prima_di_dieci_minuti(client, monkeyp
     assert client.post("/api/aggiorna").json() == {"avviato": True}
     _fine_aggiornamento()
     ora[0] += 61
+    # collaudo del 27/11: la frase diceva «I dati sono stati aggiornati da poco» anche dopo un giro che non aveva portato niente
     assert client.post("/api/aggiorna").json() == {"avviato": False, "riprova_tra": 539,
-                                                   "messaggio": "I dati sono stati aggiornati da poco: riprova fra 9 minuti."}
+                                                   "messaggio": "Hai appena provato: riprova fra 9 minuti."}
     ora[0] += 538
-    assert client.post("/api/aggiorna").json()["messaggio"] == "I dati sono stati aggiornati da poco: riprova fra 1 minuto."
+    assert client.post("/api/aggiorna").json()["messaggio"] == "Hai appena provato: riprova fra 1 minuto."
     assert chiamate == [1] and not server._aggiornamento["in_corso"]
     ora[0] += 1                                                             # 10 minuti dalla fine: riparte
     assert client.post("/api/aggiorna").json() == {"avviato": True}
@@ -300,6 +301,7 @@ def test_aggiorna_che_si_ferma_per_un_errore_del_server_non_mostra_l_eccezione(c
     assert r["errori"] == ["L'aggiornamento si è fermato per un errore del server: il dettaglio è nel registro."], r
     assert r["errori_frasi"] == [{"chiave": "aggiorna.errore_server", "param": {}}]
     assert "/percorso/interno" in caplog.text
+    assert r["nessun_dato_nuovo"] is True, "fermato prima della fine, l'ora dei dati non è cambiata: non si dice «Aggiornato»"
 
 
 def test_aggiorna_con_errori_senza_frase_ne_mostra_una_generica(client, monkeypatch):
@@ -313,14 +315,44 @@ def test_aggiorna_ha_gli_stessi_campi_all_avvio_e_dopo_un_giro(client, monkeypat
     """Revisione della #956: appena avviato il server, GET /api/aggiorna non aveva `errori_frasi`, che docs/API.md dà sempre."""
     monkeypatch.setattr(server, "_aggiornamento", server.stato_aggiornamento_iniziale())      # com'è all'avvio del server
     prima = client.get("/api/aggiorna").json()
-    assert prima == {"in_corso": False, "righe": [], "errori": [], "errori_frasi": []}, prima
+    assert prima == {"in_corso": False, "righe": [], "errori": [], "errori_frasi": [], "nessun_dato_nuovo": False}, prima
     dopo = _aggiorna_e_leggi(client, monkeypatch, lambda **k: [])
     assert set(dopo) == set(prima), dopo
 
 
+def _con_dati_nuovi(dati_nuovi: bool, frasi_utente=(), errori=()):
+    """Un `aggiorna.esegui` finto che dice se sono arrivati dati (`esito`) e mette le frasi per chi ha premuto."""
+    def esegui(per_utente=None, esito=None, **k):
+        per_utente.extend(frasi_utente)
+        esito["dati_nuovi"] = dati_nuovi
+        return list(errori)
+    return esegui
+
+
 def test_aggiorna_riuscito_nessun_errore(client, monkeypatch):
-    r = _aggiorna_e_leggi(client, monkeypatch, lambda **k: [])
+    r = _aggiorna_e_leggi(client, monkeypatch, _con_dati_nuovi(True))
     assert r["errori"] == [] and r["errori_frasi"] == [] and r["in_corso"] is False
+    assert r["nessun_dato_nuovo"] is False
+
+
+def test_aggiorna_senza_nessun_dato_arrivato_lo_dice(client, monkeypatch):
+    """Collaudo del 27/11: con tutte le fonti che non rispondono l'avviso diceva «Aggiornato, ma con problemi: …», ma non era
+    arrivato niente (la Formazione diceva giusto «non si aggiornano da 31 giorni»). Ora GET /api/aggiorna ha `nessun_dato_nuovo`
+    vero, con le stesse frasi in `errori`; con una parte dei dati arrivata resta falso."""
+    from fanta import frasi
+
+    def giro(esegui) -> dict:
+        monkeypatch.setattr(server, "_aggiorna_finito_alle", None)        # qui non si prova la pausa fra due giri
+        return _aggiorna_e_leggi(client, monkeypatch, esegui)
+    giu = frasi.F("aggiorna.non_rispondono", fonti="Fantacalcio.it, Understat e football-data.co.uk")
+    r = giro(_con_dati_nuovi(False, [giu], [PROXY]))
+    assert r["nessun_dato_nuovo"] is True, r
+    assert r["errori"] == ["Fantacalcio.it, Understat e football-data.co.uk non rispondono: riprova più tardi."], r
+    r = giro(_con_dati_nuovi(True, [frasi.F("aggiorna.non_risponde", fonte="Understat")], [PROXY]))
+    assert r["nessun_dato_nuovo"] is False, r
+    # senza problemi e senza niente da scaricare (copie di oggi, nessuna giornata nuova): nessun dato nuovo e nessuna frase
+    r = giro(_con_dati_nuovi(False))
+    assert r["nessun_dato_nuovo"] is True and r["errori"] == [], r
 
 
 def test_stato_dice_aggiornamento_in_corso_anche_se_lo_fa_un_altro(client, monkeypatch):

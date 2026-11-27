@@ -425,8 +425,8 @@ def _dati_non_validi(_, e: RequestValidationError) -> JSONResponse:
 
 def stato_aggiornamento_iniziale() -> dict:
     """Lo stato di «Aggiorna i dati» (GET /api/aggiorna) all'avvio del server e all'inizio di ogni giro: gli stessi campi di un
-    giro finito (docs/API.md), anche `errori_frasi` (revisione della #956)."""
-    return {"in_corso": False, "righe": [], "errori": [], "errori_frasi": []}
+    giro finito (docs/API.md), anche `errori_frasi` (revisione della #956) e `nessun_dato_nuovo` (collaudo del 27/11/2026)."""
+    return {"in_corso": False, "righe": [], "errori": [], "errori_frasi": [], "nessun_dato_nuovo": False}
 
 
 _aggiornamento = stato_aggiornamento_iniziale()
@@ -836,7 +836,7 @@ def stato_dei_dati():
         db.close()
 
 
-GIA_IN_CORSO = {"avviato": False, "messaggio": "Aggiornamento già in corso"}
+GIA_IN_CORSO = {"avviato": False, "messaggio": "Aggiornamento già in corso."}
 NESSUNA_FONTE = {"avviato": False, "messaggio": "Nessuna fonte di dati è accesa, quindi non c'è niente da aggiornare: "
                                                 "accendine una in Impostazioni › Gestione › Stato dei dati."}
 PAUSA_AGGIORNA = 600.0                     # secondi fra la fine di un «Aggiorna i dati» e l'avvio del successivo: ogni giro rifà tutte le richieste alle fonti
@@ -854,7 +854,8 @@ def _pausa_aggiorna() -> dict | None:
         return None
     minuti = math.ceil(resta / 60)
     durata = f"{minuti} minuto" if minuti == 1 else f"{minuti} minuti"
-    return {"avviato": False, "messaggio": f"I dati sono stati aggiornati da poco: riprova fra {durata}.", "riprova_tra": resta}
+    # vera anche dopo un giro che non ha portato niente (collaudo del 27/11/2026: diceva «I dati sono stati aggiornati da poco»)
+    return {"avviato": False, "messaggio": f"Hai appena provato: riprova fra {durata}.", "riprova_tra": resta}
 
 
 # «Aggiorna i dati» (solo l'amministratore). Mai insieme a un altro aggiornamento: né del servizio (`_blocco`) né all'aggiornamento
@@ -887,12 +888,15 @@ def avvia_aggiornamento():
     # mai l'errore tecnico (collaudo d'insieme del 26/11: «ProxyError: HTTPSConnectionPool…» copriva lo schermo). Il dettaglio resta per
     # chi gestisce il server: nel registro, in `righe` della stessa risposta (rotta solo per l'amministratore, nessun client le mostra)
     # e in Stato dei dati. Errori senza una loro frase: una frase generica, così l'avviso non dice «Dati aggiornati».
+    # `nessun_dato_nuovo` (collaudo del 27/11/2026): non è arrivato niente, la stessa regola che lascia ferma l'ora dei dati
+    # (aggiorna.Aggiornamento.dati_nuovi); vero anche se il giro si ferma prima della fine, perché l'ora non è cambiata.
     def lavoro():
         global _aggiorna_finito_alle
         registro = logging.getLogger("uvicorn.error")
         per_utente: list = []
+        esito: dict = {}
         try:
-            errori = aggiorna.esegui(scrivi=_aggiornamento["righe"].append, per_utente=per_utente)
+            errori = aggiorna.esegui(scrivi=_aggiornamento["righe"].append, per_utente=per_utente, esito=esito)
             for e in errori:
                 registro.warning("Aggiorna i dati: %s", str(e)[:1000])
             if errori and not per_utente:
@@ -902,7 +906,8 @@ def avvia_aggiornamento():
             registro.exception("Aggiorna i dati: aggiornamento fermato")
             per_utente.append(frasi.F("aggiorna.errore_server"))
         finally:
-            _aggiornamento.update(errori=[str(f) for f in per_utente], errori_frasi=frasi.lista(per_utente))
+            _aggiornamento.update(errori=[str(f) for f in per_utente], errori_frasi=frasi.lista(per_utente),
+                                  nessun_dato_nuovo=not esito.get("dati_nuovi", False))
             _aggiorna_finito_alle = _orologio_aggiorna()       # prima di lasciare il lucchetto: la pausa parte da qui
             _aggiornamento["in_corso"] = False
             try:

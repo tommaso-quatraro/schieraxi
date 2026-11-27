@@ -953,9 +953,14 @@ async function aggiornaDati() {
       }
       if (s.in_corso) { setTimeout(controlla, 2000); return; }
       segnaAggiornamento(false);
-      // le frasi del server (`errori`, tradotte da `errori_frasi`: collaudo d'insieme del 26/11), una per riga sotto la testa
-      const problemi = testiDi(s, "errori");
-      avviso(problemi.length ? t("aggiorna.problemi", { errori: "\n" + problemi.join("\n") }) : t("aggiorna.ok"), 6000);
+      // le frasi del server (`errori`, tradotte da `errori_frasi`: collaudo d'insieme del 26/11), una per riga sotto la testa;
+      // la testa dice «Nessun dato nuovo» se il server dice che non è arrivato niente (`nessun_dato_nuovo`, collaudo del 27/11:
+      // con tutte le fonti giù diceva «Aggiornato, ma con problemi»). Un server di prima non lo manda: testa di sempre.
+      const problemi = testiDi(s, "errori"), righe = { errori: "\n" + problemi.join("\n") };
+      const testo = s.nessun_dato_nuovo === true
+        ? (problemi.length ? t("aggiorna.nessun_dato", righe) : t("aggiorna.nessun_dato_niente"))
+        : (problemi.length ? t("aggiorna.problemi", righe) : t("aggiorna.ok"));
+      avviso(testo, 6000);
       stato.calendario = null;
       svuotaCache();
       await caricaInfo();

@@ -138,11 +138,13 @@ di recupero e in **Il tuo account** non si può collegare un'email.
 - **Aggiorna i dati** scarica subito dalle fonti; di solito il server lo fa da solo. Se all'apertura dell'app il server è già
   occupato con un aggiornamento (dei dati o di una versione nuova), il pulsante è spento con una frase che lo dice e si riaccende
   da sé quando ha finito; se l'aggiornamento parte con l'app già aperta, il pulsante premuto risponde «Aggiornamento già in
-  corso». Con tutte le fonti spente lo dice e non parte. Fra un giro e il successivo passano almeno 10 minuti: premuto prima, dice
-  fra quanto riprovare («I dati sono stati aggiornati da poco: riprova fra 9 minuti.») e non parte. Finito con dei problemi,
-  l'avviso dice «Aggiornato, ma con problemi:» e sotto una frase per riga, per esempio «Fantacalcio.it non risponde: riprova più
-  tardi.»; il dettaglio tecnico sta nel registro del server e in **Stato dei dati**. Un giro in cui non arriva nessuna pagina non
-  cambia l'ora dei dati («dati del …»): l'avviso «I dati delle partite non si aggiornano da …» resta finché i dati non arrivano.
+  corso.». Con tutte le fonti spente lo dice e non parte. Fra un giro e il successivo passano almeno 10 minuti, per non chiedere
+  troppo alle fonti: premuto prima, dice fra quanto riprovare («Hai appena provato: riprova fra 9 minuti.») e non parte. Finito
+  con dei problemi, l'avviso dice «Aggiornato, ma con problemi:» e sotto una frase per riga, per esempio «Fantacalcio.it non
+  risponde: riprova più tardi.»; il dettaglio tecnico sta nel registro del server e in **Stato dei dati**. Un giro in cui non
+  arriva nessuna pagina non cambia l'ora dei dati («dati del …»): l'avviso «I dati delle partite non si aggiornano da …» resta
+  finché i dati non arrivano, e l'avviso di **Aggiorna i dati** dice «Nessun dato nuovo:» con sotto le stesse frasi (o, se non
+  c'era niente da scaricare, «Nessun dato nuovo: non c'era niente di più recente da scaricare.»).
 - **Stato dei dati** (**Apri lo stato dei dati**): da dove arrivano i dati, se qualche fonte ha dato errore e quanto è affidabile
   il modello. Le fonti si accendono e si spengono da qui: sotto ogni fonte spenta c'è cosa non arriva, e una volta sola sotto
   l'elenco cosa fa l'app senza e le condizioni d'uso. La scelta vale subito, anche per i risultati in diretta (ESPN e la

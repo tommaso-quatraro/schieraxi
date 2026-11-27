@@ -232,10 +232,10 @@ def test_aggiorna_i_dati_con_il_server_gia_occupato_lo_dice(web):
     solo(web, "prima")
     da_utente(web, AMMINISTRATORE)
     stato_aggiornamento(web, False)
-    web.risposta("/api/aggiorna", {"avviato": False, "messaggio": "Aggiornamento già in corso"})
+    web.risposta("/api/aggiorna", {"avviato": False, "messaggio": "Aggiornamento già in corso."})
     web.apri("/?vista=impostazioni&gruppo=gestione")
     principale(web).get_by_role("button", name="Aggiorna i dati").click(timeout=10000)
-    web.pagina.get_by_role("status").filter(has_text="Aggiornamento già in corso").first.wait_for(timeout=5000)
+    web.pagina.get_by_role("status").filter(has_text="Aggiornamento già in corso.").first.wait_for(timeout=5000)
     assert principale(web).get_by_role("button", name="Aggiorna i dati").is_enabled()
     assert principale(web).get_by_text(FRASE_IN_CORSO).count() == 0
 
@@ -298,6 +298,62 @@ def test_aggiorna_i_dati_con_problemi_in_inglese(web):
     righe = [r.strip() for r in avviso.inner_text().split("\n") if r.strip()]
     assert righe == ["Updated, but with problems:", "Fantacalcio.it and Understat are not responding: try again later.",
                      "The data checks found a problem: the details are in Data status."], righe
+
+
+FRASE_TUTTE_GIU = ("Fantacalcio.it, Understat e football-data.co.uk non rispondono: riprova più tardi.",
+                   {"chiave": "aggiorna.non_rispondono", "param": {"fonti": {"chiave": "elenco_e", "param": {
+                       "parti": ["Fantacalcio.it", "Understat", "football-data.co.uk"], "sep": ", "}}}})
+
+
+def test_aggiorna_i_dati_senza_nessun_dato_arrivato_non_dice_aggiornato(web):
+    """Collaudo del 27/11: con tutte le fonti giù l'avviso diceva «Aggiornato, ma con problemi: …», ma non era arrivato niente.
+    Con `nessun_dato_nuovo` del server la testa dice «Nessun dato nuovo:», sotto le stesse frasi una per riga."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, False)
+    aggiorna_finito(web, {"errori": [FRASE_TUTTE_GIU[0]], "errori_frasi": [FRASE_TUTTE_GIU[1]], "nessun_dato_nuovo": True})
+    web.apri("/?vista=impostazioni&gruppo=gestione", larghezza=390)
+    avviso = premi_aggiorna(web, 390, "non rispondono")
+    righe = [r.strip() for r in avviso.inner_text().split("\n") if r.strip()]
+    assert righe == ["Nessun dato nuovo:", FRASE_TUTTE_GIU[0]], righe
+    assert "Aggiornato" not in avviso.inner_text()
+
+
+def test_aggiorna_i_dati_senza_dati_nuovi_e_senza_problemi(web):
+    """Niente da scaricare e nessun problema (copie di oggi, nessuna giornata nuova): non «Dati aggiornati», ma una frase vera."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, False)
+    aggiorna_finito(web, {"errori": [], "errori_frasi": [], "nessun_dato_nuovo": True})
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    avviso = premi_aggiorna(web, PC, "Nessun dato nuovo")
+    assert avviso.inner_text().strip() == "Nessun dato nuovo: non c'era niente di più recente da scaricare."
+
+
+def test_aggiorna_i_dati_senza_nessun_dato_arrivato_in_inglese(web):
+    solo(web, "prima")
+    web.memoria({"lingua": "en"})
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, False)
+    aggiorna_finito(web, {"errori": [FRASE_TUTTE_GIU[0]], "errori_frasi": [FRASE_TUTTE_GIU[1]], "nessun_dato_nuovo": True})
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    principale(web).get_by_role("button", name="Refresh the data").click(timeout=10000)
+    avviso = web.pagina.locator("#avviso").filter(has_text="not responding")
+    avviso.wait_for(timeout=10000)
+    righe = [r.strip() for r in avviso.inner_text().split("\n") if r.strip()]
+    assert righe == ["No new data:", "Fantacalcio.it, Understat and football-data.co.uk are not responding: try again later."], righe
+
+
+def test_aggiorna_i_dati_premuto_di_nuovo_dice_hai_appena_provato_anche_in_inglese(web):
+    """Il secondo tocco entro 10 minuti: la frase del server («Hai appena provato: …», non più «aggiornati da poco»), tradotta."""
+    solo(web, "prima")
+    web.memoria({"lingua": "en"})
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, False)
+    web.risposta("/api/aggiorna", {"avviato": False, "messaggio": "Hai appena provato: riprova fra 9 minuti.", "riprova_tra": 539})
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    principale(web).get_by_role("button", name="Refresh the data").click(timeout=10000)
+    web.pagina.get_by_role("status").filter(has_text="You just tried: try again in 9 minutes.").first.wait_for(timeout=5000)
 
 
 def test_aggiorna_i_dati_con_un_errore_lungo_va_a_capo_e_non_esce_di_lato(web):

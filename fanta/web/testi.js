@@ -175,6 +175,8 @@ const TESTI = {
     "aggiorna.avviato": "Aggiornamento dei dati avviato: ci vuole circa un minuto",
     "aggiorna.non_so": "Non riesco a sapere come è andato l'aggiornamento: riapri l'app tra poco",
     "aggiorna.problemi": "Aggiornato, ma con problemi: {errori}",
+    "aggiorna.nessun_dato": "Nessun dato nuovo: {errori}",
+    "aggiorna.nessun_dato_niente": "Nessun dato nuovo: non c'era niente di più recente da scaricare.",
     "aggiorna.ok": "Dati aggiornati",
     "aggiorna.in_corso": "Il server è occupato con un aggiornamento: il pulsante torna attivo appena finisce.",
 
@@ -1950,7 +1952,8 @@ const TESTI = {
     "social.password_collega": "La tua password (serve per collegare Google)",
 
     "srv.aggiorna_nessuna_fonte": "Nessuna fonte di dati è accesa, quindi non c'è niente da aggiornare: accendine una in Impostazioni › Gestione › Stato dei dati.",
-    "srv.aggiorna_pausa": "I dati sono stati aggiornati da poco: riprova fra {1}.",
+    "srv.aggiorna_gia_in_corso": "Aggiornamento già in corso.",
+    "srv.aggiorna_pausa": "Hai appena provato: riprova fra {1}.",
     "srv.una_sola_squadra": "Con una sola squadra funzionano formazione e consigli; le rose degli altri servono a guardare le altre squadre: puoi aggiungerle quando vuoi.",
 
     "tempo.oggi": "oggi",
@@ -2145,6 +2148,8 @@ const TESTI = {
     "aggiorna.avviato": "Data refresh started: it takes about a minute",
     "aggiorna.non_so": "I cannot tell how the refresh went: reopen the app shortly",
     "aggiorna.problemi": "Updated, but with problems: {errori}",
+    "aggiorna.nessun_dato": "No new data: {errori}",
+    "aggiorna.nessun_dato_niente": "No new data: there was nothing more recent to download.",
     "aggiorna.ok": "Data updated",
     "aggiorna.in_corso": "The server is busy with an update: the button comes back as soon as it is done.",
 
@@ -3920,7 +3925,8 @@ const TESTI = {
     "social.password_collega": "Your password (needed to link Google)",
 
     "srv.aggiorna_nessuna_fonte": "No data source is on, so there is nothing to refresh: turn one on in Settings › Management › Data status.",
-    "srv.aggiorna_pausa": "The data was refreshed recently: try again in {1}.",
+    "srv.aggiorna_gia_in_corso": "A data refresh is already running.",
+    "srv.aggiorna_pausa": "You just tried: try again in {1}.",
     "srv.una_sola_squadra": "With just one team, the lineup and the advice work; the other teams' rosters let you look at the other teams: you can add them whenever you like.",
 
     "tempo.oggi": "today",
