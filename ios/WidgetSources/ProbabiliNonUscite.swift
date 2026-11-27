@@ -14,9 +14,9 @@ struct ProbabiliNonUscite: View {
             if i == 0 {
                 Label(frase, systemImage: simbolo).lineLimit(1)
             } else if i == 1 {
-                Text(frase).lineLimit(1)
+                Label(frase, systemImage: simbolo).labelStyle(.titleOnly).lineLimit(1)
             } else {
-                Image(systemName: simbolo)
+                Label(frase, systemImage: simbolo).labelStyle(.iconOnly)
             }
         }
         .accessibilityElement(children: .ignore)
