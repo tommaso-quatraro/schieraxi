@@ -660,7 +660,8 @@ html[data-animazioni="ridotte"] .avatar-anello.grande-a .avatar svg {
    dentro; uno più lungo della riga va a capo al suo interno. Il «·» sta davanti al pezzo, nello spazio fra i due: il margine
    negativo porta quello del primo pezzo di ogni riga oltre il bordo sinistro, dove la riga lo taglia. Così nessuna riga finisce
    con «·» e nessuna comincia con «·» (collaudo tablet del 27/11: «domani 15:00 ·» e a capo «costo 2…»). La lineetta del club sta
-   nel primo pezzo e va a capo con lui. */
+   nel primo pezzo e va a capo con lui. Un gruppo (la partita con l'orario, costo e quotazione) è un .pezzi dentro un pezzo: va a
+   capo intero e, se è più lungo della riga, si spezza con la stessa regola (sta da solo a inizio riga, quindi il «·» resta fuori). */
 .voce-g .dettaglio { overflow: hidden; }
 .voce-g .pezzi { display: flex; flex-wrap: wrap; align-items: baseline; margin-left: -.9em; }
 .voce-g .pezzi > .nb { position: relative; min-width: 0; margin-left: .9em; }

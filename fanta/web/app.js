@@ -642,16 +642,20 @@ function intestazioneColonne(opz = { partita: true }) {
 }
 
 // La riga sotto il nome in pezzi interi («NAP vs LAZ», «sab 31 20:45», «costo 18», «quotazione 6»): va a capo tra un pezzo e
-// l'altro, mai dentro il nome di una squadra. Il «·» che separa due pezzi sta davanti al secondo, nello spazio tra i due; quando
-// quel pezzo comincia una riga il «·» resta fuori dal bordo e non si vede (`.pezzi` in stile.css): mai «domani 15:00 ·» in fondo
-// a una riga, né «· costo 2» in testa (collaudo tablet del 27/11). `testa`, la lineetta del club, sta dentro il primo pezzo: va a
-// capo con lui invece di restare da sola su una riga. I pezzi sono già sicuri per l'HTML.
+// l'altro, mai dentro il nome di una squadra. Un gruppo (un elenco dentro l'elenco: la partita con l'orario, costo e quotazione)
+// va a capo intero, e solo se non ci sta in una riga si spezza fra i suoi pezzi. Il «·» che separa due pezzi sta davanti al
+// secondo, nello spazio tra i due; quando quel pezzo comincia una riga il «·» resta fuori dal bordo e non si vede (`.pezzi` in
+// stile.css): mai «domani 15:00 ·» in fondo a una riga, né «· costo 2» in testa (collaudo tablet del 27/11). `testa`, la lineetta
+// del club, sta dentro il primo pezzo: va a capo con lui invece di restare da sola su una riga. I pezzi sono già sicuri per l'HTML.
 const pezziRiga = (pezzi, testa = "") => {
-  const interi = pezzi.filter(Boolean);
+  const interi = pezzi.map(p => (Array.isArray(p) ? p.filter(Boolean) : p)).filter(p => p && p.length);
   if (!interi.length) return testa;
-  return `<span class="pezzi">${interi.map((p, i) => `<span class="nb">${i ? `<span class="sep">·</span>` : testa}${p}</span>`).join("")}</span>`;
+  return `<span class="pezzi">${interi.map((p, i) => {
+    const primo = i ? "" : testa;
+    return `<span class="nb">${i ? `<span class="sep">·</span>` : ""}${Array.isArray(p) ? pezziRiga(p, primo) : primo + p}</span>`;
+  }).join("")}</span>`;
 };
-// La partita nelle righe dei giocatori, in due pezzi di pezziRiga: «NAP vs LAZ» e «sab 31 20:45» (si legge «NAP vs LAZ · sab 31
+// La partita nelle righe dei giocatori, un gruppo di pezziRiga: «NAP vs LAZ» e «sab 31 20:45» (si legge «NAP vs LAZ · sab 31
 // 20:45»); senza avversario solo la sigla della squadra.
 const pezziPartita = x => (x.avversario ? [partitaRiga(x), quando(x.data_partita)] : [sigla(x.squadra)]);
 
@@ -2062,7 +2066,7 @@ async function apriSostituzione(id) {
     const d = Number(differenza);
     return `<li class="riga-gioc"><button class="voce voce-g" data-entra="${Number(x.id)}">${volto(x)}
       <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo))}</span><span class="nome-t">${esc(x.nome)}</span></span>
-        <span class="dettaglio">${pezziRiga([...pezziPartita(x), postoInFormazione(x.id)], lineetta(x.squadra))}</span>
+        <span class="dettaglio">${pezziRiga([pezziPartita(x), postoInFormazione(x.id)], lineetta(x.squadra))}</span>
         <span class="etichette">${etichetteGiocatore(x, giocaPoco(x))}</span></span>
       ${Number.isFinite(d) ? `<span class="valore"><b class="${d > 0 ? "positivo" : ""}">${segno(d, 1)}</b><span class="solo-lettori"> ${t("formazione.punti_rispetto", { nome: esc(base.nome) })}</span></span>` : ""}
       <span class="pv-g">${t("formazione.fv_atteso_breve", { fv: num(x.fv_atteso) })}</span></button></li>`;
@@ -2394,8 +2398,9 @@ async function vistaRosa(nome) {
       return `<h3>${NOMI_RUOLO[ruolo] || t("scambio.senza_ruolo")} (${g.length})</h3>${intestazione}<ul class="elenco">${g.map(x => {
         const p = x.previsione, slug = slugQualunque((p && p.squadra) || x.squadra);
         const prezzi = [x.costo != null ? t("scambio.costo_n", { c: x.costo }) : "", x.quotazione != null ? t("scambio.quotazione_n", { q: x.quotazione }) : ""];
-        const partita = pezziRiga([[sigla(x.squadra), p ? vsAt(p) : ""].filter(Boolean).join(" "), p && p.data_partita ? quando(p.data_partita) : "",
-          ...prezzi], lineetta(slug));
+        // due gruppi: la partita con l'orario, poi costo e quotazione (ognuno va a capo intero, se ci sta)
+        const partita = pezziRiga([[[sigla(x.squadra), p ? vsAt(p) : ""].filter(Boolean).join(" "), p && p.data_partita ? quando(p.data_partita) : ""],
+          prezzi], lineetta(slug));
         return `<li class="riga-gioc"><button class="voce voce-g" ${x.id ? `data-giocatore="${x.id}"` : "disabled"}>
           ${volto(p || { id: x.id, nome: x.nome, ruolo: x.ruolo, squadra: slug })}
           <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo || "?"))}</span><span class="nome-t">${esc(x.nome)}</span></span>
