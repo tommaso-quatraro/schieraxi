@@ -2281,7 +2281,7 @@ const TESTI = {
     "avv.certificato_titolo": "SchieraXI · Renew the app",
     "avv.certificato_ore.one": "In about an hour the app will stop opening. Renew it from the app you installed it with.",
     "avv.certificato_ore.other": "In about {n} hours the app will stop opening. Renew it from the app you installed it with.",
-    "avv.certificato_aiuto": "With a free Apple ID the certificate lasts 7 days. 24 hours and 6 hours before it expires a reminder arrives: «{promemoria}» It never plays during quiet hours: it arrives a minute before they start; if the app prepares it when they have already started, it arrives when they end, but only if at least an hour is left before the expiry.",
+    "avv.certificato_aiuto": "With a free Apple ID the certificate lasts 7 days. 24 hours and 6 hours before it expires a reminder arrives: “{promemoria}” It never plays during quiet hours: it arrives a minute before they start; if the app prepares it when they have already started, it arrives when they end, but only if at least an hour is left before the expiry.",
     "avv.versione_nuova_titolo": "SchieraXI · A new version is out",
     "avv.versione_nuova_testo": "Update SchieraXI to version {versione} from the app you installed it with.",
     "avv.ore_tranq": "Quiet hours",
