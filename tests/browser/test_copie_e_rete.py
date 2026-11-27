@@ -7,7 +7,9 @@ nel collaudo, ognuno con il suo test:
 - con la rete lenta la prima schermata restava vuota finché non rispondevano «chi sono», lo stato, le squadre, i volti e le
   funzioni, nessuna con un tempo massimo;
 - la prima scheda di un giocatore mostrava le prossime partite della copia del calendario, di qualunque età;
-- un'altra scheda che esce, o entra con un altro account: questa salvava i dati del secondo sotto la chiave del primo.
+- un'altra scheda che esce, o entra con un altro account: questa salvava i dati del secondo sotto la chiave del primo;
+- l'ultimo script (impostazioni.js) che arriva dopo i dati d'avvio: la prima schermata si disegnava senza il suo codice e la
+  pagina restava vuota (visto solo ogni tanto, senza rete, sui server di GitHub).
 La versione nuova della web installata sta in test_web_installata.py.
 
 Qui la rete la governa il test (`Rete`): le /api/ si fermano finché il test non le lascia andare (la rete lenta), non arrivano
@@ -263,7 +265,8 @@ def test_senza_rete_impostazioni_tiene_la_mia_squadra_spenta_con_una_frase(web, 
     try:
         riga.wait_for(timeout=10000)
     except Exception:                        # noqa: BLE001 - si dice cosa manca
-        pytest.fail(f"senza rete Impostazioni non ha «La mia squadra»: {_testo(web)[:300]!r}")
+        pytest.fail(f"senza rete Impostazioni non ha «La mia squadra»: {_testo(web)[:300]!r}; "
+                    f"errori del codice: {[e for e in web.errori_console if e.startswith('errore nel codice')]}")
     assert riga.is_disabled(), "senza rete la riga si tocca, ma la pagina non si aprirebbe"
     assert "Si apre quando il server torna raggiungibile" in riga.inner_text(), riga.inner_text()
     voci = web.pagina.locator("#imp-lega li").all_inner_texts()
@@ -276,6 +279,43 @@ def test_senza_rete_impostazioni_tiene_la_mia_squadra_spenta_con_una_frase(web, 
           b.innerText.trim().startsWith('La mia squadra') && !b.disabled)""", timeout=10000)
     except Exception:                        # noqa: BLE001
         pytest.fail(f"tornata la rete «La mia squadra» resta spenta: {_testo(web)[:300]!r}")
+
+
+@pytest.mark.parametrize("senza_rete", [False, True], ids=["con-la-rete", "senza-rete"])
+def test_l_ultimo_script_in_ritardo_non_lascia_vuota_la_prima_schermata(web, senza_rete):
+    """`impostazioni.js` è l'ultimo degli script (si carica dopo `app.js`, che è grosso). Se arriva dopo i dati d'avvio, la prima
+    schermata (qui Impostazioni, aperta dall'indirizzo) si disegnava prima che esistesse il suo codice e la pagina restava vuota
+    per sempre. Senza rete i dati «arrivano» subito, con un errore: è ciò che faceva fallire ogni tanto, sui server di GitHub, il
+    test sulla «La mia squadra» spenta (pagina vuota dopo il ricaricamento senza rete, con le richieste fino a /api/squadre e
+    nessuna di quelle che chiede il disegno d'Impostazioni). Qui lo script si tiene fermo finché i dati d'avvio non sono
+    arrivati (o falliti), e poi si lascia andare."""
+    solo_prima(web)
+    rete = Rete(web.pagina)
+    if senza_rete:
+        web.apri("/")                                    # una prima apertura: le copie dei dati restano nel browser
+        rete.giu = True
+    ferme = []
+    web.pagina.route("**/impostazioni.js", lambda richiesta: ferme.append(richiesta))
+    chiusa = "requestfailed" if senza_rete else "requestfinished"
+    with web.pagina.expect_event(chiusa, lambda r: urlsplit(r.url).path == "/api/squadre", timeout=10000):
+        web.pagina.goto(web.server.indirizzo + "/?vista=impostazioni", wait_until="commit")
+    # i dati d'avvio sono arrivati, lo script no: il tempo che la pagina, se può, si disegni
+    web.pagina.evaluate("() => new Promise(ok => setTimeout(ok, 300))")
+    assert ferme, "il test parte con lo script d'Impostazioni trattenuto"
+    for richiesta in ferme:
+        richiesta.continue_()
+    web.pagina.wait_for_load_state("load", timeout=10000)
+    principale = web.pagina.locator("main")
+    try:
+        principale.get_by_role("heading", level=1, name="Impostazioni").wait_for(timeout=10000)
+    except Exception:                        # noqa: BLE001 - si dice cosa si vede
+        pytest.fail(f"con lo script d'Impostazioni arrivato dopo i dati la pagina è vuota: {_testo(web)[:300]!r}; "
+                    f"console: {web.errori_console[-1:]}")
+    riga = principale.get_by_role("button", name=re.compile(r"^\s*La mia squadra"))
+    riga.wait_for(timeout=10000)
+    assert riga.is_disabled() == senza_rete, "«La mia squadra» è spenta solo senza rete"
+    errori_del_codice = [e for e in web.errori_console if e.startswith("errore nel codice")]   # senza rete la console dice anche delle /api/
+    assert not errori_del_codice, errori_del_codice
 
 
 # ---------------------------------------------------------------- 3. le prossime partite nella scheda
