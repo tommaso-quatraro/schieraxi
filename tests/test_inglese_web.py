@@ -40,6 +40,14 @@ def test_le_date_con_l_anno_hanno_il_mese_a_parole_in_inglese():
     assert _node("it", [giorno]) == ["26/11/2026"]                                       # in italiano come prima
 
 
+def test_le_date_estese_hanno_il_mese_breve_in_inglese_e_per_intero_in_italiano():
+    """«Rosters updated on 27 Nov 2026», «User · since 27 Nov 2026» (collaudo in inglese del 27/11/2026: era «27 November 2026»,
+    unica data lunga della web inglese); in italiano «27 novembre 2026», come sull'iPhone."""
+    giorno = 'fDataEstesa(new Date("2026-11-27T12:00:00Z"))'
+    assert _node("en", [giorno]) == ["27 Nov 2026"]
+    assert _node("it", [giorno]) == ["27 novembre 2026"]
+
+
 def test_i_nomi_di_stato_dei_dati_si_traducono():
     casi = ['traduciFrase({ chiave: "fascia.titolare", param: { da: 90, a: 100 } }, "Titolare 90-100%")',
             'traduciFrase({ chiave: "fascia.panchina_sotto", param: { a: 20 } }, "Panchina sotto 20%")',
