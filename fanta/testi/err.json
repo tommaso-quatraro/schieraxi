@@ -28,12 +28,16 @@
     "en": "Signing up with an email is not available on this server: sending emails is turned off, so the code could not arrive. Ask whoever runs the server for an invite."
   },
   "err.registrazioni_chiuse": {
-    "it": "Le registrazioni sono chiuse: è stato raggiunto il numero massimo di utenti",
-    "en": "Sign-ups are closed: the maximum number of users has been reached"
+    "it": "Iscrizioni chiuse: siamo al completo",
+    "en": "Sign-ups closed: we are full"
   },
   "err.chiuse_oggi": {
     "it": "Per oggi le iscrizioni sono chiuse: riprova domani",
     "en": "Sign-ups are closed for today: try again tomorrow"
+  },
+  "err.trappola": {
+    "it": "Registrazione non riuscita: ricarica la pagina e riprova",
+    "en": "Sign-up failed: reload the page and try again"
   },
   "err.invito": {
     "it": "Invito non valido o scaduto",
@@ -849,8 +853,8 @@
     "en": "This address already has an account: sign in as usual and then, in Settings › Your account, link Google."
   },
   "err.google_usa_modulo": {
-    "it": "Per iscriverti usa il modulo con la tua email.",
-    "en": "To sign up use the form with your email."
+    "it": "Con questo account Google non puoi iscriverti: usa il modulo di registrazione.",
+    "en": "You can't sign up with this Google account: use the sign-up form."
   },
   "err.google_altro_account": {
     "it": "Hai scelto un altro account Google: scegli quello collegato a SchieraXI.",
@@ -1299,5 +1303,10 @@
   "err.p_regola_fonte_voto": {
     "it": "Voto di partenza",
     "en": "Starting grade"
+  },
+  "err.interruttori_file_rovinato": {
+    "it": "Non cambio l'interruttore: il file {1} sul server è scritto male e lo perderei. Correggilo o toglilo, poi riprova.",
+    "en": "I am not changing the switch: the file {1} on the server is malformed and I would lose it. Fix it or remove it, then try again.",
+    "nota": "409 di PUT /api/admin/fonti e /api/admin/funzioni con dati/fonti.json o dati/funzioni.json scritto male (fanta/interruttori.py): riscriverlo cancellerebbe le altre scelte"
   }
 }

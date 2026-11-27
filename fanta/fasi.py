@@ -466,12 +466,16 @@ def blocco_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, fil
             "recuperi": mancano if r_rinvio["modo"] == "aspetta" else [],
             "rinvio": _rinvio_del_riepilogo(db, regole, rose, stagione, giornata, mancano) if mancano else None}
     voce = (diario.carica(file_diario).get("giornate") or {}).get(f"{stagione}/{giornata}") if file_diario else None
-    if isinstance(voce, dict) and isinstance(voce.get("consigliata"), dict):
+    # una voce calcolata con un'altra regola dei rinvii per una giornata che ora aspetta il recupero non vale (diario.sospesa)
+    if isinstance(voce, dict) and isinstance(voce.get("consigliata"), dict) and not diario.sospesa(db, regole, voce):
         mia = voce.get("schierata") or voce.get("automatica") or voce["consigliata"]
         cons = voce["consigliata"]
+        # il confronto solo con la consigliata mostrata prima della scadenza, come la pagina Giornate: con quella rifatta a giornata
+        # finita la pagina dice che il confronto non c'è, e Oggi non scrive «Con la consigliata: X punti»
         return base | {"formazione_di": "tua" if voce.get("schierata") else "consigliata", "nel_diario": True,
                        "punti_fatti": mia.get("reale"), "punti_attesi": mia.get("atteso"), "intervallo": mia.get("intervallo"),
-                       "consigliata": {"punti_fatti": cons.get("reale"), "punti_attesi": cons.get("atteso")}}
+                       "consigliata": {"punti_fatti": cons.get("reale"), "punti_attesi": cons.get("atteso")}
+                       if cons.get("origine") == "mostrata" else None}
     info, numeri, ist = _rosa_della_giornata(rose, stagione, giornata, file_diario)
     sch = schierata(stagione, giornata, file_scelte, file_diario, ruoli={i: x["ruolo"] for i, x in info.items()}, regole=regole)
     if not sch or any(i not in info for i in sch[0]):

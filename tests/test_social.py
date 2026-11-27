@@ -235,7 +235,7 @@ def test_il_tetto_degli_utenti_vale_anche_con_google(scena, monkeypatch):
     utente_con_password(c)
     nuovo = iscrivi_con_google(cliente("5.5.5.5"), scena)
     r = cliente("5.5.5.5").post("/api/account/social/completa", json={"iscrizione": nuovo["iscrizione"], "nome_utente": "mario", "invito": invito(), "accetto_termini": True})
-    assert r.status_code == 403 and "massimo" in r.json()["detail"]
+    assert r.status_code == 403 and r.json()["detail"] == account.AL_COMPLETO
 
 
 def test_l_account_nato_con_google_parte_da_una_cartella_vuota(scena):

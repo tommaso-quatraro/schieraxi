@@ -123,7 +123,8 @@ notte può tornare indietro.
    - avviato il servizio: `curl -s -H "X-Fanta: 1" http://127.0.0.1:8000/api/account/me` contiene `"multiutente":true`,
      e `curl -s -o /dev/null -w "%{http_code}" -H "X-Fanta: 1" http://127.0.0.1:8000/api/formazione` dà `401`;
    - accesso: per non usare password vere crea un account di prova con `.venv/bin/python -m fanta invito --etichetta prova --admin`
-     e iscriviti con quel codice; da amministratore `GET /api/admin/utenti` deve elencare gli account della copia (più quello di prova);
+     e iscriviti con quel codice (con `FANTA_REGISTRAZIONE=aperta` il modulo non chiede codici: registrati dalla scheda **Registrati**
+     e poi `.venv/bin/python -m fanta utente-ruolo --utente prova --ruolo admin`); da amministratore `GET /api/admin/utenti` deve elencare gli account della copia (più quello di prova);
    - fonti e funzioni, a ogni ripristino: con lo stesso account, `GET /api/admin/fonti` e `GET /api/admin/funzioni`. Le spente
      devono essere quelle che l'amministratore aveva spento, con `scelta_da` uguale a `amministratore`. Il pacchetto ha le scelte
      della notte della copia (le copie di prima della #664 nessuna): quello che era stato spento dopo, o che con una copia vecchia

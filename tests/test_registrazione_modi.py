@@ -1,4 +1,7 @@
-"""Registrazione configurabile (FANTA_REGISTRAZIONE = invito | aperta | email): ogni modo, con i suoi limiti e i suoi attacchi."""
+"""Registrazione configurabile (FANTA_REGISTRAZIONE = aperta | invito | email): ogni modo, con i suoi limiti e i suoi attacchi.
+La registrazione aperta (dal 26/11/2026, con FANTA_REGISTRAZIONE=aperta: account subito ed email facoltativa) ha i suoi test in
+test_registrazione_aperta.py;
+qui l'iscrizione in due tempi con il codice per posta, che dal 26/11/2026 resta solo nel modo `email` (invito ed email obbligatoria)."""
 import contextlib
 import re
 
@@ -31,6 +34,9 @@ _segreti: dict = {}        # l'ultimo segreto di iscrizione ricevuto per ogni in
 
 
 def iscrivi(c, nome="anna", email="anna@example.com", **extra):
+    """Nel modo `email` ogni iscrizione porta il suo invito (monouso), salvo che il test ne passi uno."""
+    if account_email.modo_registrazione() == "email" and "invito" not in extra:
+        extra["invito"] = invito()
     r = c.post("/api/account/registra", json={"nome_utente": nome, "password": PASSWORD, "email": email} | extra)
     if r.status_code == 200 and "iscrizione" in r.json():
         _segreti[(email or "").lower()] = r.json()["iscrizione"]
@@ -52,7 +58,7 @@ def utenti() -> list[str]:
         return [u["nome_utente"] for u in account.elenco(db)]
 
 
-# ---------------------------------------------------------------- invito (predefinito)
+# ---------------------------------------------------------------- invito
 def test_predefinito_e_invito(monkeypatch):
     monkeypatch.delenv("FANTA_REGISTRAZIONE", raising=False)
     assert account_email.modo_registrazione() == "invito"
@@ -60,7 +66,8 @@ def test_predefinito_e_invito(monkeypatch):
     assert account_email.modo_registrazione() == "invito"
 
 
-def test_invito_senza_invito_si_viene_respinti(web, posta_finta):
+def test_invito_senza_invito_si_viene_respinti(web, posta_finta, monkeypatch):
+    modo(monkeypatch, "invito")
     r = iscrivi(web)
     assert r.status_code == 403 and r.json()["detail"] == rotte_account.INVITO_DA_CHIEDERE and utenti() == [] and not posta_finta
     ok = web.post("/api/account/registra", json={"nome_utente": "marco", "password": PASSWORD, "invito": invito()})
@@ -68,14 +75,15 @@ def test_invito_senza_invito_si_viene_respinti(web, posta_finta):
 
 
 def test_il_modo_si_legge_dalla_risposta_401(web, monkeypatch):
+    modo(monkeypatch, "invito")
     assert web.get("/api/regole").json()["registrazione"] == "invito"
     modo(monkeypatch, "aperta")
     assert web.get("/api/regole").json()["registrazione"] == "aperta"
 
 
-# ---------------------------------------------------------------- aperta
-def test_aperta_iscrizione_in_due_tempi(web, posta_finta, monkeypatch):
-    modo(monkeypatch, "aperta")
+# ---------------------------------------------------------------- iscrizione in due tempi (modo `email`; fino al 26/11/2026 anche `aperta`)
+def test_email_iscrizione_in_due_tempi(web, posta_finta, monkeypatch):
+    modo(monkeypatch, "email")
     r = iscrivi(web)
     assert r.status_code == 200 and r.json()["verifica_email"] is True and "codice_recupero" not in r.json()
     assert utenti() == [] and web.get("/api/account/me").status_code == 401                 # finché non conferma, l'account non c'è
@@ -90,10 +98,10 @@ def test_aperta_iscrizione_in_due_tempi(web, posta_finta, monkeypatch):
     assert cliente().post("/api/account/accedi", json={"nome_utente": "anna", "password": PASSWORD}).status_code == 200
 
 
-def test_aperta_l_account_confermato_parte_da_una_cartella_vuota(web, posta_finta, monkeypatch):
+def test_email_l_account_confermato_parte_da_una_cartella_vuota(web, posta_finta, monkeypatch):
     """Una cartella rimasta con il numero che l'account sta per ricevere (database degli account ricreato o tornato a una copia)
     va da parte: l'account nato dal codice dell'email parte vuoto, come quello nato da un invito."""
-    modo(monkeypatch, "aperta")
+    modo(monkeypatch, "email")
     rimasta = contesto.cartella_utente(1)
     rimasta.mkdir(parents=True)
     (rimasta / "push.json").write_text('[{"endpoint": "https://push.example/altro"}]', encoding="utf-8")
@@ -104,16 +112,16 @@ def test_aperta_l_account_confermato_parte_da_una_cartella_vuota(web, posta_fint
     assert len(list((percorsi.cartella_account() / "utenti-da-parte").glob("*/push.json"))) == 1
 
 
-def test_aperta_app_nativa_riceve_il_token(web, posta_finta, monkeypatch):
-    modo(monkeypatch, "aperta")
+def test_email_app_nativa_riceve_il_token(web, posta_finta, monkeypatch):
+    modo(monkeypatch, "email")
     iscrivi(web)
     r = conferma(web, "anna@example.com", codice_di(posta_finta[-1]), nativo=True)
     token = r.json()["token"]
     assert cliente(Authorization=f"Bearer {token}").get("/api/account/me").json()["utente"]["nome_utente"] == "anna"
 
 
-def test_aperta_richiede_email_e_controlla_nome_password(web, posta_finta, monkeypatch):
-    modo(monkeypatch, "aperta")
+def test_email_richiede_email_e_controlla_nome_password(web, posta_finta, monkeypatch):
+    modo(monkeypatch, "email")
     assert iscrivi(web, email=None).status_code == 400
     assert iscrivi(web, email="").status_code == 400
     assert iscrivi(web, email="anna@mailinator.com").status_code == 400
@@ -122,8 +130,8 @@ def test_aperta_richiede_email_e_controlla_nome_password(web, posta_finta, monke
     assert not posta_finta and utenti() == []
 
 
-def test_aperta_stessa_risposta_se_l_email_e_gia_registrata(web, posta_finta, monkeypatch):
-    modo(monkeypatch, "aperta")
+def test_email_stessa_risposta_se_l_email_e_gia_registrata(web, posta_finta, monkeypatch):
+    modo(monkeypatch, "email")
     iscrivi(web, "anna", "anna@example.com")
     conferma(web, "anna@example.com", codice_di(posta_finta[-1]))
     posta_finta.clear()
@@ -137,8 +145,8 @@ def test_aperta_stessa_risposta_se_l_email_e_gia_registrata(web, posta_finta, mo
     assert utenti() == ["anna"]
 
 
-def test_aperta_nome_gia_preso_e_tetto_utenti(web, posta_finta, monkeypatch):
-    modo(monkeypatch, "aperta")
+def test_email_nome_gia_preso_e_tetto_utenti(web, posta_finta, monkeypatch):
+    modo(monkeypatch, "email")
     iscrivi(web, "anna", "anna@example.com")
     conferma(web, "anna@example.com", codice_di(posta_finta[-1]))
     # il nome già preso non si rivela al primo passo (anti-enumerazione): lo si dice quando l'email è provata
@@ -148,12 +156,12 @@ def test_aperta_nome_gia_preso_e_tetto_utenti(web, posta_finta, monkeypatch):
     assert rifiuto.status_code == 400 and "già preso" in rifiuto.json()["detail"] and utenti() == ["anna"]
     monkeypatch.setenv("MAX_UTENTI", "1")
     chiusa = iscrivi(cliente(**{"X-Forwarded-For": "4.4.4.6"}), "bruno", "bruno@example.com")
-    assert chiusa.status_code == 403 and "numero massimo" in chiusa.json()["detail"]
+    assert chiusa.status_code == 403 and chiusa.json()["detail"] == account.AL_COMPLETO
 
 
-def test_aperta_tetto_riverificato_alla_conferma(web, posta_finta, monkeypatch):
+def test_email_tetto_riverificato_alla_conferma(web, posta_finta, monkeypatch):
     """Due persone iniziano insieme con un posto solo: il tetto si ricontrolla quando nasce l'account."""
-    modo(monkeypatch, "aperta")
+    modo(monkeypatch, "email")
     monkeypatch.setenv("MAX_UTENTI", "1")
     iscrivi(web, "anna", "anna@example.com")
     iscrivi(cliente(**{"X-Forwarded-For": "4.4.4.5"}), "bruno", "bruno@example.com")
@@ -162,16 +170,16 @@ def test_aperta_tetto_riverificato_alla_conferma(web, posta_finta, monkeypatch):
     assert r.status_code == 403 and utenti() == ["anna"]
 
 
-def test_aperta_limiti_per_indirizzo_ip(web, posta_finta, monkeypatch):
-    modo(monkeypatch, "aperta")
+def test_email_limiti_per_indirizzo_ip(web, posta_finta, monkeypatch):
+    modo(monkeypatch, "email")
     stati = [iscrivi(web, f"utente{i}", f"u{i}@example.com").status_code for i in range(account_email.ISCRIZIONI_PER_IP[0] + 2)]
     assert stati[:account_email.ISCRIZIONI_PER_IP[0]] == [200] * account_email.ISCRIZIONI_PER_IP[0] and stati[-1] == 429
     altro = iscrivi(cliente(**{"X-Forwarded-For": "5.5.5.5"}), "diverso", "diverso@example.com")
     assert altro.status_code == 200                                                         # un altro indirizzo non è toccato
 
 
-def test_aperta_forza_bruta_sul_codice_di_iscrizione(web, posta_finta, monkeypatch):
-    modo(monkeypatch, "aperta")
+def test_email_forza_bruta_sul_codice_di_iscrizione(web, posta_finta, monkeypatch):
+    modo(monkeypatch, "email")
     iscrivi(web, "anna", "anna@example.com")
     giusto = codice_di(posta_finta[-1])
     stati = []
@@ -183,20 +191,20 @@ def test_aperta_forza_bruta_sul_codice_di_iscrizione(web, posta_finta, monkeypat
     assert utenti() == []
 
 
-def test_aperta_email_sconosciuta_o_malformata_stessa_risposta(web, monkeypatch):
-    modo(monkeypatch, "aperta")
+def test_email_email_sconosciuta_o_malformata_stessa_risposta(web, monkeypatch):
+    modo(monkeypatch, "email")
     r = [conferma(cliente(**{"X-Forwarded-For": f"4.4.8.{i}"}), e, "123456") for i, e in enumerate(["x@example.com", "non-email", ""])]
     assert len({(x.status_code, x.text) for x in r}) == 1 and r[0].status_code == 403
 
 
-def test_aperta_un_invito_valido_funziona_come_prima(web, posta_finta, monkeypatch):
+def test_aperta_un_invito_valido_da_il_suo_ruolo(web, posta_finta, monkeypatch):
     modo(monkeypatch, "aperta")
     r = web.post("/api/account/registra", json={"nome_utente": "capo", "password": PASSWORD, "invito": invito(True)})
     assert r.status_code == 200 and r.json()["utente"]["ruolo"] == "amministratore" and utenti() == ["capo"]
 
 
-def test_aperta_scaduta_iscrizione_dopo_15_minuti(web, posta_finta, monkeypatch):
-    modo(monkeypatch, "aperta")
+def test_email_scaduta_iscrizione_dopo_15_minuti(web, posta_finta, monkeypatch):
+    modo(monkeypatch, "email")
     iscrivi(web)
     with contextlib.closing(account.apri()) as db:
         db.execute("UPDATE codici_email SET scade = '2000-01-01T00:00:00+00:00'")
@@ -204,8 +212,8 @@ def test_aperta_scaduta_iscrizione_dopo_15_minuti(web, posta_finta, monkeypatch)
     assert conferma(web, "anna@example.com", codice_di(posta_finta[-1])).status_code == 403
 
 
-def test_aperta_nel_database_non_c_e_la_password_in_chiaro(web, posta_finta, monkeypatch):
-    modo(monkeypatch, "aperta")
+def test_email_nel_database_non_c_e_la_password_in_chiaro(web, posta_finta, monkeypatch):
+    modo(monkeypatch, "email")
     iscrivi(web)
     with contextlib.closing(account.apri()) as db:
         dati = db.execute("SELECT dati, codice_hash FROM codici_email").fetchone()
@@ -215,7 +223,7 @@ def test_aperta_nel_database_non_c_e_la_password_in_chiaro(web, posta_finta, mon
 # ---------------------------------------------------------------- email: invito + email obbligatoria
 def test_email_serve_l_invito_e_l_email(web, posta_finta, monkeypatch):
     modo(monkeypatch, "email")
-    assert iscrivi(web).status_code == 403                                                  # senza invito
+    assert iscrivi(web, invito="").status_code == 403                                       # senza invito
     codice_inv = invito()
     assert iscrivi(web, invito=codice_inv, email=None).status_code == 400                   # senza email
     r = iscrivi(web, invito=codice_inv)
@@ -286,7 +294,7 @@ def test_email_due_iscrizioni_con_lo_stesso_invito_vince_la_prima(web, posta_fin
 
 def test_termini_nel_giro_con_email(web, monkeypatch, posta_finta):
     """I termini accettati alla richiesta si registrano quando nasce l'account; il «no» ferma subito."""
-    modo(monkeypatch, "aperta")
+    modo(monkeypatch, "email")
     assert iscrivi(web, "bruno", "bruno@example.com", accetto_termini=False).status_code == 400
     assert iscrivi(web, "bruno", "bruno@example.com", accetto_termini=True).status_code == 200
     assert conferma(web, "bruno@example.com", codice_di(ultimi(posta_finta, "bruno@example.com")[-1])).status_code == 200

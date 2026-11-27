@@ -360,6 +360,8 @@ CATALOGO: dict[str, str] = {
     "diario.confronto_non_valutabili.one": "{n} giornata non entra nel confronto: la consigliata di allora non si può più valutare con la rosa e le regole di oggi.",
     "diario.confronto_non_valutabili.other": "{n} giornate non entrano nel confronto: la consigliata di allora non si può più valutare con la rosa e le regole di oggi.",
     "diario.confronto_stessa_confrontabili": "Hai schierato gli stessi undici della consigliata in tutte le giornate che si possono confrontare. {fuori}",
+    # Giornate, una giornata finita che ora aspetta il recupero e non si mostra (revisione di #947, diario.elenco `in_attesa`)
+    "diario.in_attesa_recupero": "{giornata}: in attesa del recupero, i punti arrivano dopo.",
     # Giornate, una giornata senza la consigliata mostrata (#674, diario.nota_consigliata): {perche} = una `diario.allora_*`
     "diario.senza_confronto": "Qui il confronto con la consigliata non c'è: {perche}.",
     "diario.rifatta": "Questa è rifatta con i dati di allora: {perche}.",
@@ -401,6 +403,9 @@ CATALOGO: dict[str, str] = {
     # prima di creare un invito; {n} = gli utenti, {massimo} = il tetto del server (MAX_UTENTI)
     "admin.posti_pieni.one": "Posti pieni: {n} utente su {massimo}. Chi riceve un invito adesso trova le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
     "admin.posti_pieni.other": "Posti pieni: {n} utenti su {massimo}. Chi riceve un invito adesso trova le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
+    # lo stesso con la registrazione aperta (FANTA_REGISTRAZIONE=aperta): niente inviti, chi prova a registrarsi trova le iscrizioni chiuse
+    "admin.posti_pieni_aperta.one": "Posti pieni: {n} utente su {massimo}. Chi prova a registrarsi adesso trova le iscrizioni chiuse, finché non alzi il numero massimo di utenti del server.",
+    "admin.posti_pieni_aperta.other": "Posti pieni: {n} utenti su {massimo}. Chi prova a registrarsi adesso trova le iscrizioni chiuse, finché non alzi il numero massimo di utenti del server.",
     # i posti liberi sono già tutti negli inviti aperti (#894): {n} = posti degli inviti aperti, {utenti} = gli utenti, {massimo} = il tetto
     "admin.posti_promessi.one": "Posti quasi pieni: {utenti} su {massimo} presi, e {n} posto è già in un invito aperto. Chi riceve un invito in più può trovare le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
     "admin.posti_promessi.other": "Posti quasi pieni: {utenti} su {massimo} presi, e {n} posti sono già in inviti aperti. Chi riceve un invito in più può trovare le registrazioni chiuse, finché non alzi il numero massimo di utenti del server.",
@@ -421,6 +426,20 @@ CATALOGO: dict[str, str] = {
     "fonte.spenta_footballdata": "Non scarico risultati e statistiche di squadra delle partite giocate.",
     "fonte.spenta_espn": "Non scarico risultati in diretta.",
     "fonte.spenta_foto": "L'app usa i volti illustrati.",
+    # il nome della parte dell'app in «Stato dei dati › Quanto si usa l'app» (uso.PARTI): gli stessi di «Errori recenti»
+    "uso.parte_formazione": "Formazione",
+    "uso.parte_giornate": "Giornate",
+    "uso.parte_lega": "La mia lega",
+    "uso.parte_account": "Il tuo account",
+    "uso.parte_avvisi": "Avvisi",
+    "uso.parte_aspetto": "Aspetto",
+    "uso.parte_gestione": "Gestione",
+    "uso.parte_informazioni": "Informazioni",
+    "uso.parte_scrivici": "Scrivici",
+    "uso.parte_avvio": "Apertura dell'app",
+    "uso.parte_widget": "Widget dell'iPhone",
+    "uso.parte_controllo": "Controllo del server",
+    "uso.parte_altro": "Altre richieste",
 }
 
 

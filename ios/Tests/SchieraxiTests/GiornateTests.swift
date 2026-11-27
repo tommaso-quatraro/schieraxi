@@ -312,6 +312,17 @@ struct GiornateTests {
         #expect(try pagina("diario-giornate").vuoto == nil)
     }
 
+    @Test("Una giornata che aspetta il recupero (`in_attesa`, revisione di #947): la frase del server, anche al posto della pagina vuota")
+    func inAttesaDelRecupero() throws {
+        let frase = "Giornata 9 · 12ª di Serie A: in attesa del recupero, i punti arrivano dopo."
+        let json = #"{"giornate": [], "motivo_vuoto": "calcolo", "in_attesa": [{"stagione": "2026-27", "giornata": 12, "giornata_lega": 9, "testo": "\#(frase)", "frase": {"chiave": "diario.in_attesa_recupero"}}, {"giornata": 3, "testo": " "}]}"#
+        let p = PaginaGiornate(try Decodifica.decodifica(Data(json.utf8)))
+        #expect(p.inAttesa == [frase])
+        #expect(p.vuoto == nil)
+        #expect(PaginaGiornate(try Decodifica.decodifica(Data(#"{"giornate": []}"#.utf8))).inAttesa.isEmpty)
+        #expect(try pagina("diario-giornate").inAttesa.isEmpty)
+    }
+
     // MARK: la giornata da aprire
 
     @Test("«Com'è andata» apre la giornata della stagione in corso, la più recente con quel numero")
@@ -339,10 +350,12 @@ struct GiornateTests {
         {"giornate": [{"stagione": "2026-27", "giornata": 11, "giornata_lega": 8}, {"stagione": "2026-27", "giornata": 10, "giornata_lega": 7}]}
         """#
 
-    /// Un server che alla prima lettura del diario manda `prima` e poi sempre `dopo`.
+    /// Un server che alla prima lettura del diario manda `prima` e poi sempre `dopo`. Contano solo le letture del diario:
+    /// `/api/stato`, che la pagina legge insieme alle giornate (#913) e a volte arriva prima, ha una risposta sua.
     private static func server(prima: String, dopo: String) -> ServerDiProva {
         let letture = Scatola<Int>()
-        return ServerDiProva { _, _, _ in
+        return ServerDiProva { _, percorso, _ in
+            guard percorso.hasPrefix("/api/diario") else { return Data("{}".utf8) }
             let n = (letture.valore ?? 0) + 1
             letture.valore = n
             return Data((n == 1 ? prima : dopo).utf8)

@@ -24,7 +24,7 @@ accesso.invio_recupero_email
 # Frasi in cima al modulo
 accesso.serve_invito
 accesso.serve_invito_email
-accesso.serve_email
+accesso.registrazione_aperta
 accesso.verifica_spiega
 accesso.recupero_spiega
 accesso.recupero_email_spiega

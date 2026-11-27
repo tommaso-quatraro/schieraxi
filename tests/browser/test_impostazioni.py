@@ -6,6 +6,7 @@ una versione di prima non rompono niente.
 Si guarda ciò che vede chi usa l'app (ruoli, nomi, cosa succede a un tocco), non il sorgente. I test che non dipendono dalla fase
 della giornata girano solo prima della scadenza (`solo`).
 """
+import copy
 import json
 import re
 from urllib.parse import parse_qs, urlsplit
@@ -1827,10 +1828,12 @@ def test_stato_dei_dati_usa_le_etichette_del_server(web):
 # ---------------------------------------------------------------- Gestione: gli errori recenti in parole (#779)
 REGISTRO = {"contatori": {"da": "2026-11-20T08:00:00+00:00", "richieste": 1, "riuscite": 0, "rifiutate": 1, "errori": 0,
                           "senza_accesso": 29, "tempo_medio_ms": 7.3, "tempo_p95_ms": 7.3, "tempo_max_ms": 1234.5,
-                          "piu_lente": [{"rotta": "/api/rotta-mai-vista", "richieste": 2, "medio_ms": 1234.5, "max_ms": 1234.5},
-                                        {"rotta": "/api/stato", "richieste": 1, "medio_ms": 7.3, "max_ms": 7.3}]},
+                          "piu_lente": [{"rotta": "/api/rotta-mai-vista", "richieste": 2, "medio_ms": 1234.5, "max_ms": 1234.5,
+                                         "parte": None, "parte_frase": None},
+                                        {"rotta": "/api/stato", "richieste": 1, "medio_ms": 7.3, "max_ms": 7.3,
+                                         "parte": "Apertura dell'app", "parte_frase": {"chiave": "uso.parte_avvio", "param": {}}}]},
             "errori": [{"quando": "2026-11-20T09:10:00+00:00", "tipo": "errore", "metodo": "GET", "rotta": "/api/oggi", "stato": "500",
-                        "errore": "KeyError"}],
+                        "errore": "KeyError", "parte": "Formazione", "parte_frase": {"chiave": "uso.parte_formazione", "param": {}}}],
             "sicurezza": [{"quando": "2026-11-20T09:05:00+00:00", "tipo": "ruolo_cambiato", "nome": "amico"},
                           {"quando": "2026-11-20T09:01:00+00:00", "tipo": "accesso_fallito", "nome": "amico", "ip": "192.0.2.x"},
                           {"quando": "2026-11-20T09:00:30+00:00", "tipo": "fonte-cambiata", "utente": "amico", "fonte": "understat"},
@@ -1873,6 +1876,26 @@ def test_gli_errori_recenti_sono_scritti_in_parole(web):
     utenti.get_by_text("Amico di prova", exact=False).wait_for(timeout=10000)
     assert "Amico di prova (amministratore)" in utenti.inner_text() and "admin)" not in utenti.inner_text(), utenti.inner_text()
     assert not web.errori_console and not web.richieste_fallite
+
+
+def test_gli_errori_recenti_scrivono_il_nome_della_parte_mandato_dal_server(web):
+    """Il nome accanto al percorso è quello del server (`parte` di /api/admin/registro, tabella uso.PARTI): la web non ha più una
+    sua copia della tabella delle parti. Una rotta senza `parte` resta con il solo percorso, anche se la web la conoscerebbe."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    web.risposta("/api/admin/utenti", {"utenti": [], "massimo": 10})
+    web.risposta("/api/admin/inviti", {"inviti": []})
+    registro = copy.deepcopy(REGISTRO)
+    registro["contatori"]["piu_lente"] = [{"rotta": "/api/stato", "richieste": 1, "medio_ms": 7.3, "max_ms": 7.3,
+                                           "parte": "Nome dal server", "parte_frase": None}]
+    registro["errori"][0] |= {"parte": None, "parte_frase": None}
+    web.risposta("/api/admin/registro", registro)
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    carta = principale(web).locator(".carta", has=web.pagina.get_by_role("heading", name="Errori recenti"))
+    carta.get_by_text("Ruolo cambiato").wait_for(timeout=10000)
+    testo = " ".join(carta.inner_text().split())
+    assert "Nome dal server (/api/stato)" in testo and "Apertura dell'app" not in testo, testo
+    assert "10:10 · GET /api/oggi · errore 500, KeyError" in testo and "Formazione (" not in testo, testo
 
 
 # ---------------------------------------------------------------- Gestione per il titolare (#894)
@@ -1948,6 +1971,7 @@ def test_con_i_posti_pieni_l_avviso_si_legge_prima_di_creare_l_invito(web):
     avviso.wait_for(timeout=10000)
     crea = carta.get_by_role("button", name="Crea l'invito")
     assert avviso.bounding_box()["y"] < crea.bounding_box()["y"], "l'avviso va letto prima del pulsante"
+    assert carta.inner_text().count("Un codice che vale una volta sola e per 7 giorni") == 1, carta.inner_text()   # sotto «Nuovo invito», una volta
     assert POSTI_PIENI in " ".join(avviso.inner_text().split())
     carta.get_by_label("Etichetta").fill("Sara")
     tocca(web, crea)
@@ -2079,6 +2103,41 @@ def test_gestione_usa_la_larghezza_della_pagina(web, larghezza):
     assert not web.violazioni_gravi()
 
 
+POSTI_PIENI_APERTA = ("Posti pieni: 4 utenti su 4. Chi prova a registrarsi adesso trova le iscrizioni chiuse, finché non alzi il numero "
+                      "massimo di utenti del server.")
+
+
+@pytest.mark.parametrize("larghezza, tema", [(390, "chiaro"), (PC, "scuro")])
+def test_con_le_iscrizioni_aperte_gestione_non_ha_gli_inviti(web, larghezza, tema):
+    """Registrazione aperta (`registrazione: "aperta"` in /api/account/me, 26/11/2026): in Amministrazione al posto di «Nuovo invito»
+    e «Inviti aperti» c'è «Iscrizioni» con la sua frase, e gli inviti non si chiedono nemmeno al server. Con i posti pieni sotto la
+    frase c'è l'avviso del server, che parla di iscrizioni; «Password dimenticata» e «Utenti» restano."""
+    solo(web, "prima")
+    da_utente(web, {**AMMINISTRATORE, "registrazione": "aperta"})
+    amici = [{"nome_utente": f"amico{i}", "nome_visualizzato": f"Amico {i}", "ruolo": "utente"} for i in range(4)]
+    arrivate = server_che_cambia(web, "/api/admin/utenti", [{"utenti": amici, "massimo": 4, "avviso": POSTI_PIENI_APERTA, "avviso_frase": {
+        "chiave": "admin.posti_pieni_aperta", "param": {"n": 4, "massimo": 4}}}])
+    server_che_cambia(web, "/api/admin/inviti", [{"inviti": [SARA]}], {"POST": {}, "DELETE": {"ok": True}}, arrivate)
+    web.risposta("/api/admin/registro", REGISTRO)
+    web.apri("/?vista=impostazioni&gruppo=gestione", larghezza=larghezza, tema=tema)
+    carta = carta_con(web, "Amministrazione")
+    carta.get_by_role("heading", name="Iscrizioni", exact=True).wait_for(timeout=10000)
+    assert carta.get_by_text("Le iscrizioni sono aperte: chi vuole si registra da solo dalla schermata d'accesso, finché ci sono posti.").is_visible()
+    avviso = carta.get_by_role("status").filter(has_text="Posti pieni: 4 utenti su 4.")
+    avviso.wait_for(timeout=10000)
+    assert POSTI_PIENI_APERTA in " ".join(avviso.inner_text().split())
+    assert carta.get_by_role("button", name="Crea l'invito").count() == 0
+    assert carta.get_by_role("heading", name="Nuovo invito").count() == 0 and carta.get_by_role("heading", name="Inviti aperti").count() == 0
+    testo = carta.inner_text()                                                     # nessuna frase sugli inviti, nemmeno altrove
+    assert "invito" not in testo.lower() and "Un codice che vale una volta sola e per 7 giorni" not in testo, testo
+    assert carta.get_by_role("heading", name="Password dimenticata").is_visible()
+    carta.get_by_text("Amico 3", exact=False).wait_for(timeout=10000)
+    assert not [r for r in arrivate if "/api/admin/inviti" in r], arrivate
+    assert not web.scorre_di_lato()
+    assert not web.violazioni_gravi()
+    assert not web.errori_console and not web.richieste_fallite
+
+
 def test_stato_dei_dati_dice_una_volta_sola_la_frase_delle_fonti_spente(web):
     """«Fonti dei dati» con le fonti spente (#894): sotto ogni fonte solo cosa non arriva (frase del server); dati già salvati e
     condizioni d'uso una volta sola, sotto l'elenco."""
@@ -2097,6 +2156,26 @@ def test_stato_dei_dati_dice_una_volta_sola_la_frase_delle_fonti_spente(web):
     fonti.get_by_text("Non scarico statistiche avanzate", exact=False).wait_for(timeout=10000)
     testo = " ".join(fonti.inner_text().split())
     assert testo.count("condizioni d'uso") == 1 and testo.count("dati già salvati") == 1, testo
+
+
+def test_quanto_si_usa_l_app_scrive_i_nomi_del_server(web):
+    """«Quanto si usa l'app» scrive le etichette del server (il nome della funzione e quello della parte dell'app), mai i nomi
+    interni né i percorsi delle rotte: prima si leggeva «scambi_valuta_o_costruisci» e «GET /api/giocatore/{calciatore_id}»."""
+    solo(web, "prima")
+    s = web.registrata("/api/stato-dati")
+    s["uso"] = {"giorni": 28, "dal": "2026-11-01", "al": "2026-11-26", "richieste": 12, "nota": "", "per_giorno": [],
+                "per_funzione": [{"funzione": "scambi_costruisci", "etichetta": "Scambi dal server", "richieste": 2}],
+                "per_parte": [{"parte": "formazione", "etichetta": "Formazione dal server", "etichetta_frase": None, "richieste": 9}],
+                "per_rotta": [{"rotta": "GET /api/giocatore/{calciatore_id}", "richieste": 9}]}
+    web.risposta("/api/stato-dati", s)
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    tocca(web, principale(web).get_by_role("button", name="Apri lo stato dei dati"))
+    uso = web.pagina.get_by_role("dialog").locator(".carta", has=web.pagina.get_by_role("heading", name="Quanto si usa l'app"))
+    uso.get_by_text("Scambi dal server").wait_for(timeout=10000)
+    uso.get_by_text("Le schermate più usate").click()
+    uso.get_by_text("Formazione dal server").wait_for(timeout=5000)
+    testo = uso.inner_text()
+    assert "scambi_costruisci" not in testo and "/api/" not in testo, testo
 
 
 # ---------------------------------------------------------------- accesso: gli avvisi non sono errori

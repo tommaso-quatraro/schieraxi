@@ -153,7 +153,8 @@ struct SalvataggioAutomaticoTests {
         let fatto = await vm.sostituisciTitolare(esce, con: entra)
         await vm.segnaMessa(true)
         #expect(!fatto && Self.salvataggi(srv) == 0)
-        #expect(!vm.sostituibile(esce))
+        #expect(vm.contestoScheda(esce)?.pronta == false, "nella scheda «Sostituisci» c'è, spento")
+        #expect(vm.motivoCambiSpenti == Catalogo.Formazione.copiaFerma)
         giu.valore = false
         let riletta = await vm.carica()
         #expect(riletta)

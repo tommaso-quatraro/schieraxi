@@ -21,11 +21,14 @@ struct MettiInCampoTests {
             vm.vediSquadra("Gli Amici")
             await vm.carica()                               // la formazione dell'altra squadra (nella prova, gli stessi dati)
         }
-        let aperta = caso == .aperta
-        #expect(vm.sostituibile(Prova.titolare) == aperta)
-        #expect(vm.entrabile(Prova.panchinaro) == aperta)
-        #expect(vm.entrabile(Prova.indisponibile) == aperta, "infortunati e squalificati entrano, come fra i sostituti")
-        #expect(vm.contestoScheda(Prova.panchinaro)?.entrabile == aperta)
+        // con i comandi spenti i due pulsanti ci sono, spenti (`pronta()` della web): si accendono quando arrivano i dati
+        let ci = caso == .aperta || caso == .comandiSpenti
+        #expect(vm.sostituibile(Prova.titolare) == ci)
+        #expect(vm.entrabile(Prova.panchinaro) == ci)
+        #expect(vm.entrabile(Prova.indisponibile) == ci, "infortunati e squalificati entrano, come fra i sostituti")
+        #expect(vm.contestoScheda(Prova.panchinaro)?.entrabile == ci)
+        #expect(vm.contestoScheda(Prova.panchinaro)?.pronta == (caso == .aperta))
+        #expect(vm.contestoScheda(Prova.titolare)?.pronta == (caso == .aperta))
         #expect(vm.contestoScheda(Prova.panchinaro)?.sostituibile == false)
         #expect(!vm.entrabile(Prova.titolare), "un titolare ha «Sostituisci», non «Metti in campo»")
         #expect(vm.contestoScheda(Prova.titolare)?.entrabile == false)
@@ -278,7 +281,7 @@ enum CasoCondizione: String, CaseIterable, Sendable {
     case chiusa
     /// La formazione di un'altra squadra della lega.
     case altraSquadra
-    /// La scelta salvata non si è letta: i comandi che scrivono sono spenti.
+    /// La scelta salvata non si è letta: i comandi che scrivono sono spenti, i due pulsanti ci sono ma spenti.
     case comandiSpenti
 }
 

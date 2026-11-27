@@ -2403,9 +2403,9 @@ async function apriStatoDati() {
         <div class="debole piccolo" style="margin-top:12px">${t("scambio.accendere_una_fonte")}</div></div>
       ${s.uso ? `<div class="carta" id="uso-app"><h2>${t("scambio.quanto_usa_app")}</h2>
         <div class="debole piccolo">${t("sd.uso_spiega", { dal: usoDal ? ` (${elidiGiorno(t("sd.dal", { d: esc(fData(usoDal, {})) }))})` : "", n: tp("sd.n_richieste", s.uso.richieste || 0) })}</div>
-        ${(s.uso.per_funzione || []).length ? (s.uso.per_funzione).map(f => `<div class="riga"><span>${esc(f.funzione)}</span><span class="debole piccolo">${tp("sd.n_volte", f.richieste)}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna_funzione")}</div>`}
+        ${(s.uso.per_funzione || []).length ? (s.uso.per_funzione).map(f => `<div class="riga"><span>${esc(f.etichetta || f.funzione)}</span><span class="debole piccolo">${tp("sd.n_volte", f.richieste)}</span></div>`).join("") : `<div class="debole">${t("scambio.ancora_nessuna_funzione")}</div>`}
         <details><summary class="debole piccolo">${t("scambio.schermate_piu_usate")}</summary>
-          ${(s.uso.per_rotta || []).slice(0, 15).map(r => `<div class="riga"><span class="piccolo">${esc(r.rotta)}</span><span class="debole piccolo">${tp("sd.n_volte", r.richieste)}</span></div>`).join("")}</details></div>` : ""}
+          ${(s.uso.per_parte || []).map(p => `<div class="riga"><span class="piccolo">${esc(testoDi(p, "etichetta"))}</span><span class="debole piccolo">${tp("sd.n_volte", p.richieste)}</span></div>`).join("")}</details></div>` : ""}
       <div class="carta"><h2>${t("scambio.date_delle_coppe")}</h2>
         <div class="debole piccolo">${elidiGiorno(t("sd.coppe_spiega", { d: coppeFino ? esc(fData(coppeFino, {})) : "–" }))}${coppeFino && coppeFino < new Date() ? ` — <b style="color:var(--arancio)">${t("scambio.scadute_vanno_inserite")}</b>` : ""}.</div></div>
       <div class="carta"><h2>${t("scambio.probabili_formazioni_raccolt")}</h2>
@@ -2426,7 +2426,7 @@ async function apriStatoDati() {
       try {
         await api("/api/admin/fonti", { method: "PUT", body: JSON.stringify({ fonte: bt.dataset.fonte, acceso: bt.dataset.acceso !== "1" }) });
         apriStatoDati();
-      } catch (e) { avviso(t("scambio.non_sono_riuscito")); }
+      } catch (e) { avviso(e.status === 409 ? e.message : t("scambio.non_sono_riuscito"), 6000); }   // 409: il file delle scelte sul server è scritto male, la frase dice cosa fare
     }));
     mostraAffidabilita(numero);
   } catch (e) {
@@ -2770,7 +2770,8 @@ function dettaglioGiornata(d, g, stagioni) {
     ${spiegati}${cambi}${correggi}</section>`;
 }
 
-// In cima una riga sola sulla precisione (`precisione.fantavoto.errore_medio`) con i dettagli a richiesta; poi una riga per giornata.
+// In cima una riga sola sulla precisione (`precisione.fantavoto.errore_medio`) con i dettagli a richiesta e le giornate che
+// aspettano il recupero (`in_attesa`, revisione di #947: la loro riga non c'è, la frase del server lo dice); poi una riga per giornata.
 function mostraGiornate(d, opz = {}) {
   const voci = Array.isArray(d.giornate) ? d.giornate : [];
   giornate.dati = d;
@@ -2785,8 +2786,10 @@ function mostraGiornate(d, opz = {}) {
   const p = d.precisione || {}, fv = p.fantavoto;
   const errore = fv && fv.errore_medio != null && isFinite(Number(fv.errore_medio)) ? num(Number(fv.errore_medio)) : null;
   const dettagli = dettagliPrecisione(p, voci.some(conMostrata));
-  const testa = errore || dettagli ? `<div class="gn-testa">${errore ? `<p class="gn-precisione">${t("giornate.precisione", { e: errore })}</p>` : ""}
-    ${dettagli ? `<details class="gn-dettagli"><summary>${errore ? t("giornate.dettagli") : t("diario.af_titolo")}</summary>${dettagli}</details>` : ""}</div>` : "";
+  const attese = (Array.isArray(d.in_attesa) ? d.in_attesa : []).map(x => fraseGiornata(x)).filter(Boolean);
+  const attesa = attese.map(x => `<p class="gn-nota gn-attesa">${x}</p>`).join("");
+  const testa = errore || dettagli || attesa ? `<div class="gn-testa">${errore ? `<p class="gn-precisione">${t("giornate.precisione", { e: errore })}</p>` : ""}
+    ${dettagli ? `<details class="gn-dettagli"><summary>${errore ? t("giornate.dettagli") : t("diario.af_titolo")}</summary>${dettagli}</details>` : ""}${attesa}</div>` : "";
   const riga = g => {
     const id = idGiornata(g), aperta = giornate.aperte.has(id), { f } = formazioneDi(g);
     // fatti meno attesi, come la dà il server (`fatti_e_attesi.differenza`, #672): solo con il segno, niente conti qui
@@ -2807,8 +2810,9 @@ function mostraGiornate(d, opz = {}) {
   const fuoco = rigaAttiva ? `#${rigaAttiva.id}` : attivo && attivo.matches(".gn-dettagli > summary") ? ".gn-dettagli > summary"
     : attivo && attivo.matches("[data-correggi]") ? `[data-correggi="${attivo.dataset.correggi}"]` : null;
   const dettagliAperti = !!opz.sostituisce && !!($(".gn-dettagli", contenuto) || {}).open;
+  // senza righe ma con una giornata che aspetta il recupero, la sua frase prende il posto di «ancora niente»
   pagina(voci.length ? `<div class="gn">${testa}<ul class="gn-elenco" aria-label="${t("giornate.elenco")}">${voci.map(riga).join("")}</ul>${lato}</div>`
-    : `${testa}<p class="debole gn-vuoto">${vuoto}</p>`, opz);
+    : attesa ? testa : `${testa}<p class="debole gn-vuoto">${vuoto}</p>`, opz);
   if (dettagliAperti) { const x = $(".gn-dettagli", contenuto); if (x) x.open = true; }
   const radice = $(".gn", contenuto);
   if (radice) radice.addEventListener("click", ev => {
@@ -3721,9 +3725,14 @@ const CAMPO_EMAIL = (id, facoltativa) => campoAccesso(id, facoltativa ? t("acces
   facoltativa ? t("accesso.email_facoltativa_aiuto") : "");
 const CAMPO_CODICE_EMAIL = (id) => campoAccesso(id, t("accesso.codice_email"), "text",
   'autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" maxlength="12" autocapitalize="none" autocorrect="off" spellcheck="false" required');
+// La trappola per i programmi che compilano i moduli da soli (`account.trappola` del server): un campo che una persona non vede né
+// raggiunge (nascosto, fuori dal giro del Tab e dai lettori di schermo, che il browser non riempie). Se arriva pieno il server non crea
+// l'account. L'iPhone non l'ha: il suo modulo non è una pagina che un programma trova e compila.
+const CAMPO_TRAPPOLA = () => `<div class="accesso-trappola" hidden aria-hidden="true">${campoAccesso("ac-sito", t("accesso.sito_web"), "text", 'name="sito" tabindex="-1" autocomplete="off"')}</div>`;
 // La riga sopra i campi di «Registrati»: con il codice d'invito già scritto (arrivato dal link) non chiede di procurarselo (#580).
+// Con la registrazione aperta (predefinita) non serve l'invito: nome utente e password, l'email facoltativa come con l'invito.
 function spiegaRegistrazione(modo, conInvito) {
-  if (modo === "aperta") return "accesso.serve_email";
+  if (modo === "aperta") return "accesso.registrazione_aperta";
   if (modo === "email") return conInvito ? "accesso.invito_inserito_email" : "accesso.serve_invito_email";
   return conInvito ? "accesso.invito_inserito" : "accesso.serve_invito";
 }
@@ -3735,8 +3744,9 @@ function campiAccesso(scheda, extra = {}) {
     + CAMPO_CODICE_EMAIL("ac-codice-email");
   if (scheda === "registra") return `<div class="debole piccolo">${t(spiegaRegistrazione(modo, !!invitoSalvato()))}</div>`
     + (modo === "aperta" ? "" : campoAccesso("ac-invito", t("accesso.codice_invito"), "text", SENZA_AIUTI + valoreInvito())) + CAMPO_NOME()
-    + (stato.emailAttiva === false && modo === "invito" ? "" : CAMPO_EMAIL("ac-email", modo === "invito"))
+    + (stato.emailAttiva === false && modo !== "email" ? "" : CAMPO_EMAIL("ac-email", modo !== "email"))
     + campoAccesso("ac-pw", t("accesso.password_10"), "password", `autocomplete="new-password" minlength="10" ${CAMPO_PW}`)
+    + CAMPO_TRAPPOLA()
     + `<label class="interruttore accesso-letto"><span>${t("accesso.letto", { privacy: linkLegale("privacy", "legale.privacy"), termini: linkLegale("termini", "legale.termini"), eta: ETA_MINIMA })}</span><input type="checkbox" id="ac-letto"></label>`;
   if (extra.sub === "email") return `<div class="debole piccolo">${t("accesso.recupero_email_spiega")}</div>` + CAMPO_EMAIL("ac-email", false);
   if (extra.sub === "email-codice") return `<div class="debole piccolo">${t("accesso.recupero_codice_email_spiega", { email: esc(extra.email || "") })}</div>`
@@ -3795,7 +3805,8 @@ function mostraMessaggioAccesso(testo, errore, dopo = false) {
 // `extra.errore`: il messaggio è un errore (un accesso con Google non riuscito), non un avviso.
 function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
   accessoAperto = true;
-  if (scheda === "recupero" && !extra.sub) extra = { ...extra, sub: (stato.registrazione || "invito") === "invito" || stato.emailAttiva === false ? "codice" : "email" };
+  // l'email è di tutti solo con il modo `email`: con l'invito o la registrazione aperta è facoltativa, si parte dal codice di recupero
+  if (scheda === "recupero" && !extra.sub) extra = { ...extra, sub: (stato.registrazione || "invito") !== "email" || stato.emailAttiva === false ? "codice" : "email" };
   stato.account = null;
   document.body.classList.add("senza-accesso");
   contenuto.innerHTML = ""; contenuto.removeAttribute("aria-busy");
@@ -3852,6 +3863,7 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
         const corpo = { nome_utente: v("#ac-nome"), password: v("#ac-pw"), invito: v("#ac-invito"), accetto_termini: true };      // la casella è spuntata (controllo qui sopra)
         const email = $("#ac-email") ? v("#ac-email").trim() : "";
         if (email) corpo.email = email;                      // facoltativa: i server vecchi non la conoscono
+        if (v("#ac-sito")) corpo.sito = v("#ac-sito");       // la trappola: solo se un programma l'ha riempita
         const r = await manda("/api/account/registra", corpo);
         if (r && r.verifica_email) { mostraAccesso("", "registra", { sub: "verifica", email, iscrizione: r.iscrizione || "" }); return; }   // l'account nasce col codice (legato a questa richiesta)
         if (!r || !r.codice_recupero) throw new Error(t("accesso.risposta_incompleta_accedi"));
@@ -4294,23 +4306,29 @@ async function scaricaIMieiDati() {
 }
 
 // Impostazioni > Gestione (solo amministratore con gli account): inviti, inviti aperti con «Annulla», codici per chi ha perso la
-// password, utenti. Con i posti pieni l'avviso del server sta sopra «Crea l'invito» (#894).
+// password, utenti. Con i posti pieni l'avviso del server sta sopra «Crea l'invito» (#894). Con la registrazione aperta (il modo
+// che dice /api/account/me) gli inviti non servono: al loro posto «Iscrizioni» con la frase e lo stesso avviso dei posti.
 const gestisceAccount = () => !!(stato.account && stato.account.ruolo === "amministratore");
+const iscrizioniAperte = () => stato.registrazione === "aperta";
 function schedaAmministratore() {
   return gestisceAccount() ? `<div class="carta" id="scheda-admin"><h3>${t("admin.titolo")}</h3>
-    <h3>${t("admin.invito_titolo")}</h3>
-    <div class="debole piccolo">${t("admin.invito_spiega")}</div>
-    <div id="adm-avviso-posti" role="status"></div>
-    <label class="accesso-campo"><span class="debole piccolo">${t("admin.etichetta")}</span><input class="campo-testo" id="adm-etichetta" type="text" maxlength="60" autocomplete="off"></label>
-    <label class="interruttore"><span>${t("admin.nuovo_admin")}</span><input type="checkbox" id="adm-admin"></label>
-    <div class="pulsanti"><button class="bottone" id="adm-invito">${t("admin.crea_invito")}</button></div><div id="adm-esito-invito"></div>
-    <h3 id="adm-inviti-titolo" tabindex="-1">${t("admin.inviti_aperti")}</h3><div id="adm-inviti"><p class="debole piccolo">${t("admin.carico")}</p></div>
+    ${iscrizioniAperte() ? `<h3>${t("admin.iscrizioni_titolo")}</h3>
+    <div class="debole piccolo">${t("admin.iscrizioni_aperte")}</div>
+    <div id="adm-avviso-posti" role="status"></div>` : schedaInviti()}
     <h3>${t("admin.reset_titolo")}</h3>
     <div class="debole piccolo">${t("admin.reset_spiega")}</div>
     <label class="accesso-campo"><span class="debole piccolo">${t("accesso.nome_utente")}</span><input class="campo-testo" id="adm-nome" type="text" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off"></label>
     <div class="pulsanti"><button class="bottone secondario" id="adm-reset">${t("admin.genera_codice")}</button></div><div id="adm-esito-reset"></div>
     <h3 id="adm-utenti-titolo" tabindex="-1">${t("admin.utenti_titolo")}</h3><div id="adm-utenti"><p class="debole piccolo">${t("admin.carico")}</p></div></div>` : "";
 }
+// «Nuovo invito» e «Inviti aperti»: solo se si entra con un invito (FANTA_REGISTRAZIONE=invito o email).
+const schedaInviti = () => `<h3>${t("admin.invito_titolo")}</h3>
+    <div class="debole piccolo">${t("admin.invito_spiega")}</div>
+    <div id="adm-avviso-posti" role="status"></div>
+    <label class="accesso-campo"><span class="debole piccolo">${t("admin.etichetta")}</span><input class="campo-testo" id="adm-etichetta" type="text" maxlength="60" autocomplete="off"></label>
+    <label class="interruttore"><span>${t("admin.nuovo_admin")}</span><input type="checkbox" id="adm-admin"></label>
+    <div class="pulsanti"><button class="bottone" id="adm-invito">${t("admin.crea_invito")}</button></div><div id="adm-esito-invito"></div>
+    <h3 id="adm-inviti-titolo" tabindex="-1">${t("admin.inviti_aperti")}</h3><div id="adm-inviti"><p class="debole piccolo">${t("admin.carico")}</p></div>`;
 // Gestione › Utenti: i testi di ogni azione su un account (pulsante, nome per i lettori di schermo, conferma, esito, errore)
 const AZIONI_UTENTE = {
   blocca: { nome: "admin.blocca", per: "admin.blocca_per", conferma: "admin.blocca_conferma", fatto: "admin.blocca_fatto", no: "admin.blocca_no" },
@@ -4386,29 +4404,6 @@ function collegaAccount() {
   }));
 }
 
-// «Errori recenti» (#827): il nome della parte dell'app che usa una rotta, dalla prima parte del percorso («/api/oggi» →
-// «Formazione»), da scrivere accanto al percorso. Una rotta che qui non c'è (nuova, o «(file dell'app)») resta con il solo percorso.
-const AREE_DELLE_ROTTE = {
-  "nav.formazione": ["oggi", "formazione", "scelta", "giocatore", "giocatori", "live", "osservati", "confronto", "classifica", "avatar"],
-  "nav.giornate": ["diario", "calendario", "affidabilita"],
-  "imp.lega": ["regole", "rose", "rosa", "squadre", "mia-squadra", "crediti", "stagione", "nuova-stagione", "onboarding", "primo-avvio",
-    "scambi", "movimenti", "mercato", "asta"],
-  "imp.account": ["account"],
-  "imp.sez_avvisi": ["avvisi", "push"],
-  "imp.aspetto": ["icona"],
-  "imp.gestione": ["admin", "aggiorna", "backup", "stato-dati"],
-  "imp.informazioni": ["novita", "sotto-il-cofano"],
-  "scrivici.voce": ["feedback"],
-  "errori.area_avvio": ["stato", "funzioni"],
-  "errori.area_widget": ["widget"],
-  "errori.area_controllo": ["salute"],
-};
-function nomeDiRotta(rotta) {
-  const m = /^\/api\/([a-z-]+)/.exec(String(rotta || ""));
-  const chiave = m && Object.keys(AREE_DELLE_ROTTE).find(k => AREE_DELLE_ROTTE[k].includes(m[1]));
-  return chiave ? t(chiave) : "";
-}
-
 function collegaAmministratore() {
   if (!stato.account || stato.account.ruolo !== "amministratore" || !$("#scheda-admin")) return;
   const valore = id => ($(id) ? $(id).value : "");
@@ -4425,7 +4420,7 @@ function collegaAmministratore() {
     if (!dove || !r || !("avviso" in r)) return;
     dove.innerHTML = r.avviso ? `<div class="attenzione">${esc(testoDi(r, "avviso"))}</div>` : "";
   };
-  $("#adm-invito").addEventListener("click", () => provaCosi(t("admin.crea_invito_no"), async () => {
+  if ($("#adm-invito")) $("#adm-invito").addEventListener("click", () => provaCosi(t("admin.crea_invito_no"), async () => {
     const r = await api("/api/admin/inviti", { method: "POST", body: JSON.stringify({ etichetta: valore("#adm-etichetta"), amministratore: $("#adm-admin").checked }) });
     $("#adm-etichetta").value = "";
     avvisoPosti(r);
@@ -4536,9 +4531,10 @@ function collegaAmministratore() {
         return esc(Object.hasOwn(TESTI.it, "errori.evento_" + nome) ? t("errori.evento_" + nome) : nome.replace(/_/g, " ")); };
       const righe = (elenco, vuoto, testo) => elenco.length ? `<ul class="registro-elenco">${elenco.map(testo).join("")}</ul>` : `<p>${vuoto}</p>`;
       // tempi in parole (#827): «18,2 millisecondi», da un secondo in su «1,2 secondi»; il percorso accanto al nome della parte
-      // dell'app, il metodo solo dove serve (gli errori)
+      // dell'app scritto dal server (`parte`, `parte_frase` di ogni voce: uso.PARTI), il metodo solo dove serve (gli errori).
+      // Una rotta senza `parte` (sconosciuta, o «(file dell'app)») resta con il solo percorso.
       const tempo = ms => Number(ms) >= 1000 ? t("errori.secondi", { n: num(Number(ms) / 1000) }) : t("errori.millisecondi", { n: num(ms) });
-      const doveRotta = (rotta, metodo = "") => { const percorso = esc(((metodo ? metodo + " " : "") + (rotta || "")).trim()), nome = nomeDiRotta(rotta);
+      const doveRotta = (voce, metodo = "") => { const percorso = esc(((metodo ? metodo + " " : "") + (voce.rotta || "")).trim()), nome = voce.parte ? testoDi(voce, "parte") : "";
         return nome ? t("errori.dove", { nome: esc(nome), rotta: percorso }) : percorso; };
       // le richieste prima dell'accesso (#894) non sono fra le rifiutate: si dicono a parte, solo se ci sono; niente percentile
       const senzaAccesso = Number(c.senza_accesso) > 0 ? " " + tp("errori.senza_accesso", c.senza_accesso, { n: fNum(c.senza_accesso) }) : "";
@@ -4546,9 +4542,9 @@ function collegaAmministratore() {
           rifiutate: tp("errori.n_rifiutate", c.rifiutate, { n: fNum(c.rifiutate) }), errori: tp("errori.n_errori", c.errori, { n: fNum(c.errori) }) })}${senzaAccesso}
           ${t("errori.tempi", { medio: tempo(c.tempo_medio_ms), max: tempo(c.tempo_max_ms) })}</p>
         <h3>${t("errori.del_server")}</h3>${righe(r.errori, t("errori.nessun_errore"), e => `<li>${t(e.errore ? "errori.riga_errore_tipo" : "errori.riga_errore",
-          { quando: quando(e.quando), dove: doveRotta(e.rotta, e.metodo), stato: esc(e.stato || ""), tipo: esc(e.errore || "") })}</li>`)}
+          { quando: quando(e.quando), dove: doveRotta(e, e.metodo), stato: esc(e.stato || ""), tipo: esc(e.errore || "") })}</li>`)}
         <h3>${t("errori.sicurezza")}</h3>${righe(r.sicurezza, t("errori.nessun_evento"), e => `<li>${quando(e.quando)} · ${evento(e.tipo)}${e.nome ? " · " + esc(e.nome) : ""}${e.ip ? " · " + esc(e.ip) : ""}</li>`)}
-        <h3>${t("errori.lente")}</h3>${righe(c.piu_lente, t("errori.ancora_niente"), p => `<li>${tp("errori.lenta_riga", p.richieste, { n: fNum(p.richieste), dove: doveRotta(p.rotta), medio: tempo(p.medio_ms) })}</li>`)}`;
+        <h3>${t("errori.lente")}</h3>${righe(c.piu_lente, t("errori.ancora_niente"), p => `<li>${tp("errori.lenta_riga", p.richieste, { n: fNum(p.richieste), dove: doveRotta(p), medio: tempo(p.medio_ms) })}</li>`)}`;
     } catch (e) { dove.textContent = e.message; }
   };
   $("#adm-registro-aggiorna").addEventListener("click", caricaRegistro);

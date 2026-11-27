@@ -7,9 +7,12 @@ import SwiftUI
 /// dopo il cambio meno quelli di adesso, verde se positiva; sotto il nome le etichette della web, con «Si passa al …» dopo
 /// «gioca N%» se il modulo cambia; a destra il fantavoto atteso del titolare. Mentre il server risponde «Carico…»; nessun titolare: la frase
 /// della web; `giocatore_bloccato`: la frase del server al posto dell'elenco, come informazione; un altro errore: il motivo.
-/// Un tocco su una riga fa il cambio, che si salva da solo (`FormazioneViewModel.scegliChiEsce`).
+/// Un tocco su una riga fa il cambio, che si salva da solo (`FormazioneViewModel.scegliChiEsce`); finché il cambio non si può fare
+/// (si rilegge, la formazione si è chiusa) le righe sono spente e sopra di loro c'è il perché (`motivoSpento`).
 struct SceltaChiEsce: View {
     let elenco: ElencoMettiInCampo
+    /// Perché adesso il cambio non si può fare (`FormazioneViewModel.motivoCambiSpenti`); nil = le righe si toccano.
+    var motivoSpento: String? = nil
     let scelto: (Int) -> Void
     @Environment(\.dismiss) private var chiudi
 
@@ -62,9 +65,12 @@ struct SceltaChiEsce: View {
                 Text(Catalogo.Formazione.nessunoLasciaPosto).foregroundStyle(Color.testoSecondario)
                     .fixedSize(horizontal: false, vertical: true)
             } else {
+                if let motivoSpento { MotivoCambiSpenti(motivo: motivoSpento) }
                 ForEach(righe) { r in
                     Button { scelto(r.esce.id) } label: { riga(r) }
                         .buttonStyle(.plain)
+                        .disabled(motivoSpento != nil)
+                        .opacity(motivoSpento == nil ? 1 : 0.5)
                 }
             }
         case .informazione(let frase):

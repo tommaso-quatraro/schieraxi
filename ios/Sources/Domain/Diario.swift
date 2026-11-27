@@ -15,6 +15,23 @@ struct DiarioRisposta: Decodable {
     /// Perché `giornate` è vuoto (`squadra`, `giornate` o `calcolo`): la pagina Giornate lo dice. Facoltativo (server vecchio: la
     /// frase generica).
     let motivoVuoto: String?
+    /// Le giornate finite che ora aspettano il recupero e non hanno la loro riga (revisione di #947), con la frase del server.
+    /// Facoltativo: i server più vecchi non lo mandano.
+    let inAttesa: [AttesaRecupero]?
+}
+
+/// Una giornata di `in_attesa` di `GET /api/diario`: «Giornata 9 · 12ª di Serie A: in attesa del recupero, i punti arrivano
+/// dopo.» (`testo`, scritto dal server). Tollerante: senza un testo vale «niente da mostrare».
+struct AttesaRecupero: Decodable, Equatable {
+    var testo: String?
+
+    private enum Chiavi: String, CodingKey { case testo }
+
+    init(from decoder: Decoder) throws {
+        guard let k = try? decoder.container(keyedBy: Chiavi.self) else { return }
+        let frase = (try? k.decodeIfPresent(String.self, forKey: .testo)) ?? nil
+        testo = frase?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? frase : nil
+    }
 }
 
 struct VoceDiario: Decodable, Identifiable {
@@ -44,6 +61,9 @@ struct VoceDiario: Decodable, Identifiable {
     /// Facoltativo (#672): punti fatti contro attesi della formazione che conta, con la differenza e la frase su chi ha fatto meglio
     /// o peggio del previsto, da mostrare così come sono. `null` (formazione senza punti) o assente (server di prima) = niente.
     let fattiEAttesi: FattiEAttesiDiario?
+    /// Facoltativo (#900): da dove vengono i punti della formazione che conta (riserve entrate, modificatore difesa, partita
+    /// rinviata), le frasi del server da mostrare così come sono. `null` (niente da spiegare) o assente (server di prima) = niente.
+    let spiegazionePunti: SpiegazionePuntiDiario?
 
     /// Stagione e giornata: con due stagioni nel Diario la giornata 10 c'è due volte.
     var id: String { "\(stagione ?? "")-\(giornata ?? 0)" }
@@ -66,7 +86,7 @@ struct VoceDiario: Decodable, Identifiable {
 
     private enum Chiavi: String, CodingKey {
         case stagione, giornata, giornataLega, consigliata, schierata, automatica, giocatori, istantanea, attesoVsFatto, modificabile
-        case notaConsigliata, fattiEAttesi
+        case notaConsigliata, fattiEAttesi, spiegazionePunti
     }
 
     init(from decoder: Decoder) throws {
@@ -85,6 +105,34 @@ struct VoceDiario: Decodable, Identifiable {
         let nota = (try? c.decodeIfPresent(String.self, forKey: .notaConsigliata)) ?? nil
         notaConsigliata = nota?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? nota : nil
         fattiEAttesi = (try? c.decodeIfPresent(FattiEAttesiDiario.self, forKey: .fattiEAttesi)) ?? nil
+        spiegazionePunti = (try? c.decodeIfPresent(SpiegazionePuntiDiario.self, forKey: .spiegazionePunti)) ?? nil
+    }
+}
+
+/// Da dove vengono i punti della formazione che conta in una giornata (`spiegazione_punti` di `GET /api/diario`, #900): la pagina
+/// Giornate mostra solo le frasi (`righe`), così come le scrive il server e nel loro ordine, come la web. Tollerante come la web
+/// (`filter` in `dettaglioGiornata`): una frase vuota o che non è testo si salta; un campo di un tipo strano vale «niente frasi».
+struct SpiegazionePuntiDiario: Decodable, Equatable {
+    /// «Rossi (10,0) è entrato dalla panchina al posto di Bianchi.», «Modificatore difesa: +1,5.»…; vuoto se non c'è niente da dire.
+    var righe: [String] = []
+
+    private enum Chiavi: String, CodingKey { case righe }
+
+    /// Un elemento dell'elenco che non è una frase: si legge per passare al seguente.
+    private struct NonFrase: Decodable {
+        init(from decoder: Decoder) throws {}
+    }
+
+    init(from decoder: Decoder) throws {
+        guard let k = try? decoder.container(keyedBy: Chiavi.self),
+              var elenco = try? k.nestedUnkeyedContainer(forKey: .righe) else { return }
+        while !elenco.isAtEnd {
+            if let frase = try? elenco.decode(String.self) {
+                if !frase.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { righe.append(frase) }
+            } else if (try? elenco.decode(NonFrase.self)) == nil {
+                break
+            }
+        }
     }
 }
 

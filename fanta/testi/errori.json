@@ -43,21 +43,7 @@
   "errori.dove": {
     "it": "{nome} ({rotta})",
     "en": "{nome} ({rotta})",
-    "nota": "in «Errori recenti» il nome della parte dell'app che usa la rotta, con il percorso fra parentesi per chi gestisce: «Formazione (/api/oggi)» (#827). Una rotta senza nome resta con il solo percorso"
-  },
-  "errori.area_avvio": {
-    "it": "Apertura dell'app",
-    "en": "App start",
-    "nota": "nome accanto alle rotte che l'app legge quando si apre (/api/stato, /api/funzioni), in «Errori recenti» (#827)"
-  },
-  "errori.area_widget": {
-    "it": "Widget dell'iPhone",
-    "en": "iPhone widget"
-  },
-  "errori.area_controllo": {
-    "it": "Controllo del server",
-    "en": "Server check",
-    "nota": "nome accanto a /api/salute, la rotta che controlla se il server è acceso (#827)"
+    "nota": "in «Errori recenti» il nome della parte dell'app che usa la rotta (`parte` di GET /api/admin/registro, scritto dal server con uso.PARTI), con il percorso fra parentesi per chi gestisce: «Formazione (/api/oggi)» (#827). Una rotta senza nome resta con il solo percorso"
   },
   "errori.riga_errore": {
     "it": "{quando} · {dove} · errore {stato}",
@@ -186,6 +172,10 @@
   "errori.evento_registrazione_invito_sbagliato": {
     "it": "Registrazione con un invito non valido",
     "en": "Sign-up with an invalid invitation"
+  },
+  "errori.evento_registrazione_trappola": {
+    "it": "Registrazione fermata: modulo compilato da un programma",
+    "en": "Sign-up stopped: form filled in by a bot"
   },
   "errori.evento_account_eliminato": {
     "it": "Account eliminato",

@@ -42,7 +42,8 @@ struct GiornateView: View {
             ScrollViewReader { proxy in
                 List {
                     capo
-                    if let p = vm.pagina {
+                    // le giornate insieme alla riga sotto il titolo, mai prima: la riga non sposta la lista già in vista (#913)
+                    if let p = vm.paginaDaMostrare {
                         testa(p)
                         if p.righe.isEmpty {
                             vuoto(p)
@@ -61,7 +62,7 @@ struct GiornateView: View {
                                 }
                             }
                         }
-                    } else if let e = vm.caricatore.errore {
+                    } else if vm.caricatore.dato == nil, let e = vm.caricatore.errore {
                         ErroreVista(messaggio: e) { Task { await vm.carica() } }
                     } else {
                         ScheletroRighe(righe: 5).listRowBackground(Color.clear)
@@ -113,10 +114,11 @@ struct GiornateView: View {
     /// Niente lista con la selezione di iOS (#919): riempiva la riga scelta del colore principale e i testi grigi della riga non si
     /// leggevano più (foto della corsa 45760638734). Ogni riga è un pulsante e quella scelta ha il grigio dell'app.
     private var elencoIPad: some View {
-        let scelta = vm.pagina?.aDestra(scelta: vm.scelta).id
+        let pagina = vm.paginaDaMostrare   // con la riga sotto il titolo, come sul telefono (#913)
+        let scelta = pagina?.aDestra(scelta: vm.scelta).id
         return List {
             capo
-            if let p = vm.pagina {
+            if let p = pagina {
                 testaIPad(p, scelta: scelta)
                 if p.righe.isEmpty {
                     vuoto(p)
@@ -130,7 +132,7 @@ struct GiornateView: View {
                         }
                     }
                 }
-            } else if let e = vm.caricatore.errore {
+            } else if vm.caricatore.dato == nil, let e = vm.caricatore.errore {
                 ErroreVista(messaggio: e) { Task { await vm.carica() } }
             } else {
                 ScheletroRighe(righe: 5).listRowBackground(Color.clear)
@@ -160,7 +162,7 @@ struct GiornateView: View {
     /// freccia dice che si tocca (#919).
     @ViewBuilder
     private func testaIPad(_ p: PaginaGiornate, scelta: String?) -> some View {
-        if p.precisione != nil || p.dettagli != nil {
+        if p.precisione != nil || p.dettagli != nil || !p.inAttesa.isEmpty {
             Section {
                 if let frase = p.precisione {
                     Text(frase)
@@ -182,6 +184,7 @@ struct GiornateView: View {
                         .frame(minHeight: Tema.areaTocco)
                     }
                 }
+                attese(p)
             }
         }
     }
@@ -191,7 +194,7 @@ struct GiornateView: View {
     private var dettaglioIPad: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if let p = vm.pagina {
+                if let p = vm.paginaDaMostrare {
                     switch p.aDestra(scelta: vm.scelta) {
                     case .dettagli:
                         if let t = p.dettagli {
@@ -223,10 +226,11 @@ struct GiornateView: View {
 
     // MARK: parti comuni
 
-    /// In cima una riga sola sulla precisione e, a richiesta, i numeri di «Quanto ci abbiamo preso».
+    /// In cima una riga sola sulla precisione e, a richiesta, i numeri di «Quanto ci abbiamo preso»; sotto le giornate che
+    /// aspettano il recupero.
     @ViewBuilder
     private func testa(_ p: PaginaGiornate) -> some View {
-        if p.precisione != nil || p.dettagli != nil {
+        if p.precisione != nil || p.dettagli != nil || !p.inAttesa.isEmpty {
             Section {
                 if let frase = p.precisione {
                     Text(frase)
@@ -244,25 +248,44 @@ struct GiornateView: View {
                     }
                     .tint(Color.testoSecondario)
                 }
+                attese(p)
             }
         }
     }
 
-    /// Nessuna giornata finita: il motivo che dice il server.
+    /// Nessuna giornata finita: il motivo che dice il server. Con una giornata in attesa del recupero niente: la sua frase, in cima,
+    /// prende il posto di questa (come la web).
+    @ViewBuilder
     private func vuoto(_ p: PaginaGiornate) -> some View {
-        Section {
-            Text(p.vuoto ?? Catalogo.Giornate.vuoto)
-                .font(.subheadline).foregroundStyle(Color.testoSecondario)
+        if p.inAttesa.isEmpty {
+            Section {
+                Text(p.vuoto ?? Catalogo.Giornate.vuoto)
+                    .font(.subheadline).foregroundStyle(Color.testoSecondario)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// Le giornate finite che aspettano il recupero e non hanno la loro riga (`in_attesa`, revisione di #947): la frase del server,
+    /// piccola e grigia come sulla web, sotto la precisione e «Dettagli».
+    @ViewBuilder
+    private func attese(_ p: PaginaGiornate) -> some View {
+        ForEach(Array(p.inAttesa.enumerated()), id: \.offset) { _, frase in
+            Text(frase)
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
 
     /// In cima alla lista il titolo intero (solo con il testo grande) e sotto la riga della web: giornata, mia squadra e data dei
-    /// dati (#863).
+    /// dati (#863). La riga è l'intestazione di una sezione vuota, non una riga della lista: una riga sola fa una sezione con gli
+    /// angoli tondi, che tagliavano la prima lettera di ogni riga di testo quando davanti non c'è lo stemma (#936).
     @ViewBuilder
     private var capo: some View {
         TitoloNellaPagina()
-        if let riga = vm.rigaStato { RigaStatoView(riga: riga) }
+        if let riga = vm.rigaStato {
+            Section {} header: { RigaStatoView(riga: riga) }
+        }
     }
 
     /// «Com'è andata» della Formazione: la giornata chiesta passa alla pagina, che la apre appena c'è.

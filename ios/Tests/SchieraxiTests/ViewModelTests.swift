@@ -178,7 +178,10 @@ final class FormazioneViewModelTests: XCTestCase {
         let (_, altro) = try moduli()
         await vm.scegliModulo(altro.modulo)
         let uscente = try XCTUnwrap(vm.vista(f).titolari.first)
-        XCTAssertFalse(vm.sostituibile(uscente.id))
+        XCTAssertEqual(vm.contestoScheda(uscente.id)?.pronta, false, "«Sostituisci» c'è, spento")
+        XCTAssertEqual(vm.motivoCambiSpenti, Catalogo.Formazione.sceltaNonLetta)
+        await vm.sostituisci(uscente.id)
+        XCTAssertNil(vm.elencoSostituti, "con i comandi spenti l'elenco non parte")
         XCTAssertEqual(srv.quante("POST"), 0, "una scrittura andrebbe sopra una scelta che non si è vista")
         XCTAssertNil(vm.manuale)
     }

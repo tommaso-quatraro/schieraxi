@@ -14,6 +14,7 @@ import time
 from datetime import date, timedelta
 from pathlib import Path
 
+from . import frasi, funzioni
 from .percorsi import RADICE, scrivi_sicuro
 
 FILE = RADICE / "dati" / "uso.json"
@@ -25,7 +26,7 @@ OGNI_SECONDI = 60                 # ogni quanto si scrive il file (i conteggi st
 FUNZIONE_DI_ROTTA: dict[str, str] = {
     "/api/live": "live", "/api/asta": "asta", "/api/confronto": "confronto",
     "/api/scambi/proposte": "scambi_trova", "/api/scambi/limite": "scambi_trova",
-    "/api/scambi/analizza": "scambi_valuta_o_costruisci", "/api/scambi/da-testo": "scambi_valuta_o_costruisci",
+    "/api/scambi/analizza": "scambi_costruisci", "/api/scambi/da-testo": "scambi_costruisci",
     "/api/squadre/immagine/da-url": "immagini_web", "/api/squadre/immagine/condivisa": "immagini_web",
     "/api/classifica": "elenco_giocatori",
     "/api/osservati": "seguiti", "/api/osservati/{i}": "seguiti",
@@ -33,6 +34,28 @@ FUNZIONE_DI_ROTTA: dict[str, str] = {
     "/api/backup": "backup", "/api/backup/ripristina": "backup",
     "/api/novita": "novita",
 }
+# nomi usati prima nel file -> funzione di oggi: fino al 26/11/2026 «Valuta un'offerta» si contava così (non è una funzione)
+VECCHI_NOMI = {"scambi_valuta_o_costruisci": "scambi_costruisci"}
+
+# la parte dell'app di una rotta, dalla prima parte del percorso dopo /api/ («/api/oggi» -> Formazione), con la frase
+# `uso.parte_<id>` del catalogo (fanta/frasi.py). Una rotta che qui non c'è conta in «altro». È l'unica tabella: la usano
+# «Quanto si usa l'app» (riepilogo) e «Errori recenti» (nome_parte, GET /api/admin/registro); la web scrive i nomi che arrivano.
+PARTI: dict[str, tuple[str, ...]] = {
+    "formazione": ("oggi", "formazione", "scelta", "giocatore", "giocatori", "live", "osservati", "confronto", "classifica", "avatar"),
+    "giornate": ("diario", "calendario", "affidabilita"),
+    "lega": ("regole", "rose", "rosa", "squadre", "mia-squadra", "crediti", "stagione", "nuova-stagione", "onboarding", "primo-avvio",
+             "scambi", "movimenti", "mercato", "asta"),
+    "account": ("account",),
+    "avvisi": ("avvisi", "push"),
+    "aspetto": ("icona",),
+    "gestione": ("admin", "aggiorna", "backup", "stato-dati"),
+    "informazioni": ("novita", "sotto-il-cofano"),
+    "scrivici": ("feedback",),
+    "avvio": ("stato", "funzioni"),
+    "widget": ("widget",),
+    "controllo": ("salute",),
+}
+_PARTE_DI = {inizio: parte for parte, inizi in PARTI.items() for inizio in inizi}
 
 _blocco = threading.Lock()
 _in_memoria: dict[str, dict[str, dict[str, int]]] = {}       # giorno -> {"rotte": {...}, "funzioni": {...}} (solo quello non ancora scritto)
@@ -121,25 +144,56 @@ def salva(percorso: Path | None = None) -> None:
         pass
 
 
+def parte_di(chiave: str) -> str:
+    """La parte dell'app di una voce del conteggio («GET /api/giocatore/{calciatore_id}» -> "formazione"), "altro" se non si sa."""
+    percorso = chiave.split(" ", 1)[-1]
+    inizio = percorso.removeprefix("/api/").split("/", 1)[0] if percorso.startswith("/api/") else ""
+    return _PARTE_DI.get(inizio, "altro")
+
+
+def nome_parte(rotta) -> frasi.Frase | None:
+    """Il nome della parte dell'app di una rotta («/api/oggi» -> «Formazione»), None se non è di nessuna parte (allora «Errori
+    recenti» scrive solo il percorso)."""
+    parte = parte_di(str(rotta or ""))
+    return None if parte == "altro" else frasi.F(f"uso.parte_{parte}")
+
+
+def nome_funzione(funzione: str) -> str:
+    """Il nome per l'utente di una funzione contata (`funzioni.FUNZIONI`); una che non c'è più resta col suo nome, senza trattini."""
+    voce = funzioni.FUNZIONI.get(funzione)
+    return voce[0] if voce else funzione.replace("_", " ")
+
+
 def riepilogo(percorso: Path | None = None, massimo_rotte: int = 40) -> dict:
-    """Per l'amministratore: totali sulle ultime 4 settimane, per funzione e per rotta, e le richieste di ogni giorno."""
+    """Per l'amministratore: totali sulle ultime 4 settimane, per funzione, per parte dell'app e per rotta, e le richieste di ogni
+    giorno. Funzioni e parti hanno il nome da mostrare (`etichetta`; per le parti anche `etichetta_frase`, per tradurlo); `per_rotta`
+    resta con le rotte di modello, per chi gestisce il server."""
     p = percorso or FILE
     salva(p)                                           # include anche quello che è ancora in memoria
     giorni = _leggi(p)
     rotte: dict[str, int] = {}
-    funzioni: dict[str, int] = {}
+    per_funz: dict[str, int] = {}
     per_giorno = []
     for g in sorted(giorni):
         v = giorni[g]
         for n, c in v["rotte"].items():
             rotte[n] = rotte.get(n, 0) + c
         for n, c in v["funzioni"].items():
-            funzioni[n] = funzioni.get(n, 0) + c
+            n = VECCHI_NOMI.get(n, n)
+            per_funz[n] = per_funz.get(n, 0) + c
         per_giorno.append({"giorno": g, "richieste": sum(v["rotte"].values())})
     ordinate = sorted(rotte.items(), key=lambda kv: kv[1], reverse=True)
+    parti: dict[str, int] = {}
+    for n, c in rotte.items():
+        parte = parte_di(n)
+        parti[parte] = parti.get(parte, 0) + c
+    nomi_parti = {k: frasi.F(f"uso.parte_{k}") for k in parti}
     return {"giorni": GIORNI, "dal": min(giorni) if giorni else None, "al": max(giorni) if giorni else None,
             "richieste": sum(rotte.values()),
-            "per_funzione": [{"funzione": n, "richieste": c} for n, c in sorted(funzioni.items(), key=lambda kv: kv[1], reverse=True)],
+            "per_funzione": [{"funzione": n, "etichetta": nome_funzione(n), "richieste": c}
+                             for n, c in sorted(per_funz.items(), key=lambda kv: kv[1], reverse=True)],
+            "per_parte": [{"parte": n, "etichetta": str(nomi_parti[n]), "etichetta_frase": frasi.di(nomi_parti[n]), "richieste": c}
+                          for n, c in sorted(parti.items(), key=lambda kv: kv[1], reverse=True)],
             "per_rotta": [{"rotta": n, "richieste": c} for n, c in ordinate[:massimo_rotte]],
             "per_giorno": per_giorno,
             "nota": "Conteggi anonimi e aggregati: nessun utente, nessun indirizzo."}

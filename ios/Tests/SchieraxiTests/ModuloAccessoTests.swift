@@ -44,21 +44,33 @@ final class ModuloAccessoTests: XCTestCase {
         XCTAssertEqual(m.campi(.invito), [.invito, .nome, .email, .password])
         XCTAssertEqual(m.campi(.email), [.invito, .nome, .email, .password])
         XCTAssertEqual(m.campi(.aperta), [.nome, .email, .password], "registrazione aperta: niente invito")
+        XCTAssertEqual(m.campi(.aperta, postaAccesa: false), [.nome, .password], "posta spenta: niente email, come con l'invito")
         XCTAssertEqual(ModuloAccesso(scheda: .accedi).campi(.invito), [.nome, .password])
     }
 
     // L'email facoltativa (etichetta breve, spiegazione sotto, controllo se c'è): `EtichetteCampiTests` (Swift Testing).
 
-    func testConEmailOApertaLEmailServe() {
-        for modo in [ModalitaRegistrazione.email, .aperta] {
-            var m = registrazione(modo)
-            XCTAssertTrue(m.pronto(modo), "\(modo)")
-            m.email = ""
-            XCTAssertFalse(m.pronto(modo), "\(modo): l'email è obbligatoria")
-        }
+    func testConEmailLEmailServe() {
+        var m = registrazione(.email)
+        XCTAssertTrue(m.pronto(.email))
+        m.email = ""
+        XCTAssertFalse(m.pronto(.email), "con il modo email l'email è obbligatoria")
         var conInvito = registrazione(.email)
         conInvito.invito = "  "
         XCTAssertFalse(conInvito.pronto(.email), "con il modo email serve anche l'invito")
+    }
+
+    func testRegistrazioneApertaBastanoNomeEPassword() {
+        var m = registrazione(.aperta)
+        XCTAssertEqual(m.invito, "")
+        XCTAssertEqual(m.email, "")
+        XCTAssertTrue(m.pronto(.aperta), "niente invito e niente email: si può creare l'account")
+        XCTAssertTrue(m.pronto(.aperta, postaAccesa: false))
+        m.email = "non-email"
+        XCTAssertFalse(m.pronto(.aperta), "un'email scritta male si corregge prima")
+        m.email = "nome@example.invalid"
+        XCTAssertTrue(m.pronto(.aperta))
+        XCTAssertEqual(m.emailDaMandare(.aperta, postaAccesa: false), "", "posta spenta: l'email non parte")
     }
 
     func testPasswordENomeSiControllanoSoloQuandoSiSceglie() {
@@ -84,7 +96,7 @@ final class ModuloAccessoTests: XCTestCase {
         let r = ModuloAccesso(scheda: .registrati)
         XCTAssertEqual(r.titoloPulsante, "Crea l'account")
         XCTAssertEqual(r.spiegazione(.invito), "Ti serve un codice d'invito: chiedilo a chi ti ha invitato.")
-        XCTAssertEqual(r.spiegazione(.aperta), "Scrivi la tua email: ti mandiamo un codice per confermarla e creare l'account.")
+        XCTAssertEqual(r.spiegazione(.aperta), "Scegli un nome utente e una password.")
         var v = r
         v.iscrizione = IscrizioneInAttesa(email: "nome@example.invalid", iscrizione: "finta")
         XCTAssertEqual(v.passo, .verificaIscrizione)
@@ -107,7 +119,7 @@ final class ModuloAccessoTests: XCTestCase {
         XCTAssertTrue(m.mostraMetodi())
         m.vai(.recupera, modo: .email)
         XCTAssertEqual(m.metodo, .email)
-        XCTAssertEqual(MetodoRecupero.iniziale(.aperta), .email)
+        XCTAssertEqual(MetodoRecupero.iniziale(.aperta), .codice, "registrazione aperta: l'email è facoltativa, come con l'invito")
         XCTAssertEqual(MetodoRecupero.email.titolo, Catalogo.Accesso.recuperoConEmail)
         XCTAssertEqual(MetodoRecupero.codice.titolo, Catalogo.Accesso.recuperoConCodice)
         XCTAssertEqual(SchermataAccesso.Scheda.recupera.titolo, Catalogo.Accesso.schedaRecupero)

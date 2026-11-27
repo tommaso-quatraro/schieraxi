@@ -99,6 +99,17 @@ def test_contatto_dalla_variabile_e_protetto(monkeypatch):
     assert "chi gestisce l'app" in tl.pagina("termini")
 
 
+def test_senza_contatto_non_si_parla_di_chi_ha_dato_l_invito(monkeypatch):
+    """Con la registrazione aperta nessuno ha dato un invito: senza FANTA_CONTATTO il recapito è solo «chi gestisce l'app»."""
+    monkeypatch.delenv("FANTA_CONTATTO", raising=False)
+    monkeypatch.setenv("FANTA_REGISTRAZIONE", "aperta")
+    assert tl.t("contatto_manca", "it") == "chi gestisce l'app" and tl.t("contatto_manca", "en") == "whoever runs the app"
+    for lingua in ("it", "en"):
+        for quale in ("privacy", "termini"):
+            testo = tl.pagina(quale, lingua).lower()
+            assert "ti ha dato il codice" not in testo and "gave you the invitation" not in testo, (quale, lingua)
+
+
 def test_pagina_sconosciuta():
     with pytest.raises(ValueError):
         tl.pagina("altro")
@@ -134,9 +145,14 @@ def test_privacy_ha_titolare_basi_destinatari_conservazione_diritti(monkeypatch)
 def test_testo_segue_il_modo_di_iscrizione(monkeypatch):
     monkeypatch.setenv("FANTA_REGISTRAZIONE", "invito")
     assert "facoltativa" in tl.pagina("privacy") and "codice d'invito." in tl.pagina("termini")
-    monkeypatch.setenv("FANTA_REGISTRAZIONE", "aperta")
+    monkeypatch.setenv("FANTA_REGISTRAZIONE", "aperta")             # registrazione aperta: nome e password, email facoltativa
     p, tm = tl.pagina("privacy"), tl.pagina("termini")
-    assert "richiesto per iscriverti" in p and "serve un indirizzo email" in tm
+    assert "facoltativa" in p and "bastano un nome utente e una password" in tm and "codice d'invito." not in tm
+    monkeypatch.delenv("FANTA_REGISTRAZIONE")                        # senza la variabile: con l'invito, come prima
+    assert "codice d'invito." in tl.pagina("termini") and "bastano un nome utente" not in tl.pagina("termini")
+    monkeypatch.setenv("FANTA_REGISTRAZIONE", "email")
+    p, tm = tl.pagina("privacy"), tl.pagina("termini")
+    assert "richiesto per iscriverti" in p and "un codice d'invito e un indirizzo email" in tm
 
 
 def test_termini_hanno_la_clausola_sui_file_caricati():

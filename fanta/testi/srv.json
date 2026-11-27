@@ -4,6 +4,11 @@
     "en": "No data source is on, so there is nothing to refresh: turn one on in Settings › Management › Data status.",
     "nota": "risposta di POST /api/aggiorna con tutte le fonti dell'aggiornamento spente (#779): stesso testo di NESSUNA_FONTE in server.py"
   },
+  "srv.aggiorna_pausa": {
+    "it": "I dati sono stati aggiornati da poco: riprova fra {1}.",
+    "en": "The data was refreshed recently: try again in {1}.",
+    "nota": "risposta di POST /api/aggiorna meno di 10 minuti dopo la fine del giro di prima (server._pausa_aggiorna); {1} = «9 minuti», «1 minuto», tradotto da traduciDurata"
+  },
   "srv.una_sola_squadra": {
     "it": "Con una sola squadra funzionano formazione e consigli; le rose degli altri servono a guardare le altre squadre: puoi aggiungerle quando vuoi.",
     "en": "With just one team, the lineup and the advice work; the other teams' rosters let you look at the other teams: you can add them whenever you like."
