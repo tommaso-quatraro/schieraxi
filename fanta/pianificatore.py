@@ -173,7 +173,7 @@ def aggiorna_risultati(giornate: list[int], scrivi: Callable[[str], None] = lamb
     L'esito va nella riga `CHIAVE_RISULTATI` come un passo seguito (`archivio.segna_passo`, #661): riuscito = ultimo successo;
     non riuscito = errore con il primo fallimento di fila (lo vede «Stato dei dati», non la salute: `archivio.FUORI_SALUTE`) e una riga nel registro."""
     from . import fonti_attive
-    from .aggiorna import Aggiornamento, Stagione, _ora
+    from .aggiorna import Aggiornamento, Stagione, _ora, per_il_registro
     with blocco_processo() as libero:
         if not libero:
             return None
@@ -187,11 +187,13 @@ def aggiorna_risultati(giornate: list[int], scrivi: Callable[[str], None] = lamb
             for g in giornate:
                 agg._passo(f"risultati {g}", lambda g=g: agg.risultati_giornata(g))    # noqa: SLF001 - stesso passo dell'aggiornamento completo
             if agg.errori:
-                archivio.segna_passo(db, CHIAVE_RISULTATI, _ora(), "; ".join(agg.errori))   # l'ora dell'ultimo successo resta
+                # l'ora dell'ultimo successo resta; tipo e fonte servono a «Stato dei dati» per dirlo senza il messaggio tecnico
+                archivio.segna_passo(db, CHIAVE_RISULTATI, _ora(), "; ".join(agg.errori),
+                                     tipo="rete" if agg.solo_rete else "dati", fonte="fantacalcio")
                 db.commit()
-                # nel registro solo il passo e il tipo d'errore («risultati 12: ConnectionError»), mai il resto del messaggio
-                LOG.warning("pianificatore: risultati della sera non riusciti (%s)",
-                            ", ".join(": ".join(e.split(": ")[:2]) for e in agg.errori))
+                # nel registro il messaggio accorciato e senza parametri degli indirizzi («risultati 12: VotiCalati: giornata 12: …»,
+                # `aggiorna.per_il_registro`): per un guasto che non è la rete Stato dei dati rimanda qui
+                LOG.warning("pianificatore: risultati della sera non riusciti (%s)", "; ".join(per_il_registro(e) for e in agg.errori))
                 return False
             archivio.segna_passo(db, CHIAVE_RISULTATI, _ora())         # cambia la «versione» dei dati: il riscaldamento ricalcola
             db.commit()

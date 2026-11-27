@@ -65,6 +65,16 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
         qui = await statoQui()
     }
 
+    /// Rilegge il permesso di iOS per «Avvisi su questo dispositivo» quando l'app torna in primo piano (`ImpostazioniView`): il
+    /// permesso si toglie o si ridà nelle Impostazioni di iOS, con l'app in secondo piano, e l'interruttore deve dirlo subito. Non
+    /// chiede niente al server né il permesso. Con un tocco in corso decide il tocco (anche la domanda del permesso fa uscire e
+    /// tornare l'app).
+    func rileggiPermesso() async {
+        guard !inCorso else { return }
+        let stato = await statoQui()
+        if !inCorso { qui = stato }
+    }
+
     private func statoQui() async -> Bool {
         guard ArchivioAvvisiQui.acceso(memoria) else { return false }
         return await telefono.permesso()
@@ -104,8 +114,8 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
         await salva(SoloAppNativa(app_nativa: acceso), riprogramma: true) { $0.appNativa = acceso }
     }
 
-    /// Salva un campo: l'interruttore si sposta subito e, se il server non risponde, torna come lo ha il server e lo si dice.
-    /// Dopo un 412 (cambiato da un altro dispositivo) si rilegge.
+    /// Salva un campo: l'interruttore si sposta subito e, se il server non risponde, torna come lo ha il server e lo si dice con il
+    /// solo messaggio dell'errore, come la web (`avviso(e.message)`). Dopo un 412 (cambiato da un altro dispositivo) si rilegge.
     private func salva<Corpo: Encodable>(_ corpo: Corpo, riprogramma: Bool, subito: (AvvisiDispositivoViewModel) -> Void) async {
         guard !inCorso else { return }
         inCorso = true
@@ -121,7 +131,7 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
         } catch {
             oreTranquille = ore
             appNativa = nativa
-            erroreSalvataggio = "Non ho salvato la modifica. " + error.localizedDescription
+            erroreSalvataggio = error.localizedDescription
             if (error as? ErroreApi)?.eConflitto == true { await rileggi() }
         }
     }

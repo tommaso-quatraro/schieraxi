@@ -48,9 +48,9 @@ def test_scheda_giocatore_senza_sigle_xg_xa_nella_riga_del_rendimento():
 
 # ---------------------------------------------------------------- collaudo di regressione del 2/11/2026
 def test_rosa_data_dell_aggiornamento_in_italiano():
-    """Prima: «Rose aggiornate il 2026-11-02»."""
+    """Prima: «Rose aggiornate il 2026-11-02». La data con il mese a parole la provano nel browser
+    `tests/browser/test_apostrofo_altre_date.py` (in italiano e in inglese) e, per `fDataEstesa`, `tests/test_inglese_web.py`."""
     assert '(r.aggiornato || "").slice(0, 10)' not in APP
-    assert 'fData(parseData(r.aggiornato), { day: "numeric", month: "long", year: "numeric" })' in APP
 
 
 def test_selettore_degli_scambi_nascosto_resta_nascosto():
