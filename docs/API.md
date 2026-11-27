@@ -292,7 +292,7 @@ La frase `nota` di `scelte_tue` e di `precisione.confronto` dice anche il perch�
 
 - `formazione`: di quale formazione sono i numeri, la stessa della riga della pagina Giornate e del riepilogo della Formazione: `"schierata"` (la tua), altrimenti `"automatica"` (la copia della consigliata fatta alla scadenza), altrimenti `"consigliata"`;
 - `atteso`, `fatti`: i suoi punti attesi e fatti (gli stessi di `atteso` e `reale` di quella formazione); `differenza` = fatti meno attesi, con il segno (positiva: meglio del previsto), a una cifra. La web scrive «+9,2 sul previsto», «−3,1 sul previsto» o, a zero, «come previsto» (testi `giornate.sul_previsto` e `giornate.come_previsto`);
-- `meglio`, `peggio`: chi dei suoi 11 titolari ha fatto più (o meno) del suo fantavoto atteso di almeno 1 punto (`diario.SOGLIA_SCARTO`: sotto un punto è come previsto), al massimo 2 per parte, dalla differenza più grande: `[{id, nome, ruolo, atteso, preso, differenza}]` (liste vuote se nessuno arriva a 1 punto). `atteso` è il fantavoto atteso mostrato prima della scadenza (`istantanea`), se c'è, altrimenti quello rifatto con i soli dati di prima (`giocatori[].fv_atteso`): gli stessi numeri della tabella della pagina. `preso` = `giocatori[].fv`. Chi non ha preso voto non c'è (la tabella lo dice «senza voto»), e nemmeno chi è entrato dalla panchina. `differenza` = preso meno atteso come la pagina li scrive (una cifra, il mezzo all'insù: atteso 6,25 si scrive «6,3»);
+- `meglio`, `peggio`: chi dei suoi 11 titolari ha fatto più (o meno) del suo fantavoto atteso di almeno 1 punto (`diario.SOGLIA_SCARTO`: sotto un punto è come previsto), al massimo 2 per parte, dalla differenza più grande: `[{id, nome, ruolo, atteso, preso, differenza}]` (liste vuote se nessuno arriva a 1 punto). `atteso` è il fantavoto atteso mostrato prima della scadenza (`istantanea`), se c'è, altrimenti quello rifatto con i soli dati di prima (`giocatori[].fv_atteso`): gli stessi numeri della tabella della pagina. `preso` = `giocatori[].fv`. Chi non ha preso voto non c'è (la tabella lo dice «senza voto»), e nemmeno chi è entrato dalla panchina né, dal 26/11/2026, chi ha `giocatori[].rinvio` (partita rinviata con il voto d'ufficio o senza voto: il voto non è del campo). `differenza` = preso meno atteso come la pagina li scrive (una cifra, il mezzo all'insù: atteso 6,25 si scrive «6,3»);
 - `testo` e `frase`: «Meglio del previsto: Rossi (+3,9) e Verdi (+2,0). Peggio: Bianchi (−2,5).» (chiave `diario.meglio_peggio`; con una parte sola `diario.meglio` o `diario.peggio`; i giocatori sono frasi `diario.scarto_giocatore` con `nome` e `d`, in un `elenco_e` se sono due). `null` se `meglio` e `peggio` sono vuoti. La web la mostra nel dettaglio della giornata, sopra la tabella.
 
 Cosa fa l'iPhone (pagina Giornate, `Domain/Giornate.swift`): legge `fatti_e_attesi.differenza` per la riga («+2,8 sul previsto», «come previsto», dal #705), `fatti_e_attesi.testo` per il dettaglio, sopra la tabella (dal #705), e `nota_consigliata` per la frase sulla consigliata di allora (dal passo 2 di #673), senza comporli da `consigliata.origine` e dai numeri; un server di prima non manda i campi: allora niente differenza né frase. Un'app iPhone installata prima del #705 non mostra né la differenza né la frase su chi ha fatto meglio o peggio, finché non si aggiorna.
@@ -834,11 +834,27 @@ Dove si vede (tutti campi aggiunti, i client vecchi li ignorano):
   con `voto_ufficio` ha `fantavoto` = il voto d'ufficio, contato subito in `punti_fatti`. `stato` resta `rinviata`.
 - `GET /api/diario` (giornate finite): per le partite giocate fuori dal turno (recuperi) i punti `reale` di consigliata e
   schierata usano la regola della giornata: con `aspetta` il voto del recupero, con `senza_voto` nessun voto (entra la riserva),
-  con `voto_ufficio` il voto fisso; anche `atteso` è ricalcolato con la stessa regola. `giocatori` (numeri per «Quanto ci abbiamo
-  preso») resta quello del modello e dei voti veri. Cambiare la regola di una giornata con partite fuori dal turno (diversa da
-  `aspetta`) rifà solo la sua voce. Con `senza_voto` o `voto_ufficio` la giornata entra nel Diario (e in «Ho schierato…» di
-  `POST /api/diario/schierata` e in «Da fare») appena sono giocate le partite del turno, senza aspettare il recupero; con
-  `aspetta` solo a recupero giocato.
+  con `voto_ufficio` il voto fisso; anche `atteso` è ricalcolato con la stessa regola. In `giocatori` (la tabella degli 11 e
+  «Quanto ci abbiamo preso») `p_voto` e `fv_atteso` restano quelli del modello; dal 26/11/2026 `fv` è il voto che la lega ha
+  contato: per chi aveva la partita rinviata, con `senza_voto` `null` e con `voto_ufficio` il voto fisso, anche se il recupero si
+  è giocato (prima era il voto del recupero, e la pagina Giornate diceva «preso 10,0» e «Meglio del previsto» mentre i punti
+  contavano il 6). Questi giocatori hanno in più `rinvio` (`"senza_voto"` o `"voto_ufficio"`, campo facoltativo; con `aspetta`
+  non c'è): non entrano in `fatti_e_attesi.meglio`/`peggio` né nelle misure di `precisione` (`fantavoto`, `gioca`). Le voci già
+  scritte prendono il voto della lega quando cambiano i voti della giornata. Cambiare la regola di una giornata con partite fuori
+  dal turno (diversa da `aspetta`) rifà solo la sua voce. Con `senza_voto` o `voto_ufficio` la giornata entra nel Diario (e in
+  «Ho schierato…» di `POST /api/diario/schierata` e in «Da fare») appena sono giocate le partite del turno, senza aspettare il
+  recupero; con `aspetta` solo a recupero giocato. Se dopo il calcolo la regola di quella giornata torna ad `aspetta` e il
+  recupero non si è ancora giocato, la giornata non è più finita: dal 26/11/2026 la sua voce non c'è in `GET /api/diario`
+  (nemmeno nei conti in cima e in `diario` di `GET /api/widget`) e il `riepilogo` di Oggi non la usa (`nel_diario: false`, i
+  punti dai voti, con `recuperi`). Resta così anche a recupero giocato finché i suoi voti non sono arrivati (il riepilogo è
+  `null`, con `voti_in_arrivo`), e poi fino al calcolo successivo del Diario (la voce ha i segni `giocatori[].rinvio` e la regola
+  di adesso è `aspetta`); il calcolo la rifà, anche se la giornata non è più fra le ultime 12 del Diario e anche se un titolare
+  della formazione schierata è stato ceduto nel frattempo (se ne rifanno i punti con le stesse formazioni, contando anche lui).
+  Prima restava la voce vecchia, con i punti e la frase del voto d'ufficio accanto a «Manca il recupero». Al posto della voce
+  `GET /api/diario` ha in cima il campo nuovo `in_attesa` (lista, sempre presente, vuota se non c'è niente; dalla più recente):
+  `[{stagione, giornata, giornata_lega, testo, frase}]`, con `testo` = «Giornata 9 · 12ª di Serie A: in attesa del recupero, i
+  punti arrivano dopo.» (chiave `diario.in_attesa_recupero`, parametro `giornata`). Web e iPhone (pagina Giornate) mostrano
+  `testo` così com'è, in cima sotto la precisione; senza altre giornate al posto della frase della pagina vuota.
 
 Cosa devono fare iOS e Android: nel pannello delle regole, «Partite rinviate» con le tre scelte e il voto d'ufficio (solo se il
 server manda `partite_rinviate`); in Oggi, se `rinvio` non è `null`, un riquadro «Partita rinviata» con le partite, i tuoi
@@ -887,7 +903,7 @@ i giocatori della mia rosa che le giocano): la web mostra il menu in testa, sott
 «Giornata 5 · 8ª di Serie A: partita rinviata», la partita con la data del recupero e i giocatori coinvolti (prima era in fondo,
 sotto la panchina della giornata dopo, senza titolo); la riga dei recuperi diventa la nota del riquadro («Manca il recupero: i punti
 possono ancora cambiare.»).
-Con `nel_diario: true` i numeri sono quelli del Diario (`GET /api/diario`) e `consigliata` = `{punti_fatti, punti_attesi}` della consigliata; con `nel_diario: false` il Diario non ha ancora calcolato la giornata: `punti_fatti` viene dai voti, `punti_attesi` può essere `null`, `consigliata` è `null` (il confronto arriva nel Diario).
+Con `nel_diario: true` i numeri sono quelli del Diario (`GET /api/diario`) e `consigliata` = `{punti_fatti, punti_attesi}` della consigliata mostrata prima della scadenza; dal 26/11/2026 è `null` quando la consigliata della voce è quella rifatta a giornata finita (`consigliata.origine` diverso da `"mostrata"`): lì la pagina Giornate dice che il confronto non c'è, e Oggi non scriveva «Con la consigliata: X punti» con un numero che Giornate non confronta. Con `nel_diario: false` il Diario non ha ancora calcolato la giornata (o la sua voce è sospesa perché la giornata ora aspetta il recupero, vedi sopra `GET /api/diario` e le partite rinviate): `punti_fatti` viene dai voti, `punti_attesi` può essere `null`, `consigliata` è `null` (il confronto arriva nel Diario). Web e iPhone mostrano la riga solo se `consigliata` c'è: nessun cambio nei client.
 
 `voti_in_arrivo` (facoltativo, dal 25/11/2026, #895; c'è solo in questo caso): con `fase: "finita"` e `riepilogo` `null` perché i voti
 della giornata finita non sono ancora tutti usciti (c'è una formazione schierata, ma niente totale a metà). `{giornata, giornata_lega,
