@@ -45,6 +45,12 @@ def _uno(x: float) -> float:
     return arrotonda(x)
 
 
+def _fv_mostrato(mu: float) -> float:
+    """Il fantavoto atteso come lo manda la scheda del giocatore (`fv_atteso` = round(mu, 2), `consigli.scheda_previsione`): la
+    tabella lo scrive da lì, quindi la riga lo confronta e lo scrive da lì (mu 6,2496 è 6,25 nella scheda e «6,3» a schermo)."""
+    return round(float(mu), 2)
+
+
 def _motivo_proprio(perche_numero) -> str | None:
     """Il primo motivo del «perché questo numero» che parla del giocatore e va a suo favore (testo o `Frase`), se c'è."""
     for m in perche_numero or []:
@@ -77,8 +83,9 @@ def motivo(t: fz.Giocatore, altro: fz.Giocatore, attuale: float, invertita: floa
     proprio = _motivo_proprio(perche_numero)
     if percento(t.p) > percento(altro.p):
         return F("scelta.piu_sicuro", altro=altro.nome, pt=percento(t.p), pa=percento(altro.p))
-    if _uno(t.mu) > _uno(altro.mu):
-        return F("scelta.fantavoto_piu_alto", altro=altro.nome, mu_t=t.mu, mu_a=altro.mu)
+    mu_t, mu_a = _fv_mostrato(t.mu), _fv_mostrato(altro.mu)
+    if _uno(mu_t) > _uno(mu_a):
+        return F("scelta.fantavoto_piu_alto", altro=altro.nome, mu_t=mu_t, mu_a=mu_a)
     if proprio:
         return F("scelta.motivo", altro=altro.nome, motivo=proprio)
     return F("scelta.pari", altro=altro.nome, attuale=attuale, invertita=invertita)
