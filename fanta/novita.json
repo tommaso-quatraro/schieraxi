@@ -17,10 +17,10 @@
     ],
     "titolo_en": "Clearer Refresh the data and Management, and My team even offline",
     "voci_en": [
-      "Management, “Refresh the data”: if a source does not respond, the message says so with one sentence per line, for example “Fantacalcio.it is not responding: try again later.”, instead of the technical message that covered the screen.",
-      "A refresh in which no data arrives no longer changes the date of the data (“data as of …” under the title), and for whoever runs the server the “The match data has not been updated for …” warning stays until the data really arrives.",
-      "Management: after “Block”, “Unblock” or “Delete”, “Users' comments” and “Recent errors” are refreshed right away too.",
-      "Settings: when offline, “My team” stays in its place, greyed out, with the sentence “Opens when the server can be reached again”."
+      "Management, «Refresh the data»: if a source does not respond, the message says so with one sentence per line, for example «Fantacalcio.it is not responding: try again later.», instead of the technical message that covered the screen.",
+      "A refresh in which no data arrives no longer changes the date of the data («data as of …» under the title), and for whoever runs the server the «The match data has not been updated for …» warning stays until the data really arrives.",
+      "Management: after «Block», «Unblock» or «Delete», «Users' comments» and «Recent errors» are refreshed right away too.",
+      "Settings: when offline, «My team» stays in its place, greyed out, with the sentence «Opens when the server can be reached again»."
     ]
   },
   {
@@ -43,10 +43,10 @@
     ],
     "titolo_en": "Account: invitation for a group, clearer account deletion, one message at a time",
     "voci_en": [
-      "Management, New invitation: with “How many people” the same link works for a group of friends, to send in the chat.",
+      "Management, New invitation: with «How many people» the same link works for a group of friends, to send in the chat.",
       "Delete the account: the app first checks your password, then asks you to confirm; afterwards the sign-in page says that the account and its data have been deleted. The same on iPhone.",
       "Sign in: after too many attempts the button counts down by itself, and in Sign up the username rules are under the field. The same on iPhone.",
-      "When the session ends there is only one message; in Management, Recent errors, “Signed out of all devices” says whose it is."
+      "When the session ends there is only one message; in Management, Recent errors, «Signed out of all devices» says whose it is."
     ]
   },
   {
@@ -2662,7 +2662,7 @@
     ],
     "titolo_en": "Missing make-up games written like the postponed matches",
     "voci_en": [
-      "When a matchday is over, the line about missing make-up games writes the matches like the postponed matches card: “ATA vs PAR”. Same on phone and computer."
+      "When a round is over, the line about missing make-up games writes the matches like the postponed matches card: «ATA vs PAR». Same on phone and computer."
     ]
   },
   {
@@ -3959,7 +3959,7 @@
     ],
     "titolo_en": "More accurate expected fantasy score for the most expensive players",
     "voci_en": [
-      "The expected match grade of the most expensive players is much less overestimated: before, it was on average about a tenth higher than the real one, now half of that or less, in both seasons tested."
+      "The expected match rating of the most expensive players is much less overestimated: before, it was on average about a tenth higher than the real one, now half of that or less, in both seasons tested."
     ]
   },
   {
@@ -4432,7 +4432,7 @@
     ],
     "titolo_en": "Example teams even with sources off",
     "voci_en": [
-      "“Use the example teams” and roster import also work when whoever runs the server has turned Fantacalcio.it off: the players already saved are used."
+      "«Use the example teams» and roster import also work when whoever runs the server has turned Fantacalcio.it off: the players already saved are used."
     ]
   },
   {
@@ -5120,7 +5120,7 @@
     ],
     "titolo_en": "A smoother app installation",
     "voci_en": [
-      "When a new version is out, a small “Update ready – Reload” notice appears.",
+      "When a new version is out, a small «Update ready – Reload» notice appears.",
       "On tablets the app can now be rotated to landscape.",
       "The preview images show up even before signing in."
     ]
