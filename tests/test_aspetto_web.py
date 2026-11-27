@@ -235,6 +235,28 @@ def test_server_finto_risponde_dalla_registrazione(aw, tmp_path):
         assert s.indirizzo.startswith("http://127.0.0.")
 
 
+def test_server_finto_risponde_ai_volti_senza_dati_veri(aw, tmp_path):
+    """Collaudo del 27/11 sera: le registrazioni tolgono apposta i tratti dei volti (vengono dalle foto vere dei calciatori,
+    prove/fotografie_dal_vero.py) e ogni pagina aperta con il server finto aveva un 404 su /api/avatar. Ora il server finto risponde
+    come il server vero senza tratti (i volti si disegnano dal codice); uno scenario che ha la sua risposta vince."""
+    with aw.ServerFinto(_web(tmp_path), _scenario(tmp_path), porta=0) as s:
+        stato, tipo, corpo = _chiedi(s.indirizzo, "/api/avatar")
+        assert stato == 200 and "application/json" in tipo and json.loads(corpo) == {"versione": 3, "tratti": {}}
+        assert s.mancanti == []
+    con_volti = tmp_path / "con-volti.json"
+    con_volti.write_text(json.dumps({"adesso": "2026-10-27T15:10:00", "risposte": {
+        "/api/avatar": json.dumps({"versione": 3, "tratti": {"7": {"c": 1}}})}}), encoding="utf-8")
+    with aw.ServerFinto(_web(tmp_path / "altro"), con_volti, porta=0) as s:
+        assert json.loads(_chiedi(s.indirizzo, "/api/avatar")[2])["tratti"] == {"7": {"c": 1}}
+
+
+@pytest.mark.parametrize("fase", ["prima", "in-corso", "finita"])
+def test_gli_scenari_registrati_rispondono_ai_volti(aw, fase):
+    finto = aw.ServerFinto(RADICE / "fanta" / "web", RADICE / "ios" / "fotografie" / f"vero-{fase}.json", porta=0)
+    assert json.loads(finto.risposta_api("/api/avatar", "")) == {"versione": 3, "tratti": {}}
+    assert finto.mancanti == []
+
+
 def test_server_finto_non_esce_dalla_cartella(aw, tmp_path):
     with aw.ServerFinto(_web(tmp_path), _scenario(tmp_path), porta=0) as s:
         for percorso in ("/../segreto.txt", "/%2e%2e/segreto.txt", "/%2E%2E%2Fsegreto.txt", "/..%5csegreto.txt",
