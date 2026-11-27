@@ -188,8 +188,22 @@ final class RosaViewModel: ViewModelBase {
         }
     }
 
-    /// «Rimuovi» sotto lo stemma («stemma») o la maglia («maglia»).
-    func rimuoviImmagine(tipo: String) async {}
+    /// «Rimuovi» sotto lo stemma («stemma») o la maglia («maglia»), come il foglio della web: `DELETE /api/squadre/immagine`, poi
+    /// «Stemma rimosso» o «Maglia rimossa»; se non riesce, la frase del server. Gli elenchi si rileggono (`Immagini.rimuovi`), e
+    /// al posto dell'immagine torna la maglietta con i colori della squadra.
+    func rimuoviImmagine(tipo: String) async {
+        guard !inCorso else { return }
+        inCorso = true
+        defer { inCorso = false }
+        do {
+            try await immagini.rimuovi(squadra: nome, tipo: tipo)
+            messaggio = ParoleSquadre.rimossa(tipo: tipo)
+            Haptics.esito(riuscito: true)
+        } catch {
+            messaggio = error.localizedDescription
+            Haptics.esito(riuscito: false)
+        }
+    }
 
     /// Manda al server lo stemma («stemma») o la maglia («maglia») scelti dalla libreria foto.
     func inviaImmagine(_ dati: Data, tipo: String) async {
@@ -375,10 +389,12 @@ struct RosaView: View {
         RigaCreditiResidui(crediti: $vm.crediti, inCorso: vm.inCorso) { Task { await vm.salvaCrediti() } }
     }
 
-    /// Stemma e maglia: le due immagini con «Carica/Cambia», da un file, da un indirizzo web e le spiegazioni.
+    /// Stemma e maglia: le due immagini con «Carica/Cambia» e, se ci sono, «Rimuovi»; da un file, da un indirizzo web e le
+    /// spiegazioni.
     @ViewBuilder
     private var righeImmagini: some View {
-        HStack(spacing: 16) {
+        // in alto: con «Rimuovi» sotto una sola delle due, l'altra non scende a metà
+        HStack(alignment: .top, spacing: 16) {
             slot("stemma", $sceltaStemma)
             slot("maglia", $sceltaMaglia)
         }
@@ -421,6 +437,21 @@ struct RosaView: View {
             }
             // due pulsanti nella stessa riga di una lista: senza questo un tocco li attiva come uno solo
             .buttonStyle(.borderless)
+            // come il foglio della web: «Rimuovi» solo se l'immagine c'è, e dopo la frase «Stemma rimosso» sotto le immagini
+            if immagini.haImmagine(vm.nome, tipo: tipo) {
+                Button(role: .destructive) {
+                    Task { await vm.rimuoviImmagine(tipo: tipo) }
+                } label: {
+                    Text(ParoleSquadre.rimuovi)
+                        .font(.footnote.weight(.semibold))
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .disabled(vm.inCorso)
+                .accessibilityLabel(ParoleSquadre.rimuoviNome(tipo: tipo))
+            }
         }
         .frame(maxWidth: .infinity)
     }
@@ -436,26 +467,11 @@ private struct SoloTestoSeGrande: LabelStyle {
     }
 }
 
-/// La pillola «Nuovo» accanto al titolo di una versione non ancora vista (come `etichetta` della web).
-private struct PillolaNuovo: View {
-    var body: some View {
-        Text(ParoleNovita.nuovo)
-            .font(.caption2.bold())
-            .padding(.horizontal, 6).padding(.vertical, 2)
-            .background(Color.verde.opacity(0.3), in: Capsule())
-    }
-}
-
-/// Le novità (Impostazioni > Informazioni, come la web): ogni carta ha per titolo il titolo della versione e sotto «Versione 1.432 · data»; le
-/// versioni non ancora viste hanno «Nuovo»; si vedono le prime 10 (almeno tutte le nuove) e «Mostra le 42 versioni precedenti»
-/// apre tutte le altre. Le regole sono in `ParoleNovita`.
+/// Le novità (Impostazioni > Informazioni, come la web): ogni carta ha per titolo il titolo della versione e sotto «Versione 1.432 ·
+/// data»; si vedono le ultime 10 e «Mostra le 42 versioni precedenti» apre tutte le altre. Come la web dalla #615, nessuna etichetta
+/// «Nuovo» sulle versioni non ancora viste. Le regole sono in `ParoleNovita`.
 struct NovitaView: View {
     @StateObject private var caricatore: Caricatore<[VoceNovita]>
-    /// L'ultima versione guardata: le versioni uscite dopo hanno l'etichetta «Nuovo».
-    @AppStorage("novitaVista") private var novitaVista = ""
-    /// L'ultima versione guardata PRIMA di aprire la pagina: dice quali versioni sono «Nuovo». Si ricorda qui perché `novitaVista`
-    /// diventa subito l'ultima versione, e le etichette sparirebbero mentre si legge.
-    @State private var vistaPrima: String?
     @State private var tutte = false
 
     init(server: any ServerClient) {
@@ -471,10 +487,9 @@ struct NovitaView: View {
                 LazyVStack(spacing: 14) {
                     TitoloNellaPagina()
                     if let n = caricatore.dato {
-                        let nuoveDa = ParoleNovita.nuoveDa(versioni: n.map(\.versione), ultimaVista: vistaPrima)
-                        let mostrate = tutte ? n.count : ParoleNovita.quanteVisibili(totale: n.count, nuoveDa: nuoveDa)
-                        ForEach(Array(n.prefix(mostrate).enumerated()), id: \.element.id) { indice, v in
-                            carta(v, nuova: indice < nuoveDa)
+                        let mostrate = tutte ? n.count : ParoleNovita.quanteVisibili(totale: n.count)
+                        ForEach(n.prefix(mostrate)) { v in
+                            carta(v)
                         }
                         if n.count > mostrate {
                             Button {
@@ -498,21 +513,13 @@ struct NovitaView: View {
             .avvisoDatiSalvati(caricatore)
         }
         .titoloPagina(Catalogo.Lega.voceNovita)
-        .task {
-            if vistaPrima == nil { vistaPrima = novitaVista }
-            await caricatore.ricarica()
-            if let ultima = caricatore.dato?.first?.versione { novitaVista = ultima }
-        }
+        .task { await caricatore.ricarica() }
     }
 
-    private func carta(_ v: VoceNovita, nuova: Bool) -> some View {
+    private func carta(_ v: VoceNovita) -> some View {
         Carta {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(v.titolo).font(.headline).fixedSize(horizontal: false, vertical: true)
-                if nuova { PillolaNuovo() }
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isHeader)
+            Text(v.titolo).font(.headline).fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
             Text(ParoleNovita.sotto(versione: v.versione, data: v.data))
                 .font(.caption).foregroundStyle(Color.testoSecondario).monospacedDigit()
             ForEach(v.voci, id: \.self) { voce in
@@ -594,7 +601,9 @@ struct StatoDatiView: View {
                                 }
                             } header: { Text(Catalogo.Scambio.quantoAzzeccaModello).foregroundStyle(Color.testoSecondario) } footer: {
                                 VStack(alignment: .leading) {
-                                    Text((c.giornate ?? 0) > 0 ? Catalogo.Sd.giornateGiocate(n: String(c.giornate ?? 0)) : Catalogo.Sd.appenaFinisce)
+                                    // con la frase sulla correzione dei numeri di partenza, come la web (`sd.corregge`)
+                                    Text(((c.giornate ?? 0) > 0 ? Catalogo.Sd.giornateGiocate(n: String(c.giornate ?? 0)) : Catalogo.Sd.appenaFinisce)
+                                         + " " + Catalogo.Sd.corregge)
                                     // la taratura di «gioca N%» con le probabili (#379): frase e numeri del server, come la web
                                     if let taratura = ParoleRegistro.taratura(c.taratura) {
                                         Text(taratura)
@@ -660,7 +669,9 @@ struct StatoDatiView: View {
             FilaTessere {
                 TesseraDato(valore: s.erroreModello.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: Catalogo.Avv.erroreSuiFantavoti)
                 TesseraDato(valore: s.erroreFantamedia.map { Formato.decimali($0, cifre: 2) } ?? "–", etichetta: Catalogo.Avv.erroreFantamedia)
-                TesseraDato(valore: s.puntiModello.map { Formato.decimali($0) } ?? "–", etichetta: Catalogo.Avv.puntiFormazioneModello)
+                // verde quando valgono almeno i punti da fantamedia, come la web
+                TesseraDato(valore: s.puntiModello.map { Formato.decimali($0) } ?? "–", etichetta: Catalogo.Avv.puntiFormazioneModello,
+                            tinta: ParoleAffidabilita.modelloBatteFantamedia(s) ? Color.positivo : nil)
             }
             Text(Catalogo.Avv.puntiMedi(f: s.puntiFantamedia.map { Formato.decimali($0) } ?? "–",
                                         m: s.puntiModello.map { Formato.decimali($0) } ?? "–",
@@ -700,12 +711,12 @@ struct CercaGiocatoreGiustoView: View {
     var body: some View {
         List {
             Section {
-                TextField("Cerca il giocatore giusto", text: $testo)
+                TextField(Catalogo.Onb.cercaGiocatoreGiusto, text: $testo)
                     .textInputAutocapitalization(.words)
                     .autocorrectionDisabled()
                     .frame(minHeight: 44)
                     .accessibilityLabel(Catalogo.Ar.cercaPer(nome: dubbio.nome))
-            } footer: { Text("Nella rosa di \(dubbio.squadra) c'è scritto «\(dubbio.nome)».").foregroundStyle(Color.testoSecondario) }
+            } footer: { Text(Catalogo.Ar.cEScritto(nome: dubbio.nome, squadra: dubbio.squadra)).foregroundStyle(Color.testoSecondario) }
             if let errore = vm.errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
             Section {
                 if vm.cercando { ProgressView() }
@@ -715,13 +726,13 @@ struct CercaGiocatoreGiustoView: View {
                     }
                 }
                 if !vm.cercando, vm.trovati.isEmpty, testo.trimmingCharacters(in: .whitespaces).count >= 2 {
-                    Text("Nessun risultato").font(.footnote).foregroundStyle(Color.testoSecondario)
+                    Text(Catalogo.Onb.nessunRisultato).font(.footnote).foregroundStyle(Color.testoSecondario)
                 }
             }
         }
-        .navigationTitle("Giocatore giusto")
+        .navigationTitle(Catalogo.Ar.giocatoreGiusto)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Annulla") { chiudi() } } }
+        .toolbar { ToolbarItem(placement: .cancellationAction) { Button(Catalogo.Ar.annulla) { chiudi() } } }
         .task(id: testo) { await vm.cerca(testo) }
     }
 }

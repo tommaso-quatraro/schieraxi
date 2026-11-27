@@ -2,19 +2,18 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-/// Novità come la web (issue #441, parte di #167). `vistaNovita` di `fanta/web/app.js`: la carta ha per titolo il titolo della
-/// versione e sotto «Versione 1.432 · 6 nov 2026, 10:12:00»; le versioni non ancora viste hanno «Nuovo»; si vedono le prime 10
-/// (almeno tutte le nuove) e un solo pulsante «Mostra le 42 versioni precedenti» apre tutte le altre.
-@Suite("Novità come la web: titolo, «Nuovo», prime 10 e «Mostra le … precedenti» (#441)")
+/// Novità come la web (issue #441, parte di #167; `mostraNovita` di `fanta/web/impostazioni.js`): la carta ha per titolo il titolo
+/// della versione e sotto «Versione 1.432 · 6 nov 2026, 10:12:00»; si vedono sempre le ultime 10 e un solo pulsante «Mostra le 42
+/// versioni precedenti» apre tutte le altre. Dalla #615 la web non ha più l'etichetta «Nuovo»: nemmeno l'iPhone (27/11/2026).
+@Suite("Novità come la web: titolo, ultime 10 e «Mostra le … precedenti» (#441)")
 struct NovitaComeLaWebTests {
 
     private static func versioni(_ n: Int) -> [String] { (0..<n).map { "1.\(500 - $0)" } }
 
     // MARK: parole
 
-    @Test("«Nuovo» e «Versione N» sono quelli del catalogo")
+    @Test("«Versione N» è quella del catalogo")
     func parole() {
-        #expect(ParoleNovita.nuovo == Catalogo.Regole.nuovo)
         #expect(ParoleNovita.versione("1.432") == Catalogo.Novita.versione(v: "1.432"))
         #expect(ParoleNovita.versione("1.432") == "Versione 1.432")
     }
@@ -34,47 +33,21 @@ struct NovitaComeLaWebTests {
         #expect(ParoleNovita.precedenti(2) == Catalogo.Novita.precedenti(2))
     }
 
-    // MARK: quante versioni e quali sono nuove
+    // MARK: quante versioni
 
-    @Test("Le versioni subito visibili sono 10, come NOVITA_VISIBILI della web del 12/11/2026")
+    @Test("Le versioni subito visibili sono 10, come NOVITA_VISIBILI della web")
     func visibiliComeLaWeb() {
         #expect(ParoleNovita.visibili == 10)
     }
 
-    @Test("Prima visita (nessuna versione vista): è «Nuovo» solo l'ultima")
-    func primaVisita() {
-        #expect(ParoleNovita.nuoveDa(versioni: Self.versioni(50), ultimaVista: nil) == 1)
-        #expect(ParoleNovita.nuoveDa(versioni: Self.versioni(50), ultimaVista: "") == 1)
-        #expect(ParoleNovita.nuoveDa(versioni: [], ultimaVista: nil) == 0)
+    @Test("Si vedono sempre le ultime 10, mai più di quelle che ci sono", arguments: [(52, 10), (11, 10), (10, 10), (3, 3), (0, 0)])
+    func quanteVisibili(totale: Int, attese: Int) {
+        #expect(ParoleNovita.quanteVisibili(totale: totale) == attese)
     }
 
-    @Test("Versione vista trovata: sono nuove le versioni sopra di lei")
-    func vistaTrovata() {
-        let elenco = Self.versioni(50)
-        #expect(ParoleNovita.nuoveDa(versioni: elenco, ultimaVista: elenco[0]) == 0)
-        #expect(ParoleNovita.nuoveDa(versioni: elenco, ultimaVista: elenco[3]) == 3)
-        #expect(ParoleNovita.nuoveDa(versioni: elenco, ultimaVista: elenco[14]) == 14)
-    }
-
-    @Test("Versione vista che non c'è più nell'elenco: nuove le prime 10 (al massimo quante sono)")
-    func vistaPersa() {
-        #expect(ParoleNovita.nuoveDa(versioni: Self.versioni(50), ultimaVista: "0.1") == 10)
-        #expect(ParoleNovita.nuoveDa(versioni: Self.versioni(4), ultimaVista: "0.1") == 4)
-    }
-
-    @Test("Si vedono sempre 10 versioni, come la web dalla #615, anche con più versioni non ancora viste; mai più di quelle che ci sono")
-    func quanteVisibili() {
-        #expect(ParoleNovita.quanteVisibili(totale: 52, nuoveDa: 0) == 10)
-        #expect(ParoleNovita.quanteVisibili(totale: 52, nuoveDa: 1) == 10)
-        #expect(ParoleNovita.quanteVisibili(totale: 52, nuoveDa: 14) == 10)
-        #expect(ParoleNovita.quanteVisibili(totale: 3, nuoveDa: 3) == 3)
-        #expect(ParoleNovita.quanteVisibili(totale: 0, nuoveDa: 0) == 0)
-    }
-
-    @Test("Con 52 versioni e niente di nuovo restano da aprire le 42 del pulsante (l'esempio dell'issue)")
+    @Test("Con 52 versioni restano da aprire le 42 del pulsante (l'esempio dell'issue)")
     func esempioDellIssue() {
         let elenco = Self.versioni(52)
-        let visibili = ParoleNovita.quanteVisibili(totale: elenco.count, nuoveDa: ParoleNovita.nuoveDa(versioni: elenco, ultimaVista: elenco[0]))
-        #expect(elenco.count - visibili == 42)
+        #expect(elenco.count - ParoleNovita.quanteVisibili(totale: elenco.count) == 42)
     }
 }

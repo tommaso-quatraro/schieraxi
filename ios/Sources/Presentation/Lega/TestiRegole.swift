@@ -13,6 +13,11 @@ enum TestiRegole {
     }()
     static let prova = Catalogo.Regole.prova
     static let provaVoti = Catalogo.Regole.votiPortiereDifensori
+    /// Sotto il numero minimo di difensori, come la web: «La media è la somma di portiere + i 3 migliori difensori divisa per 4. Per
+    /// ogni fascia raggiunta si prende il bonus più alto raggiunto.» (`regole.media_somma`, `regole.portiere_migliori_difensori`,
+    /// `regole.divisa_per_per`; la web scrive in grassetto il pezzo di mezzo).
+    static let spiegaMedia = [Catalogo.Regole.mediaSomma, Catalogo.Regole.portiereMiglioriDifensori, Catalogo.Regole.divisaPerPer]
+        .joined(separator: " ")
 
     /// L'esito della prova, come la web (`regole.media_bonus`): «Media 6,50 bonus +1 punto», «Media 6,75 bonus +3 punti».
     /// «punto» solo con un bonus di 1; un bonus intero si scrive senza decimali, uno a metà con uno («+1,5 punti»).

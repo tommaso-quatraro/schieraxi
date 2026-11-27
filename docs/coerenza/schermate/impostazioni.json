@@ -91,6 +91,15 @@
       "stato": "fatto"
     },
     {
+      "id": 134,
+      "schermata": "Aggiorna le rose: problemi delle rose e ricerca del giocatore giusto dal catalogo (27/11/2026)",
+      "web": "i problemi di una rosa «Manca 1 portiere», «Mancano 2 difensori», «1 attaccante in più», «1 giocatore senza ruolo» (`ar.manca`, `ar.mancano`, `ar.in_piu`, `ar.senza_ruolo`, `arProblemi`); la ricerca senza risultati «Nessun risultato» (`onb.nessun_risultato`)",
+      "iphone": "le stesse frasi, prima scritte a mano: ora dal catalogo (`AnteprimaLogica.problemi`). Nella pagina che cerca il giocatore giusto (anteprima delle rose e giocatori da sistemare) «Cerca il giocatore giusto», «Nessun risultato» e «Annulla» dal catalogo; restano dell'iPhone, con chiavi loro, il titolo «Giocatore giusto», «Nella rosa di … c'è scritto «…».» (`ar.giocatore_giusto`, `ar.c_e_scritto`) e sotto «Scegli il file» «Puoi anche aprire il file con SchieraXI da File, Mail o dal menu Condividi.» (`lega.apri_file_con`)",
+      "forma": "web",
+      "chi": "**fatto** (27/11/2026): prove `AnteprimaRoseTests`, `RestiDalCatalogoTests`",
+      "stato": "fatto"
+    },
+    {
       "id": 77,
       "schermata": "Impostazioni, Nuova stagione: il server rifiuta «Archivia e riparti» (#731)",
       "web": "al 409 («Le rose sono già della stagione in corso: non c'è niente da archiviare.», per esempio un altro dispositivo ha già archiviato) il foglio si chiude, l'avviso «Nuova stagione» sparisce e si legge il messaggio del server; al 412 (rose cambiate da un altro dispositivo, la web manda If-Match) il messaggio del server e la pagina si ricarica (`apriNuovaStagione` e `api` in `app.js`, dal #729)",
@@ -151,6 +160,15 @@
       "iphone": "prima: titolo «Squadre e rose», in cima di nuovo la carta «La mia squadra» (che ha già la sua riga in Impostazioni), in fondo «Tocca una squadra per vedere la rosa.» e «È la mia» scorrendo una riga. Ora come la web: «Le altre squadre» con il solo elenco (`SquadreView`); «Non è la tua squadra?» in cima alla rosa della mia squadra (`RosaView`); «La mia squadra» non ancora scelta apre la pagina della scelta (`SceltaSquadraView`), anche dal passo «La tua squadra» della configurazione guidata; scelta la squadra, al posto della pagina c'è la sua rosa. Dal 26/11/2026 (#923) il selettore parte da «Scegli una squadra» (`lega.scegli_squadra`, `SelettoreMiaSquadra.segnaposto`) come la web, invece di una riga vuota; se il salvataggio non riesce torna lì, sulla web e sull'iPhone",
       "forma": "web",
       "chi": "**fatto** (#863): `SquadreView`, `SceltaSquadraView`, `SelettoreMiaSquadra`, `LegaViewModel.scegliMiaSquadra`, `VociImpostazioni.lega`; prove `SceltaMiaSquadraTests`, `ImpostazioniComeLaWebTests`, `SquadreComeLaWebTests`, `TitoloUnaVoltaUITests`",
+      "stato": "fatto"
+    },
+    {
+      "id": 131,
+      "schermata": "La mia lega: «La mia squadra» senza rete (27/11/2026)",
+      "web": "senza le squadre perché la lettura non è arrivata (senza rete o con il server che non risponde, `stato.squadreNonArrivate`) «La mia squadra» resta, spenta e senza freccia, con «Si apre quando il server torna raggiungibile» (`imp.mia_squadra_senza_rete`, `rigaImpSpenta`); «Le altre squadre» resta nascosta finché le squadre non arrivano",
+      "iphone": "prima: senza rete e senza copia salvata la riga spariva. Ora come la web: la riga spenta (un pulsante disattivato, che VoiceOver legge «non disponibile») con la stessa frase, quando le squadre non arrivano perché il server non si raggiunge e sul telefono non c'è una copia (`LegaViewModel.squadreNonArrivate`, `VociImpostazioni.lega`, `RigaVoceImpostazioni`). Con un rifiuto del server che manda il suo motivo la riga non c'è, come sulla web sotto i 500; con un errore 500 che manda il suo messaggio la web la mostra e l'iPhone no (non conosce il codice)",
+      "forma": "web",
+      "chi": "**fatto** (27/11/2026): prove `LaMiaLegaComeLaWebTests`, `ImpostazioniComeLaWebTests`",
       "stato": "fatto"
     },
     {

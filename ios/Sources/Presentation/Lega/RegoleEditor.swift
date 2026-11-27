@@ -305,7 +305,8 @@ final class RegoleEditorViewModel: ViewModelBase {
 
 // MARK: - Vista
 
-/// Un valore numerico con − e + (un Stepper di iOS), con il valore scritto accanto al titolo.
+/// Un valore numerico con − e + (un Stepper di iOS), con il valore scritto accanto al titolo. Un tocco va al passo vicino, come la
+/// web (#911, `RegoleLogica.passoSuccessivo`): da 1,25 con i passi da 0,5, + dà 1,5 e − 1,0. Ai limiti il pulsante si spegne.
 struct RigaStepper: View {
     let titolo: String
     @Binding var valore: Double
@@ -327,7 +328,8 @@ struct RigaStepper: View {
     }
 
     private var campo: some View {
-        Stepper(value: $valore, in: minimo...massimo, step: passo) {
+        Stepper(onIncrement: valore < massimo ? { tocca(su: true) } : nil,
+                onDecrement: valore > minimo ? { tocca(su: false) } : nil) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(titolo)
@@ -342,6 +344,10 @@ struct RigaStepper: View {
         }
         .frame(minHeight: 44)
         .accessibilityValue(Self.testo(valore, cifre: cifre))
+    }
+
+    private func tocca(su: Bool) {
+        valore = RegoleLogica.passoSuccessivo(valore, passo: passo, su: su, minimo: minimo, massimo: massimo)
     }
 
     /// Il numero della riga: i negativi con il meno tipografico «−0,5», come l'anteprima del regolamento, gli avvisi sui limiti e i
@@ -452,15 +458,15 @@ struct RegoleEditorView: View {
                 }
             }
         }
-        .alert("Le modifiche alle regole non sono salvate", isPresented: domandaAperta, presenting: uscita) { perche in
+        .alert(Catalogo.Regole.uscitaTitolo, isPresented: domandaAperta, presenting: uscita) { perche in
             Button(Catalogo.Regole.salvaRegole) {
                 Task {
                     // si esce solo se le regole sono salvate: un errore (anche il 412) lascia la pagina aperta, con l'errore
                     if await vm.salva() { esci(perche) }
                 }
             }
-            Button("Esci senza salvare", role: .destructive) { esci(perche) }
-            Button("Continua a modificare", role: .cancel) {}
+            Button(Catalogo.Regole.esciSenzaSalvare, role: .destructive) { esci(perche) }
+            Button(Catalogo.Regole.continuaModificare, role: .cancel) {}
         }
         // le Impostazioni sanno se le regole hanno modifiche da salvare, e chiedono qui prima di aprire un'altra pagina
         .onChange(of: vm.modificato, initial: true) { _, modificato in
@@ -524,7 +530,7 @@ struct RegoleEditorView: View {
             }
             if vm.modificato {
                 HStack(spacing: 10) {
-                    Label("Modifiche non salvate", systemImage: "pencil.circle").font(.subheadline.weight(.semibold))
+                    Label(Catalogo.Regole.modificheNonSalvate, systemImage: "pencil.circle").font(.subheadline.weight(.semibold))
                     Spacer(minLength: 8)
                     Button {
                         Task { await vm.salva() }
@@ -681,7 +687,7 @@ struct RegoleEditorView: View {
             Toggle(Catalogo.Regole.mdAttivo, isOn: vm.booleano("modificatore_difesa.attivo")).tint(Color.verde).frame(minHeight: 44)
             if vm.valore.valore("modificatore_difesa.attivo")?.booleano == true {
                 riga(CampiRegole.minDifensori, predefinito: 4, passo: 1, aiuto: Catalogo.Regole.mdMinAiuto)
-                Text("La media è la somma di portiere + i 3 migliori difensori, divisa per 4. Per ogni fascia raggiunta si prende il bonus più alto raggiunto.")
+                Text(TestiRegole.spiegaMedia)
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
                 ForEach($vm.fasce) { $f in
                     // il numero è il posto della riga: dopo «Togli» si rifanno (#460, come la web)
@@ -691,8 +697,13 @@ struct RegoleEditorView: View {
                                     massimo: limiteMedia.upperBound, cifre: 2, nomeAccessibile: nomi.media)
                         RigaStepper(titolo: Catalogo.Regole.bonus, valore: $f.bonus, passo: 0.5, minimo: limiteBonus.lowerBound,
                                     massimo: limiteBonus.upperBound, nomeAccessibile: nomi.bonus)
-                        Button(role: .destructive) { vm.togliFascia(f.id) } label: { Label("Togli la fascia", systemImage: "trash").labelStyle(.distruttiva).frame(minHeight: 44) }
-                            .accessibilityLabel(nomi.togli)
+                        // «Togli la fascia 2», il nome che la web dà al suo pulsante (`regole.togli_fascia`)
+                        Button(role: .destructive) { vm.togliFascia(f.id) } label: {
+                            Label(nomi.togli, systemImage: "trash").labelStyle(.distruttiva).frame(minHeight: 44)
+                        }
+                        // tre controlli nella stessa riga della lista: senza questo tutta la riga era il pulsante, e un tocco sul
+                        // testo o sul numero toglieva la fascia
+                        .buttonStyle(.borderless)
                     }
                 }
                 Button { vm.aggiungiFascia() } label: { Label(TestiRegole.aggiungiFascia, systemImage: "plus.circle").frame(minHeight: 44) }
@@ -710,8 +721,8 @@ struct RegoleEditorView: View {
             Text(TestiRegole.prova).font(.subheadline.bold()).accessibilityAddTraits(.isHeader)
             Text(TestiRegole.provaVoti).font(.footnote).foregroundStyle(Color.testoSecondario)
             ForEach(vm.votiProva.indices, id: \.self) { i in
-                RigaStepper(titolo: i == 0 ? "Portiere" : "Difensore \(i)", valore: $vm.votiProva[i], minimo: 3, massimo: 10,
-                            nomeAccessibile: TestiRegole.nomeVotoProva(indice: i))
+                // «Voto del portiere», «Voto del difensore 1»: i nomi della web (che li dà ai suoi campi), a vista e per VoiceOver
+                RigaStepper(titolo: TestiRegole.nomeVotoProva(indice: i), valore: $vm.votiProva[i], minimo: 3, massimo: 10)
             }
             Text(TestiRegole.esitoProva(media: vm.mediaProva, bonus: vm.bonusProva)).font(.headline)
                 .accessibilityElement(children: .combine)

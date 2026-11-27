@@ -119,9 +119,11 @@ struct ImpostazioniView: View {
         return utente.nome
     }
 
-    /// Le righe di La mia lega (`VociImpostazioni.lega`).
+    /// Le righe di La mia lega (`VociImpostazioni.lega`); senza le squadre perché il server non si raggiunge, «La mia squadra»
+    /// spenta come la web (`LegaViewModel.squadreNonArrivate`).
     private var vociLega: [VoceImpostazioni] {
-        VociImpostazioni.lega(squadre: vm.squadre.dato ?? [], squadreAltrui: funzioni.acceso(Funzione.squadreAltrui))
+        VociImpostazioni.lega(squadre: vm.squadre.dato ?? [], squadreAltrui: funzioni.acceso(Funzione.squadreAltrui),
+                              squadreNonArrivate: vm.squadreNonArrivate)
     }
 
     /// L'ancora dell'ultima riga di La mia lega: la foto di Aspetto con il testo grande la porta in cima.

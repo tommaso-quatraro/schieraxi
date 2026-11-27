@@ -304,8 +304,5 @@ extension Catalogo {
 
         /// `regole.modifiche_non_salvate`
         static let modificheNonSalvate = "Modifiche non salvate"
-
-        /// `regole.nuovo`
-        static let nuovo = "Nuovo"
     }
 }

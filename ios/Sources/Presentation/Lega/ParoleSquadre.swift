@@ -50,6 +50,15 @@ enum ParoleSquadre {
     /// «Carica stemma» o «Carica maglia» (`scambio.carica_tipo`).
     static func carica(tipo: String) -> String { Catalogo.Scambio.caricaTipo(tipo: nome(tipo: tipo).lowercased()) }
 
+    /// «Rimuovi» sotto lo stemma o la maglia, come il foglio della web (`lega.rimuovi`).
+    static let rimuovi = Catalogo.Lega.rimuovi
+
+    /// Cosa legge VoiceOver su «Rimuovi»: «Rimuovi stemma», «Rimuovi maglia» (sulla web il pulsante sta sotto il titolo dell'immagine).
+    static func rimuoviNome(tipo: String) -> String { "\(rimuovi) \(nome(tipo: tipo).lowercased())" }
+
+    /// «Stemma rimosso» o «Maglia rimossa» (`lega.stemma_rimosso`, `lega.maglia_rimossa`).
+    static func rimossa(tipo: String) -> String { tipo == "stemma" ? Catalogo.Lega.stemmaRimosso : Catalogo.Lega.magliaRimossa }
+
     /// «Stemma da un file» o «Maglia da un file».
     static func daUnFile(tipo: String) -> String { "\(nome(tipo: tipo)) da un file" }
 

@@ -13,7 +13,8 @@ struct VoceImpostazioni: Identifiable, Equatable {
 /// Quali righe mostra la pagina Impostazioni, come `paginaImpostazioni` della web (#673 passo 3, web #675). Logica pura: la provano
 /// `ImpostazioniComeLaWebTests`.
 enum VociImpostazioni {
-    /// La mia lega: Aggiorna le rose; La mia squadra (solo con le rose: sotto il suo nome o «Non l'hai ancora scelta»); Regole e
+    /// La mia lega: Aggiorna le rose; La mia squadra (con le rose: sotto il suo nome o «Non l'hai ancora scelta»; con le squadre non
+    /// arrivate perché il server non si raggiunge, spenta con «Si apre quando il server torna raggiungibile», come la web); Regole e
     /// scadenza; Le altre squadre (solo con più squadre e la funzione `squadre_altrui` accesa), con il numero delle squadre senza la
     /// mia, quello dell'elenco che apre (`altreSquadre`).
     static func lega(squadre: [SquadraLega], squadreAltrui: Bool, squadreNonArrivate: Bool = false) -> [VoceImpostazioni] {
@@ -23,6 +24,10 @@ enum VociImpostazioni {
             // senza una squadra scelta si apre la sua scelta, come la web (`vistaRosa("")`, #863)
             voci.append(VoceImpostazioni(id: "squadra", nome: Catalogo.Lega.miaSquadra, sotto: mia ?? Catalogo.Imp.miaSquadraNessuna,
                                          pagina: mia.map { .rosa($0) } ?? .sceltaSquadra))
+        } else if squadreNonArrivate {
+            // `rigaImpSpenta` della web: c'è, ma adesso non si apre
+            voci.append(VoceImpostazioni(id: "squadra", nome: Catalogo.Lega.miaSquadra, sotto: Catalogo.Imp.miaSquadraSenzaRete,
+                                         pagina: nil))
         }
         voci.append(VoceImpostazioni(id: "regole", nome: Catalogo.Imp.regole, sotto: Catalogo.Imp.regoleSub, pagina: .regole))
         if squadre.count > 1, squadreAltrui {

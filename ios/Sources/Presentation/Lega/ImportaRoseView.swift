@@ -83,7 +83,7 @@ struct ImportaExcelView: View {
                     Label(Catalogo.Pav.scegliFile, systemImage: "doc.badge.plus").frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
                 }
                 .disabled(vm.inCorso)
-                Text("Puoi anche aprire il file con SchieraXI da File, Mail o dal menu Condividi.")
+                Text(Catalogo.Lega.apriFileCon)
                     .font(.footnote).foregroundStyle(Color.testoSecondario)
             }
             Section {
@@ -434,7 +434,7 @@ struct CercaPerAnteprimaView: View {
                     .focused($fuoco)
                     .frame(minHeight: Tema.areaTocco)
                     .accessibilityLabel(Catalogo.Ar.cercaPer(nome: dubbio.testo))
-            } footer: { Text("Nella rosa di \(dubbio.squadra) c'è scritto «\(dubbio.testo)».").foregroundStyle(Color.testoSecondario) }
+            } footer: { Text(Catalogo.Ar.cEScritto(nome: dubbio.testo, squadra: dubbio.squadra)).foregroundStyle(Color.testoSecondario) }
             if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
             Section {
                 if cercando { ProgressView() }
@@ -448,11 +448,11 @@ struct CercaPerAnteprimaView: View {
                     }
                 }
                 if !cercando, trovati.isEmpty, testo.trimmingCharacters(in: .whitespaces).count >= 2 {
-                    Text("Nessun risultato").font(.footnote).foregroundStyle(Color.testoSecondario)
+                    Text(Catalogo.Onb.nessunRisultato).font(.footnote).foregroundStyle(Color.testoSecondario)
                 }
             }
         }
-        .navigationTitle("Giocatore giusto")
+        .navigationTitle(Catalogo.Ar.giocatoreGiusto)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button(Catalogo.Ar.annulla) { chiudi() } } }
         .task(id: testo) { await cercaNelListone() }

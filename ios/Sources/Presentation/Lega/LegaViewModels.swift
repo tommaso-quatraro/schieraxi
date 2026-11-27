@@ -118,8 +118,13 @@ final class LegaViewModel: ViewModelBase {
     /// La propria squadra, se scelta.
     var miaSquadra: String? { squadre.dato?.first { $0.mia == true }?.nome }
 
-    /// Le squadre non sono arrivate perché il server non si raggiunge.
-    var squadreNonArrivate: Bool { false }
+    /// Le squadre non sono arrivate perché il server non si raggiunge (senza rete, server spento o che riparte, tempo scaduto) e sul
+    /// telefono non ce n'è una copia: «La mia squadra» resta, spenta, con la frase che dice quando si apre, come la web
+    /// (`stato.squadreNonArrivate`, collaudo d'insieme del 26/11: spariva e lasciava un buco). Un rifiuto del server con il suo
+    /// motivo (un limite, per esempio) non conta: allora la riga non c'è, come sulla web sotto i 500.
+    var squadreNonArrivate: Bool {
+        squadre.dato == nil && squadre.errore != nil && squadre.motivoDatiSalvati == nil
+    }
 
     /// «Non è la tua squadra?» e la prima scelta della propria (come `collegaSceltaMia` della web, #863): `PUT /api/mia-squadra`,
     /// poi le squadre si rileggono (la riga «La mia squadra» dice quella nuova) e, come la web che ridisegna «La mia squadra», al
