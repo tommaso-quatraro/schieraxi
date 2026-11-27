@@ -41,5 +41,8 @@ extension Catalogo {
 
         /// `err.formazione_chiusa`
         static let formazioneChiusa = "La giornata è già iniziata: la formazione non si può più cambiare."
+
+        /// `err.fuori_listone`
+        static let fuoriListone = "Questo giocatore non è più nel listone di Serie A."
     }
 }

@@ -29,8 +29,11 @@ final class SchedaGiocatoreViewModel: ViewModelBase {
         _ = await (scheda, partite)
     }
 
-    /// Le prossime partite della squadra del giocatore (dal calendario).
+    /// Le prossime partite della squadra del giocatore: quelle della scheda (`prossime_partite`, le sceglie il server anche senza
+    /// previsione, 27/11/2026); da un server di prima, che non le manda, dal calendario della squadra della previsione o del listone,
+    /// come `riempiScheda` della web.
     var prossime: [PartitaCalendario] {
+        if let dalServer = caricatore.dato?.prossimePartite { return dalServer }
         guard let s = caricatore.dato,
               let slug = s.previsione?.squadra ?? s.calciatore.squadraSlug,
               let sq = calendario.dato?.squadre.first(where: { $0.squadra == slug }) else { return [] }

@@ -5,6 +5,15 @@ import SwiftUI
 struct RigaRosa: View {
     let g: GiocatoreRosa
     @Environment(\.apriGiocatore) private var apri
+    /// Il tocco su un giocatore uscito dal listone: la frase al posto della scheda.
+    @State private var avvisoFuoriListone = false
+
+    /// Senza quotazione il giocatore è uscito dal listone (ceduto all'estero): non ha una scheda (il server risponderebbe 404 con
+    /// la stessa frase), quindi il tocco dice «Questo giocatore non è più nel listone di Serie A.» (`err.fuori_listone`), come
+    /// `vistaRosa` della web. Senza codice la riga resta spenta, come prima.
+    nonisolated static func fuoriListone(_ g: GiocatoreRosa) -> Bool {
+        g.id != nil && g.quotazione == nil
+    }
 
     nonisolated private static func sottotitolo(_ g: GiocatoreRosa) -> String {
         var parti: [String] = []
@@ -65,7 +74,9 @@ struct RigaRosa: View {
 
     var body: some View {
         let p = g.previsione
-        Button { if let id = g.id { apri(id) } } label: {
+        Button {
+            if Self.fuoriListone(g) { avvisoFuoriListone = true } else if let id = g.id { apri(id) }
+        } label: {
             HStack(spacing: 12) {
                 AvatarGiocatore(id: g.id, squadra: g.squadraSlug ?? p?.squadra, dimensione: 44, nome: g.nome, ruolo: g.ruolo)
                 VStack(alignment: .leading, spacing: 2) {
@@ -100,5 +111,6 @@ struct RigaRosa: View {
         }
         .buttonStyle(.plain)
         .disabled(g.id == nil)
+        .alert(Catalogo.Err.fuoriListone, isPresented: $avvisoFuoriListone) {}
     }
 }

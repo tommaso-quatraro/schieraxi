@@ -145,6 +145,38 @@ enum LetturaScheda {
         ParoleRegistro.giornoMese(avanzate?.datiFinoAl).map { Catalogo.Mercato.datiFinoAl(data: $0) }
     }
 
+    /// «Gol e assist rispetto alle occasioni»: sta segnando più di quanto crea (cala), il contrario (si sblocca) o è in linea.
+    enum Tendenza: String {
+        case cala, sblocca
+        case inLinea = "in_linea"
+    }
+
+    /// La tendenza del rendimento come la decide il server (`rendimento.tendenza`, 27/11/2026); un server di prima non la manda (o un
+    /// codice che non conosciamo): allora la soglia di prima, 0,3 punti a partita sul numero mostrato, come `riempiScheda` della web.
+    /// nil senza numero né codice.
+    static func tendenza(_ r: Rendimento) -> Tendenza? {
+        if let codice = r.tendenza, let t = Tendenza(rawValue: codice) { return t }
+        guard let sovra = r.sovraRendimento, sovra.isFinite else { return nil }
+        return sovra > 0.3 ? .cala : sovra < -0.3 ? .sblocca : .inLinea
+    }
+
+    /// La frase che spiega la tendenza: quella del server (`rendimento.testo`) o, da un server di prima, quella del catalogo.
+    static func fraseRendimento(_ r: Rendimento) -> String? {
+        if let testo = r.testo, !testo.isEmpty { return testo }
+        switch tendenza(r) {
+        case .cala: return Catalogo.Mercato.rendCala
+        case .sblocca: return Catalogo.Mercato.rendSblocca
+        case .inLinea: return Catalogo.Mercato.rendLinea
+        case nil: return nil
+        }
+    }
+
+    /// La tessera «gol (N rig.)»: gol e rigori segnati già sommati dal server (`stagione.gol_con_rigori`); da un server di prima la
+    /// somma, come prima.
+    static func golConRigori(_ st: StagioneGiocatore) -> Double {
+        st.golConRigori ?? (st.gol ?? 0) + (st.rigSegnati ?? 0)
+    }
+
     /// Per VoiceOver, con i nomi delle squadre: «Risultato atteso: Genoa 2,1, Como 1,0».
     static func voceRisultatoAtteso(_ g: Giocatore, squadra: String?) -> String? {
         guard let a = g.golSquadra, let b = g.golAvversario, a.isFinite, b.isFinite else { return nil }
