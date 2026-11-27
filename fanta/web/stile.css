@@ -581,7 +581,8 @@ body:not(.con-pannello) #foglio-contenuto > :first-child { padding-right: 56px; 
 /* il messaggio che passa: pieno, con i colori del testo e della pagina scambiati, così si stacca dal fondo anche senza ombra (spec §8.13) */
 .avviso { position: fixed; left: 18px; right: 18px; bottom: calc(var(--barra) + env(safe-area-inset-bottom) + 26px); z-index: 30; padding: 13px 16px; border-radius: var(--r-in);
   background: var(--testo); color: var(--sfondo); border: 0; box-shadow: none; font-size: var(--t-corpo); font-weight: 550; max-width: 540px; margin: 0 auto;
-  white-space: pre-line; }   /* un messaggio di più righe va a capo dove va il server («Regole non valide:» e un problema per riga) */
+  white-space: pre-line; overflow-wrap: anywhere; }   /* un messaggio di più righe va a capo dove va il server («Regole non valide:» e un
+                                                         problema per riga); una parola lunghissima va a capo dentro l'avviso, non esce di lato */
 
 /* caricamento a scheletro */
 .caricamento { text-align: center; padding: 22px 0 8px; color: var(--testo-2); }
@@ -1055,6 +1056,7 @@ body.senza-accesso .salta { display: none; }
 .imp-griglia { min-width: 0; }
 .imp-voce { grid-template-columns: minmax(0, 1fr) auto; }
 .imp-voce .dettaglio { display: block; }
+.imp-voce:disabled { cursor: default; color: var(--testo); }      /* «La mia squadra» senza rete: si legge, la frase dice quando si apre */
 #aspetto .imp-sotto:first-child { margin-top: 4px; }
 #aspetto .segmenti { max-width: 520px; margin-bottom: 8px; }
 .imp-colonna { max-width: 720px; }

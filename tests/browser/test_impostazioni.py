@@ -240,6 +240,80 @@ def test_aggiorna_i_dati_con_il_server_gia_occupato_lo_dice(web):
     assert principale(web).get_by_text(FRASE_IN_CORSO).count() == 0
 
 
+# ---------------------------------------------------------------- «Aggiorna i dati» finito con problemi (collaudo d'insieme del 26/11)
+# Le frasi che il server manda in `errori` di GET /api/aggiorna (fanta/frasi.py, `aggiorna.*`), con le loro chiavi
+FRASI_PROBLEMI = [("Fantacalcio.it e Understat non rispondono: riprova più tardi.",
+                   {"chiave": "aggiorna.non_rispondono", "param": {"fonti": {"chiave": "elenco_e",
+                                                                             "param": {"parti": ["Fantacalcio.it", "Understat"], "sep": ", "}}}}),
+                  ("I controlli sui dati hanno trovato un problema: il dettaglio è in Stato dei dati.",
+                   {"chiave": "aggiorna.controlli", "param": {}})]
+# l'errore che un server di prima mandava così com'era: una «parola» lunga, senza spazi dove andare a capo
+GREZZO = ("listone: ProxyError: HTTPSConnectionPool(host='www.fonte.invalid',port=443):Max_retries_exceeded_with_url:/quotazioni-fonte/"
+          "fonte_(Caused_by_ProxyError('Unable_to_connect_to_proxy',NewConnectionError(\"HTTPSConnection(host='127.0.0.1',port=9)\")))")
+AVVISO_DENTRO = """() => { const a = document.querySelector('#avviso'), r = a.getBoundingClientRect();
+  return {sinistra: r.left, destra: r.right, largo: innerWidth, trabocca: a.scrollWidth > a.clientWidth}; }"""
+
+
+def aggiorna_finito(web, esito: dict) -> None:
+    """«Aggiorna i dati» parte e, alla prima domanda, il server dice che ha finito con `esito` (`errori`, `errori_frasi`)."""
+    def rispondi(route):
+        corpo = {"avviato": True} if route.request.method == "POST" else {"in_corso": False, "righe": [], **esito}
+        route.fulfill(status=200, content_type="application/json; charset=utf-8", body=json.dumps(corpo, ensure_ascii=False))
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/aggiorna", rispondi)
+
+
+def premi_aggiorna(web, larghezza: int, testo: str):
+    principale(web).get_by_role("button", name="Aggiorna i dati").click(timeout=10000)
+    avviso = web.pagina.locator("#avviso").filter(has_text=testo)
+    avviso.wait_for(timeout=10000)
+    return avviso
+
+
+@pytest.mark.parametrize("larghezza", [390, PC])
+def test_aggiorna_i_dati_con_problemi_una_frase_per_riga_dentro_lo_schermo(web, larghezza):
+    """Prima l'avviso univa gli errori del server con «; » in un blocco solo; ora la testa e sotto una frase per riga, tutto
+    dentro lo schermo."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, False)
+    aggiorna_finito(web, {"errori": [f for f, _ in FRASI_PROBLEMI], "errori_frasi": [c for _, c in FRASI_PROBLEMI]})
+    web.apri("/?vista=impostazioni&gruppo=gestione", larghezza=larghezza)
+    avviso = premi_aggiorna(web, larghezza, "non rispondono")
+    righe = [r.strip() for r in avviso.inner_text().split("\n") if r.strip()]
+    assert righe == ["Aggiornato, ma con problemi:", *[f for f, _ in FRASI_PROBLEMI]], righe
+    misure = web.pagina.evaluate(AVVISO_DENTRO)
+    assert misure["sinistra"] >= 0 and misure["destra"] <= misure["largo"] and not misure["trabocca"], misure
+
+
+def test_aggiorna_i_dati_con_problemi_in_inglese(web):
+    solo(web, "prima")
+    web.memoria({"lingua": "en"})
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, False)
+    aggiorna_finito(web, {"errori": [f for f, _ in FRASI_PROBLEMI], "errori_frasi": [c for _, c in FRASI_PROBLEMI]})
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    principale(web).get_by_role("button", name="Refresh the data").click(timeout=10000)
+    avviso = web.pagina.locator("#avviso").filter(has_text="not responding")
+    avviso.wait_for(timeout=10000)
+    righe = [r.strip() for r in avviso.inner_text().split("\n") if r.strip()]
+    assert righe == ["Updated, but with problems:", "Fantacalcio.it and Understat are not responding: try again later.",
+                     "The data checks found a problem: the details are in Data status."], righe
+
+
+def test_aggiorna_i_dati_con_un_errore_lungo_va_a_capo_e_non_esce_di_lato(web):
+    """Il collaudo a 390 px: l'errore tecnico intero di un server di prima (senza frasi) usciva dall'avviso, di lato. Anche una
+    parola lunghissima va a capo dentro l'avviso."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, False)
+    aggiorna_finito(web, {"errori": [GREZZO]})
+    web.apri("/?vista=impostazioni&gruppo=gestione", larghezza=390)
+    premi_aggiorna(web, 390, "ProxyError")
+    misure = web.pagina.evaluate(AVVISO_DENTRO)
+    assert misure["sinistra"] >= 0 and misure["destra"] <= misure["largo"] and not misure["trabocca"], misure
+    assert not web.scorre_di_lato()
+
+
 @pytest.mark.parametrize("indirizzo", ["/?vista=impostazioni&gruppo=gestione", "/?vista=impostazioni&gruppo=avanzate"])
 def test_chi_non_gestisce_il_server_non_apre_gestione_neanche_con_l_indirizzo(web, indirizzo):
     solo(web, "prima")
