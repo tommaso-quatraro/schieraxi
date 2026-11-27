@@ -108,6 +108,13 @@ enum Accesso {
         return testo.utf8.allSatisfy { $0 > 0x20 && $0 < 0x7F }
     }
 
+    /// Il segreto del «dispositivo fidato» accettabile (il server ne dà di 43 caratteri, `secrets.token_urlsafe(32)`): breve, solo
+    /// lettere, cifre, «-» e «_». Finisce in un'intestazione HTTP e nel Keychain: niente spazi, a capo o caratteri di controllo.
+    static func dispositivoValido(_ testo: String) -> Bool {
+        guard (20...200).contains(testo.utf8.count) else { return false }
+        return testo.utf8.allSatisfy { ($0 >= 0x30 && $0 <= 0x39) || ($0 >= 0x41 && $0 <= 0x5A) || ($0 >= 0x61 && $0 <= 0x7A) || $0 == 0x2D || $0 == 0x5F }
+    }
+
     /// Un codice di recupero accettabile: breve, lettere, cifre e trattini.
     static func codiceRecuperoValido(_ testo: String) -> Bool {
         guard !testo.isEmpty, testo.utf8.count <= 100 else { return false }

@@ -65,7 +65,9 @@ struct ModuloAccesso: Equatable {
     var iscrizione: IscrizioneInAttesa?
     /// Recupero con l'email, secondo passo: l'indirizzo a cui è partito il codice.
     var emailRecupero: String?
-    /// Dopo un «troppi tentativi» (429): fino a quando aspettare, e il passo in cui l'attesa è nata.
+    /// Dopo un «troppi tentativi» (429): fino a quando aspettare, e il passo in cui l'attesa è nata. Vale solo lì, come la web,
+    /// dove cambiando scheda il modulo si ridisegna e il conto si ferma (`contaAttesa`): il server conta a parte accesso e
+    /// recupero. `vai` la toglie.
     var attesa: Attesa?
 
     /// Un'attesa dopo «troppi tentativi»: la fine e il passo in cui è nata.
@@ -74,8 +76,11 @@ struct ModuloAccesso: Equatable {
         let passo: Passo
     }
 
-    /// Fino a quando il pulsante d'invio resta spento e conta da solo.
-    var attesaFinoA: Date? { attesa?.fino }
+    /// Fino a quando il pulsante d'invio resta spento e conta da solo; nil in un passo diverso da quello dell'attesa.
+    var attesaFinoA: Date? {
+        guard let attesa, attesa.passo == passo else { return nil }
+        return attesa.fino
+    }
 
     /// Un «troppi tentativi» con l'attesa, nel passo che si vede.
     mutating func aspetta(fino: Date) {
@@ -95,11 +100,13 @@ struct ModuloAccesso: Equatable {
     }
 
     /// Passa a un'altra scheda, come la web che riapre il modulo da capo: la password scritta non resta, i codici e i passi
-    /// a metà (recupero, registrazione con il codice per posta) si dimenticano.
+    /// a metà (recupero, registrazione con il codice per posta) si dimenticano, e anche l'attesa dopo «troppi tentativi»
+    /// (tornando, il pulsante non conta più).
     mutating func vai(_ nuova: Scheda, modo: ModalitaRegistrazione, postaAccesa: Bool = true) {
         scheda = nuova
         password = ""
         codiceEmail = ""
+        attesa = nil
         switch nuova {
         case .accedi:
             codice = ""

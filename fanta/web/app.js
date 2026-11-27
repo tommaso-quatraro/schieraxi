@@ -3751,7 +3751,8 @@ const CAMPO_CODICE_EMAIL = (id) => campoAccesso(id, t("accesso.codice_email"), "
 // l'account. L'iPhone non l'ha: il suo modulo non è una pagina che un programma trova e compila.
 const CAMPO_TRAPPOLA = () => `<div class="accesso-trappola" hidden aria-hidden="true">${campoAccesso("ac-sito", t("accesso.sito_web"), "text", 'name="sito" tabindex="-1" autocomplete="off"')}</div>`;
 // La riga sopra i campi di «Registrati»: con il codice d'invito già scritto (arrivato dal link) non chiede di procurarselo (#580).
-// Con la registrazione aperta (predefinita) non serve l'invito: nome utente e password, l'email facoltativa come con l'invito.
+// Con la registrazione aperta (da accendere sul server: il modo predefinito è l'invito) non serve l'invito: nome utente e
+// password, l'email facoltativa come con l'invito.
 function spiegaRegistrazione(modo, conInvito) {
   if (modo === "aperta") return "accesso.registrazione_aperta";
   if (modo === "email") return conInvito ? "accesso.invito_inserito_email" : "accesso.serve_invito_email";

@@ -43,8 +43,10 @@ struct RispostaAccount: Decodable {
     var accessi: AccessiAccount?
     /// L'invio delle email sul server (`email_attiva` di `/api/account/me`): `false` = spento. Facoltativo (server vecchio).
     var emailAttiva: Bool?
+    /// Il segreto del «dispositivo fidato» (accesso e registrazione con `nativo`, docs/API.md 1.4b): facoltativo.
+    var dispositivo: String?
 
-    private enum CodingKeys: String, CodingKey { case multiutente, utente, token, codiceRecupero, email, emailInAttesa, emailOrigine, verificaEmail, iscrizione, social, accessi, emailAttiva }
+    private enum CodingKeys: String, CodingKey { case multiutente, utente, token, codiceRecupero, email, emailInAttesa, emailOrigine, verificaEmail, iscrizione, social, accessi, emailAttiva, dispositivo }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -60,6 +62,7 @@ struct RispostaAccount: Decodable {
         social = ((try? c.decodeIfPresent([String].self, forKey: .social)) ?? nil)
         accessi = (try? c.decodeIfPresent(AccessiAccount.self, forKey: .accessi)) ?? nil
         emailAttiva = (try? c.decodeIfPresent(Bool.self, forKey: .emailAttiva)) ?? nil
+        dispositivo = (try? c.decodeIfPresent(String.self, forKey: .dispositivo)) ?? nil
     }
 }
 
@@ -517,6 +520,14 @@ final class SessioneAccount: ObservableObject {
             Task { await ricontrollaSessione(impronta: impronta) }
             return
         }
+        chiudiPerSessioneFinita()
+    }
+
+    /// Il server ha chiuso la sessione (account bloccato o eliminato da Gestione, password cambiata altrove, sessione scaduta): via
+    /// dal telefono e, se si era dentro davvero, la schermata di accesso lo dice una volta, come la web (`sessioneScaduta`,
+    /// `accesso.sessione_finita`). Chi non era dentro (prima apertura, server appena cambiato) non ha perso niente: nessuna frase.
+    private func chiudiPerSessioneFinita() {
+        if case .connesso = stato { avvisoAccesso = Catalogo.Accesso.sessioneFinita }
         chiudiLocale()
     }
 
@@ -538,7 +549,7 @@ final class SessioneAccount: ObservableObject {
         }
         // Nel frattempo può essere cambiato tutto (uscita, nuovo accesso): si chiude solo se il token è ancora quello del 401.
         guard confermata, stato != .daAccedere, archivio.leggi(server: server.indirizzo)?.hashValue == impronta else { return }
-        chiudiLocale()
+        chiudiPerSessioneFinita()
     }
 
     /// Chiude l'accesso SOLO sul telefono: butta il token, svuota i dati locali, mostra la schermata di accesso.
@@ -584,6 +595,16 @@ final class SessioneAccount: ObservableObject {
     /// Un server ostile potrebbe mandare qualsiasi cosa: token, nome e codice si controllano prima di usarli.
     private func conferma(_ r: RispostaAccount) throws {
         try conferma(token: r.token, utente: r.utente, codiceRecupero: r.codiceRecupero)
+        ricordaDispositivo(r.dispositivo)
+    }
+
+    /// Il segreto del «dispositivo fidato» dato dal server dopo un accesso riuscito (docs/API.md, 1.4b): si tiene nel Keychain per
+    /// questo server, al posto di quello di prima, e `ServerHTTP` lo rimanda nelle richieste di accesso e di recupero. Un segreto
+    /// strano non si salva; senza il campo (server vecchio, accesso con Google) resta quello di prima. «Esci» non lo toglie, come il
+    /// cookie della web: serve a rientrare anche mentre qualcuno prova password sul tuo nome da molti indirizzi.
+    private func ricordaDispositivo(_ segreto: String?) {
+        guard let segreto, Accesso.dispositivoValido(segreto) else { return }
+        dispositivi.salva(segreto, server: server.indirizzo)
     }
 
     private func conferma(token: String?, utente: Utente?, codiceRecupero: String?) throws {
@@ -754,8 +775,9 @@ final class SessioneAccount: ObservableObject {
         chiudiLocale()
     }
 
-    /// La frase da mostrare una volta sulla schermata di accesso: dopo «Esci da tutti i dispositivi» riuscito, come la web
-    /// (`account.esci_tutti_fatto`, #788). Non è un errore e non c'è dopo un «Esci» normale. Solo in memoria.
+    /// La frase da mostrare una volta sulla schermata di accesso, come la web: dopo «Esci da tutti i dispositivi» riuscito
+    /// (`account.esci_tutti_fatto`, #788), dopo l'eliminazione dell'account (`account.eliminato_fatto`) e quando il server chiude la
+    /// sessione (`accesso.sessione_finita`). Non è un errore e non c'è dopo un «Esci» normale. Solo in memoria.
     private var avvisoAccesso: String?
 
     /// La frase per la schermata di accesso, una volta sola: chi la prende la toglie (`SchermataAccesso` quando compare).

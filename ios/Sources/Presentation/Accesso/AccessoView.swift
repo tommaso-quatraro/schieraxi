@@ -285,8 +285,9 @@ struct SchermataAccesso: View {
             .disabled(!modulo.pronto(modo, postaAccesa: postaAccesa) || inInvio || sessione.inCorso || resto > 0)
             .sensoryFeedback(trigger: errore) { _, nuovo in nuovo != nil ? .error : nil }
             .onChange(of: resto) { _, nuovo in
-                // a zero il conto alla rovescia si ferma e il messaggio di attesa sparisce
-                if nuovo == 0, modulo.attesaFinoA != nil { modulo.attesa = nil; errore = nil }
+                // a zero (tempo finito, o un altro passo: l'attesa vale solo nel suo, come la web) il conto si ferma e il
+                // messaggio di attesa sparisce; tornando a quel passo non riprende
+                if nuovo == 0, modulo.attesa != nil { modulo.attesa = nil; errore = nil }
             }
         }
     }

@@ -81,7 +81,9 @@ enum ErroreApi: LocalizedError {
         case .server(let messaggio): return messaggio   // già in italiano e pensato per chi usa l'app
         case .accessoRichiesto(let messaggio): return messaggio
         case .troppiTentativi(let messaggio, let attesa):
-            guard let attesa, attesa > 0 else { return messaggio }
+            // Il messaggio del server che dice già quando riprovare («… Si azzera tra circa 7 ore.») resta com'è, come `attesaDa`
+            // della web: niente secondo tempo.
+            guard let attesa, attesa > 0, !Self.diceGiaLAttesa(messaggio) else { return messaggio }
             // Il messaggio del server può già dire «Riprova domani»: si toglie, resta il tempo vero, una volta sola.
             return "\(Self.senzaInvitoARiprovare(messaggio)) Riprova tra \(Self.tempoLeggibile(attesa))."
         case .conflitto: return Catalogo.Err.conflitto   // la frase della web (`err.conflitto`), #771
@@ -138,6 +140,12 @@ enum ErroreApi: LocalizedError {
         pulito = pulito.trimmingCharacters(in: .whitespacesAndNewlines)
         if let ultimo = pulito.last, !".!?".contains(ultimo) { pulito += "." }
         return pulito
+    }
+
+    /// La frase del server dice già fra quanto riprovare: c'è la parola «tra» da sola (non dentro «entra»), come il controllo
+    /// `/\btra\b/i` di `attesaDa` nella web.
+    static func diceGiaLAttesa(_ messaggio: String) -> Bool {
+        messaggio.range(of: #"\btra\b"#, options: [.regularExpression, .caseInsensitive]) != nil
     }
 
     /// Un limite raggiunto (429): riprovare subito non serve a niente.
@@ -276,6 +284,12 @@ struct ServerHTTP: ServerClient {
         // Account: l'app nativa manda il token come «Bearer» (niente cookie). Il token non si scrive mai nei log.
         if let token, !token.isEmpty {
             r.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+        // Il «dispositivo fidato» (docs/API.md, 1.4b): il segreto che questo server ha dato dopo un accesso torna solo nelle
+        // richieste di accesso, registrazione e recupero, come il cookie della web (che vale solo per /api/account/). Con questo
+        // il titolare entra anche mentre qualcuno prova password sul suo nome da molti indirizzi. Mai nei log.
+        if Self.eDiAccesso(percorso), let segreto = archivioDispositivo.leggi(server: base), Accesso.dispositivoValido(segreto) {
+            r.setValue(segreto, forHTTPHeaderField: "X-Fanta-Dispositivo")
         }
         return r
     }
