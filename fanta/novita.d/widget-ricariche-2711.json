@@ -1,14 +1,14 @@
 {
   "titolo": "Widget dell'iPhone: aggiornamenti che servono durante le partite e frasi intere",
   "voci": [
-    "Durante le partite i widget chiedono di aggiornarsi ogni quarto d'ora invece che ogni 2 minuti: la diretta non la mostrano più, e così l'iPhone non finisce gli aggiornamenti che concede ai widget. Restano attenti fino a 3 ore dopo il calcio d'inizio delle partite dei tuoi giocatori, quando arrivano i voti e i punti fatti.",
-    "Nel widget piccolo «Prossima giornata» la riga «probabili non uscite» non finisce più con i puntini con il testo grande o sull'iPhone SE: dove non entra resta senza il simbolo, poi il solo simbolo dell'orologio, e VoiceOver legge la frase intera.",
+    "Durante le partite i widget si aggiornano ogni quarto d'ora, non più ogni 2 minuti, fino a 3 ore dopo il calcio d'inizio dei tuoi giocatori: così l'iPhone non finisce gli aggiornamenti prima che arrivino i punti fatti.",
+    "Nel widget piccolo «Prossima giornata» «probabili non uscite» non finisce più con i puntini con il testo grande o sull'iPhone SE: perde il simbolo o resta il solo simbolo, e VoiceOver legge la frase intera.",
     "Sulla schermata di blocco, nel rettangolo di «Prossima giornata», la riga «3-4-3 · 72,7 punti attesi» con il testo grande perde parole intere («72,7 attesi», poi «72,7») invece di andare a capo e uscire dal riquadro."
   ],
   "titolo_en": "iPhone widgets: useful refreshes during matches and whole sentences",
   "voci_en": [
-    "During matches the widgets ask to refresh every quarter of an hour instead of every 2 minutes: they no longer show live scores, so the iPhone does not run out of the refreshes it allows widgets. They stay alert until 3 hours after the kick-off of your players' matches, when ratings and points scored arrive.",
-    "In the small «Next matchday» widget the line «probable line-ups not out» no longer ends with dots with large text or on the iPhone SE: where it does not fit it drops the symbol, then shows only the clock symbol, and VoiceOver reads the whole sentence.",
+    "During matches the widgets refresh every quarter of an hour, no longer every 2 minutes, until 3 hours after your players' kick-off: so the iPhone does not run out of refreshes before the points scored arrive.",
+    "In the small «Next matchday» widget «probable line-ups not out» no longer ends with dots with large text or on the iPhone SE: it drops the symbol or shows only the symbol, and VoiceOver reads the whole sentence.",
     "On the Lock Screen, in the «Next matchday» rectangle, the line «3-4-3 · 72.7 expected points» with large text drops whole words («72.7 expected», then «72.7») instead of wrapping and spilling out of the box."
   ],
   "tecnico": [

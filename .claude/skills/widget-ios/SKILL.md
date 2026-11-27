@@ -27,7 +27,8 @@ Riferimenti nel repo `schieraxi`: `ios/docs/WIDGET.md` (quali widget, misure, da
 - Ogni copia del widget porta l'impronta del collegamento (`MemoriaWidget.impronta`: SHA-256 di indirizzo e token del widget) e si mostra solo con lo stesso collegamento, anche senza App Group; le copie senza impronta (di prima della #486) non si mostrano. Il precaricamento dell'app usa l'impronta del token del WIDGET.
 - Uscita dall'account: prima il server revoca il token del widget, poi l'app toglie token e riassunto dal file condiviso (se non riesce a riscriverlo lo cancella), svuota il Keychain condiviso e le copie, e ricarica i widget. Limite noto: con il collegamento manuale, uscendo senza rete il token non viene revocato e il widget mostra quell'account finché il token non scade o non si toglie il codice.
 - Il server con quel token non calcola mai (solo cache): parti mancanti arrivano in `mancano`, mostrale come «in arrivo», non come errore.
-- Timeline: aggiornamenti ragionevoli (iOS limita il numero), conto alla rovescia con le date di sistema invece di ricaricare spesso.
+- Timeline: aggiornamenti ragionevoli (iOS limita il numero), conto alla rovescia con le date di sistema invece di ricaricare spesso. La regola sta in `RicaricaWidget` (provata): 10-30 minuti, 15 con una partita di un giocatore della rosa (da 10 minuti prima a 3 ore dopo il calcio d'inizio, così arrivano i voti). Non più ogni 2 minuti (fino al 27/11/2026): nessun widget mostra la diretta.
+- Niente in `/api/widget` che cambi solo con l'orologio (minuto della partita, ora di una raccolta): entra nell'ETag e ogni ricarica scarica tutto invece di un 304. Per questo dal 27/11/2026 la risposta non ha più `live` (la diretta resta in `/api/live`).
 - Tocchi: `widgetURL`/`Link` verso schermate precise con lo schema URL esistente (non cambiarlo).
 - Niente capitano né classifica di lega.
 
