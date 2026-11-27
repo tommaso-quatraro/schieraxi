@@ -476,6 +476,8 @@ CATALOGO: dict[str, str] = {
     "aggiornamento.non_riusciti.one": "Non riuscito: {passi}.",
     "aggiornamento.non_riusciti.other": "Non riusciti: {passi}.",
     "aggiornamento.con_stagione": "{passo} {stagione}",
+    # un passo che c'è solo per le stagioni passate (aggiornamento con lo storico, lanciato a mano): «quotazioni 2025-26»
+    "aggiornamento.quotazioni": "Quotazioni",
     # i controlli sui dati (`controlli.etichetta`): la chiave è il nome del controllo
     "controllo.partite_per_giornata": "10 partite per giornata",
     "controllo.voti_per_giornata": "Voti nelle giornate finite",

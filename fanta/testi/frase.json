@@ -1487,6 +1487,11 @@
     "en": "{passo} {stagione}",
     "nota": "un passo di una stagione passata: «Voti e bonus 2025-26»"
   },
+  "frase.aggiornamento.quotazioni": {
+    "it": "Quotazioni",
+    "en": "Prices",
+    "nota": "un passo solo delle stagioni passate (aggiornamento con lo storico): «Quotazioni 2025-26» con frase.aggiornamento.con_stagione"
+  },
   "frase.controllo.partite_per_giornata": {
     "it": "10 partite per giornata",
     "en": "10 matches per matchday"

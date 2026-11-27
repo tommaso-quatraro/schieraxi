@@ -282,6 +282,18 @@ def test_la_riga_generale_dice_solo_quali_passi_non_sono_riusciti(db):
     assert voce["errori"] == ["Non riuscito: Listone e quotazioni."]
 
 
+def test_i_passi_delle_stagioni_passate_hanno_un_nome_da_tradurre(db):
+    """Revisione della #975: «quotazioni 2025-26» (aggiornamento con le stagioni passate, lanciato a mano) restava in italiano anche
+    in inglese, perché non aveva un nome nel catalogo."""
+    righe = ["quotazioni 2025-26: ValueError: pagina strana", "dati extra 2025-26: ValueError: pagina strana"]
+    archivio.segna(db, "aggiornamento", "2026-11-27T11:31:00", json.dumps(righe))
+    voce = next(a for a in stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 27, 12, 0))["aggiornamenti"]
+                if a["cosa"] == "aggiornamento")
+    assert voce["errori"] == ["Non riusciti: Quotazioni 2025-26, Statistiche di squadra 2025-26."]
+    parti = voce["errori_frasi"][0]["param"]["passi"]["param"]["parti"]
+    assert [x["param"]["passo"]["chiave"] for x in parti] == ["aggiornamento.quotazioni", "aggiornamento.dati_extra"]
+
+
 def test_le_righe_d_errore_con_l_apostrofo_davanti_all_08_e_all_11(db, monkeypatch):
     """«dall'08/11», «dell'11/11», «l'08/11» (si legge «dall'otto», «dell'undici»), mai «dal 08/11» o «del 11/11» (#859): nella
     riga generale dell'aggiornamento (registro). «il 01/11» e «del 02/11» restano. Stato dei dati scrive il giorno come l'app

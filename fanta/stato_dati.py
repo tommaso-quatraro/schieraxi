@@ -237,14 +237,17 @@ def _errori_passo(passo: dict, adesso: datetime) -> list[frasi.Frase]:
 
 
 _STAGIONE = re.compile(r"\d{4}-\d{2}")
+# i passi che ci sono solo per le stagioni passate (`Aggiornamento.esegui` con lo storico): non hanno una riga in `aggiornamenti`
+NOMI_PASSI_STORICI = {"quotazioni": frasi.F("aggiornamento.quotazioni")}
 
 
 def _nome_passo(nome: str):
     """Il nome leggibile di un passo come lo scrive `aggiorna` negli errori della corsa («listone», «Understat», «dati extra»,
-    «voti 2025-26» per una stagione passata)."""
+    «voti 2025-26» o «quotazioni 2025-26» per una stagione passata)."""
     base, _, stagione = nome.rpartition(" ")
     if base and _STAGIONE.fullmatch(stagione):
-        passo = etichetta_aggiornamento(archivio.cosa_passo(base))
+        cosa = archivio.cosa_passo(base)
+        passo = NOMI_PASSI_STORICI.get(cosa) or etichetta_aggiornamento(cosa)
         return frasi.F("aggiornamento.con_stagione", passo=passo, stagione=stagione) if isinstance(passo, frasi.Frase) else nome
     return etichetta_aggiornamento(archivio.cosa_passo(nome))
 
