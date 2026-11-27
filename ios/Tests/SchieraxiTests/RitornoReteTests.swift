@@ -7,31 +7,36 @@ import Testing
 /// rete vera: `RitornoRete` la usa con le notizie di iOS sulla rete e manda «Aggiorna» a tutte le schermate.
 @Suite("Senza rete: tornata la rete si riprova da soli, una volta")
 struct RitornoReteTests {
+    /// Le notizie sulla rete una dopo l'altra (true = in linea) e, per ognuna, se si riprova. Fuori da `#expect`, che non può
+    /// chiamare funzioni che cambiano il valore.
+    private static func notizie(_ inLinea: [Bool], aspettaDopo: Int? = nil, attesa: inout AttesaRete) -> [Bool] {
+        var riprove: [Bool] = []
+        for (indice, notizia) in inLinea.enumerated() {
+            if indice == aspettaDopo { attesa.aspetta() }
+            riprove.append(attesa.cambio(inLinea: notizia))
+        }
+        return riprove
+    }
+
     @Test("Una copia aspetta la rete: la rete torna e si riprova, una volta sola")
     func unaVolta() {
         var attesa = AttesaRete()
-        #expect(!attesa.cambio(inLinea: true), "la prima notizia sulla rete non è un ritorno")
-        attesa.aspetta()
-        #expect(!attesa.cambio(inLinea: false))
-        #expect(attesa.cambio(inLinea: true), "tornata la rete: si riprova")
-        #expect(!attesa.cambio(inLinea: false))
-        #expect(!attesa.cambio(inLinea: true), "una volta sola, finché un'altra lettura non resta senza rete")
+        // la prima notizia non è un ritorno; poi la rete cade con una copia che aspetta, torna (si riprova), ricade e ritorna
+        let riprove = Self.notizie([true, false, true, false, true], aspettaDopo: 1, attesa: &attesa)
+        #expect(riprove == [false, false, true, false, false], "una volta sola, finché un'altra lettura non resta senza rete")
     }
 
     @Test("Senza copie che aspettano, la rete che va e viene non fa ricaricare niente")
     func senzaAttesa() {
         var attesa = AttesaRete()
-        #expect(!attesa.cambio(inLinea: false))
-        #expect(!attesa.cambio(inLinea: true))
+        let riprove = Self.notizie([false, true, false, true], attesa: &attesa)
+        #expect(riprove == [false, false, false, false])
     }
 
     @Test("La copia resta senza rete con la rete accesa (server spento): si riprova al prossimo ritorno della rete, non subito")
     func conLaReteAccesa() {
         var attesa = AttesaRete()
-        #expect(!attesa.cambio(inLinea: true))
-        attesa.aspetta()
-        #expect(!attesa.cambio(inLinea: true), "la rete non è tornata: c'era già")
-        #expect(!attesa.cambio(inLinea: false))
-        #expect(attesa.cambio(inLinea: true))
+        let riprove = Self.notizie([true, true, false, true], aspettaDopo: 1, attesa: &attesa)
+        #expect(riprove == [false, false, false, true])
     }
 }
