@@ -68,8 +68,8 @@ registrazione con il codice già scritto e vale 7 giorni. Sotto c'è anche il co
 serve a ricordare per chi era; con la casella **Il nuovo account sarà amministratore** chi entra gestisce l'app anche lui. Con la
 casella accesa **Quante persone** torna a 1 e non si cambia (sotto c'è scritto «Un invito da amministratore vale per una persona
 sola.»), e **Crea l'invito** chiede prima conferma; dopo ogni invito la casella si spegne da sola: l'invito dopo è di nuovo per un
-utente normale, e **Quante persone** si cambia di nuovo. Mentre l'invito si crea il pulsante resta spento (un doppio tocco non crea due
-inviti).
+utente normale, e **Quante persone** si cambia di nuovo. Mentre l'invito si crea il pulsante resta spento (un doppio tocco non
+crea due inviti).
 
 Per far entrare tutta una chat di amici con un solo link crea un **invito di gruppo**: in **Quante persone** scrivi quanti
 sono (con **+** e **−**, da 1 a 30), poi **Crea l'invito**. L'esito dice per quante persone vale (per esempio «Invito per «Lega»,
