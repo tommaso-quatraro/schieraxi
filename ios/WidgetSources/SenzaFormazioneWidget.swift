@@ -173,11 +173,12 @@ struct SenzaFormazioneWidget: View {
         ParoleWidget.allaScadenza(scadenza, adesso: voce.date)
     }
 
-    /// Sotto l'invito: l'ora della copia salvata, con il giorno se non è di oggi (`RigaCopia`, #834).
+    /// Sotto l'invito: l'ora della copia salvata o dei dati vecchi (`Voce.oraDeiDati`), con il giorno se non è di oggi
+    /// (`RigaCopia`, #834).
     @ViewBuilder
     private var statoDati: some View {
-        if voce.datiSalvati {
-            RigaCopia(scaricatoIl: riassunto.scaricatoIl, adesso: voce.date)
+        if let ora = voce.oraDeiDati {
+            RigaCopia(scaricatoIl: ora, adesso: voce.date, salvata: voce.datiSalvati)
                 .font(.caption2).foregroundStyle(.white.opacity(0.75))
         }
     }

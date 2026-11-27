@@ -18,6 +18,10 @@ struct FormazioneView: View {
     @Environment(\.verticalSizeClass) private var classeVerticale
     @Environment(\.dynamicTypeSize) private var taglia
     @Environment(\.scenePhase) private var fase
+    /// Da quando l'app non è più attiva, e da quando è in secondo piano: tornando dicono se è passata la scadenza mentre era fuori
+    /// (`DatiVecchi.rileggiPerLaScadenza`).
+    @State private var fuoriDal: Date?
+    @State private var inBackgroundDal: Date?
 
     /// Mentre la formazione arriva, come la web (`formazione.calcolo`).
     static let testoCaricamento = Catalogo.Formazione.calcolo
@@ -93,11 +97,24 @@ struct FormazioneView: View {
             // allo scadere della formazione si rilegge UNA volta (5 secondi dopo, per dare tempo al server): diventa di sola lettura
             .task(id: "\(fase == .active)-\(oggi.oggi?.chiusura ?? "")") {
                 guard fase == .active, let inizio = Quando.data(oggi.oggi?.chiusura) else { return }
-                let attesa = inizio.timeIntervalSinceNow + 5
+                let attesa = inizio.timeIntervalSinceNow + DatiVecchi.attesaDopoLaScadenza
                 guard attesa > 0, attesa < 2 * 24 * 3600 else { return }
                 try? await Task.sleep(for: .seconds(attesa))
                 guard !Task.isCancelled else { return }
                 await ricarica()
+            }
+            // quel lavoro si ferma quando l'app non è attiva: se l'app era fuori quando toccava rileggere, tornando si rilegge subito
+            // (dopo 10 minuti fuori ricarica già tutto la porta, `PortaDiAccesso`). Prima la Formazione sembrava ancora modificabile
+            // e il primo cambio riceveva «La formazione è chiusa»
+            .onChange(of: fase) { vecchia, nuova in
+                if vecchia == .active { fuoriDal = Date() }
+                if nuova == .background { inBackgroundDal = Date() }
+                guard nuova == .active else { return }
+                let rileggi = DatiVecchi.rileggiPerLaScadenza(Quando.data(oggi.oggi?.chiusura), fuoriDal: fuoriDal,
+                                                              inBackgroundDal: inBackgroundDal, adesso: Date())
+                fuoriDal = nil
+                inBackgroundDal = nil
+                if rileggi { Task { await ricarica() } }
             }
             .task(id: vm.messaggio) {
                 guard vm.messaggio != nil else { return }
@@ -147,7 +164,7 @@ struct FormazioneView: View {
         while !Task.isCancelled {
             try? await Task.sleep(for: .seconds(OggiViewModel.ripassoGiornata))
             guard !Task.isCancelled else { return }
-            await oggi.caricatore.ricarica()
+            await oggi.rileggi()
             await vm.carica()
             guard oggi.oggi?.faseGiornata == .inCorso else { return }
         }
