@@ -579,7 +579,8 @@ def _fatti_da_poco(file_cambi: Path, chiave: str, adesso: datetime) -> set[str]:
 def testi_promemoria(db: sqlite3.Connection, regole: Regole, rose: Rose, stagione: str, giornata: int, scadenza: datetime | None,
                      file_scelte: Path | None, adesso: datetime | None = None, lingua: str = LINGUA_PREDEFINITA,
                      guasti: list[str] | None = None) -> list[dict]:
-    """I due promemoria della giornata come li scriverebbe adesso il giro del server, nella `lingua` degli avvisi:
+    """I due promemoria della giornata come li scriverebbe adesso il giro del server, nella `lingua` chiesta (GET /api/oggi passa
+    quella della richiesta, non quella degli avvisi: l'iPhone chiede l'italiano, come il suo promemoria di riserva):
     [{"minuti": 60, "titolo", "testo"}, {"minuti": 15, "titolo", "testo"}]. `scadenza`: quando si chiude la formazione, quella
     che mostra Oggi (la stessa regola del giro: prima partita meno i minuti della lega); None se non si sa. La lista vuota se il
     promemoria non serve (la regola di `serve_promemoria`) o la scadenza non si sa. Come `serve_promemoria` non guarda l'ora né le

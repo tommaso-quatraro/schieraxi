@@ -315,6 +315,7 @@ def _promemoria(tmp_path, ferma="", ambiente_env=None):
     bin_ = tmp_path / "bin"
     bin_.mkdir()
     _stub(bin_, "flock", "exit 0")
+    _stub(bin_, "nice", f'echo "nice $*" >> "{_msys(chiamate)}"\nshift 2\nexec "$@"')
     _timeout_finto(bin_, chiamate, ferma)
     env = {**os.environ, "PATH": f"{bin_}{os.pathsep}{os.environ['PATH']}", "HOME": _msys(tmp_path / "casa")}
     r = _lancia([BASH, (app / "script" / "server" / "promemoria.sh").as_posix()], env=env)
@@ -350,3 +351,12 @@ def test_script_tempo_del_giro_da_ambiente(tmp_path):
     assert "timeout 600 .venv/bin/python -m fanta cambi" in chiamate
     chiamate, _ = _promemoria(tmp_path / "p", ambiente_env="FANTA_MAX_SECONDI_GIRO_PROMEMORIA=300\n")
     assert "timeout 300 .venv/bin/python -m fanta promemoria" in chiamate
+
+
+@con_bash
+def test_promemoria_del_cron_dietro_al_servizio(tmp_path):
+    """Quando il giro dei promemoria lo fa il cron (servizio fermo o senza account) ricalcola tutto in un processo a parte: gira
+    alla priorità più bassa (19), dietro al servizio (Nice=10) che risponde agli utenti. Il controllo di salute resta a 10."""
+    chiamate, _ = _promemoria(tmp_path / "p")
+    assert "nice -n 19 timeout 480 .venv/bin/python -m fanta promemoria" in chiamate
+    assert "nice -n 10 .venv/bin/python -m fanta salute" in chiamate

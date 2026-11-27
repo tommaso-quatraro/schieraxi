@@ -196,8 +196,11 @@ def _oggi_finto(monkeypatch, corpo: dict) -> None:
     monkeypatch.setattr(server.da_fare, "costruisci", lambda *a, **k: [])
 
 
-def test_oggi_ha_i_testi_dei_promemoria_nella_lingua_degli_avvisi(client, tmp_path, monkeypatch):  # noqa: F811
-    """L'ora nei testi è la scadenza che Oggi mostra (`scadenza`): il campo non rilegge il calendario."""
+def test_oggi_ha_i_testi_dei_promemoria_nella_lingua_della_richiesta(client, tmp_path, monkeypatch):  # noqa: F811
+    """L'ora nei testi è la scadenza che Oggi mostra (`scadenza`): il campo non rilegge il calendario. La lingua è quella della
+    richiesta, come il resto della risposta: l'iPhone chiede sempre l'italiano (`Accept-Language: it`) e il suo promemoria di
+    riserva è in italiano, quindi anche con gli avvisi in inglese (scelti sulla web) i testi arrivano in italiano. Prima
+    arrivavano nella lingua degli avvisi: con l'inglese, un promemoria in inglese e quello di riserva in italiano."""
     _mondo(tmp_path, monkeypatch)
     _oggi_finto(monkeypatch, {"giornata": 9, "scadenza": "2026-10-28 18:30"})
     corpo = client.get("/api/oggi").json()
@@ -206,7 +209,17 @@ def test_oggi_ha_i_testi_dei_promemoria_nella_lingua_degli_avvisi(client, tmp_pa
                                             "testo": f"{GIORNATA}: la formazione si chiude alle 18:30. L'hai inserita su Leghe?"}
     assert corpo["testi_promemoria"][0]["minuti"] == 60
     assert client.put("/api/avvisi", json={"lingua": "en"}).status_code == 200
-    assert client.get("/api/oggi").json()["testi_promemoria"][1]["titolo"] == "SchieraXI · last minutes for the lineup"
+    italiano = {"Accept-Language": "it"}
+    assert client.get("/api/oggi", headers=italiano).json()["testi_promemoria"][1]["titolo"] == \
+        "SchieraXI · ultimi minuti per la formazione"
+    assert client.get("/api/oggi").json()["testi_promemoria"][1]["titolo"] == "SchieraXI · ultimi minuti per la formazione"
+    inglese = client.get("/api/oggi", headers={"Accept-Language": "en"}).json()
+    assert inglese["testi_promemoria"][1]["titolo"] == "SchieraXI · last minutes for the lineup"
+    assert client.get("/api/oggi?lingua=en", headers=italiano).json()["testi_promemoria"][1]["titolo"] == \
+        "SchieraXI · last minutes for the lineup"
+    assert client.put("/api/avvisi", json={"lingua": "it"}).status_code == 200
+    assert client.get("/api/oggi", headers={"Accept-Language": "en"}).json()["testi_promemoria"][1]["titolo"] == \
+        "SchieraXI · last minutes for the lineup"
     scelte.salva(ST, 9, SCHIERATI, "4-4-2", scelte.FILE_SCELTE, da="app", messa=True)
     corpo = client.get("/api/oggi").json()
     assert corpo["serve_promemoria"] is False and corpo["testi_promemoria"] == []

@@ -1,5 +1,48 @@
 [
   {
+    "versione": "1.609",
+    "data": "2026-11-27T16:15:06",
+    "titolo": "Server più libero nell'ora prima della scadenza",
+    "voci": [
+      "I promemoria della scadenza arrivano alle stesse ore di prima, un'ora prima e di nuovo un quarto d'ora prima della chiusura, ma il server non rifà più due volte gli stessi calcoli: in quell'ora resta più libero per chi apre l'app.",
+      "Gestione › Stato dei dati: nell'ora prima della scadenza il controllo automatico fa un giro leggero e la sua riga lo dice."
+    ],
+    "tecnico": [
+      "avvisi_utenti.sorveglia_promemoria: thread del servizio (server._ciclo) che con gli account e il pianificatore acceso fa esegui(\"promemoria\") subito e poi ogni 10 minuti ai minuti tondi, come il cron */10, con la cache dei calcoli del servizio; dopo ogni giro riuscito e finito scrive {\"giro\": inizio del giro} in promemoria-servizio.json nella cartella degli account; un giro in errore non scrive il segno e si riprova al minuto dopo. Avvisi mandati nel registro del servizio (uvicorn.error, «Promemoria: utente N, K avvisi»).",
+      "Chiusura del servizio: esegui(..., fermo=) si ferma fra un utente e l'altro, e server._ciclo aspetta il thread dei promemoria al massimo ATTESA_CHIUSURA_PROMEMORIA (60 secondi) dopo fermo.set(): un riavvio a metà giro non lascia un promemoria mandato senza lo stato «mandato» (che si scrive dopo l'invio, come prima).",
+      "fanta promemoria (cron, con gli account): avvisi_utenti.promemoria_dal_cron; con un segno di meno di 15 minuti esce senza fare il giro; segno vecchio: giro e riga «promemoria: il servizio non fa il giro da N minuti, lo fa il cron»; nessun segno (FANTA_PIANIFICATORE=0, che lo toglie all'avvio, o nessun giro riuscito): giro come prima. promemoria.sh lancia il comando con nice -n 19 (era 10). Crontab invariato.",
+      "sentinella.giro: nel giro del cron, se libero.scadenza_vicina (al massimo 60 minuti alla scadenza di una lega attiva) il giro è leggero: esegui(..., solo=utenti_con_rotture(stato)) più, a turno, i sentinella.A_ROTAZIONE (3) fuori da un giro leggero da più tempo (campo leggeri dello stato, scritto da aggiorna_stato); gli altri contano come rimandati; esito[\"leggero\"] nel riassunto della riga «sentinella» di controlli e nel log. A mano (--senza-invio) sempre completo."
+    ],
+    "titolo_en": "A less busy server in the hour before the deadline",
+    "voci_en": [
+      "Deadline reminders arrive at the same times as before, an hour before and again fifteen minutes before the lineup closes, but the server no longer does the same calculations twice: in that hour it stays freer for whoever opens the app.",
+      "Management › Data status: in the hour before the deadline the automatic check does a “light round” and its row says so."
+    ]
+  },
+  {
+    "versione": "1.608",
+    "data": "2026-11-27T15:46:58",
+    "titolo": "iPhone: il promemoria si vede anche con l'app aperta e il tocco apre la Formazione",
+    "voci": [
+      "Sull'iPhone il promemoria prima della scadenza si vede e suona anche con l'app aperta, come sulla web; toccandolo si apre la Formazione invece della schermata dove avevi lasciato l'app.",
+      "I promemoria dell'app per iPhone sono sempre in italiano, come il resto dell'app, anche se sulla web hai scelto l'inglese.",
+      "L'avviso «C'è una versione nuova» dice la versione come la trovi in Impostazioni › Informazioni, senza sigle.",
+      "Impostazioni › Avvisi: tornando nell'app, l'interruttore «Avvisi su questo dispositivo» dice subito se hai tolto o ridato il permesso nelle impostazioni dell'iPhone. Se una modifica non si salva, compare solo il motivo, come sulla web."
+    ],
+    "tecnico": [
+      "GET /api/oggi: `testi_promemoria` nella lingua della richiesta (`?lingua=` o `Accept-Language`, `lingua.della_richiesta`) e non più nella `lingua` di /api/avvisi; l'iPhone manda sempre `Accept-Language: it` e il suo promemoria di riserva (`oggi.prossima_chiude`) è in italiano. Nessun campo tolto o rinominato; docs/API.md aggiornato.",
+      "iPhone: `DelegatoAvvisi` (UNUserNotificationCenterDelegate) messo in `SchieraxiApp.init`: con l'app aperta banner, elenco e suono; il tocco su `fanta-60`/`fanta-15` porta dove porta `schieraxi://formazione` (`Notifiche.destinazione`, `AvvisiToccati`, `Navigazione.vai`).",
+      "iPhone: catalogo `avv.versione_nuova_titolo` e `avv.versione_nuova_testo` (solo app) con la versione «1.0.N» al posto di «(build-N)»; `AvvisiDispositivoViewModel.rileggiPermesso` al ritorno in primo piano; `erroreSalvataggio` è il solo messaggio dell'errore; la riga del certificato in Gestione viene dal catalogo (`avv.certificato_aiuto`, solo app), cita `avv.certificato_ore` (prima «Rinnovala con SideStore») e dice cosa fa il promemoria con le ore tranquille (`Notifiche.promemoriaCertificato`); in Gestione la riga di chi gestisce dice le versioni «1.0.N». Nuovo `tests/test_versione_app_ios.py`: «1.0.» uguale in ipa.yml, genera_sorgente.py e `NuovaVersione.versione`."
+    ],
+    "titolo_en": "iPhone: the reminder shows even with the app open and tapping it opens the Lineup",
+    "voci_en": [
+      "On the iPhone the reminder before the deadline shows and plays a sound even with the app open, as on the web; tapping it opens the Lineup instead of the screen where you left the app.",
+      "The reminders of the iPhone app are always in Italian, like the rest of the app, even if you chose English on the web.",
+      "The “A new version is out” alert («C'è una versione nuova») says the version as you find it in Settings › About (Impostazioni › Informazioni), without codes.",
+      "Settings › Alerts (Impostazioni › Avvisi): when you come back to the app, the “Alerts on this device” switch («Avvisi su questo dispositivo») shows right away whether you removed or granted the permission in the iPhone settings. If a change is not saved, only the reason appears, as on the web."
+    ]
+  },
+  {
     "versione": "1.607",
     "data": "2026-11-27T15:13:36",
     "titolo": "Aggiorna i dati dice quando non arriva niente, e i messaggi finiscono con il punto",
