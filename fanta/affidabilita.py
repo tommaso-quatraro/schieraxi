@@ -19,7 +19,7 @@ from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
-from . import consigli, fasi, modello, verifica
+from . import consigli, fasi, frasi, modello, verifica
 from .lega import Rose
 from .percorsi import RADICE, scrivi_sicuro
 from .regole import Regole
@@ -48,11 +48,12 @@ def giornate_concluse(db: sqlite3.Connection, stagione: str, regole: Regole | No
 
 
 def sintesi(righe: list[dict]) -> dict:
-    """Medie sulle giornate provate: errore (radice della media dei quadrati) e punti medi delle formazioni."""
+    """Medie sulle giornate provate: errore (radice della media dei quadrati, due cifre) e punti medi delle formazioni (una cifra),
+    arrotondati con la regola di `frasi.arrotonda`, come li scrivono web e iPhone."""
     def media(chiave):
         v = [r[chiave] for r in righe if r.get(chiave) is not None and not (isinstance(r[chiave], float) and math.isnan(r[chiave]))]
         return sum(v) / len(v) if v else None
-    radice = lambda q: round(math.sqrt(q), 2) if q is not None else None      # noqa: E731
+    radice = lambda q: frasi.arrotonda(math.sqrt(q), 2) if q is not None else None      # noqa: E731
     return {"giornate": len(righe),
             "errore_modello": radice(media("quadratico_modello")), "errore_fantamedia": radice(media("quadratico_fantamedia")),
             "errore_ruolo": radice(media("quadratico_ruolo")),
@@ -62,7 +63,7 @@ def sintesi(righe: list[dict]) -> dict:
 
 
 def _arr(x):
-    return None if x is None else round(x, 1)
+    return None if x is None else frasi.arrotonda(x, 1)
 
 
 def giornate_della_prova(db: sqlite3.Connection, regole: Regole | None = None) -> list[tuple[str, int]]:

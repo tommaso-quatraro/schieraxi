@@ -128,6 +128,19 @@ def test_il_fantavoto_della_frase_e_quello_della_tabella():
     assert piu_alto.chiave == "scelta.fantavoto_piu_alto" and "(6,3 contro 6,1)" in piu_alto, piu_alto
 
 
+def test_la_prova_del_modello_arrotonda_con_la_regola():
+    """«Quanto è affidabile il modello» (collaudo del 27/11 sera): errori a due cifre e punti a una, con la regola di `arrotonda`.
+    1,625 e 62,25 sono proprio quei numeri: `round` di Python scriveva 1,62 e 62,2, la regola dice 1,63 e 62,3."""
+    from fanta import affidabilita
+    righe = [{"quadratico_modello": 1.625 ** 2, "quadratico_fantamedia": 1.6 ** 2, "punti_modello": 62.0, "punti_fantamedia": 63.0,
+              "punti_perfetta": 70.0},
+             {"quadratico_modello": 1.625 ** 2, "quadratico_fantamedia": 1.6 ** 2, "punti_modello": 62.5, "punti_fantamedia": 63.0,
+              "punti_perfetta": 70.0}]
+    s = affidabilita.sintesi(righe)
+    assert (s["errore_modello"], s["errore_fantamedia"]) == (1.63, 1.6)
+    assert (s["punti_modello"], s["punti_fantamedia"], s["punti_perfetta"]) == (62.3, 63.0, 70.0)
+
+
 def test_diario_e_perche_della_scelta_contano_sui_numeri_scritti():
     """Le differenze del diario (`_letto`) e i confronti del perché della scelta (`_uno`: mai «72,1 invece di 72,1», #659) partono
     dai numeri come li scrive la frase."""

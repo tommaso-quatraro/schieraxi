@@ -3102,7 +3102,8 @@ async function mostraAffidabilita(numero) {
     if (numero !== ultimaScheda || !document.body.contains(dove)) return;
     const s = a.sintesi, righe = (a.righe || []).filter(r => r.punti_modello != null);
     if (!s || !s.giornate) { dove.innerHTML = `<h2>${t("scambio.quanto_affidabile_modello")}</h2><div class="debole piccolo">${t("avv.prova_sola_dopo")}</div>`; return; }
-    const v = x => (x == null ? "–" : virgola(x));
+    // stesse cifre in tutta la carta, come l'iPhone: errori a due, punti a una (collaudo del 27/11 sera: «1,59» accanto a «1,6»)
+    const errore2 = x => num(x, 2), v = x => num(x, 1);
     let grafico = "";
     if (righe.length >= 2) {
       const W = 300, H = 110, P = 8, tutti = righe.flatMap(r => [r.punti_modello, r.punti_fantamedia, r.punti_perfetta]).filter(x => x != null);
@@ -3115,7 +3116,7 @@ async function mostraAffidabilita(numero) {
     }
     dove.innerHTML = `<h2>${t("scambio.quanto_affidabile_modello")}</h2>
       <div class="debole piccolo">${tp("avv.prova_su", s.giornate)}</div>
-      <div class="stat-fila" style="margin-top:12px"><div><b>${v(s.errore_modello)}</b><span>${t("avv.errore_sui_fantavoti")}</span></div><div><b>${v(s.errore_fantamedia)}</b><span>${t("avv.errore_fantamedia")}</span></div>
+      <div class="stat-fila" style="margin-top:12px"><div><b>${errore2(s.errore_modello)}</b><span>${t("avv.errore_sui_fantavoti")}</span></div><div><b>${errore2(s.errore_fantamedia)}</b><span>${t("avv.errore_fantamedia")}</span></div>
         <div><b class="${s.punti_modello != null && s.punti_fantamedia != null && s.punti_modello >= s.punti_fantamedia ? "positivo" : ""}">${v(s.punti_modello)}</b><span>${t("avv.punti_formazione_modello")}</span></div></div>
       <div class="debole piccolo" style="margin-top:8px">${t("avv.punti_medi", { m: v(s.punti_modello), f: v(s.punti_fantamedia), p: v(s.punti_perfetta) })}
         ${t("avv.mancano_probabili")}</div>${grafico}`;
