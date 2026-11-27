@@ -140,7 +140,7 @@ def test_la_rilettura_al_ritorno_chiede_al_server_senza_ripassare_dalla_copia_sa
     fermi = []
     web.pagina.route(lambda u: urlsplit(u).path == "/api/formazione", lambda r: fermi.append(r))
     web.pagina.evaluate(TORNA_IN_PRIMO_PIANO)
-    _aspetta_che(lambda: len(fermi) == 1)                           # la rilettura è partita e aspetta il server
+    _aspetta_che(web, lambda: len(fermi) == 1)                           # la rilettura è partita e aspetta il server
     assert principale(web).locator("#nota-cache").count() == 0, "la rilettura è ripassata dalla copia salvata"
     assert principale(web).get_by_label("Modulo").is_enabled() and riquadro.is_visible()
     fermi[0].fallback()
@@ -182,7 +182,7 @@ def test_a_rilettura_in_corso_un_altro_ritorno_non_ne_fa_partire_un_altra(web):
     fermi = []
     web.pagina.route(lambda u: urlsplit(u).path == "/api/formazione", lambda r: fermi.append(r))   # il server non risponde ancora
     _torna_in_primo_piano(web)
-    _aspetta_che(lambda: len(fermi) == 1)
+    _aspetta_che(web, lambda: len(fermi) == 1)
     for _ in range(3):
         web.pagina.evaluate(TORNA_IN_PRIMO_PIANO)
     web.pagina.wait_for_timeout(500)

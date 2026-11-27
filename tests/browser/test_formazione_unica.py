@@ -1390,12 +1390,15 @@ CONTA_COPIE = """(() => { window.__copie = [];
   try { navigator.clipboard.writeText = t => { window.__copie.push(t); return Promise.resolve(); }; } catch (e) {} })()"""
 
 
-def _aspetta_che(condizione, ms: int = 10000) -> None:
-    """Aspetta che una condizione del test (non della pagina) diventi vera, per esempio una richiesta trattenuta arrivata."""
+def _aspetta_che(web, condizione, ms: int = 10000) -> None:
+    """Aspetta che una condizione del test (non della pagina) diventi vera, per esempio una richiesta trattenuta da `route` arrivata.
+    Con l'API sincrona di Playwright i gestori delle rotte e degli eventi partono solo durante una chiamata a Playwright: un
+    `time.sleep` non li fa mai partire (il job `browser` della #978 falliva quando la richiesta arrivava dopo la chiamata di prima).
+    Si aspetta quindi con `wait_for_timeout`, che intanto consegna gli eventi: la condizione si vede vera appena il gestore è partito."""
     import time
     fine = time.monotonic() + ms / 1000
     while not condizione() and time.monotonic() < fine:
-        time.sleep(0.05)
+        web.pagina.wait_for_timeout(20)
     assert condizione(), "attesa scaduta"
 
 
@@ -1415,7 +1418,7 @@ def test_la_copia_non_prende_la_formazione_di_prima_mentre_si_salva_quella_scelt
     web.pagina.keyboard.press("ArrowDown")
     web.pagina.keyboard.press("ArrowDown")
     principale(web).get_by_role("button", name="Copia per l'app della lega").click()
-    _aspetta_che(lambda: len(fermi) == 1)
+    _aspetta_che(web, lambda: len(fermi) == 1)
     assert web.pagina.evaluate("window.__copie") == [], "a salvataggio in volo la copia ha preso la formazione di prima"
     assert web.pagina.get_by_role("status").filter(has_text="Sto ancora ricalcolando").first.is_visible()
     fermi[0].fallback()
