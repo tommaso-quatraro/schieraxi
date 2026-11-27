@@ -71,7 +71,9 @@ def differenze(prima: Rose | None, dopo: Rose, lette: set[str] | frozenset = fro
         g = giocatori_prima[a][k]
         if b is None:
             tagliati.setdefault(a, []).append(_breve(g))
-        elif b != a and b in comuni:
+        elif b != a and b in comuni and k not in giocatori_prima.get(b, {}):
+            # chi era già nella squadra di arrivo non si è mosso: un doppione rimasto da un'importazione di una rosa sola
+            # (A ha preso Paz da B, la rosa salvata di B è vecchia) non ripete il passaggio alla volta dopo
             passaggi.setdefault((a, b), []).append(_breve(giocatori_dopo[b][k]))
     for k, b in proprietario_dopo.items():
         if b in comuni and k not in proprietario_prima:

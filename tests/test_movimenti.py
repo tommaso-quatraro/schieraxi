@@ -129,3 +129,17 @@ def test_giocatore_in_due_squadre_vale_quella_appena_letta_dal_file():
     # e quando la squadra del file è l'ultima in elenco resta lei
     dopo = _rose(B=([_g(4, "Paz"), _g(5, "Mangas", "D")], 30), A=([_g(4, "Paz"), _g(2, "Kaiki", "D")], 50))
     assert "Passaggio da B a A: Paz" in movimenti.differenze(prima, dopo, lette={"A"})["testo"]
+
+
+def test_lo_stesso_passaggio_non_si_ripete_alla_importazione_dopo():
+    """Revisione della #967: A prende Paz da B e reimporta solo la sua rosa («Passaggio da B a A: Paz»); la rosa salvata ha
+    Paz in A e anche in B, ancora vecchia. Alla prossima importazione di B, o di tutte le rose, Paz era già in A: non si è
+    mosso, e né l'anteprima né lo storico ripetono il passaggio."""
+    prima = _rose(A=([_g(1, "Rowe"), _g(2, "Kaiki", "D")], 50), B=([_g(4, "Paz"), _g(5, "Mangas", "D")], 30))
+    salvate = _rose(A=([_g(4, "Paz"), _g(2, "Kaiki", "D")], 50), B=([_g(4, "Paz"), _g(5, "Mangas", "D")], 30))
+    assert "Passaggio da B a A: Paz" in movimenti.differenze(prima, salvate, lette={"A"})["testo"]
+    dopo = _rose(A=([_g(4, "Paz"), _g(2, "Kaiki", "D")], 50), B=([_g(5, "Mangas", "D")], 30))
+    for lette in ({"B"}, {"A", "B"}):
+        d = movimenti.differenze(salvate, dopo, lette=lette)
+        assert "Paz" not in d["testo"], (lette, d["testo"])
+        assert not d["scambi"] and not d["tagliati"], (lette, d)
