@@ -677,6 +677,11 @@ html[data-animazioni="ridotte"] .avatar-anello.grande-a .avatar svg {
 .voce-g > .pv-g { grid-area: gioca; align-self: start; text-align: right; font-size: var(--t-sec); color: var(--testo-2); overflow-wrap: break-word; font-variant-numeric: tabular-nums; }
 .pv-g.medio { color: var(--eti-arancio); font-weight: 650; }       /* «gioca N%» c'è solo sotto l'80%: arancio fra 50 e 79, rosso sotto 50 (il colore non è da solo: c'è il numero) */
 .pv-g.basso { color: var(--eti-rosso); font-weight: 650; }
+/* fra i sostituti (Sostituisci, Metti in campo) sotto il numero grande c'è «atteso 5,3»: su una riga sola anche in inglese
+   («expected 5.3» andava su due righe anche a 1024 px, collaudo tablet del 27/11). Sopra questi elenchi non ci sono i nomi delle
+   colonne: la colonna prende la larghezza della scritta. */
+.sostituti .voce-g { --col-gioca: max-content; }
+.sostituti .voce-g > .pv-g { white-space: nowrap; }
 .voce-g > .valore { grid-area: fv; align-self: end; }
 /* i nomi delle colonne: una riga grigia da 12 px, nascosta ai lettori di schermo; «Partita» solo quando la riga è larga. Il 12 px sta
    sui pezzi, non sulla griglia: le colonne dei numeri sono in `ch` e misurano come quelle delle righe solo con lo stesso carattere */

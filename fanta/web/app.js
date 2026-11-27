@@ -2067,7 +2067,7 @@ async function apriSostituzione(id) {
       ${Number.isFinite(d) ? `<span class="valore"><b class="${d > 0 ? "positivo" : ""}">${segno(d, 1)}</b><span class="solo-lettori"> ${t("formazione.punti_rispetto", { nome: esc(base.nome) })}</span></span>` : ""}
       <span class="pv-g">${t("formazione.fv_atteso_breve", { fv: num(x.fv_atteso) })}</span></button></li>`;
   };
-  apriFoglio(`${testa}<div data-sostituzione>${entrate.length ? `<ul class="elenco" style="margin-top:8px">${entrate.map(riga).join("")}</ul>`
+  apriFoglio(`${testa}<div data-sostituzione>${entrate.length ? `<ul class="elenco sostituti" style="margin-top:8px">${entrate.map(riga).join("")}</ul>`
     : `<div class="debole" style="margin-top:12px">${t("formazione.nessun_altro_giocatore")}</div>`}</div>`, { affianco: true });
   document.querySelectorAll("#foglio-contenuto [data-entra]").forEach(b => b.addEventListener("click", () => {
     // con il pannello affiancato la pagina resta attiva: nel frattempo il modulo o «Torna alla consigliata» possono aver cambiato
@@ -2127,7 +2127,7 @@ async function apriMettiInCampo(id) {
       ${Number.isFinite(d) ? `<span class="valore"><b class="${d > 0 ? "positivo" : ""}">${segno(d, 1)}</b><span class="solo-lettori"> ${t("formazione.punti_con", { nome: esc(base.nome) })}</span></span>` : ""}
       <span class="pv-g">${t("formazione.fv_atteso_breve", { fv: num(x.fv_atteso) })}</span></button></li>`;
   };
-  apriFoglio(`${testa}<div data-sostituzione>${uscite.length ? `<ul class="elenco" style="margin-top:8px">${uscite.map(riga).join("")}</ul>`
+  apriFoglio(`${testa}<div data-sostituzione>${uscite.length ? `<ul class="elenco sostituti" style="margin-top:8px">${uscite.map(riga).join("")}</ul>`
     : `<div class="debole" style="margin-top:12px">${t("formazione.nessuno_lascia_posto")}</div>`}</div>`, { affianco: true });
   document.querySelectorAll("#foglio-contenuto [data-esce]").forEach(b => b.addEventListener("click", () => {
     // come «Sostituisci»: il foglio si chiude comunque, il cambio si fa solo se lui è ancora fuori e quel titolare ancora dentro
