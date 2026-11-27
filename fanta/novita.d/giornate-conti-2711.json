@@ -1,0 +1,20 @@
+{
+  "titolo": "Giornate più chiare: tutti i voti in tabella, le giornate in attesa del recupero e la stessa panchina di Oggi",
+  "voci": [
+    "In Giornate la tabella degli 11 mostra anche chi giocava la sua prima partita (per esempio un portiere di riserva o chi è arrivato da poco): il suo voto c'è, l'atteso resta vuoto, e la somma dei voti torna con i punti.",
+    "Una giornata che aspetta ancora un recupero non sparisce più da Giornate: in cima c'è la frase «in attesa del recupero, i punti arrivano dopo».",
+    "Se hai salvato solo gli 11 senza panchina, la panchina scelta da SchieraXI è la stessa in Oggi e in Giornate quando c'è la copia fatta alla scadenza (di solito c'è): il totale e chi è entrato dalla panchina non cambiano quando la giornata entra in Giornate."
+  ],
+  "titolo_en": "Clearer Matchdays: every mark in the table, matchdays waiting for a rescheduled match and the same bench as Today",
+  "voci_en": [
+    "In Matchdays the table of the 11 also shows whoever was playing their first match (for example a reserve goalkeeper or a new arrival): their mark is there, the expected score stays empty, and the marks add up to the points.",
+    "A matchday still waiting for a rescheduled match no longer disappears from Matchdays: at the top it says it is waiting for the rescheduled match and the points will come later.",
+    "If you saved only the 11 without a bench, the bench chosen by SchieraXI is the same in Today and in Matchdays when there is the copy made at the deadline (usually there is): the total and who came off the bench do not change when the matchday enters Matchdays."
+  ],
+  "tecnico": [
+    "fanta/diario.py: chi non ha una previsione ricostruita (`_senza_previsione`) entra in `giocatori` con p_voto e fv_atteso null e il voto che la lega ha contato (`_numeri_senza_previsione`), anche nei punti rifatti e in `numeri_giocatori`/`_stessi_voti` (con `giocatori_rosa`), così una correzione del suo voto rifà la voce; le voci di prima lo prendono quando se ne rifanno i punti. fanta/precisione.py lo esclude in modo esplicito da mostrati e ricostruiti: la misura resta quella di prima (python -m fanta verifica non usa questi file).",
+    "fanta/rinvii.py: `giornate_in_attesa` (stessa lettura del calendario di `giornate_chiuse`, rifatta su `_partite_per_giornata` e `_solo_recuperi`); `diario.elenco` la mette in `in_attesa` per le giornate senza voce, una lettura del calendario per chiamata (il widget no: `attese=False`). GET /api/diario senza la tua squadra lascia `in_attesa` vuoto.",
+    "fanta/widget.py: il campo `diario` di GET /api/widget con `diario.formazione_che_conta` (resa pubblica): schierata, poi automatica, poi consigliata, come Giornate e Oggi (oggi nessun widget dell'iPhone lo disegna). Il test iPhone `diarioComeLApp` ripete la stessa regola.",
+    "Panchina del sistema per 11 salvati senza panchina: `diario.panchina_alla_scadenza` con i numeri della rosa alla scadenza (`numeri_rosa`), usata da `fasi._panchina_della_giornata` e da `calcola_giornata` (voce nuova, «Correggi», punti rifatti); la consigliata rifatta tiene la panchina dei numeri rifatti. I numeri della scadenza restano per 12 giornate (MAX_NUMERI_ROSA = MASSIMO_GIORNATE, prima 4). Senza copia alla scadenza Oggi resta senza panchina e il Diario la sceglie con i numeri rifatti, come prima: Oggi non può rifare le previsioni. docs/API.md aggiornato."
+  ]
+}
