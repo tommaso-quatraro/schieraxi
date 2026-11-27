@@ -164,10 +164,12 @@ def modello_recupero(a: str, codice: str, minuti: int) -> Messaggio:
 
 # Il dispositivo dell'avviso di accesso nuovo: parole fisse (sistema e programma) riconosciute nell'intestazione User-Agent, mai
 # il suo testo, che scrive come vuole chi entra (sarebbe un testo suo dentro un'email del server). Il primo che corrisponde vince.
+# Safari anche da «Version/»: la rotta tiene solo i primi 120 caratteri e Safari su iPhone e iPad scrive «Safari/» più in là;
+# Chrome e Firefox per iPhone non hanno «Version/», Edge per iPhone sì ma si riconosce prima.
 _SISTEMI = ((r"ipad", "iPad"), (r"iphone", "iPhone"), (r"android", "Android"), (r"windows", "Windows"), (r"\bcros\b", "Chromebook"),
             (r"macintosh|mac os x", "Mac"), (r"linux", "Linux"))
 _PROGRAMMI = ((r"^schieraxi", "app SchieraXI"), (r"\bedg(a|ios)?/", "Edge"), (r"\b(opr|opios)/", "Opera"),
-              (r"\b(firefox|fxios)/", "Firefox"), (r"\b(chrome|crios)/", "Chrome"), (r"\bsafari/", "Safari"))
+              (r"\b(firefox|fxios)/", "Firefox"), (r"\b(chrome|crios)/", "Chrome"), (r"\b(safari|version)/", "Safari"))
 
 
 def descrivi_dispositivo(user_agent: str) -> str:

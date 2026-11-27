@@ -12,7 +12,7 @@
     "Management, «Recent errors»: important events (sign-ups, password recoveries, deletions, role changes, blocks, invitations) stay in the list even after many wrong sign-in attempts."
   ],
   "tecnico": [
-    "posta.py: modello_accesso_nuovo usa descrivi_dispositivo(user_agent), che riconosce sistema (_SISTEMI) e programma (_PROGRAMMI) con parole fisse; mai il testo dell'intestazione User-Agent, che sceglie chi entra. Senza niente di riconosciuto: «un dispositivo sconosciuto». L'email di iscrizione era già senza il nome utente scelto (#926): resta coperta da test_attacchi_iscrizione.",
+    "posta.py: modello_accesso_nuovo usa descrivi_dispositivo(user_agent), che riconosce sistema (_SISTEMI) e programma (_PROGRAMMI) con parole fisse; mai il testo dell'intestazione User-Agent, che sceglie chi entra. Senza niente di riconosciuto: «un dispositivo sconosciuto». Safari si riconosce anche da «Version/»: la rotta tiene solo i primi 120 caratteri dell'intestazione e Safari su iPhone e iPad scrive «Safari/» più in là. L'email di iscrizione era già senza il nome utente scelto (#926): resta coperta da test_attacchi_iscrizione.",
     "social.py: _SenzaQuery (filtro di uvicorn.access) toglie la parte dopo «?» da ogni percorso, non più solo da «/», /api/account/social/* e dai link con invito= o social=.",
     "account.py: gli eventi in EVENTI_IMPORTANTI (azioni fatte con un account o da chi gestisce, più la registrazione) hanno una copia in sicurezza-importanti.log (stessa rotazione, potato a 30 giorni con gli altri registri). registro.ultimi_sicurezza: gli ultimi 30 di sicurezza.log più gli ultimi 30 importanti non già presenti, dal più recente; GET /api/admin/registro lo usa per «sicurezza» (fino a 60 voci, stessa forma). sicurezza.log non cambia."
   ]
