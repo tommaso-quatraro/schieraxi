@@ -222,12 +222,12 @@ struct AccountSezione: View {
 /// dell'account (che c'è solo con un account: senza account c'è `SessioneMinimaSezione`). Se la richiesta non riesce (rete giù,
 /// server che non risponde) lo dice qui sotto con la frase della web (`account.esci_no`) e si resta dentro, come «Esci da tutti i
 /// dispositivi» (#809); con la sessione già finita si esce lo stesso (`SessioneAccount.esci`). Se la richiesta non è arrivata al
-/// server (rete giù, server che non risponde) sotto l'errore c'è anche «Esci solo da questo telefono», con la frase che sul server
+/// server (rete giù, server che non risponde) sotto l'errore c'è anche «Esci solo da questo dispositivo», con la frase che sul server
 /// la sessione resta aperta finché scade: un server sparito per sempre non chiude dentro nessuno.
 struct RigaEsci: View {
     /// Dove scorre la foto `accesso-account-fondo` (vedi `ImpostazioniView`); è anche l'identificativo per i test.
     static let idDemo = "account-esci"
-    /// Identificativo per i test di «Esci solo da questo telefono».
+    /// Identificativo per i test di «Esci solo da questo dispositivo».
     static let idSoloQui = "account-esci-solo-qui"
     @EnvironmentObject private var sessione: SessioneAccount
     @State private var chiediEsci = false
@@ -271,7 +271,7 @@ struct RigaEsci: View {
         Button { chiediEsci = true } label: {
             Label(Catalogo.Account.esci, systemImage: "rectangle.portrait.and.arrow.right").labelStyle(.voce(.gray)).frame(minHeight: Tema.areaTocco)
         }
-        .accessibilityHint("Esci dal tuo account su questo telefono")
+        .accessibilityHint(Catalogo.Account.esciAiuto)   // «su questo dispositivo», anche sull'iPad (#955)
         .accessibilityIdentifier(Self.idDemo)
         // sul pulsante, non sulla Section (vedi `FoglioAccount`); la domanda e la frase della web (`account.esci_conferma`, #931)
         .confirmationDialog(Catalogo.Account.esciConferma, isPresented: $chiediEsci, titleVisibility: .visible) {

@@ -717,7 +717,7 @@ final class SessioneAccount: ObservableObject {
         rinnovoWidget = Task { await TokenWidget.assicura(server: s, luoghi: w, sessione: a) }
     }
 
-    /// Dopo un «Esci» non riuscito: si offre «Esci solo da questo telefono» quando la richiesta non è arrivata al server (rete giù,
+    /// Dopo un «Esci» non riuscito: si offre «Esci solo da questo dispositivo» quando la richiesta non è arrivata al server (rete giù,
     /// server che non risponde), così un server sparito per sempre non chiude dentro nessuno. Se il server ha risposto con un
     /// errore (5xx, troppe richieste) no: lì basta riprovare.
     static func esciSoloQuiPossibile(dopo errore: Error) -> Bool {
@@ -728,7 +728,7 @@ final class SessioneAccount: ObservableObject {
         }
     }
 
-    /// «Esci solo da questo telefono», dopo un «Esci» non riuscito con il server irraggiungibile (`esciSoloQuiPossibile`): senza
+    /// «Esci solo da questo dispositivo», dopo un «Esci» non riuscito con il server irraggiungibile (`esciSoloQuiPossibile`): senza
     /// chiedere altro al server, via sessione, dati e widget da questo telefono (`chiudiLocale`). Sul server la sessione resta
     /// aperta finché scade.
     func esciSoloDaQuestoTelefono() {
