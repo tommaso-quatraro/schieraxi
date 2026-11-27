@@ -72,6 +72,14 @@ enum DatiVecchi {
         return !serveAggiornareAlRitorno(uscitaIl: inBackgroundDal, adesso: adesso)
     }
 
+    /// Tornando dal secondo piano la Formazione rilegge se l'ultima lettura ha più di questi secondi (`DATI_VECCHI_MS` della web).
+    static let etaMassimaAlRitorno: TimeInterval = 5 * 60
+
+    /// Tornando nell'app, la Formazione rilegge.
+    static func rileggiAlRitorno(scadenza: Date?, fuoriDal: Date?, inBackgroundDal: Date?, lettaIl: Date?, adesso: Date) -> Bool {
+        rileggiPerLaScadenza(scadenza, fuoriDal: fuoriDal, inBackgroundDal: inBackgroundDal, adesso: adesso)
+    }
+
     private static let calendario: Calendar = {
         var c = Calendar(identifier: .gregorian)
         c.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current

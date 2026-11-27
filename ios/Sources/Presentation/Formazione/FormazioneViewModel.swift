@@ -9,6 +9,9 @@ struct VistaFormazione {
     /// nil finché il server non ha valutato quegli 11 (allora niente numero, mai i punti della consigliata) e a giornata in corso
     /// (contano i punti fatti, nella testa).
     let punti: Double?
+    /// Gli 11 sono la tua formazione cambiata a mano e non quelli di una formazione calcolata dal server (anche nello stesso
+    /// modulo): nel menu del modulo hanno una voce loro, in cima («4-3-3 · 71,0 punti · la tua», `vociModulo`).
+    var tua = false
 }
 
 /// Logica della Formazione unica (#673), come `mostraFormazione` della web (#616): in campo la consigliata o la tua scelta salvata;
@@ -85,6 +88,10 @@ final class FormazioneViewModel: ViewModelBase {
     @Published private(set) var occupato = false
     /// Formazione e scelta si stanno rileggendo: i comandi aspettano i dati nuovi.
     @Published private(set) var leggendo = false
+
+    /// Quando è partita l'ultima lettura della Formazione (`sc.letta` della web): tornando dal secondo piano, con i dati di più di
+    /// 5 minuti fa, la schermata si rilegge (`DatiVecchi.rileggiAlRitorno`).
+    private(set) var lettaIl: Date?
 
     /// La giornata della scelta letta: se cambia si riparte da zero.
     private var giornata: Int?
@@ -331,6 +338,12 @@ final class FormazioneViewModel: ViewModelBase {
         m.modulo == consigliato(f)?.modulo
             ? Catalogo.Formazione.opzioneConsigliato(modulo: m.modulo, punti: Formato.punti(m.punteggioAtteso))
             : Catalogo.Formazione.opzioneModulo(modulo: m.modulo, punti: Formato.punti(m.punteggioAtteso))
+    }
+
+    /// Le voci del menu del modulo.
+    func vociModulo(_ f: Formazione) -> [VoceModulo] {
+        let v = vista(f)
+        return moduli(f).map { VoceModulo(modulo: $0.modulo, etichetta: etichettaModulo($0, f), scelta: $0.modulo == v.modulo) }
     }
 
     /// Chi non è fra titolari e panchina e può giocare, dal più forte (punti attesi): «Non schierati».
