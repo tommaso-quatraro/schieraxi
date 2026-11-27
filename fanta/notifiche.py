@@ -812,7 +812,10 @@ def avviso_scadenza(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: 
             mio |= {"rif": ora, "valutato": firma_giro}
             salva()
         return []
-    guadagno = float(f["punteggio_atteso"]) - float(v["punteggio_atteso"])
+    # La differenza dei due numeri come si scrivono (`frasi.differenza`, una cifra), come «Da fare»: sottratti e basta, 64,1 − 63,1
+    # dava 0,9999999999999929, sotto la soglia, mentre `consigli.stabile`, che confronta i numeri non arrotondati, cambiava la
+    # consigliata. Quando stabile la cambia per i punti (almeno SOGLIA_CAMBIO_PUNTI in più) questa differenza arriva alla soglia.
+    guadagno = float(frasi.differenza(f["punteggio_atteso"], v["punteggio_atteso"]))
     if guadagno < SOGLIA_AVVISO_PUNTI:
         mio["valutato"] = firma_giro               # cambio piccolo: non vale un avviso
         salva()
