@@ -856,6 +856,25 @@ Dove si vede (tutti campi aggiunti, i client vecchi li ignorano):
   `[{stagione, giornata, giornata_lega, testo, frase}]`, con `testo` = «Giornata 9 · 12ª di Serie A: in attesa del recupero, i
   punti arrivano dopo.» (chiave `diario.in_attesa_recupero`, parametro `giornata`). Web e iPhone (pagina Giornate) mostrano
   `testo` così com'è, in cima sotto la precisione; senza altre giornate al posto della frase della pagina vuota.
+  Dal 27/11/2026 `in_attesa` ha anche le giornate della stagione in corso (dalla prima della lega) che con `aspetta` non sono
+  finite perché manca un recupero (giocate le partite del turno, da recuperare solo partite rinviate) e non hanno ancora una voce:
+  prima sparivano da Giornate per settimane senza spiegazione. Stessa forma e stessa frase, una volta sola per giornata. Senza la
+  tua squadra (`motivo_vuoto` `"squadra"`) `in_attesa` è vuoto, così la pagina dice dove sceglierla. Il `diario` di
+  `GET /api/widget` non cambia.
+
+**Diario: chi non ha una previsione, il widget e la panchina del sistema (dal 27/11/2026).** Nessun campo tolto né rinominato.
+- In `giornate[].giocatori` di `GET /api/diario` c'è anche chi non ha una previsione ricostruita per la giornata (mai sceso in
+  campo prima: alla prima giornata le neopromosse e chi arriva dall'estero, spesso il portiere di riserva). Il suo voto contava
+  già nei punti; ora sta nella tabella degli 11 con `p_voto: null`, `fv_atteso: null` e `fv` = il voto che la lega ha contato
+  (`null` senza voto; con `rinvio` come gli altri). I client mostrano l'atteso vuoto come «–» (web e iPhone lo fanno già: mai
+  «NaN» né «0,0»). Non entra in `fatti_e_attesi.meglio`/`peggio` né nelle misure di `precisione` (che restano quelle di prima).
+  Le voci già scritte lo prendono quando se ne rifanno i punti.
+- `diario` di `GET /api/widget`: `attesi`, `fatti` e `intervallo` sono della formazione che conta, come la riga di Giornate e il
+  riepilogo di Oggi: la tua, altrimenti la copia fatta alla scadenza (`automatica`), altrimenti la consigliata. Prima il widget
+  saltava la copia alla scadenza e, senza l'istantanea, mostrava i numeri della consigliata rifatta.
+- Con 11 salvati senza panchina la panchina che sceglie il sistema è la stessa nel `riepilogo` di Oggi e nel Diario: quella dei
+  numeri della rosa alla scadenza, se ci sono (prima il Diario usava i numeri rifatti senza probabili, e il totale poteva cambiare
+  quando la giornata entrava nel Diario). Senza quei numeri resta quella dei numeri rifatti.
 
 Cosa devono fare iOS e Android: nel pannello delle regole, «Partite rinviate» con le tre scelte e il voto d'ufficio (solo se il
 server manda `partite_rinviate`); in Oggi, se `rinvio` non è `null`, un riquadro «Partita rinviata» con le partite, i tuoi
