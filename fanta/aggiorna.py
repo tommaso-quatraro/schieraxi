@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from dataclasses import asdict
 from datetime import date, datetime, timedelta
@@ -68,6 +69,17 @@ class StatisticheCalate(ValueError):
 
 def _ora() -> str:
     return datetime.now().isoformat(timespec="seconds")
+
+
+# Gli errori della corsa nel registro del server («Aggiorna i dati», giro dei risultati della sera): Stato dei dati, per un guasto che
+# non è la rete, rimanda lì. Senza quello che segue «?» o «#» negli indirizzi (può portare chiavi) e accorciati (revisione della #975)
+_PARAMETRI = re.compile(r"(https?://[^\s?#'\"]+)[?#][^\s'\")]*")
+
+
+def per_il_registro(errore: str, massimo: int = 300) -> str:
+    """Un errore della corsa («voti: HTTPError: 404 … for url: https://…») per il registro: gli indirizzi senza i parametri, al
+    massimo `massimo` caratteri."""
+    return _PARAMETRI.sub(lambda m: m.group(1), str(errore))[:massimo]
 
 
 def _ultimo(db: sqlite3.Connection, cosa: str) -> datetime | None:

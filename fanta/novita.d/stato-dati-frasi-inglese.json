@@ -12,7 +12,7 @@
     "Matchdays: in the title of a matchday's lineup the formation (for example 4-4-2) no longer breaks in the middle on the phone."
   ],
   "tecnico": [
-    "GET /api/stato-dati: campo nuovo aggiornamenti[].errori_frasi (chiavi aggiornamento.non_riuscito, aggiornamento.fermo, aggiornamento.non_riusciti); errori senza il messaggio tecnico, che resta nel registro e nell'archivio. Il dettaglio dei passi in aggiornamenti ha anche tipo (rete, dati, controlli) e fonte. Il registro del giro dei risultati della sera ha il messaggio accorciato (300 caratteri) e senza i parametri degli indirizzi, non più solo il tipo d'errore.",
+    "GET /api/stato-dati: campo nuovo aggiornamenti[].errori_frasi (chiavi aggiornamento.non_riuscito, aggiornamento.fermo, aggiornamento.non_riusciti); errori senza il messaggio tecnico, che resta nel registro e nell'archivio. Il dettaglio dei passi in aggiornamenti ha anche tipo (rete, dati, controlli) e fonte. Il registro del giro dei risultati della sera ha il messaggio accorciato (300 caratteri) e senza i parametri degli indirizzi, non più solo il tipo d'errore; anche gli errori di «Aggiorna i dati» vanno nel registro senza i parametri degli indirizzi (aggiorna.per_il_registro).",
     "fanta/contenuti/novita.en.json vale più di titolo_en/voci_en per la stessa versione: corrette 1.593-1.599, 1.420, 1.328, 1.292, 1.241, 1.214 e le voci con «squad». Test sulle voci in attesa e sulle novità in inglese.",
     "Catalogo inglese: no grade, closes, roster, calendar, forecasts, make-up game; test_inglese_web vieta le parole vecchie. fDataEstesa per le date con il mese a parole."
   ]
