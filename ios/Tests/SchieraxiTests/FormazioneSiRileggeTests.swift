@@ -65,11 +65,45 @@ struct FormazioneSiRileggeTests {
     @Test("Ogni lettura della Formazione segna quando è partita: è l'età dei dati che conta al ritorno")
     func segnaLaLettura() async throws {
         let vm = FormazioneViewModel(server: try SalvataggioAutomaticoTests.server())
-        #expect(vm.lettaIl == nil)
+        #expect(vm.lettaIl == nil && vm.ultimaLettura == nil)
         let prima = Date()
         await vm.carica()
         let letta = try #require(vm.lettaIl)
         #expect(letta >= prima && letta <= Date())
+        #expect(vm.ultimaLettura == letta)
+    }
+
+    @Test("Un salvataggio riuscito rinfresca l'età dei dati, come `sc.letta` della web; la lettura per la scadenza resta quella di prima")
+    func salvataggioRinfresca() async throws {
+        let vm = FormazioneViewModel(server: try SalvataggioAutomaticoTests.server())
+        await vm.carica()
+        let lettura = try #require(vm.ultimaLettura)
+        let f = try #require(vm.formazione)
+        let prima = Date()
+        let (esce, entra) = try SalvataggioAutomaticoTests.cambio(f, vm)
+        let partito = await vm.sostituisciTitolare(esce, con: entra)
+        #expect(partito)
+        let dopoIlSalvataggio = try #require(vm.lettaIl)
+        #expect(dopoIlSalvataggio >= prima, "il server ha appena risposto su questa formazione: i dati sono freschi")
+        #expect(vm.ultimaLettura == lettura, "un salvataggio non è una rilettura")
+        // anche «Torna alla consigliata», quando il server toglie la scelta
+        let primaDiTornare = Date()
+        await vm.tornaAllaConsigliata()
+        let dopoIlRitorno = try #require(vm.lettaIl)
+        #expect(dopoIlRitorno >= primaDiTornare)
+        #expect(vm.salvata == nil && vm.ultimaLettura == lettura)
+    }
+
+    // MARK: la rilettura della scadenza dopo l'attesa
+
+    @Test("Finita l'attesa, il lavoro della scadenza rilegge solo se dalla scadenza non è partita un'altra lettura")
+    func scadenzaDopoLAttesa() {
+        let scadenza = t(-5)
+        #expect(DatiVecchi.rileggiDopoLAttesa(scadenza: scadenza, ultimaLettura: nil))
+        #expect(DatiVecchi.rileggiDopoLAttesa(scadenza: scadenza, ultimaLettura: t(-600)), "letta prima della scadenza: si rilegge")
+        #expect(DatiVecchi.rileggiDopoLAttesa(scadenza: scadenza, ultimaLettura: scadenza))
+        // tornati nell'app 2 secondi dopo la scadenza con i dati vecchi: è già partita quella lettura, e basta
+        #expect(!DatiVecchi.rileggiDopoLAttesa(scadenza: scadenza, ultimaLettura: t(-3)))
     }
 
     // MARK: rifiuto per una partita cominciata

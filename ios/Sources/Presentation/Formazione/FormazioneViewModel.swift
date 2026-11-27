@@ -92,6 +92,8 @@ final class FormazioneViewModel: ViewModelBase {
     /// Quando è partita l'ultima lettura della Formazione (`sc.letta` della web): tornando dal secondo piano, con i dati di più di
     /// 5 minuti fa, la schermata si rilegge (`DatiVecchi.rileggiAlRitorno`).
     private(set) var lettaIl: Date?
+    /// Quando è partita l'ultima lettura.
+    private(set) var ultimaLettura: Date?
 
     /// La giornata della scelta letta: se cambia si riparte da zero.
     private var giornata: Int?

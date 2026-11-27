@@ -86,6 +86,11 @@ enum DatiVecchi {
         return adesso.timeIntervalSince(lettaIl) > etaMassimaAlRitorno
     }
 
+    /// Il lavoro della scadenza, finita l'attesa, rilegge.
+    static func rileggiDopoLAttesa(scadenza: Date, ultimaLettura: Date?) -> Bool {
+        true
+    }
+
     private static let calendario: Calendar = {
         var c = Calendar(identifier: .gregorian)
         c.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
