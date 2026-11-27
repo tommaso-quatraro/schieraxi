@@ -5,9 +5,10 @@ import Testing
 /// Ogni quanto i widget chiedono a iOS di ricaricarsi (`RicaricaWidget`, che il `Fornitore` usa). Dal 27/11/2026 durante le partite
 /// ogni 15 minuti, non più ogni 2: nessun widget mostra la diretta (#634) e iOS concede poche ricariche al giorno, che finivano prima
 /// dei punti. Le partite sono quelle dei giocatori della rosa (`data_partita`), perché il server non manda più la diretta in
-/// `/api/widget`: da 10 minuti prima del calcio d'inizio a 3 ore dopo, perché il server legge risultati e voti 2 ore e 30 dopo
-/// l'inizio (`pianificatore.giro_risultati`) e lì arrivano i punti fatti (la finestra di prima finiva dopo 130 minuti). Orari
-/// inventati, in ora italiana.
+/// `/api/widget`: da 10 minuti prima del calcio d'inizio a 4 ore e 15 minuti dopo, perché il server legge risultati e voti 2 ore e
+/// 30 dopo l'inizio e, se mancano ancora, di nuovo a 4 ore (`pianificatore.GIRI_RISULTATI`), e lì arrivano i punti fatti; i 15
+/// minuti in più sono una ricarica (la finestra di prima finiva dopo 130 minuti, prima dei voti). Che la finestra copra l'ultimo
+/// giro lo controlla anche `tests/test_widget_ricariche.py`, contro il pianificatore. Orari inventati, in ora italiana.
 @Suite("Widget: ogni quanto si ricarica")
 struct RicaricaWidgetTests {
     private static let adesso = Date(timeIntervalSince1970: 1_795_000_000)
@@ -26,9 +27,11 @@ struct RicaricaWidgetTests {
 
     // MARK: la finestra delle partite
 
-    @Test("Una partita della rosa tiene i widget attenti da 10 minuti prima del calcio d'inizio a 3 ore dopo, voti compresi",
+    /// 17:30 e 19:00 sono i due giri dei voti della partita delle 15:00.
+    @Test("Una partita della rosa tiene i widget attenti da 10 minuti prima del calcio d'inizio a 4 ore e 15 dopo, due giri di voti",
           arguments: [("2026-11-01 14:49", false), ("2026-11-01 14:50", true), ("2026-11-01 15:00", true),
-                      ("2026-11-01 17:30", true), ("2026-11-01 17:59", true), ("2026-11-01 18:00", false)])
+                      ("2026-11-01 17:30", true), ("2026-11-01 19:00", true), ("2026-11-01 19:14", true),
+                      ("2026-11-01 19:15", false)])
     func finestra(adesso: String, attenta: Bool) throws {
         let w = try riassunto(["2026-11-01 15:00", nil])
         let istante = try data(adesso)
@@ -38,9 +41,9 @@ struct RicaricaWidgetTests {
     @Test("Ogni partita ha la sua finestra: fra una partita del pranzo e una della sera si torna alle ricariche di sempre")
     func piuPartite() throws {
         let w = try riassunto(["2026-11-01 12:30", "2026-11-01 20:45"])
-        let alle15 = try data("2026-11-01 15:00"), alle16 = try data("2026-11-01 16:00"), alle2040 = try data("2026-11-01 20:40")
-        #expect(w.conPartite(adesso: alle15), "i voti della partita delle 12:30 arrivano verso le 15:00")
-        #expect(w.conPartite(adesso: alle16) == false)
+        let alle1630 = try data("2026-11-01 16:30"), alle17 = try data("2026-11-01 17:00"), alle2040 = try data("2026-11-01 20:40")
+        #expect(w.conPartite(adesso: alle1630), "il secondo giro dei voti della partita delle 12:30 è alle 16:30")
+        #expect(w.conPartite(adesso: alle17) == false)
         #expect(w.conPartite(adesso: alle2040))
     }
 

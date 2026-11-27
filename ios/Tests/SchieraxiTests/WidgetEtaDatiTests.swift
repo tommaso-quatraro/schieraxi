@@ -33,11 +33,16 @@ struct WidgetEtaDatiTests {
         #expect(ora == (conOra ? Self.scaricati : nil))
     }
 
-    @Test("Le soglie seguono le ricariche chieste: con le partite il doppio dei 15 minuti, negli altri momenti il doppio della mezz'ora")
+    /// Se la ricarica chiesta con le partite cambiasse, la soglia deve seguirla: quando la ricarica è appena dovuta i dati non sono
+    /// ancora «vecchi», quando è saltata un'intera volta sì.
+    @Test("Con le partite l'ora non compare quando la ricarica è appena dovuta, compare quando ne è saltata una; fuori, dopo un'ora")
     func soglieComeLeRicariche() {
-        #expect(EtaDatiWidget.sogliaPartite == 2 * RicaricaWidget.minutiPartite * 60)
-        let adesso = Self.scaricati
-        let piuLunga = RicaricaWidget.minuti(adesso: adesso, scadenza: nil, partite: false)
+        let ricarica = RicaricaWidget.minutiPartite
+        let dovuta = EtaDatiWidget.ora(scaricatoIl: Self.scaricati, adesso: dopo(ricarica), copia: false, partite: true)
+        let saltata = EtaDatiWidget.ora(scaricatoIl: Self.scaricati, adesso: dopo(2 * ricarica), copia: false, partite: true)
+        #expect(dovuta == nil)
+        #expect(saltata == Self.scaricati)
+        let piuLunga = RicaricaWidget.minuti(adesso: Self.scaricati, scadenza: nil, partite: false)
         #expect(EtaDatiWidget.soglia == 2 * piuLunga * 60)
     }
 
