@@ -9,7 +9,8 @@ from datetime import datetime, timedelta
 import pandas as pd
 import pytest
 
-from fanta import archivio, avvisi, diario, modello, registro_giornate as rg, verifica, verifica_pacchetti as vp
+from fanta import archivio, avvisi, diario, modello, registro_giornate as rg, verifica, verifica_consiglio as vc
+from fanta import verifica_pacchetti as vp
 from fanta.regole import Regole
 
 ST = "2026-27"
@@ -186,6 +187,16 @@ def test_chi_ha_giocato_prima_della_scadenza_e_previsto_con_i_dati_di_prima_dell
     assert dopo[CENTROCAMPISTA_11] > prima[CENTROCAMPISTA_11] + 0.05
     prev, _, fv_vero = diario._previsti_e_veri(grande, ST, 12, Regole(), modello.Parametri())   # Diario e «Quanto ci abbiamo preso»
     assert prev.at[DELL_ANTICIPO, "mu"] == prima[DELL_ANTICIPO] and len(fv_vero) == 20
+
+
+def test_la_fantamedia_della_scelta_semplice_ha_lo_stesso_limite_del_modello(tmp_path):
+    """Revisione della #966: nel Diario la «scelta semplice» S2 (`verifica_consiglio.dati_s2`, `verifica._fantamedia`) usava per chi
+    ha giocato il 2/11 i voti fino alla scadenza: il 9 con due gol e un assist del giocatore 100 nella 11, il 6/11, portava la sua
+    fantamedia da 6,0 a 11,0. Ora per lui vale la data della sua partita, come nel modello; gli altri vedono la 11."""
+    d = _dati(tmp_path, "a", TUTTA_GIOCATA, {(11, DELL_ANTICIPO): GRANDE, (11, CENTROCAMPISTA_11): GRANDE})
+    _, fantamedia = vc.dati_s2(d, ST, 12, Regole())
+    assert fantamedia[DELL_ANTICIPO] == pytest.approx(6.0) and fantamedia[DELL_ANTICIPO + 1] == pytest.approx(6.0)
+    assert fantamedia[CENTROCAMPISTA_11] == pytest.approx(11.0)
 
 
 def test_con_date_non_leggibili_vale_la_prima_come_e_scritta():

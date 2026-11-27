@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 from . import formazione as fz
-from .modello import Dati, Parametri, giocate_prima, previsioni
+from .modello import Dati, Parametri, data_delle_anticipate, giocate_prima, previsioni, prima_di
 from .punteggio import COLONNA_VOTO, fantavoto, modificatore_difesa
 from .regole import RUOLI, Regole, modulo_in_numeri
 
@@ -87,9 +87,18 @@ def _prima(d: Dati, stagione: str, giornata: int) -> pd.Series:
 def _fantamedia(d: Dati, stagione: str, giornata: int, regole: Regole) -> pd.Series:
     """Fantamedia (con le regole della lega) delle partite della stagione che vede il modello per la giornata (`_prima`);
     6 se non ha voti. È quella che vede chi non ha l'app (la usa S2 di `verifica_consiglio`); come avversario del modello è
-    debole: vedi `avversari`."""
+    debole: vedi `avversari`. Chi ha giocato una partita della giornata prima della scadenza ha i voti di prima di quella partita,
+    con lo stesso limite del modello (`modello.data_delle_anticipate`): con quelli fino alla scadenza S2 vedrebbe il futuro."""
     col = COLONNA_VOTO[regole.fonte_voto]
-    V = d.voti[(d.voti["stagione"] == stagione) & _prima(d, stagione, giornata) & d.voti[col].notna()]
+    v = d.voti
+    della_stagione = (v["stagione"] == stagione) & v[col].notna()
+    V = v[della_stagione & _prima(d, stagione, giornata)]
+    fino_a = data_delle_anticipate(d.partite, stagione, giornata)
+    if fino_a is not None:
+        della = v[(v["stagione"] == stagione) & (v["giornata"] == giornata)]
+        anticipati = set(della.loc[della["data"].notna() & (della["data"] < Dati.inizio(d, stagione, giornata)), "calciatore_id"])
+        V = pd.concat([V[~V["calciatore_id"].isin(anticipati)],
+                       v[della_stagione & prima_di(v, fino_a, (stagione, giornata)) & v["calciatore_id"].isin(anticipati)]])
     fv = V.apply(lambda r: fantavoto(r.to_dict(), r["ruolo"], regole), axis=1)
     return fv.groupby(V["calciatore_id"]).mean() if len(V) else pd.Series(dtype=float)
 

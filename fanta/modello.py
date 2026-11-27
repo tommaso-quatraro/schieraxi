@@ -137,6 +137,17 @@ def giocate_prima(partite: pd.DataFrame, stagione: str, giornata: int) -> set[in
     return {int(i) for i in p.loc[righe, "id"]}
 
 
+def data_delle_anticipate(partite: pd.DataFrame, stagione: str, giornata: int) -> str | None:
+    """La data, come è scritta, della prima partita della giornata giocata prima della scadenza (`giocate_prima`); None se non ce
+    n'è. Chi ha giocato quelle partite è previsto con i dati di prima di questa data (`previsioni`), e così la sua fantamedia per
+    la scelta semplice S2 (`verifica._fantamedia`)."""
+    anticipate = giocate_prima(partite, stagione, giornata)
+    if not anticipate:
+        return None
+    p = partite
+    return str(p.loc[(p["stagione"] == stagione) & (p["giornata"] == giornata) & p["id"].isin(anticipate), "data"].min())
+
+
 def _date_giornata(partite: pd.DataFrame, stagione: str, giornata: int) -> list[tuple[datetime, bool, str]]:
     """[(data e ora, giocata, data come è scritta)] delle partite della giornata con una data leggibile (come `avvisi._date`)."""
     righe = partite.loc[(partite["stagione"] == stagione) & (partite["giornata"] == giornata) & partite["data"].notna()]
@@ -429,11 +440,10 @@ def previsioni(d: Dati, stagione: str, giornata: int, regole: Regole, par: Param
     pezzi, rigori_partita = _pezzi_condivisi(d, stagione, giornata, col_voto, par, probabili, giocatori, fattori_probabili, oracolo,
                                              taratura, dai_cartellini)
     tabella = _con_bonus(pezzi, rigori_partita, regole.bonus, par)
-    anticipate = giocate_prima(d.partite, stagione, giornata)
-    if not anticipate or tabella.empty:
+    fino_a = data_delle_anticipate(d.partite, stagione, giornata)
+    if fino_a is None or tabella.empty:
         return tabella
-    p = d.partite
-    fino_a = str(p.loc[(p["stagione"] == stagione) & (p["giornata"] == giornata) & p["id"].isin(anticipate), "data"].min())
+    anticipate = giocate_prima(d.partite, stagione, giornata)
     pezzi, rigori_partita = _pezzi_condivisi(d, stagione, giornata, col_voto, par, probabili, giocatori, fattori_probabili, oracolo,
                                              taratura, dai_cartellini, fino_a)
     di_prima = _con_bonus(pezzi, rigori_partita, regole.bonus, par)
