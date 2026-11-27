@@ -118,14 +118,19 @@ final class Caricatore<T: Decodable>: ObservableObject {
         // Dati già a video della stessa risorsa (altrimenti niente: non si mostrano dati di un'altra richiesta). I giorni del
         // certificato non contano: `/api/oggi?certificato_giorni=5` e `=4` sono la stessa giornata, come per la copia salvata.
         var inAttesa: T? = stessaRisorsa(percorsoDelDato, richiesto) ? stato.dato : nil
-        var copiaLetta: (dato: T, data: Date)?
+        // I dati a video mentre questa lettura è in viaggio, con la loro data e la loro origine (quelli di prima, o la copia letta qui
+        // sotto): se viene annullata quando nessuna lettura è ancora arrivata a uno stato fermo, si rimettono questi.
+        var aVideo = inAttesa.map {
+            Fermo(stato: .loaded($0), richiesta: richiesto, percorsoDelDato: percorsoDelDato, scaricatoIl: scaricatoIl, dallaCache: dallaCache)
+        }
         stato = .loading(inAttesa)
         // Subito l'ultima copia salvata, se non c'è già qualcosa da mostrare.
         if inAttesa == nil, usaCache,
            let salvato = await Cache.leggi(richiesto, indirizzo: server.indirizzo), richiesto == percorso,
            let vecchio: T = try? Decodifica.decodifica(salvato.dati, snake: snake) {
             inAttesa = vecchio
-            copiaLetta = (vecchio, salvato.data)
+            aVideo = Fermo(stato: .loaded(vecchio), richiesta: richiesto, percorsoDelDato: richiesto, scaricatoIl: salvato.data,
+                           dallaCache: true)
             percorsoDelDato = richiesto
             scaricatoIl = salvato.data
             dallaCache = true
@@ -151,7 +156,7 @@ final class Caricatore<T: Decodable>: ObservableObject {
                 // errore o la copia salvata con la sua data e la sua striscia. Prima tornavano i dati di prima come appena
                 // arrivati, e la striscia «dati salvati» spariva.
                 guard questa == letture else { return }
-                rimettiFermo(richiesto, copiaLetta: copiaLetta)
+                rimettiFermo(richiesto, aVideo: aVideo)
                 return
             }
             motivoDatiSalvati = DatiVecchi.eDiRete(error) ? nil : error.localizedDescription
@@ -167,16 +172,23 @@ final class Caricatore<T: Decodable>: ObservableObject {
                       dallaCache: dallaCache, motivo: motivoDatiSalvati)
     }
 
-    /// Dopo una lettura annullata: lo stato fermo di prima, se era della stessa risorsa (altrimenti niente, come all'inizio). Se
-    /// prima non c'era niente da mostrare e intanto si è letta la copia del telefono, resta quella, come copia (`dallaCache`):
-    /// accanto all'errore di prima, se c'era, con la data della copia.
-    private func rimettiFermo(_ richiesto: String, copiaLetta: (dato: T, data: Date)?) {
-        var prima = stessaRisorsa(fermo.richiesta, richiesto) ? fermo : Fermo()
-        if prima.stato.dato == nil, let copia = copiaLetta {
-            prima.percorsoDelDato = richiesto
-            prima.scaricatoIl = copia.data
-            prima.dallaCache = true
-            if let errore = prima.stato.errore { prima.stato = .failed(errore, copia.dato) } else { prima.stato = .loaded(copia.dato) }
+    /// Dopo una lettura annullata: lo stato fermo di prima, se era della stessa risorsa e aveva dei dati. Altrimenti i dati a video
+    /// quando è partita (`aVideo`: quelli di un'altra lettura ancora in viaggio, o la copia del telefono), con la loro data e la
+    /// loro origine, accanto all'errore fermo di prima se c'era; senza dati l'errore di prima, o niente. Prima, con una lettura
+    /// in viaggio e la copia a video, la schermata tornava vuota e la data della copia si perdeva (revisione della #972).
+    private func rimettiFermo(_ richiesto: String, aVideo: Fermo?) {
+        let fermoQui = stessaRisorsa(fermo.richiesta, richiesto) ? fermo : nil
+        var prima: Fermo
+        if let f = fermoQui, f.stato.dato != nil {
+            prima = f
+        } else if var v = aVideo, let dato = v.stato.dato {
+            if let f = fermoQui, let errore = f.stato.errore {
+                v.stato = .failed(errore, dato)
+                v.motivo = f.motivo
+            }
+            prima = v
+        } else {
+            prima = fermoQui ?? Fermo()
         }
         percorsoDelDato = prima.percorsoDelDato
         scaricatoIl = prima.scaricatoIl

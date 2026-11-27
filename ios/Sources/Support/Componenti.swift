@@ -251,9 +251,9 @@ struct AvvisoSalvati: ViewModifier {
 }
 
 extension View {
-    /// Mostra «dati salvati» se `data` non è nil (vedi `Caricatore.datiSalvati`).
-    func avvisoDatiSalvati(_ data: Date?, motivo: String? = nil) -> some View {
-        modifier(AvvisoSalvati(data: data, motivo: motivo))
+    /// Mostra «dati salvati» se `data` non è nil (vedi `Caricatore.datiSalvati`); con `riprova`, anche «Riprova».
+    func avvisoDatiSalvati(_ data: Date?, motivo: String? = nil, riprova: (@MainActor () async -> Void)? = nil) -> some View {
+        modifier(AvvisoSalvati(data: data, motivo: motivo, riprova: riprova))
     }
 
     /// La striscia dei dati salvati di un `Caricatore`, con il motivo vero se il server ha risposto con un errore, e «Riprova»
