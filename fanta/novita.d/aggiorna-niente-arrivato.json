@@ -8,10 +8,10 @@
   ],
   "titolo_en": "Refresh the data says when nothing arrives, and messages end with a full stop",
   "voci_en": [
-    "Management, «Refresh the data»: if no data arrives, for example because no source responds, the message says «No new data:» with the sentences below, one per line, instead of «Updated, but with problems».",
-    "Pressed again within 10 minutes, «Refresh the data» says «You just tried: try again in 9 minutes.» instead of «The data was refreshed recently», which was not true if nothing had arrived.",
-    "The error messages that come from the server (sign-in, sign-up, rosters, trades, images and the others) end with a full stop, for example «The password is wrong.».",
-    "An error with a waiting time ends with a sentence of its own, for example «The server is very busy. Try again in 10 seconds.», and with saved data the note says «Data saved on 17 Nov at 10:05: it may be out of date.» after the reason, no longer in brackets."
+    "Management, “\u0001”: if no data arrives, for example because no source responds, the message says “\u0001” with the sentences below, one per line, instead of “\u0001”.",
+    "Pressed again within 10 minutes, “\u0001” says “\u0001” instead of “\u0001”, which was not true if nothing had arrived.",
+    "The error messages that come from the server (sign-in, sign-up, rosters, trades, images and the others) end with a full stop, for example “\u0001”.",
+    "An error with a waiting time ends with a sentence of its own, for example “\u0001”, and with saved data the note says “\u0001” after the reason, no longer in brackets."
   ],
   "tecnico": [
     "GET /api/aggiorna: campo nuovo nessun_dato_nuovo (booleano), vero a giro finito se nessun passo ha scaricato niente, con la stessa regola che lascia ferma l'ora dei dati (aggiorna.Aggiornamento.dati_nuovi, da scaricati), e se il giro si ferma per un'eccezione; falso all'avvio e durante il giro (stato_aggiornamento_iniziale). aggiorna.esegui ha il parametro esito (esito[\"dati_nuovi\"]). Contratto in docs/API.md; i client che non conoscono il campo restano come prima.",
