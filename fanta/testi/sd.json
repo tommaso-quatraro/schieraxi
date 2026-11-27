@@ -1,7 +1,7 @@
 {
   "sd.f_taratura": {
     "it": "Taratura di «gioca N%»",
-    "en": "«Plays N%» calibration"
+    "en": "“Plays N%” calibration"
   },
   "sd.mai": {
     "it": "mai",
@@ -93,7 +93,7 @@
   },
   "sd.corregge": {
     "it": "Se «hanno giocato» e «previsto» sono lontani, l'app corregge da sola i numeri di partenza (dopo 3 giornate e almeno 30 giocatori per gruppo, mai oltre il 15%).",
-    "en": "If «played» and «expected» are far apart, the app corrects the starting numbers by itself (after 3 matchdays and at least 30 players per group, never above 15%)."
+    "en": "If “played” and “expected” are far apart, the app corrects the starting numbers by itself (after 3 matchdays and at least 30 players per group, never above 15%)."
   },
   "sd.tar_riga": {
     "it": "Taratura con le probabili: {s}",
@@ -125,11 +125,11 @@
   },
   "sd.tar_prova.one": {
     "it": "nell'ultima giornata le percentuali «gioca N%» hanno sbagliato in media di {e} punti, contro {p} senza questa taratura",
-    "en": "in the last matchday the «plays N%» percentages were off by {e} points on average, against {p} without this calibration"
+    "en": "in the last matchday the “plays N%” percentages were off by {e} points on average, against {p} without this calibration"
   },
   "sd.tar_prova.other": {
     "it": "nelle ultime {n} giornate le percentuali «gioca N%» hanno sbagliato in media di {e} punti, contro {p} senza questa taratura",
-    "en": "in the last {n} matchdays the «plays N%» percentages were off by {e} points on average, against {p} without this calibration"
+    "en": "in the last {n} matchdays the “plays N%” percentages were off by {e} points on average, against {p} without this calibration"
   },
   "sd.tar_non_attiva": {
     "it": "non attiva",
@@ -277,7 +277,7 @@
   },
   "sd.reg_i2": {
     "it": "«Gioca N%» contro chi ha giocato davvero",
-    "en": "«Plays N%» against who really played"
+    "en": "“Plays N%” against who really played"
   },
   "sd.reg_i2_riga": {
     "it": "scarto {c} (al massimo {sc}) · errore medio delle percentuali {e} punti (al massimo {se})",
@@ -293,7 +293,7 @@
   },
   "sd.reg_i3": {
     "it": "Punti veri dentro la fascia «8 volte su 10»",
-    "en": "Real points inside the «8 times out of 10» range"
+    "en": "Real points inside the “8 times out of 10” range"
   },
   "sd.reg_i3_riga": {
     "it": "{v} (deve stare tra {min} e {max})",
@@ -333,7 +333,7 @@
   },
   "sd.cons_spiega": {
     "it": "Dopo ogni giornata l'app misura la consigliata mostrata prima della scadenza, nei Diari di tutti. La scelta semplice è quella di chi non ha l'app: schiera chi ha preso voto la giornata prima e ha la fantamedia più alta.",
-    "en": "After every matchday the app measures the recommended lineup shown before the deadline, in everyone's Diaries. The simple choice is what someone without the app would do: field who got a grade the matchday before and has the highest fantasy average."
+    "en": "After every matchday the app measures, for every user, the recommended lineup shown before the deadline. The simple choice is what someone without the app would do: field who got a grade the matchday before and has the highest fantasy average."
   },
   "sd.cons_media.one": {
     "it": "Media di {n} giornata, su {f}.",
@@ -389,6 +389,6 @@
   },
   "sd.cons_c4_riga": {
     "it": "spiegate {sp} su {st} (devono essere tutte) · titolari senza un motivo loro in «Perché questo numero»: {v} (al massimo {s})",
-    "en": "explained {sp} out of {st} (must be all) · starters without a reason of their own in «Why this number»: {v} (at most {s})"
+    "en": "explained {sp} out of {st} (must be all) · starters without a reason of their own in “Why this number”: {v} (at most {s})"
   }
 }

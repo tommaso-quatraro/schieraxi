@@ -27,8 +27,9 @@ un'idea che aumenta molto la complessità si valuta caso per caso.
   nessun segreto e nessun trigger che dia accesso ai segreti a chi arriva da un fork.
 - **Database degli account**: una migrazione già rilasciata non si modifica mai. Ogni cambio di struttura è una voce nuova in fondo a `MIGRAZIONI` in `fanta/account.py`.
 - **Versione**: non cambiare il numero di versione. Se la modifica tocca `fanta/`, `script/` o `requirements.txt`, aggiungi
-  un file `fanta/novita.d/<nome-breve>.json` così: `{"titolo": "...", "voci": ["..."]}`, senza numero. Il numero e le note
-  della release li dà il progetto quando unisce la modifica.
+  un file `fanta/novita.d/<nome-breve>.json` così: `{"titolo": "...", "voci": ["..."], "titolo_en": "...", "voci_en": ["..."]}`
+  (titolo e voci anche in inglese, tante voci quante le italiane), senza numero. Il numero e le note della release li dà il
+  progetto quando unisce la modifica.
 - **Documentazione**: se cambi una schermata o un indirizzo del server, aggiorna nella stessa pull request `docs/GUIDA-UTENTE.md` o `docs/API.md`.
 - **Italiano semplice**: testi e commenti sono in italiano, frasi brevi.
 

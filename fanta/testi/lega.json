@@ -87,7 +87,7 @@
   },
   "lega.importa_prima_rose": {
     "it": "Importa prima le rose da «Aggiorna le rose».",
-    "en": "First import the rosters from «Update the rosters»."
+    "en": "First import the rosters from “Update the rosters”."
   },
   "lega.solo_la_tua": {
     "it": "Per ora nella lega c'è solo la tua squadra: le rose delle altre le aggiungi in Impostazioni › Aggiorna le rose.",
@@ -208,7 +208,7 @@
   },
   "lega.una_volta_sola": {
     "it": "Una volta sola crei un Comando (app Comandi di Apple). Poi, dal file Excel scaricato, tocchi Condividi → «Importa in SchieraXI» e ricevi il riepilogo.",
-    "en": "You create a Shortcut once (Apple's Shortcuts app). Then, from the downloaded Excel file, tap Share → «Import into SchieraXI» and you get the summary."
+    "en": "You create a Shortcut once (Apple's Shortcuts app). Then, from the downloaded Excel file, tap Share → “Import into SchieraXI” and you get the summary."
   },
   "lega.usa_come_maglia": {
     "it": "Usa come maglia",
@@ -316,6 +316,6 @@
   },
   "lega.per_usarlo_apri": {
     "it": "Per usarlo: apri il file Excel scaricato da Leghe, tocca Condividi, scegli «Importa in SchieraXI».",
-    "en": "To use it: open the Excel file downloaded from Leghe, tap Share, choose «Import into SchieraXI»."
+    "en": "To use it: open the Excel file downloaded from Leghe, tap Share, choose “Import into SchieraXI”."
   }
 }

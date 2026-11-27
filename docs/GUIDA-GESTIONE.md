@@ -206,7 +206,7 @@ Le misure dello **Stato dei dati**:
 - **Certificato.** L'app installata con SideStore scade dopo 7 giorni. In **Impostazioni › Gestione** c'è **Certificato
   dell'app** (**Validità** e **Scade il**) e **Rinnovo automatico (SideStore)**, con i passi per far rinnovare l'app ogni notte
   (gli stessi di [INSTALLAZIONE-IPHONE.md](INSTALLAZIONE-IPHONE.md), sezione 5). Chi gestisce vede anche, in cima alla
-  Formazione, la decisione «L'app sul telefono scade tra N giorni: rinnovala.» con **Rinnova**. Tutti gli utenti dell'app per
+  Formazione, la decisione «L'app sul telefono scade fra N giorni: rinnovala.» con **Rinnova**. Tutti gli utenti dell'app per
   iPhone ricevono invece, se gli avvisi sono permessi, il promemoria «SchieraXI · Da rinnovare» 24 ore e 6 ore prima della
   scadenza, mai nelle ore tranquille: se ci cadono, arrivano un minuto prima che comincino.
 - **Registrazione.** Con le iscrizioni aperte l'app per iPhone ha lo stesso modulo della web (nome utente, password, email

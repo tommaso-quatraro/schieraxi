@@ -65,7 +65,7 @@ CATALOGO: dict[str, str] = {
     "dafare.incerto": "{nome}: {stato}, gioca {p}%.",
     "dafare.incerto_alt": "{nome}: {stato}, gioca {p}%. Meglio {alt}.",
     "dafare.incerto_tiene": "{nome} ({stato}, gioca {p}%) resta titolare: se non gioca entra {riserva} dalla panchina.",
-    "dafare.formazione_chiude": "La formazione si chiude tra {tempo} e non l'hai ancora salvata.",
+    "dafare.formazione_chiude": "La formazione si chiude fra {tempo} e non l'hai ancora salvata.",
     # hai salvato la consigliata e intanto è cambiata (#333): {entrano} e {escono} sono nomi o un elenco «A, B e C»
     "dafare.consigliata_cambiata": "La consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera {entrano} al posto di {escono}.",
     "dafare.consigliata_cambiata_molti": "La consigliata è cambiata da quando l'hai salvata: rivedila. Cambiano {n} titolari.",
@@ -94,14 +94,14 @@ CATALOGO: dict[str, str] = {
     "dafare.copertura_moduli": "Con i giocatori disponibili non riesci a schierare nessuno dei moduli ammessi dalla tua lega.",
     "dafare.copertura_altri": "{nomi} e altri {n}",
     # la scelta salvata non si può più schierare (giocatore ceduto, modulo tolto dalla lega...): non è «non salvata»
-    "dafare.formazione_non_valida": "La formazione si chiude tra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
+    "dafare.formazione_non_valida": "La formazione si chiude fra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
     # senza la giornata (#923), che sta già nella testata della Formazione. Il parametro `giornata` resta per le pagine web in
     # inglese rimaste in memoria: il loro testi.js traduce ancora con «{giornata}». L'iPhone mostra il testo già scritto qui
     "dafare.rose_mercato": "È il momento di aste e scambi: se le rose sono cambiate, aggiornale.",
     "dafare.cert_scaduto": "L'app sul telefono è scaduta: va reinstallata.",
     "dafare.cert_oggi": "L'app sul telefono scade oggi: rinnovala adesso.",
-    "dafare.cert.one": "L'app sul telefono scade tra {n} giorno: rinnovala.",
-    "dafare.cert.other": "L'app sul telefono scade tra {n} giorni: rinnovala.",
+    "dafare.cert.one": "L'app sul telefono scade fra {n} giorno: rinnovala.",
+    "dafare.cert.other": "L'app sul telefono scade fra {n} giorni: rinnovala.",
     "dafare.diario": "{giornata}: è finita, dimmi se hai schierato la consigliata.",
     "dafare.dati_vecchi": "I dati delle partite non si aggiornano da {giorni} giorni.",
     "dafare.primo_avvio.one": "Hai saltato {n} passo della configurazione iniziale.",
@@ -211,7 +211,9 @@ CATALOGO: dict[str, str] = {
     "probabili.oggi": "Probabili aggiornate alle {ora}",
     "probabili.ieri": "Probabili aggiornate ieri alle {ora}",
     "probabili.data": "Probabili aggiornate il {giorno}/{mese} alle {ora}",
-    "probabili.vecchie": "Le ho lette {eta} e la formazione si chiude tra {tempo}: potrebbero essere cambiate, ricontrolla prima.",
+    # sotto «Probabili aggiornate alle 08:00 (7 ore fa)» e sotto la testata «Si chiude … fra …» (#923): solo cosa fare. I parametri
+    # `eta` e `tempo` restano per le pagine web in inglese rimaste in memoria, che traducono ancora con il testo di prima
+    "probabili.vecchie": "Le probabili potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione.",
     "confronto.pari": "{a} e {b} sono quasi alla pari: la differenza è sotto 0,2 punti attesi.",
     "confronto.avanti_sparsi": "{primo} è avanti di {punti} punti attesi, con piccoli vantaggi sparsi.",
     "confronto.avanti": "{primo} è avanti di {punti} punti attesi su {secondo}: {motivi}.",
@@ -428,6 +430,50 @@ CATALOGO: dict[str, str] = {
     "fonte.spenta_footballdata": "Non scarico risultati e statistiche di squadra delle partite giocate.",
     "fonte.spenta_espn": "Non scarico risultati in diretta.",
     "fonte.spenta_foto": "L'app usa i volti illustrati.",
+    # Stato dei dati (#949): i nomi che scrive il server arrivano con la frase, così la web in inglese li traduce.
+    # Il nome della fonte delle foto (le altre fonti hanno un nome proprio, che non si traduce: `fonti_attive.stato`)
+    "fonte.nome_foto": "Foto dei giocatori",
+    # le fasce delle probabili per la calibrazione (`stato_dati.nome_gruppo`, da `modello.GRUPPI_PROBABILI`): da {da} a {a} compreso
+    "fascia.titolare": "Titolare {da}-{a}%",
+    "fascia.titolare_sotto": "Titolare sotto {a}%",
+    "fascia.panchina": "Panchina {da}-{a}%",
+    "fascia.panchina_sotto": "Panchina sotto {a}%",
+    # una riga di `aggiornamenti` (`stato_dati.etichetta_aggiornamento`): la chiave è `cosa` con «_» al posto di «-»
+    "aggiornamento.aggiornamento": "Aggiornamento generale",
+    "aggiornamento.listone": "Listone e quotazioni",
+    "aggiornamento.calendario": "Calendario",
+    "aggiornamento.voti": "Voti e bonus",
+    "aggiornamento.probabili": "Probabili formazioni",
+    "aggiornamento.understat": "Statistiche avanzate",
+    "aggiornamento.dati_extra": "Statistiche di squadra",
+    "aggiornamento.controlli": "Controlli sui dati",
+    "aggiornamento.probabili_rapido": "Probabili vicino alla scadenza",
+    "aggiornamento.risultati_rapido": "Risultati la sera stessa",
+    "aggiornamento.taratura_probabili": "Taratura di «gioca N%»",
+    "aggiornamento.calendario_stagione": "Calendario completo {stagione}",
+    "aggiornamento.dati_extra_stagione": "Statistiche di squadra {stagione}",
+    # i controlli sui dati (`controlli.etichetta`): la chiave è il nome del controllo
+    "controllo.partite_per_giornata": "10 partite per giornata",
+    "controllo.voti_per_giornata": "Voti nelle giornate finite",
+    "controllo.somma_xg": "Gol attesi dei giocatori e della partita",
+    "controllo.titolari_per_squadra": "11 titolari per squadra",
+    "controllo.gol_dei_voti": "Gol dei voti uguali al risultato",
+    "controllo.gol_subiti_portieri": "Gol presi dai portieri uguali al risultato",
+    "controllo.partite_senza_statistiche": "Statistiche delle partite giocate",
+    "controllo.squalificati_cartellini": "Squalificati: cartellini e probabili",
+    "controllo.sentinella": "Sentinella: risposte dell'app",
+    # il nome di una funzione contata in «Quanto si usa l'app» (`uso.nome_funzione`, #949): lo stesso di `funzioni.FUNZIONI`
+    "uso.funzione_live": "Risultati in diretta",
+    "uso.funzione_asta": "Asta e riparazione",
+    "uso.funzione_confronto": "Confronto tra due giocatori",
+    "uso.funzione_scambi_trova": "Scambi: trova per me",
+    "uso.funzione_scambi_costruisci": "Scambi: costruisci",
+    "uso.funzione_immagini_web": "Immagini da indirizzo web",
+    "uso.funzione_elenco_giocatori": "Elenco dei giocatori",
+    "uso.funzione_seguiti": "Seguiti",
+    "uso.funzione_diario": "Diario delle giornate",
+    "uso.funzione_backup": "Copia di sicurezza",
+    "uso.funzione_novita": "Novità",
     # il nome della parte dell'app in «Stato dei dati › Quanto si usa l'app» (uso.PARTI): gli stessi di «Errori recenti»
     "uso.parte_formazione": "Formazione",
     "uso.parte_giornate": "Giornate",

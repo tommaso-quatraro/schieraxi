@@ -1,8 +1,8 @@
 """Controllo delle PR: se cambia il codice dell'app, la PR deve dire cosa cambia per l'utente.
 Uso (nei controlli di GitHub):  python script/ci/controlla_versione.py origin/main
 
-- Modo da usare: un file proprio `fanta/novita.d/<nome-breve>.json` con {"titolo": "...", "voci": ["..."]} e SENZA
-  numero. Il numero, la data e il VERSIONE di sw.js li mette il bot quando la PR si unisce (script/ci/assegna_versione.py).
+- Modo da usare: un file proprio `fanta/novita.d/<nome-breve>.json` con {"titolo": "...", "voci": ["..."], "titolo_en": "...",
+  "voci_en": ["..."]} e SENZA numero (dalla #949 l'inglese è obbligatorio: la web in inglese mostra quello). Il numero, la data e il VERSIONE di sw.js li mette il bot quando la PR si unisce (script/ci/assegna_versione.py).
   Non serve toccare fanta/novita.json né la riga VERSIONE di sw.js.
 - Il modo vecchio (voce nuova scritta a mano in cima a `fanta/novita.json`, versione più alta di main) è ancora accettato
   dal controllo ma non si usa più.
@@ -56,7 +56,7 @@ def controlla(nuove: list[dict], vecchie: list[dict]) -> list[str]:
         errori.append("la versione nuova ha bisogno di un titolo e di almeno una voce di novità")
     if vecchie and numeri[0] <= numero(vecchie[0]["versione"]):
         errori.append(f"la versione è ancora {vecchie[0]['versione']}: il codice è cambiato, serve una novità: "
-                      f"un file fanta/novita.d/<nome-breve>.json con titolo e voci (consigliato, il numero lo mette il bot) "
+                      f"un file fanta/novita.d/<nome-breve>.json con titolo e voci, in italiano e in inglese (consigliato, il numero lo mette il bot) "
                       f"oppure una versione più alta di {vecchie[0]['versione']} in cima a fanta/novita.json")
     return errori
 
@@ -65,7 +65,7 @@ def controlla_d(file_d: dict[str, object], nuove: list[dict], vecchie: list[dict
     """Modo nuovo: i file in fanta/novita.d sono validi e novita.json non ha preso un numero nuovo per conto suo."""
     errori = []
     for nome, dati in file_d.items():
-        errori += _assegna().errori_file(nome, dati)
+        errori += _assegna().errori_file(nome, dati, inglese=True)
     try:
         piu_alta = bool(nuove and vecchie and numero(nuove[0].get("versione", "")) > numero(vecchie[0].get("versione", "")))
     except ValueError as e:

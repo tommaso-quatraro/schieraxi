@@ -8,7 +8,7 @@ from __future__ import annotations
 
 NOTIFICHE: dict[str, tuple[str, str]] = {
     # ---- il numero della giornata (frasi.nome_giornata con avviso=True): lo stesso testo di «giornata.*» di frasi.CATALOGO
-    "n.giornata.lega": ("Giornata {n} · {a}ª di Serie A", "Matchday {n} · Serie A matchday {a}"),
+    "n.giornata.lega": ("Giornata {n} · {a}ª di Serie A", "Matchday {n} · Serie A {a}"),
     "n.giornata.serie_a": ("{a}ª giornata di Serie A", "Serie A matchday {a}"),
     # ---- cambi nelle probabili (notifiche.confronta: dice se lo stato di un giocatore è cambiato)
     "n.ora_infortunato": ("{nome}: ora infortunato", "{nome}: now injured"),
@@ -59,9 +59,9 @@ NOTIFICHE: dict[str, tuple[str, str]] = {
                                    "The lineup you saved is no longer valid: save another one. {giornata}: it closes at {ora}."),
     "n.t_non_messa": ("SchieraXI · hai messo la formazione?", "SchieraXI · have you entered your lineup?"),
     "n.non_messa_tra_un_ora": ("Hai messo la formazione nell'app della lega? Se sì, spunta «L'ho messa». {giornata}: si chiude tra circa un'ora, alle {ora}.",
-                               "Have you entered the lineup in your league's app? If so, tick «I've entered it». {giornata}: it closes in about an hour, at {ora}."),
+                               "Have you entered the lineup in your league's app? If so, tick “I've entered it”. {giornata}: it closes in about an hour, at {ora}."),
     "n.non_messa_ultimi_minuti": ("Hai messo la formazione nell'app della lega? Se sì, spunta «L'ho messa». {giornata}: si chiude alle {ora}.",
-                                  "Have you entered the lineup in your league's app? If so, tick «I've entered it». {giornata}: it closes at {ora}."),
+                                  "Have you entered the lineup in your league's app? If so, tick “I've entered it”. {giornata}: it closes at {ora}."),
     # ---- «cambia la formazione»
     "n.t_cambia": ("SchieraXI · cambia la formazione", "SchieraXI · change your lineup"),
     "n.t_cambia_consigliata": ("SchieraXI · la formazione consigliata è cambiata", "SchieraXI · the recommended lineup has changed"),

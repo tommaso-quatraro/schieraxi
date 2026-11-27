@@ -58,7 +58,7 @@ enum TestiAccount {
         return Catalogo.Account.esciTuttiGoogle
     }
 
-    /// «Esci solo da questo telefono» e la frase accanto (#809, dalla revisione della #812): dopo un «Esci» che non è arrivato al
+    /// «Esci solo da questo dispositivo» e la frase accanto (#809, dalla revisione della #812): dopo un «Esci» che non è arrivato al
     /// server (`SessioneAccount.esciSoloQuiPossibile`). Dal catalogo comune (`account.esci_solo_qui`, `account.esci_solo_qui_spiega`),
     /// anche se li mostra solo l'iPhone: la web senza server non si apre e non ne ha bisogno (Differenze ammesse).
     static let esciSoloQui = Catalogo.Account.esciSoloQui

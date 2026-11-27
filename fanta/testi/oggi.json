@@ -134,11 +134,11 @@
   },
   "oggi.rinvio_domanda": {
     "it": "Per questa giornata i loro giocatori",
-    "en": "For this round their players"
+    "en": "For this matchday their players"
   },
   "oggi.rinvio_aspetta": {
     "it": "aspettano il recupero (conta il voto del recupero)",
-    "en": "wait for the make-up game (the make-up game's grade counts)"
+    "en": "wait for the make-up game (its grade counts)"
   },
   "oggi.rinvio_senza_voto": {
     "it": "restano senza voto (entra la riserva)",
@@ -150,15 +150,15 @@
   },
   "oggi.rinvio_regola_lega": {
     "it": "È la regola della tua lega (Impostazioni › Regole e scadenza). Se per questa giornata la lega decide diversamente, cambiala qui: vale solo per questa giornata.",
-    "en": "This is your league's rule (Settings › Rules and deadline). If your league decides otherwise for this round, change it here: it only applies to this round."
+    "en": "This is your league's rule (Settings › Rules and deadline). If your league decides otherwise for this matchday, change it here: it only applies to this matchday."
   },
   "oggi.rinvio_eccezione": {
     "it": "Scelta solo per questa giornata. Di solito la tua lega: {regola}.",
-    "en": "Chosen for this round only. Your league usually: {regola}."
+    "en": "Chosen for this matchday only. Your league usually: {regola}."
   },
   "oggi.rinvio_salvato": {
     "it": "Fatto: consigli aggiornati per questa giornata",
-    "en": "Done: advice updated for this round"
+    "en": "Done: advice updated for this matchday"
   },
   "oggi.recupero_manca": {
     "it": "Manca il recupero di {partite}: i punti possono ancora cambiare.",

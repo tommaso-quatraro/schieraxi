@@ -110,6 +110,19 @@ def test_titolare_dell_anticipo_diventato_improbabile_resta():
     assert _tit(f) == TITOLARI
 
 
+@pytest.mark.parametrize("senza_previsione", [lambda p: p.drop(index=13), lambda p: p.assign(ruolo=p["ruolo"].where(p.index != 13, "A"))],
+                         ids=["tolto dal listone", "ruolo cambiato"])
+def test_titolare_di_prima_senza_previsione_la_migliore_lascia_fermi_quelli_dell_anticipo(senza_previsione):
+    """Il 13, titolare della consigliata di prima, non ha più una previsione nel suo ruolo: quella di prima non si può più schierare e
+    vale la migliore, ma anche la migliore lascia dove sono i giocatori dell'anticipo già cominciato. Prima vinceva la migliore
+    calcolata come se l'anticipo non ci fosse: il 7, crollato, usciva."""
+    nuove = senza_previsione(_prev({7: {"mu": 3.0}}))
+    migliore, f = _stabile(nuove, {ANTICIPO})
+    assert 7 not in _tit(migliore)                                         # da sola la migliore lo toglierebbe
+    assert 13 not in _tit(f) and 7 in _tit(f)
+    assert _pan(f)[4] == 9 and 25 not in _tit(f) | set(_pan(f))
+
+
 @pytest.mark.parametrize("iniziate", [(), {"ALTRA"}])
 def test_senza_anticipi_della_rosa_nulla_cambia(iniziate):
     """Nessun anticipo cominciato, o cominciato ma senza giocatori della rosa: come prima, vale la migliore."""
