@@ -696,6 +696,10 @@
     "it": "«{1}» ha {2} giocatori: il massimo è {3}. Controlla il file: forse due squadre sono finite insieme.",
     "en": "“{1}” has {2} players: the maximum is {3}. Check the file: maybe two teams ended up together."
   },
+  "err.squadra_troppi_giocatori_club": {
+    "it": "«{1}» ha {2} giocatori: il massimo è {3}. Forse «{4}» è una vostra squadra: si chiama come una squadra di Serie A e l'ho preso per quella. Lascia una riga vuota prima del suo nome e riprova.",
+    "en": "“{1}” has {2} players: the maximum is {3}. Maybe “{4}” is one of your teams: it has the same name as a Serie A club and I took it for that. Leave a blank line before its name and try again."
+  },
   "err.calcoli_in_coda": {
     "it": "Il server ha molti calcoli in coda: riprova fra qualche secondo.",
     "en": "The server has many calculations queued: try again in a few seconds."

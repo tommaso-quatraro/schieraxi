@@ -99,6 +99,40 @@ def test_nel_testo_uno_per_riga_le_squadre_gia_salvate_sono_titoli(ambiente):
     assert [s["nome"] for s in r.json()["squadre"]] == ["Alfa", "Beta"]
 
 
+def test_reimportando_solo_la_tua_rosa_dopo_uno_scambio_il_passaggio_si_vede(ambiente):
+    """Dopo uno scambio reimporti solo la tua rosa: quella salvata dell'altra squadra è vecchia e ha ancora il giocatore che hai
+    preso. Per «Cosa cambia» e per lo storico vale la squadra appena letta dal file, non l'ultima in elenco."""
+    a, _ = nuovo_utente("utentea")
+    assert importa(a, "Alfa\nP\tSommer\t1\nD\tBastoni\t1\nBeta\nA\tKean\t1\nA\tThuram\t1\n").status_code == 200
+    testo = "Alfa\nP\tSommer\t1\nA\tKean\t1\n"                    # Alfa ha dato Bastoni e preso Kean; Beta non è nel file
+    for rotta in ("/api/rose/anteprima", "/api/rose/testo"):
+        r = a.post(rotta, json={"testo": testo})
+        assert r.status_code == 200, r.text
+        assert "Passaggio da Beta a Alfa: Kean" in r.json()["riepilogo"], (rotta, r.json()["riepilogo"])
+    assert "Passaggio da Beta a Alfa: Kean" in a.get("/api/movimenti").json()[0]["testo"]          # il più recente per primo
+
+
+def test_squadra_chiamata_come_un_club_avviso_e_rifiuto_dicono_il_perche(ambiente, monkeypatch):
+    """Una fantasquadra che si chiama come un club, dove il testo non dice che è un titolo: l'anteprima lo dice con un avviso, e
+    se la squadra sopra supera il tetto dei giocatori il rifiuto dice quale nome forse è una vostra squadra (prima diceva solo
+    «"Lupi" ha 50 giocatori»)."""
+    a, _ = nuovo_utente("utentea")
+    testo = "Lupi\nSommer\nBastoni\nRoma\nKean\nThuram\n"
+    r = a.post("/api/rose/anteprima", json={"testo": testo})
+    assert r.status_code == 200, r.text
+    frasi_avvisi = [f for f in r.json()["avvisi_frasi"] if f and f["chiave"] == "rose.club_forse_squadra"]
+    assert [f["param"]["squadra"] for f in frasi_avvisi] == ["Lupi"]
+    monkeypatch.setattr(limiti, "MAX_GIOCATORI_SQUADRA", 3)
+    for rotta in ("/api/rose/anteprima", "/api/rose/testo"):
+        r = a.post(rotta, json={"testo": testo})
+        assert r.status_code == 413, r.text
+        assert r.json()["detail"] == ("«Lupi» ha 4 giocatori: il massimo è 3. Forse «Roma» è una vostra squadra: si chiama come una "
+                                      "squadra di Serie A e l'ho preso per quella. Lascia una riga vuota prima del suo nome e riprova.")
+    # senza nomi di club in mezzo il messaggio resta quello di sempre
+    r = a.post("/api/rose/anteprima", json={"testo": "Lupi\nSommer\nBastoni\nKean\nThuram\n"})
+    assert r.status_code == 413 and r.json()["detail"].endswith("forse due squadre sono finite insieme.")
+
+
 def test_ricaricando_lo_stesso_testo_le_scelte_di_prima_restano(ambiente):
     """Collaudo del 26/11: ricaricando lo stesso file le scelte fatte sui dubbi si perdevano («Cosa cambia» mostrava movimenti
     finti e si salvavano come non riconosciuti). La scelta salvata per lo stesso nome scritto, nella stessa squadra, torna

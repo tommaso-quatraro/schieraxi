@@ -289,6 +289,14 @@ CATALOGO: dict[str, str] = {
                                        "squadra, lascia una riga vuota prima e controlla di nuovo.",
     "rose.forse_manca_riga_vuota.other": "{squadra}: manca una riga vuota fra le squadre? {nomi} non sono nel listone: se uno è il nome "
                                          "di una squadra, lascia una riga vuota prima e controlla di nuovo.",
+    # una fantasquadra che si chiama come un club di Serie A («Roma») e non è stata presa come titolo (rose._avvisa_club_dubbi):
+    # {nomi} = «Nome», con «e»
+    "rose.club_forse_squadra.one": "{squadra}: manca una riga vuota fra le squadre? {nomi} si chiama come una squadra di Serie A e "
+                                   "l'ho preso per quella: se è una vostra squadra, lascia una riga vuota prima del suo nome e "
+                                   "controlla di nuovo.",
+    "rose.club_forse_squadra.other": "{squadra}: manca una riga vuota fra le squadre? {nomi} si chiamano come squadre di Serie A e "
+                                     "li ho presi per quelle: se uno è una vostra squadra, lascia una riga vuota prima del suo nome "
+                                     "e controlla di nuovo.",
     "rose.fogli_non_letti": "Ho letto solo i primi {letti} fogli su {totale}: se negli altri ci sono delle rose, non le ho lette. "
                             "Togli dal file i fogli che non servono, oppure carica gli altri in un secondo file.",
     # una lega già mista (squadre di esempio rimaste insieme a quelle vere, #683): server._rose_di_prima

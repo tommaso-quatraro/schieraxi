@@ -260,6 +260,15 @@
       "forma": "web (catalogo `fanta/testi/aggiorna.json`, `srv.json`)",
       "chi": "**fatto** (ramo `aggiorna-niente-arrivato`): prove sul server `tests/test_server.py`, `tests/test_aggiorna_senza_rete.py`, nel browser `tests/browser/test_impostazioni.py`, sull'iPhone `LegaViewModelTests`",
       "stato": "fatto"
+    },
+    {
+      "id": 126,
+      "schermata": "«Giocatori da sistemare»: rosa che non si legge e righe con lo stesso nome",
+      "web": "prima: se una rosa non si leggeva l'errore si scartava e la sezione non compariva. Ora al suo posto, in un errore (role=\"alert\"), «Non ho potuto controllare i giocatori da sistemare.» con il motivo (`pav.da_sistemare_errore`, `paNonRiconosciuti`); abbinando un giocatore sparisce solo la riga toccata",
+      "iphone": "prima: l'errore di lettura finiva solo nel foglio della ricerca e la sezione non compariva; due righe con lo stesso nome nella stessa squadra avevano lo stesso identificativo e abbinandone una sparivano tutte e due. Ora la stessa frase della web al posto della sezione (`DubbiRoseViewModel.erroreLettura`, `ImportaRoseView`) e ogni riga ha la sua posizione nella rosa (`GiocatoreDaSistemare.posizione`)",
+      "forma": "web",
+      "chi": "**fatto**: prove nel browser `tests/browser/test_primo_avvio.py`, sull'iPhone `DubbiRoseTests`",
+      "stato": "fatto"
     }
   ]
 }

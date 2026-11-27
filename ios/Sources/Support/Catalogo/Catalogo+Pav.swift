@@ -131,6 +131,11 @@ extension Catalogo {
             "Giocatori da sistemare (\(n))"
         }
 
+        /// `pav.da_sistemare_errore`
+        static func daSistemareErrore(motivo: String) -> String {
+            "Non ho potuto controllare i giocatori da sistemare. \(motivo)"
+        }
+
         /// `pav.scegli_file`
         static let scegliFile = "Scegli il file (Excel o CSV)"
 

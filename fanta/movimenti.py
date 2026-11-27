@@ -41,8 +41,11 @@ def _breve(g: GiocatoreRosa) -> dict:
     return {"id": g.id, "nome": g.nome, "ruolo": g.ruolo, "squadra": g.squadra, "costo": g.costo}
 
 
-def differenze(prima: Rose | None, dopo: Rose) -> dict:
-    """Confronta le due rose. 'testo' è un riassunto in italiano pronto da mostrare (anche in una notifica)."""
+def differenze(prima: Rose | None, dopo: Rose, lette: set[str] | frozenset = frozenset()) -> dict:
+    """Confronta le due rose. 'testo' è un riassunto in italiano pronto da mostrare (anche in una notifica).
+    `lette`: i nomi delle squadre appena lette dal file. Un giocatore che dopo l'importazione è in due squadre è di quella del
+    file: chi reimporta solo la sua rosa dopo uno scambio ha ancora salvata la rosa vecchia dell'altra squadra, con dentro il
+    giocatore che ha preso, e il passaggio si deve vedere (senza `lette`, o fra due squadre entrambe del file, vale l'ultima)."""
     if prima is None or not prima.squadre:
         n = len(dopo.squadre)
         return {"prima_importazione": True, "scambi": [], "svincolati_presi": [], "tagliati": [], "crediti": [],
@@ -55,7 +58,8 @@ def differenze(prima: Rose | None, dopo: Rose) -> dict:
     giocatori_prima = {s.nome: {_chiave(g, per_nome): g for g in s.giocatori} for s in prima.squadre}
     giocatori_dopo = {s.nome: {_chiave(g, per_nome): g for g in s.giocatori} for s in dopo.squadre}
     proprietario_prima = {k: n for n, gs in giocatori_prima.items() for k in gs}
-    proprietario_dopo = {k: n for n, gs in giocatori_dopo.items() for k in gs}
+    # le squadre del file per ultime: in un doppione vince la loro (sorted è stabile, l'ordine fra le altre resta)
+    proprietario_dopo = {k: n for n, gs in sorted(giocatori_dopo.items(), key=lambda x: x[0] in lette) for k in gs}
 
     passaggi: dict[tuple[str, str], list[dict]] = {}     # (da, a) -> giocatori
     presi: dict[str, list[dict]] = {}                    # squadra -> giocatori arrivati dagli svincolati
@@ -67,7 +71,9 @@ def differenze(prima: Rose | None, dopo: Rose) -> dict:
         g = giocatori_prima[a][k]
         if b is None:
             tagliati.setdefault(a, []).append(_breve(g))
-        elif b != a and b in comuni:
+        elif b != a and b in comuni and k not in giocatori_prima.get(b, {}):
+            # chi era già nella squadra di arrivo non si è mosso: un doppione rimasto da un'importazione di una rosa sola
+            # (A ha preso Paz da B, la rosa salvata di B è vecchia) non ripete il passaggio alla volta dopo
             passaggi.setdefault((a, b), []).append(_breve(giocatori_dopo[b][k]))
     for k, b in proprietario_dopo.items():
         if b in comuni and k not in proprietario_prima:

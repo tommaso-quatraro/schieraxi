@@ -481,7 +481,11 @@ importazione un giocatore non `sicuro` che nella rosa salvata della stessa squad
 "precedente"` e l'avviso «scelto da te l'ultima volta» (chiave `rose.scelta_precedente`): il client lo mostra già scelto e si può cambiare
 (non se il file gli dà un altro ruolo o se non è più nel listone). Le `correzioni` mandate vincono; senza correzioni si salva con
 `riconosciuto: "precedente"`. Testo con un nome per riga e squadre forse una sotto l'altra: in `avvisi` «Real Esempio: manca una riga vuota
-fra le squadre? «Pantere» non è nel listone: …» (chiave `rose.forse_manca_riga_vuota`).
+fra le squadre? «Pantere» non è nel listone: …» (chiave `rose.forse_manca_riga_vuota`). Dal 27/11/2026 una squadra che si chiama come un
+club di Serie A («Roma») è un titolo se è già salvata o se lo dice la struttura del file (riga vuota prima, in cima, dopo totale o crediti,
+club sulla riga dei giocatori); se resta dentro la squadra sopra, in `avvisi` «Lupi: manca una riga vuota fra le squadre? «Roma» si chiama
+come una squadra di Serie A …» (chiave `rose.club_forse_squadra`), e il `413` per troppi giocatori lo dice («… Forse «Roma» è una vostra
+squadra: …»). Nessun campo nuovo.
 Nel multipart il campo `correzioni` è lo stesso elenco scritto come testo JSON (JSON non valido: `422`). Una scelta che non corrisponde più al
 testo, o un `id` fuori listone: `400` con il messaggio, e niente si salva. `mia_squadra` che non c'è tra le rose: `400`.
 Si può cominciare con la sola propria rosa: una squadra sola non è un errore (solo un avviso, testo `lega.UNA_SQUADRA`: «Con una sola squadra funzionano formazione e consigli; le rose degli altri servono a guardare le altre squadre: puoi aggiungerle quando vuoi.»).
