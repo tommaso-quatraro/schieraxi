@@ -97,4 +97,25 @@ struct CaricatoreAnnullatoTests {
         #expect(c.datiSalvati == nil)
         #expect(!c.inCorso)
     }
+
+    @Test("Una lettura della giornata annullata non passa a widget e promemoria i dati di prima come appena letti")
+    func giornataAnnullataNonEFresca() async throws {
+        let passo = Contatore()
+        let srv = ServerDiProva { _, _, _ in
+            if passo.passo() == 0 { return try Fixture.dati("oggi") }
+            return try await Self.inViaggio()
+        }
+        let vm = OggiViewModel(server: srv, conPromemoria: false)
+        let fresche = Contatore()
+        vm.dopoLetturaFresca = { _, _, _ in _ = fresche.passo() }
+        await vm.carica()
+        try #require(fresche.valore == 1, "la prima lettura è fresca")
+        let lettura = Task { await vm.carica() }
+        await aspetta(srv, richieste: 2)
+        try #require(srv.richieste.count == 2, "la seconda lettura è in viaggio")
+        lettura.cancel()
+        await lettura.value
+        #expect(fresche.valore == 1, "i dati di prima non sono una lettura fresca: niente promemoria né widget con l'ora di adesso")
+        #expect(vm.oggi?.giornata == 9, "e restano a video")
+    }
 }
