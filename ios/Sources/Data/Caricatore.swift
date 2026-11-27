@@ -44,6 +44,7 @@ final class Caricatore<T: Decodable>: ObservableObject {
     let snake: Bool
 
     private let server: any ServerClient
+    private let rete: RitornoRete
     private let usaCache: Bool
     private var percorsoDelDato: String?
     private var scaricatoIl: Date?
@@ -88,12 +89,14 @@ final class Caricatore<T: Decodable>: ObservableObject {
     /// `snake: false` per i dati che vanno rimandati al server con le stesse chiavi (regole, impostazioni degli avvisi).
     /// `cache: false` per i dati che si modificano e si rimandano (non si deve ripartire da una copia vecchia).
     /// `ascolta: false` se la schermata gestisce da sola il comando «Aggiorna» (come Oggi, che deve anche riprogrammare i promemoria).
+    /// `rete`: chi riprova al ritorno della rete (`RitornoRete.condiviso` se nil; nei test uno a parte).
     init(_ percorso: String, snake: Bool = true, cache: Bool = true, ascolta: Bool = true,
-         server: any ServerClient = ServerCorrente.condiviso) {
+         server: any ServerClient = ServerCorrente.condiviso, rete: RitornoRete? = nil) {
         self.percorso = percorso
         self.snake = snake
         self.usaCache = cache
         self.server = server
+        self.rete = rete ?? RitornoRete.condiviso
         guard ascolta else { return }
         ascolto = NotificationCenter.default.publisher(for: .aggiornaTutto)
             .receive(on: DispatchQueue.main)
@@ -155,7 +158,7 @@ final class Caricatore<T: Decodable>: ObservableObject {
             stato = .failed(error.localizedDescription, inAttesa)   // restano gli ultimi dati, con la loro data
             ricordaFermo(richiesto)
             // senza rete resta la copia: quando il telefono ritrova la rete si riprova da soli, una volta, come la web
-            if inAttesa != nil, DatiVecchi.eDiRete(error) { RitornoRete.condiviso.aspetta() }
+            if inAttesa != nil, DatiVecchi.eDiRete(error) { rete.aspetta() }
         }
     }
 

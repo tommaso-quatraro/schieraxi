@@ -118,4 +118,67 @@ struct CaricatoreAnnullatoTests {
         #expect(fresche.valore == 1, "i dati di prima non sono una lettura fresca: niente promemoria né widget con l'ora di adesso")
         #expect(vm.oggi?.giornata == 9, "e restano a video")
     }
+
+    // Revisione della #972: la prima lettura in viaggio con la copia del telefono a video, una seconda annullata; prima la
+    // schermata tornava vuota e la data della copia si perdeva, e quando la prima non riusciva la striscia diceva «dati salvati
+    // alle <adesso>» (`datiSalvati` ripiega sull'ora di adesso).
+    @Test("Copia del telefono a video e lettura in viaggio, una seconda annullata, poi la prima non riesce: la striscia ha la data della copia")
+    func laCopiaTieneLaSuaData() async throws {
+        let indirizzo = "https://prova-copia-\(UUID().uuidString).invalid"
+        Cache.salva(try Fixture.dati("oggi"), "/api/oggi", indirizzo: indirizzo)
+        let letta = await Cache.leggi("/api/oggi", indirizzo: indirizzo)
+        let copia = try #require(letta, "la copia è sul telefono")
+        try await Task.sleep(nanoseconds: 50_000_000)          // l'ora di adesso non è più quella della copia
+        let libera = Scatola<Bool>()
+        defer { libera.valore = true }                          // anche se una prova si ferma prima, la prima lettura finisce
+        let passo = Contatore()
+        let server = ServerDiProva(indirizzo: indirizzo) { _, _, _ in
+            if passo.passo() == 0 {
+                // la prima lettura resta in viaggio finché la prova non la lascia andare, e poi la rete non c'è
+                while libera.valore != true { try await Task.sleep(nanoseconds: 10_000_000) }
+                throw ErroreApi.rete("spento")
+            }
+            return try await Self.inViaggio()                    // la seconda: annullata
+        }
+        let c = Caricatore<Oggi>("/api/oggi", ascolta: false, server: server, rete: RitornoRete())
+        let prima = Task { await c.ricarica() }
+        await aspetta(server, richieste: 1)
+        try #require(server.richieste.count == 1 && c.dato?.giornata == 9, "la copia del telefono a video, la prima lettura in viaggio")
+        let seconda = Task { await c.ricarica() }
+        await aspetta(server, richieste: 2)
+        try #require(server.richieste.count == 2, "la seconda lettura è in viaggio")
+        seconda.cancel()
+        await seconda.value
+        #expect(c.dato?.giornata == 9, "annullata la seconda, la copia resta a video")
+        libera.valore = true
+        await prima.value
+        #expect(c.dato?.giornata == 9)
+        #expect(c.datiSalvati == copia.data, "la striscia dice di quando è la copia, non l'ora di adesso")
+    }
+
+    @Test("Si aspetta il ritorno della rete solo quando a video resta una copia perché la rete non c'era")
+    func collegamentoConIlRitornoDellaRete() async throws {
+        let reteGiu = await aspettaLaRete(dopo: ErroreApi.rete("spento"), conDati: true)
+        #expect(reteGiu, "copia a video, rete assente: al ritorno della rete si riprova")
+        let lento = await aspettaLaRete(dopo: ErroreApi.timeout, conDati: true)
+        #expect(lento, "anche con il tempo scaduto")
+        let guasto = await aspettaLaRete(dopo: ErroreApi.server("Guasto"), conDati: true)
+        #expect(!guasto, "il server ha risposto con un errore: c'è «Riprova», la rete non c'entra")
+        let senzaCopia = await aspettaLaRete(dopo: ErroreApi.rete("spento"), conDati: false)
+        #expect(!senzaCopia, "senza copia a video c'è l'errore con «Riprova», come la web")
+    }
+
+    /// Una lettura riuscita (se `conDati`) e poi una che finisce con `errore`: il ritorno della rete aspetta?
+    private func aspettaLaRete(dopo errore: ErroreApi, conDati: Bool) async -> Bool {
+        let rete = RitornoRete()
+        let passo = Contatore()
+        let server = ServerDiProva { _, _, _ in
+            if conDati, passo.passo() == 0 { return try Fixture.dati("oggi") }
+            throw errore
+        }
+        let c = Caricatore<Oggi>("/api/oggi", cache: false, ascolta: false, server: server, rete: rete)
+        if conDati { await c.ricarica() }
+        await c.ricarica()
+        return rete.inAttesa
+    }
 }

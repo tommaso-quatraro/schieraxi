@@ -26,11 +26,14 @@ final class RitornoRete {
 
     /// Una schermata mostra la copia salvata perché la rete non c'era: al ritorno della rete si riprova.
     func aspetta() {
-        attesa.aspetta()
+        attesa.aspetta(adesso: Date())
     }
 
+    /// true se al ritorno della rete si riproverà (per le prove).
+    var inAttesa: Bool { attesa.inAttesa }
+
     private func cambia(inLinea: Bool) {
-        guard attesa.cambio(inLinea: inLinea) else { return }
+        guard attesa.cambio(inLinea: inLinea, adesso: Date()) else { return }
         NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
     }
 }
