@@ -39,9 +39,9 @@ enum Certificato {
         if resto <= 0 { return Info(testo: "Scaduto", livello: .scaduto) }
         if resto < 2 * 86_400 {
             let ore = Int(resto / 3600)
-            if ore < 1 { return Info(testo: "Scade tra meno di un'ora", livello: .attenzione) }
-            return Info(testo: "Scade tra \(ore) \(ore == 1 ? "ora" : "ore")", livello: .attenzione)
+            if ore < 1 { return Info(testo: "Scade fra meno di un'ora", livello: .attenzione) }
+            return Info(testo: "Scade fra \(ore) \(ore == 1 ? "ora" : "ore")", livello: .attenzione)
         }
-        return Info(testo: "Scade tra \(Int(resto / 86_400)) giorni", livello: .ok)
+        return Info(testo: "Scade fra \(Int(resto / 86_400)) giorni", livello: .ok)
     }
 }

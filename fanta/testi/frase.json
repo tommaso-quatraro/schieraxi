@@ -109,7 +109,7 @@
     "en": "{nome} ({stato}, plays {p}%) stays in the starting eleven: if he doesn't play, {riserva} comes on from the bench."
   },
   "frase.dafare.formazione_chiude": {
-    "it": "La formazione si chiude tra {tempo} e non l'hai ancora salvata.",
+    "it": "La formazione si chiude fra {tempo} e non l'hai ancora salvata.",
     "en": "The lineup closes in {tempo} and you have not saved it yet."
   },
   "frase.dafare.consigliata_cambiata": {
@@ -201,7 +201,7 @@
     "en": "{nomi} and {n} more"
   },
   "frase.dafare.formazione_non_valida": {
-    "it": "La formazione si chiude tra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
+    "it": "La formazione si chiude fra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
     "en": "The lineup closes in {tempo} and the one you saved is no longer valid: save another one."
   },
   "frase.dafare.rose_mercato": {
@@ -217,11 +217,11 @@
     "en": "The app on your phone expires today: renew it now."
   },
   "frase.dafare.cert.one": {
-    "it": "L'app sul telefono scade tra {n} giorno: rinnovala.",
+    "it": "L'app sul telefono scade fra {n} giorno: rinnovala.",
     "en": "The app on your phone expires in {n} day: renew it."
   },
   "frase.dafare.cert.other": {
-    "it": "L'app sul telefono scade tra {n} giorni: rinnovala.",
+    "it": "L'app sul telefono scade fra {n} giorni: rinnovala.",
     "en": "The app on your phone expires in {n} days: renew it."
   },
   "frase.dafare.diario": {
@@ -647,8 +647,8 @@
     "en": "Probable lineups updated on {giorno}/{mese} at {ora}"
   },
   "frase.probabili.vecchie": {
-    "it": "Le ho lette {eta} e la formazione si chiude tra {tempo}: potrebbero essere cambiate, ricontrolla prima.",
-    "en": "I read them {eta} and the lineup closes in {tempo}: they may have changed, check again first."
+    "it": "Le probabili potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione.",
+    "en": "The probable lineups may have changed: check them again before the lineup closes."
   },
   "frase.confronto.pari": {
     "it": "{a} e {b} sono quasi alla pari: la differenza è sotto 0,2 punti attesi.",
