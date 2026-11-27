@@ -74,6 +74,25 @@ enum DatiVecchi {
         return !serveAggiornareAlRitorno(uscitaIl: inBackgroundDal, adesso: adesso)
     }
 
+    /// Tornando dal secondo piano la Formazione rilegge se l'ultima lettura ha più di questi secondi (`DATI_VECCHI_MS` della web).
+    static let etaMassimaAlRitorno: TimeInterval = 5 * 60
+
+    /// Tornando nell'app, la Formazione rilegge una volta, come `formazioneAlRitorno` della web (#978): se la rilettura della
+    /// scadenza toccava mentre l'app era fuori (`rileggiPerLaScadenza`), o se torna dal secondo piano e l'ultima lettura
+    /// (`lettaIl`) ha più di 5 minuti. Solo inattiva (Centro di controllo, Centro Notifiche) l'età non conta: la web rilegge quando
+    /// la pagina torna visibile. Mai quando ricarica già tutto la porta (`serveAggiornareAlRitorno`): una lettura per evento.
+    static func rileggiAlRitorno(scadenza: Date?, fuoriDal: Date?, inBackgroundDal: Date?, lettaIl: Date?, adesso: Date) -> Bool {
+        if rileggiPerLaScadenza(scadenza, fuoriDal: fuoriDal, inBackgroundDal: inBackgroundDal, adesso: adesso) { return true }
+        guard fuoriDal != nil, let inBackgroundDal, let lettaIl,
+              !serveAggiornareAlRitorno(uscitaIl: inBackgroundDal, adesso: adesso) else { return false }
+        return adesso.timeIntervalSince(lettaIl) > etaMassimaAlRitorno
+    }
+
+    /// Il lavoro della scadenza, finita l'attesa, rilegge.
+    static func rileggiDopoLAttesa(scadenza: Date, ultimaLettura: Date?) -> Bool {
+        true
+    }
+
     private static let calendario: Calendar = {
         var c = Calendar(identifier: .gregorian)
         c.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current

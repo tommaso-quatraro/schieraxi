@@ -31,6 +31,7 @@ formazione.per_la_prossima
 formazione.modulo
 formazione.opzione_consigliato
 formazione.opzione_modulo
+formazione.opzione_tua
 formazione.punti_attesi
 formazione.di_solito
 formazione.oscilla

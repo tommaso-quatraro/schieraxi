@@ -40,6 +40,16 @@ struct TestaFormazioneTests {
         #expect(t.manca == "fra 3\u{00A0}h 20\u{00A0}min")
     }
 
+    @Test("A 25 secondi dalla scadenza non dice ancora «Formazione chiusa»: «fra 1 min», come la web (minuti arrotondati in su)")
+    func pochiSecondiPrima() throws {
+        let o = try Self.oggi(#"{"giornata": 11, "giornata_lega": 8, "scadenza": "2026-10-31 14:50", "fase": "prima"}"#)
+        let adesso = try #require(Quando.data("2026-10-31 14:50")).addingTimeInterval(-25)
+        let t = TestaFormazione.per(oggi: o, formazione: try Self.formazione(), adesso: adesso)
+        #expect(t.chiude == "Si chiude oggi 14:50", "prima si leggeva già «Formazione chiusa» mentre si poteva ancora cambiare")
+        #expect(t.manca == "fra 1\u{00A0}min")
+        #expect(t.voceScadenza == "Si chiude oggi 14:50 fra 1 minuto")
+    }
+
     @Test("Scadenza passata: «Formazione chiusa» senza conto; senza date «Calendario non disponibile»")
     func scadutaOSenzaDate() throws {
         let scaduta = try Self.oggi(#"{"giornata": 11, "scadenza": "2026-10-31 09:00"}"#)

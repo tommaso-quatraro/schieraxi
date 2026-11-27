@@ -48,17 +48,17 @@
     {
       "id": 47,
       "schermata": "Formazione aperta con un anticipo già cominciato",
-      "web": "in «Modifica a mano» i `bloccati` non si sostituiscono né entrano, riga `formazione.bloccati`; rifiuto del server con la sua frase",
-      "iphone": "uguale alla web: nella scheda di un titolare fermo la frase di `formazione.bloccati` al posto di «Sostituisci»; i fermi non compaiono fra i sostituti; 400 `giocatore_bloccato` mostra la frase del server",
+      "web": "in «Modifica a mano» i `bloccati` non si sostituiscono né entrano, riga `formazione.bloccati`; rifiuto del server con la sua frase, poi la Formazione si rilegge (#978)",
+      "iphone": "uguale alla web: nella scheda di un titolare fermo la frase di `formazione.bloccati` al posto di «Sostituisci»; i fermi non compaiono fra i sostituti; 400 `giocatore_bloccato` mostra la frase del server e la Formazione si rilegge, anche dopo «Torna alla consigliata» rifiutato (prima restava spostabile chi gioca la partita cominciata)",
       "forma": "server (`bloccati`, 400 `giocatore_bloccato`)",
-      "chi": "fatto sull'iPhone con il passo 1b di #673 (Formazione unica): `FormazioneViewModel.fermo`; dal 26/11/2026 i sostituti li dice il server (`POST /api/formazione/sostituisci`, senza i fermi); prova `AnticipiBloccatiTests`. Prima: fatto con #373",
+      "chi": "fatto sull'iPhone con il passo 1b di #673 (Formazione unica): `FormazioneViewModel.fermo`; dal 26/11/2026 i sostituti li dice il server (`POST /api/formazione/sostituisci`, senza i fermi); prova `AnticipiBloccatiTests`. Prima: fatto con #373; dal 27/11/2026 dopo il rifiuto si rilegge, web #978 e iPhone #984 (`FormazioneViewModel.codiciDaRileggere`, prova `FormazioneSiRileggeTests`)",
       "stato": "fatto"
     },
     {
       "id": 52,
       "schermata": "Formazione, frasi",
       "web": "intestazione «… · la tua scelta»; «Le probabili formazioni di questa giornata non sono ancora uscite: per ora uso le presenze recenti. Il consiglio si aggiorna da solo quando escono.»; «Entra il primo che può sostituire chi resta senza voto.»; «In ballottaggio con»; «Equilibrata: propone il 3-4-3.» (minuscola dopo i due punti, #557), «Modulo fissato a mano …», «Modificata a mano …»; «Tocca ✎ per sostituire un titolare …» o «Tocca ⇄ per confrontarlo …»; nella sostituzione «Giocatori dello stesso ruolo della tua rosa …» (testi `formazione.*`)",
-      "iphone": "uguale alla web: modulo come menu («4-3-3 · 73,7 punti · consigliato»), un tocco su un titolare apre la scheda con «Sostituisci», sotto il campo la riga dello stato",
+      "iphone": "uguale alla web: modulo come menu («4-3-3 · 73,7 punti · consigliato»; dopo un cambio a mano che non è una formazione del server, in cima la tua con i suoi punti e la spunta, «4-3-3 · 71,0 punti · la tua», e il consigliato riporta alla consigliata: riga 140), un tocco su un titolare apre la scheda con «Sostituisci», sotto il campo la riga dello stato",
       "forma": "web",
       "chi": "fatto sull'iPhone con il passo 1b di #673 (Formazione unica): `FormazioneView`, `SceltaSostituto`; tolti «Modifica a mano», Salva, ballottaggi e `ModificaAManoModuliTests`. Prima: fatto con #437 e #463 (PR #475)",
       "stato": "fatto"
@@ -139,10 +139,10 @@
       "id": 140,
       "schermata": "Formazione, conto alla rovescia negli ultimi secondi, menu del modulo dopo un cambio a mano e riletture da sole (#978)",
       "web": "dalla #978 «Formazione chiusa» solo a scadenza passata: i minuti che mancano si arrotondano in su, quindi «fra 1 min» fino all'ultimo secondo (`testoConto`); nel menu del modulo, se gli 11 in pagina non sono quelli di un modulo calcolato dal server, in cima la voce «4-3-3 · 71,0 punti · la tua» (`formazione.opzione_tua`), scelta; la Formazione si rilegge da sola 5 secondi dopo la scadenza, al ritorno in primo piano (scadenza passata o dati di più di 5 minuti) e dopo un rifiuto `giocatore_bloccato`",
-      "iphone": "in lavorazione. Oggi «Formazione chiusa» già negli ultimi 30 secondi (`Quando.partiDelConto` arrotonda i minuti al più vicino con `Formato.intero`); dopo una sostituzione nello stesso ruolo la spunta del menu sta sulla voce del server con lo stesso modulo (anche «consigliato», con i suoi punti) e la voce della tua formazione non c'è, anche se sceglierla riporta alla consigliata; rilegge 5 secondi dopo la scadenza solo in primo piano, non tornando sull'app a scadenza passata, non per dati vecchi e non dopo `giocatore_bloccato`",
+      "iphone": "uguale alla web: «Formazione chiusa» solo a scadenza passata (`Quando.contoAllaRovescia` arrotonda in su, in millesimi di secondo interi come la web; lo stesso conto nella barra e nei widget); nel menu del modulo, se gli 11 in campo non sono una formazione calcolata dal server, in cima «4-3-3 · 71,0 punti · la tua» con la spunta e i punti del server (`FormazioneViewModel.vociModulo`); la Formazione si rilegge 5 secondi dopo la scadenza della testa (`TestaFormazione.scadenza`, a giornata finita quella della prossima), tornando nell'app se quella rilettura toccava mentre era fuori (#972), tornando dal secondo piano con i dati di più di 5 minuti fa e con la Formazione in vista (`DatiVecchi.rileggiAlRitorno`; dopo 10 minuti fuori ricarica già tutto la porta, una lettura sola) e dopo un rifiuto `giocatore_bloccato` (riga 47). Prima «Formazione chiusa» negli ultimi 30 secondi, la spunta sulla voce del server con lo stesso modulo e la rilettura solo alla scadenza in primo piano",
       "forma": "web (#978): minuti arrotondati in su, voce «… · la tua» (`formazione.opzione_tua`) in cima al menu, le tre riletture da sole",
-      "chi": "differenza temporanea: web con la #978; iPhone: in lavorazione, dopo l'unione della #978",
-      "stato": "da-fare"
+      "chi": "fatto: web con la #978, iPhone con la #972 (ritorno dopo la scadenza) e la #984; prove `tests/browser/test_formazione_si_rilegge.py`, `FormazioneSiRileggeTests`, `MenuModuloTuaTests`, `ScadenzaAlRitornoTests`, `ContoAllaRovesciaTests`, `TestaFormazioneTests`",
+      "stato": "fatto"
     }
   ]
 }

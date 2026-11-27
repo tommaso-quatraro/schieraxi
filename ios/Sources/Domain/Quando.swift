@@ -155,9 +155,10 @@ enum Quando {
 // MARK: - Conto alla rovescia
 
 extension Quando {
-    /// Il conto alla rovescia alla scadenza come la web (`testoConto` di `app.js`): i minuti che mancano, arrotondati come
-    /// `Math.round`; «2 giorni 3 h» (un giorno: «1 giorno 3 h»), «6 h 44 min», «12 min». Niente secondi.
-    /// nil se, arrotondato, non manca più niente (meno di mezzo minuto, o scadenza passata): lì la web scrive «Chiusa».
+    /// Il conto alla rovescia alla scadenza come la web (`testoConto` di `app.js`): i minuti che mancano, arrotondati in su come
+    /// `Math.ceil` (#978); «2 giorni 3 h» (un giorno: «1 giorno 3 h»), «6 h 44 min», «12 min», fino all'ultimo secondo «1 min».
+    /// Niente secondi. nil solo da quando la scadenza è arrivata: lì la web scrive «Chiusa» (prima, con i minuti arrotondati al più
+    /// vicino, già mezzo minuto prima, mentre la formazione si poteva ancora cambiare).
     /// Lo usano Oggi, la barra sotto le schede e i widget.
     static func contoAllaRovescia(fino scadenza: Date, adesso: Date = Date()) -> String? {
         guard let p = partiDelConto(fino: scadenza, adesso: adesso) else { return nil }
@@ -206,10 +207,13 @@ extension Quando {
         return Array(istanti.prefix(max(massimo, 0)))
     }
 
-    /// Giorni, ore e minuti che mancano, dai minuti arrotondati (come la web); nil se non manca niente.
+    /// Giorni, ore e minuti che mancano, dai minuti arrotondati in su (come la web); nil se non manca niente. Il tempo si conta in
+    /// millesimi di secondo interi, come le date della web: così un istante a minuti interi dalla scadenza (`istantiDelConto`) dà
+    /// proprio quei minuti, senza che un resto di calcolo di un miliardesimo lo porti al minuto dopo.
     private static func partiDelConto(fino scadenza: Date, adesso: Date) -> (giorni: Int, ore: Int, minuti: Int)? {
-        let minuti = Formato.intero(scadenza.timeIntervalSince(adesso) / 60)
-        guard minuti > 0 else { return nil }
+        let millesimi = (scadenza.timeIntervalSince(adesso) * 1000).rounded()
+        guard millesimi.isFinite, millesimi > 0, millesimi < 1e15 else { return nil }
+        let minuti = Int((millesimi / 60_000).rounded(.up))
         return (minuti / 1440, (minuti % 1440) / 60, minuti % 60)
     }
 }

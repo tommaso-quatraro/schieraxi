@@ -3,28 +3,34 @@ import Testing
 @testable import Schieraxi
 
 /// Il conto alla rovescia alla scadenza come la web (`testoConto` di `fanta/web/app.js`): i minuti che mancano, arrotondati
-/// come `Math.round`; «2 giorni 3 h», «6 h 44 min», «12 min»; mai i secondi («6:44:45») né «3 giorni e 3 h».
+/// in su come `Math.ceil` (#978: con l'arrotondamento al più vicino, 29 secondi prima si diceva già «Formazione chiusa» mentre si
+/// poteva ancora cambiare); «2 giorni 3 h», «6 h 44 min», «12 min»; mai i secondi («6:44:45») né «3 giorni e 3 h».
 /// Lo stesso testo in Oggi, nella barra sotto le schede e nei widget (`docs/COERENZA-WEB-IPHONE.md`, «Stato della giornata»).
 @Suite("Conto alla rovescia come la web")
 struct ContoAllaRovesciaTests {
     /// La scadenza delle prove: sabato 31 ottobre 2026, 15:00 (ora italiana).
     private func scadenza() throws -> Date { try #require(Quando.data("2026-10-31 15:00")) }
 
-    /// Secondi che mancano alla scadenza e testo atteso (la web: `${h} h ${m} min`, `oggi.giorni_ore`, `${m} min`).
+    /// Secondi che mancano alla scadenza e testo atteso (la web: `${h} h ${m} min`, `oggi.giorni_ore`, `${m} min`, dai minuti
+    /// arrotondati in su).
     static let casi: [(Double, String)] = [
         (24_240, "6 h 44 min"),
-        (24_269, "6 h 44 min"),
+        (24_181, "6 h 44 min"),
+        (24_241, "6 h 45 min"),
         (24_285, "6 h 45 min"),
         (3_600, "1 h 0 min"),
         (3_540, "59 min"),
         (720, "12 min"),
         (31, "1 min"),
+        (29, "1 min"),
+        (1, "1 min"),
         (270_000, "3 giorni 3 h"),
         (273_540, "3 giorni 3 h"),
         (97_200, "1 giorno 3 h"),
         (172_800, "2 giorni 0 h"),
         (86_370, "1 giorno 0 h"),
-        (86_369, "23 h 59 min"),
+        (86_341, "1 giorno 0 h"),
+        (86_340, "23 h 59 min"),
     ]
 
     @Test("Giorni e ore, ore e minuti, solo minuti", arguments: ContoAllaRovesciaTests.casi)
@@ -33,10 +39,13 @@ struct ContoAllaRovesciaTests {
         #expect(Quando.contoAllaRovescia(fino: fine, adesso: fine.addingTimeInterval(-secondi)) == atteso)
     }
 
-    @Test("Scadenza passata o a meno di mezzo minuto: niente conto (la web scrive «Chiusa»)", arguments: [29.0, 0, -60, -86400])
+    @Test("Scadenza arrivata o passata: niente conto (la web scrive «Chiusa»); un attimo prima ancora «1 min»",
+          arguments: [0.0, -1, -60, -86400])
     func chiusa(secondi: Double) throws {
         let fine = try scadenza()
         #expect(Quando.contoAllaRovescia(fino: fine, adesso: fine.addingTimeInterval(-secondi)) == nil)
+        #expect(Quando.contoAllaRovescia(fino: fine, adesso: fine.addingTimeInterval(-0.5)) == "1 min")
+        #expect(Quando.contoAllaRovesciaParlato(fino: fine, adesso: fine.addingTimeInterval(-0.5)) == "1 minuto")
     }
 
     @Test("Mai i secondi né la «e» tra giorni e ore")

@@ -98,6 +98,11 @@ extension Catalogo {
             "\(modulo) · \(punti) punti"
         }
 
+        /// `formazione.opzione_tua`
+        static func opzioneTua(modulo: String, punti: String) -> String {
+            "\(modulo) · \(punti) punti · la tua"
+        }
+
         /// `formazione.punti_attesi`
         static let puntiAttesi = "punti attesi"
 
