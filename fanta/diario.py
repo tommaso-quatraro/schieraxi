@@ -30,7 +30,7 @@ from . import formazione as fz
 from .blocco import BloccoFile
 from .frasi import F, ConSegno, elenco as elenco_frasi, nome_giornata
 from .lega import Rose
-from .modello import Dati, Parametri, giocate_prima, previsioni
+from .modello import Dati, Parametri, previsioni
 from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
 from .punteggio import COLONNA_VOTO, fantavoto, modificatore_difesa
 from .regole import RUOLI, Regole, serie_a_a_lega
@@ -392,16 +392,14 @@ def _con_mostrata(voce: dict) -> bool:
 def _previsti_e_veri(d: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri, anche=frozenset()):
     """(previsioni ricostruite con i soli dati di prima, voti veri, {id: fantavoto vero} di chi ha preso voto) di una giornata
     finita, solo per le partite giocate e per quelle in `anche` (partite rinviate non ancora recuperate, che la regola della lega
-    conta senza voto o con il voto d'ufficio); None se mancano i dati. Non le partite giocate prima della scadenza (`giocate_prima`):
-    i loro giocatori sarebbero previsti con dati di dopo la loro partita, quindi nel Diario contano come chi non ha una previsione
-    (#447), con il voto vero."""
+    conta senza voto o con il voto d'ufficio); None se mancano i dati. Chi ha giocato una partita della giornata prima della
+    scadenza resta (servono i suoi punti veri), previsto con i dati di prima della sua partita (`modello.previsioni`)."""
     col = COLONNA_VOTO[regole.fonte_voto]
     prev = previsioni(d, stagione, giornata, regole, par)
-    giocate = set(d.partite.loc[(d.partite["stagione"] == stagione) & (d.partite["giornata"] == giornata) & (d.partite["giocata"] == 1),
-                                "id"]) - giocate_prima(d.partite, stagione, giornata)
-    if prev.empty or not giocate:
+    giocate = d.partite.loc[(d.partite["stagione"] == stagione) & (d.partite["giornata"] == giornata) & (d.partite["giocata"] == 1), "id"]
+    if prev.empty or giocate.empty:
         return None
-    prev = prev[prev["partita"].isin(giocate | set(anche))].set_index("id")
+    prev = prev[prev["partita"].isin(set(giocate) | set(anche))].set_index("id")
     reali = d.voti[(d.voti["stagione"] == stagione) & (d.voti["giornata"] == giornata)].drop_duplicates("calciatore_id").set_index("calciatore_id")
     fv_vero = {i: fantavoto(reali.loc[i].to_dict(), prev.at[i, "ruolo"], regole)
                for i in prev.index if i in reali.index and pd.notna(reali.at[i, col])}

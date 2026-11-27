@@ -127,10 +127,10 @@ class Dati:
 
 def giocate_prima(partite: pd.DataFrame, stagione: str, giornata: int) -> set[int]:
     """Gli id delle partite della giornata già giocate prima che si chiuda la formazione (`inizio_giornata`): anticipi e partite
-    anticipate di settimane. Il modello prevede la giornata con i dati fino alla scadenza, che per chi ha giocato queste partite
-    vengono dopo la sua partita: la misura delle previsioni passate (verifica e Affidabilità, Diario, verifica del consiglio) non
-    conta i loro giocatori, che sarebbero misurati con dati dal futuro. Lo stesso fa il registro delle giornate, che non salva chi
-    ha la partita già cominciata."""
+    anticipate di settimane. I loro giocatori `previsioni` li prevede con i dati di prima della loro partita; la misura delle
+    previsioni passate (verifica e Affidabilità, verifica del consiglio, gol attesi dei pacchetti) non li conta, perché i suoi
+    avversari (fantamedia tirata, S1 e S2) vedono i dati fino alla scadenza. Lo stesso fa il registro delle giornate, che non
+    salva chi ha la partita già cominciata. Il Diario invece li tiene: servono i loro punti veri."""
     data0 = inizio_giornata(partite, stagione, giornata)
     p = partite
     righe = (p["stagione"] == stagione) & (p["giornata"] == giornata) & (p["giocata"] == 1) & p["data"].notna() & (p["data"] < data0)
@@ -338,14 +338,14 @@ def prima_di(df: pd.DataFrame, data0: str, giornata: tuple[str, int] | None = No
     return righe
 
 
-def forza_squadre(d: Dati, stagione: str, giornata: int, par: Parametri, iterazioni: int = 15) -> Forza:
+def forza_squadre(d: Dati, stagione: str, giornata: int, par: Parametri, iterazioni: int = 15, fino_a: str | None = None) -> Forza:
     """Attacco e difesa di ogni squadra dalle partite già giocate (stile Dixon-Coles semplice).
 
     Gol attesi = gol medi x attacco di chi segna x difesa di chi subisce x fattore campo; le tre cose si stimano insieme
     (una squadra che ha affrontato avversari forti non viene penalizzata), le partite recenti pesano di più e chi ha
-    poche partite viene tirato verso la media. Si usa un misto di xG e gol veri."""
+    poche partite viene tirato verso la media. Si usa un misto di xG e gol veri. `fino_a`: vedi `previsioni`."""
     t0 = d.t(stagione, giornata)
-    data0 = d.inizio(stagione, giornata)
+    data0 = fino_a or d.inizio(stagione, giornata)
     m = d.partite[prima_di(d.partite, data0, (stagione, giornata)) & (d.partite["giocata"] == 1)]
     if m.empty:
         return Forza(1.35, 1.1, {}, {}, 0.25)
@@ -418,11 +418,29 @@ def previsioni(d: Dati, stagione: str, giornata: int, regole: Regole, par: Param
     Delle regole contano solo la fonte del voto e i bonus/malus, e i bonus entrano solo nell'ultimo passo (mu). Tutto il resto
     (forza delle squadre, medie, presenze, gol e assist attesi...) si calcola una volta e vale per tutte le leghe con la stessa
     fonte del voto: vedi `_pezzi_condivisi`. Stesse operazioni nello stesso ordine: stessi numeri.
+
+    I dati sono quelli di prima della scadenza (`Dati.inizio`), senza la giornata stessa. Chi ha già giocato una partita della
+    giornata prima della scadenza (anticipo, partita anticipata di settimane: `giocate_prima`) è previsto con i dati di prima della
+    prima di quelle partite (come prima di questa modifica): con quelli fino alla scadenza vedrebbe partite giocate dopo la sua,
+    e il Diario e il riassunto pubblico, che misurano anche lui, avrebbero dati dal futuro.
     """
     par = par or Parametri()
-    pezzi, rigori_partita = _pezzi_condivisi(d, stagione, giornata, COLONNA_VOTO[regole.fonte_voto], par, probabili, giocatori,
-                                             fattori_probabili, oracolo, taratura, dai_cartellini)
-    return _con_bonus(pezzi, rigori_partita, regole.bonus, par)
+    col_voto = COLONNA_VOTO[regole.fonte_voto]
+    pezzi, rigori_partita = _pezzi_condivisi(d, stagione, giornata, col_voto, par, probabili, giocatori, fattori_probabili, oracolo,
+                                             taratura, dai_cartellini)
+    tabella = _con_bonus(pezzi, rigori_partita, regole.bonus, par)
+    anticipate = giocate_prima(d.partite, stagione, giornata)
+    if not anticipate or tabella.empty:
+        return tabella
+    p = d.partite
+    fino_a = str(p.loc[(p["stagione"] == stagione) & (p["giornata"] == giornata) & p["id"].isin(anticipate), "data"].min())
+    pezzi, rigori_partita = _pezzi_condivisi(d, stagione, giornata, col_voto, par, probabili, giocatori, fattori_probabili, oracolo,
+                                             taratura, dai_cartellini, fino_a)
+    di_prima = _con_bonus(pezzi, rigori_partita, regole.bonus, par)
+    if di_prima.empty:
+        return tabella[~tabella["partita"].isin(anticipate)].reset_index(drop=True)
+    return pd.concat([tabella[~tabella["partita"].isin(anticipate)], di_prima[di_prima["partita"].isin(anticipate)]],
+                     ignore_index=True)
 
 
 def _con_bonus(pezzi: list, rigori_partita: float, b, par: Parametri) -> pd.DataFrame:
@@ -449,31 +467,32 @@ MAX_PEZZI = 16            # giornate (con fonte del voto e parametri) ricordate 
 
 
 def _pezzi_condivisi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri, probabili, giocatori,
-                     fattori_probabili, oracolo, taratura=None, dai_cartellini=None) -> tuple[list, float]:
+                     fattori_probabili, oracolo, taratura=None, dai_cartellini=None, fino_a: str | None = None) -> tuple[list, float]:
     """`_pezzi`, ricordati dentro `d` (i dati di una versione dell'archivio, che non cambiano): con molte leghe con bonus
     diversi le previsioni di una giornata si calcolano una volta sola, non una per lega. Si ricordano solo i casi d'uso
     normali (niente oracolo, giocatori = tutti o il listone); la chiave contiene tutto ciò da cui dipende il risultato,
     anche il contenuto delle probabili, la taratura di «gioca N%» e gli squalificati dai cartellini."""
     if oracolo is not None or not (giocatori is None or giocatori is d.calciatori):
         return _pezzi(d, stagione, giornata, col_voto, par, probabili, giocatori, fattori_probabili, oracolo, taratura,
-                      dai_cartellini)
+                      dai_cartellini, fino_a)
     try:
         firma_probabili = None if probabili is None else hashlib.sha1(pickle.dumps(probabili.to_dict("split"))).hexdigest()
         chiave = (stagione, giornata, col_voto, repr(par), firma_probabili, giocatori is None,
                   None if fattori_probabili is None else tuple(sorted(fattori_probabili.items())),
                   None if taratura is None else json.dumps(taratura, sort_keys=True),
-                  None if dai_cartellini is None else tuple(sorted((int(i), tuple(s)) for i, s in dai_cartellini.items())))
+                  None if dai_cartellini is None else tuple(sorted((int(i), tuple(s)) for i, s in dai_cartellini.items())),
+                  fino_a)
         hash(chiave)
     except Exception:  # noqa: BLE001 - qualcosa che non si sa firmare: si calcola e basta
         return _pezzi(d, stagione, giornata, col_voto, par, probabili, giocatori, fattori_probabili, oracolo, taratura,
-                      dai_cartellini)
+                      dai_cartellini, fino_a)
     with _blocco_pezzi:
         memoria = d.__dict__.setdefault("_pezzi", OrderedDict())
         if chiave in memoria:
             memoria.move_to_end(chiave)
             return memoria[chiave]
     risultato = _pezzi(d, stagione, giornata, col_voto, par, probabili, giocatori, fattori_probabili, oracolo, taratura,
-                       dai_cartellini)
+                       dai_cartellini, fino_a)
     with _blocco_pezzi:
         memoria[chiave] = risultato
         while len(memoria) > MAX_PEZZI:
@@ -485,12 +504,13 @@ _blocco_pezzi = threading.Lock()
 
 
 def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri, probabili, giocatori, fattori_probabili,
-           oracolo, taratura=None, dai_cartellini=None) -> tuple[list, float]:
+           oracolo, taratura=None, dai_cartellini=None, fino_a: str | None = None) -> tuple[list, float]:
     """Tutto `previsioni` tranne i bonus/malus: per ogni giocatore (campi della riga prima di mu, campi dopo, numeri per mu),
-    e i rigori a partita (servono a mu dei portieri). Chi lo riceve lo legge soltanto."""
+    e i rigori a partita (servono a mu dei portieri). Chi lo riceve lo legge soltanto. `fino_a`: i dati di prima di questa data
+    invece che di prima della scadenza (vedi `previsioni`)."""
     t0 = d.t(stagione, giornata)
-    data0 = d.inizio(stagione, giornata)
-    forza = forza_squadre(d, stagione, giornata, par)
+    data0 = fino_a or d.inizio(stagione, giornata)
+    forza = forza_squadre(d, stagione, giornata, par, fino_a=fino_a)
 
     V = d.voti[prima_di(d.voti, data0, (stagione, giornata))].copy()
     V["w"] = _pesi(V["t"], V["stagione"], t0, stagione, par)

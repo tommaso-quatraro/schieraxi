@@ -170,11 +170,22 @@ def test_la_misura_non_conta_chi_ha_giocato_prima_della_scadenza(tmp_path):
     d = _dati(tmp_path, "a", TUTTA_GIOCATA, {(11, DELL_ANTICIPO): GRANDE})
     esito = verifica.verifica_giornata(d, ST, 12, Regole(), modello.Parametri())
     assert esito.n == 18                                                    # i 20 della 12 meno i due del 2/11
-    prev, _, fv_vero = diario._previsti_e_veri(d, ST, 12, Regole(), modello.Parametri())     # Diario e «Quanto ci abbiamo preso»
-    assert not GIOCANO_IL_2_11 & set(prev.index) and not GIOCANO_IL_2_11 & set(fv_vero) and len(fv_vero) == 18
     raccolte: list = []                                                     # gol attesi contro veri della verifica dei pacchetti
     vp._con_registro(vp._previsioni, raccolte)(d, ST, 12, Regole(), modello.Parametri())
     assert not GIOCANO_IL_2_11 & set(raccolte[0]["id"]) and len(raccolte[0]) == 18
+
+
+def test_chi_ha_giocato_prima_della_scadenza_e_previsto_con_i_dati_di_prima_della_sua_partita(tmp_path):
+    """Revisione della #966, il Diario: per contare i punti veri delle formazioni servono tutti i giocatori, anche chi ha giocato il
+    2/11. La sua previsione usa i dati di prima della sua partita (come prima di questa PR), non quelli fino alla scadenza: il 9
+    del giocatore 100 nella 11, il 6/11, non cambia il suo atteso per il 2/11. Gli altri vedono la 11."""
+    normale = _dati(tmp_path, "normale", TUTTA_GIOCATA)
+    grande = _dati(tmp_path, "grande", TUTTA_GIOCATA, {(11, DELL_ANTICIPO): GRANDE, (11, CENTROCAMPISTA_11): GRANDE})
+    prima, dopo = _mu(normale, 12), _mu(grande, 12)
+    assert dopo[DELL_ANTICIPO] == prima[DELL_ANTICIPO]
+    assert dopo[CENTROCAMPISTA_11] > prima[CENTROCAMPISTA_11] + 0.05
+    prev, _, fv_vero = diario._previsti_e_veri(grande, ST, 12, Regole(), modello.Parametri())   # Diario e «Quanto ci abbiamo preso»
+    assert prev.at[DELL_ANTICIPO, "mu"] == prima[DELL_ANTICIPO] and len(fv_vero) == 20
 
 
 def test_con_date_non_leggibili_vale_la_prima_come_e_scritta():
