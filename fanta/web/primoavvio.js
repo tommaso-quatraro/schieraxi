@@ -244,8 +244,7 @@ function paAnteprima() {
     annulla: () => { paEvidenzia(null); paDimenticaFile(); mostra(true); $("#pa-testo").focus(); },
     mostrata: r => paEvidenzia((r.squadre || []).length ? "squadra" : null),        // in cima chiede la tua squadra
     // una squadra basta per cominciare: lo dice già l'anteprima (avviso del server), niente avviso che copra la pagina dopo (#873)
-    fatto: async (esito, mia) => {
-      paBozzaScrivi("");                                       // le rose sono salvate: la bozza non serve più
+    fatto: async (esito, mia) => {                             // la bozza l'ha già tolta il salvataggio (anteprima.js)
       await paAggiornaRose();
       await paSegnaFatto("rose");
       if (mia) { await paRegoleStandard(); stato.squadraVista = null; await paSegnaFatto("squadra"); }
@@ -321,7 +320,11 @@ const PA_SCHERMATE = {
       const e = $("#pa-esempi");
       if (e) e.addEventListener("click", async () => {
         e.disabled = true;
-        try { await api("/api/onboarding/demo", { method: "POST" }); await paAggiornaRose(); await paSegnaFatto("rose"); pa.passo = "squadra"; paDisegna(); }
+        try {
+          await api("/api/onboarding/demo", { method: "POST" });
+          paBozzaScrivi("");                                   // rose salvate (quelle di esempio): la bozza non serve più (revisione della #986)
+          await paAggiornaRose(); await paSegnaFatto("rose"); pa.passo = "squadra"; paDisegna();
+        }
         catch (err) { paErrore(err); e.disabled = false; }
       });
     },

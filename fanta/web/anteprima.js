@@ -263,6 +263,8 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
           ...(correzioni.length ? { correzioni } : {}), ...(mia ? { mia_squadra: mia } : {}) }) });
       }
       svuotaCache();
+      // rose salvate, dalla guida o da Impostazioni › Aggiorna le rose: la bozza del testo del primo avvio non serve più (primoavvio.js)
+      if (typeof paBozzaScrivi === "function") paBozzaScrivi("");
       if (opz.fatto) await opz.fatto(esito, mia);
     } catch (e) {
       if (e.status === 412) { await carica(t("ar.cambiate")); return; }    // rose cambiate nel frattempo: si rifà l'anteprima, le scelte restano

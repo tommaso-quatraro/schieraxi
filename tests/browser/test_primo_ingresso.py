@@ -570,6 +570,51 @@ def test_indietro_nel_primo_avvio_chiude_la_guida_e_resta_nell_app(web):
     assert not web.errori_console, web.errori_console
 
 
+def test_dopo_una_ricarica_o_un_salvataggio_la_guida_non_lascia_voci_morte(web):
+    """Revisione della #986: ricaricata la pagina con la guida aperta, o ridisegnata la Formazione sotto la guida dopo il salvataggio
+    delle rose, il primo `vai()` riscriveva la voce della guida senza `primoAvvio` e la guida ne aggiungeva un'altra: restava una
+    voce morta e serviva un Indietro in più per uscire. Ora la voce resta una sola e Indietro chiude la guida."""
+    solo_prima(web)
+    lega = account_senza_rose(web)
+    anteprima_finta(web, lega, 2)
+    web.apri("/", larghezza=390)
+    titolo_della_guida(web, "Le rose")
+    voci = web.pagina.evaluate("() => history.length")
+    web.pagina.reload(wait_until="load")
+    web.aspetta()
+    titolo_della_guida(web, "Le rose")
+    assert web.pagina.evaluate("() => [history.length, !!(history.state && history.state.primoAvvio)]") == [voci, True]
+    controlla_le_rose(web)
+    guida(web).get_by_role("button", name="Conferma e salva").click(timeout=10000)
+    titolo_della_guida(web, "La tua squadra")
+    web.aspetta()
+    assert web.pagina.evaluate("() => [history.length, !!(history.state && history.state.primoAvvio)]") == [voci, True]
+    web.pagina.evaluate("() => history.back()")
+    web.pagina.locator("#foglio").wait_for(state="hidden", timeout=10000)
+    assert web.pagina.evaluate("() => !!(history.state && history.state.primoAvvio)") is False
+
+
+def test_la_bozza_se_ne_va_anche_con_le_squadre_di_esempio(web):
+    """Revisione della #986: la bozza del testo delle rose si toglieva solo confermando l'anteprima della guida. Con «Usa le squadre di
+    esempio» le rose sono salvate: la bozza se ne va, e il passo «Le rose» riaperto è vuoto."""
+    solo_prima(web)
+    lega = account_senza_rose(web)
+
+    def esempi(route):
+        lega["salvate"] = True
+        _rispondi(route, {"ok": True})
+    web.pagina.route(_rotta("/api/onboarding/demo"), esempi)
+    web.risposta("/api/account/me", UTENTE)
+    web.apri("/", larghezza=390)
+    titolo_della_guida(web, "Le rose")
+    testo_delle_rose(web).fill(TESTO_ROSE)
+    guida(web).get_by_role("button", name="Usa le squadre di esempio").click(timeout=10000)
+    titolo_della_guida(web, "La tua squadra")
+    guida(web).locator('[data-pa-passo="rose"]').click()
+    titolo_della_guida(web, "Le rose")
+    assert testo_delle_rose(web).input_value() == "", "la bozza resta dopo le squadre di esempio"
+
+
 def test_in_inglese_il_nome_scritto_del_dubbio_ha_le_virgolette_inglesi(web):
     """In inglese l'anteprima mescolava «Pio Esposito» (il nome scritto, in testa al dubbio) e “Pio Esposito” (nelle frasi): ora
     sono tutte “ ”, come le frasi del catalogo inglese."""

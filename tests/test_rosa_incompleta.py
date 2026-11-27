@@ -49,6 +49,21 @@ def test_una_rosa_incompleta_che_forma_una_squadra_non_e_un_problema():
     assert consigli.rosa_incompleta(_rosa_piena(), regole.Regole()) is None
 
 
+def test_contano_i_moduli_della_lega_non_quelli_soliti():
+    """Revisione della #986: la rosa basta se riempie un modulo AMMESSO dalla lega. Con il solo 5-4-1, 11 giocatori da 3-4-3 non
+    bastano (mancano difensori); 11 da 5-4-1 sì, anche se con i moduli soliti non si potrebbe schierare altro."""
+    solo_541 = replace(regole.Regole(), moduli=["5-4-1"])
+
+    def squadra(d, c, a):
+        ruoli = ["P"] + ["D"] * d + ["C"] * c + ["A"] * a
+        return lega.Squadra("Mia", [lega.GiocatoreRosa(i, f"g{i}", r, "INT") for i, r in enumerate(ruoli, 1)])
+    da_343, da_541 = squadra(3, 4, 3), squadra(5, 4, 1)
+    assert consigli.rosa_incompleta(da_343, regole.Regole()) is None
+    assert consigli.rosa_incompleta(da_343, solo_541) == ("Non si riesce a formare una squadra: secondo le regole della lega, alla "
+                                                         "rosa di Mia mancano 2 portieri, 5 difensori, 4 centrocampisti e 3 attaccanti.")
+    assert consigli.rosa_incompleta(da_541, solo_541) is None
+
+
 def test_un_giocatore_solo_al_singolare():
     """Con una rosa di un portiere solo nelle regole e nessun portiere: «manca 1 portiere»."""
     r = replace(regole.Regole(), rosa={"P": 1, "D": 8, "C": 8, "A": 6})

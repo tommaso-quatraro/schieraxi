@@ -767,8 +767,11 @@ function vai(vista, gruppo, opz = {}) {
     // una voce nuova nella cronologia per ogni schermata nuova; la prima schermata e i ridisegni della stessa la sostituiscono
     const indirizzo = indirizzoVista(d.vista, d.gruppo, d.rosa), voce = { vista: d.vista, gruppo: d.gruppo || null, rosa: d.rosa || null };
     try {
-      // sostituendo la voce si tiene da dove era arrivata (`da`): è ancora la stessa pagina
-      if (!history.state || ora === indirizzo || opz.sostituisci) history.replaceState({ ...voce, da: (history.state && history.state.da) || null }, "", indirizzo);
+      // sostituendo la voce si tiene da dove era arrivata (`da`): è ancora la stessa pagina. E il segno della voce del primo avvio
+      // (`primoAvvio`, primoavvio.js): senza, dopo una ricarica o un ridisegno sotto la guida la guida ne aggiungeva un'altra e restava
+      // una voce morta (revisione della #986)
+      const guida = ora === indirizzo && history.state && history.state.primoAvvio ? { primoAvvio: true } : {};   // solo se l'indirizzo resta
+      if (!history.state || ora === indirizzo || opz.sostituisci) history.replaceState({ ...voce, da: (history.state && history.state.da) || null, ...guida }, "", indirizzo);
       else history.pushState({ ...voce, da: ora }, "", indirizzo);
     } catch { /* niente cronologia (pagina aperta da un file): si cambia schermata lo stesso */ }
   }
