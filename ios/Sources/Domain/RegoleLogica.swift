@@ -89,6 +89,11 @@ enum RegoleLogica {
         fasce.sorted { $0.media < $1.media }.filter { media >= $0.media }.last?.bonus ?? 0
     }
 
+    /// Il valore dopo un tocco su + (`su`) o − di una riga delle regole, dentro i limiti.
+    static func passoSuccessivo(_ valore: Double, passo: Double, su: Bool, minimo: Double, massimo: Double) -> Double {
+        min(massimo, max(minimo, valore + (su ? passo : -passo)))
+    }
+
     /// Media di portiere e tre difensori: la somma dei quattro voti divisa per 4.
     static func mediaDifesa(_ voti: [Double]) -> Double {
         voti.isEmpty ? 0 : voti.reduce(0, +) / Double(voti.count)

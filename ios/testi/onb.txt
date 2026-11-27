@@ -7,3 +7,6 @@ onb.attiva_gli_avvisi_b
 onb.non_trovati_nel
 onb.cerca_giocatore_giusto
 onb.tutti_giocatori_sono
+
+# La ricerca del giocatore giusto senza risultati (ImportaRoseView, CercaGiocatoreGiustoView), come la web
+onb.nessun_risultato

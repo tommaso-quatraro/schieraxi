@@ -62,11 +62,11 @@ struct NovitaComeLaWebTests {
         #expect(ParoleNovita.nuoveDa(versioni: Self.versioni(4), ultimaVista: "0.1") == 4)
     }
 
-    @Test("Si vedono almeno 10 versioni e tutte le nuove; mai più di quelle che ci sono")
+    @Test("Si vedono sempre 10 versioni, come la web dalla #615, anche con più versioni non ancora viste; mai più di quelle che ci sono")
     func quanteVisibili() {
         #expect(ParoleNovita.quanteVisibili(totale: 52, nuoveDa: 0) == 10)
         #expect(ParoleNovita.quanteVisibili(totale: 52, nuoveDa: 1) == 10)
-        #expect(ParoleNovita.quanteVisibili(totale: 52, nuoveDa: 14) == 14)
+        #expect(ParoleNovita.quanteVisibili(totale: 52, nuoveDa: 14) == 10)
         #expect(ParoleNovita.quanteVisibili(totale: 3, nuoveDa: 3) == 3)
         #expect(ParoleNovita.quanteVisibili(totale: 0, nuoveDa: 0) == 0)
     }

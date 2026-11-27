@@ -93,7 +93,9 @@ final class DominioTests: XCTestCase {
         // nessun modulo
         var senzaModuli = v
         senzaModuli.imposta("moduli", .lista([]))
-        XCTAssertThrowsError(try RegoleLogica.preparaPerSalvataggio(senzaModuli)) { XCTAssertEqual($0.localizedDescription, "Scegli almeno un modulo.") }
+        XCTAssertThrowsError(try RegoleLogica.preparaPerSalvataggio(senzaModuli)) {
+            XCTAssertEqual($0.localizedDescription, Catalogo.Regole.scegliAlmenoModulo, "la frase della web")
+        }
         // due fasce con la stessa media
         var doppie = v
         doppie.imposta("modificatore_difesa.soglie", .lista([.lista([.intero(6), .intero(1)]), .lista([.intero(6), .intero(2)])]))
@@ -101,7 +103,7 @@ final class DominioTests: XCTestCase {
         // nome vuoto
         var senzaNome = v
         senzaNome.imposta("nome_lega", .testo("  "))
-        XCTAssertEqual(try RegoleLogica.preparaPerSalvataggio(senzaNome).valore("nome_lega")?.testo, "La mia lega")
+        XCTAssertEqual(try RegoleLogica.preparaPerSalvataggio(senzaNome).valore("nome_lega")?.testo, Catalogo.Regole.miaLega)
     }
 
     func testDescrizioneDeiValoriRiconosciuti() {

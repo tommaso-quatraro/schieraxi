@@ -2,12 +2,12 @@ import Foundation
 
 /// Una riga delle Impostazioni che apre una pagina: il nome, sotto una riga piccola, e la pagina. L'`id` è il gruppo della stessa
 /// riga sulla web (`rigaImp` di `fanta/web/impostazioni.js`: rose, squadra, regole, squadre, account, informazioni, scrivici,
-/// gestione).
+/// gestione). Senza pagina la riga è spenta: c'è, ma adesso non si apre, e la riga sotto dice quando (`rigaImpSpenta` della web).
 struct VoceImpostazioni: Identifiable, Equatable {
     let id: String
     let nome: String
     let sotto: String?
-    let pagina: PaginaImpostazioni
+    let pagina: PaginaImpostazioni?
 }
 
 /// Quali righe mostra la pagina Impostazioni, come `paginaImpostazioni` della web (#673 passo 3, web #675). Logica pura: la provano
@@ -16,7 +16,7 @@ enum VociImpostazioni {
     /// La mia lega: Aggiorna le rose; La mia squadra (solo con le rose: sotto il suo nome o «Non l'hai ancora scelta»); Regole e
     /// scadenza; Le altre squadre (solo con più squadre e la funzione `squadre_altrui` accesa), con il numero delle squadre senza la
     /// mia, quello dell'elenco che apre (`altreSquadre`).
-    static func lega(squadre: [SquadraLega], squadreAltrui: Bool) -> [VoceImpostazioni] {
+    static func lega(squadre: [SquadraLega], squadreAltrui: Bool, squadreNonArrivate: Bool = false) -> [VoceImpostazioni] {
         var voci = [VoceImpostazioni(id: "rose", nome: Catalogo.Lega.voceImporta, sotto: Catalogo.Lega.voceImportaSub, pagina: .importa)]
         if !squadre.isEmpty {
             let mia = squadre.first { $0.mia == true }?.nome

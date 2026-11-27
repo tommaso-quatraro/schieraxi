@@ -254,9 +254,6 @@ extension Catalogo {
             "«\(campo)» deve essere un numero intero"
         }
 
-        /// `regole.nuovo`
-        static let nuovo = "Nuovo"
-
         /// `regole.rinviate`
         static let rinviate = "Partite rinviate"
 
@@ -280,5 +277,32 @@ extension Catalogo {
 
         /// `regole.rv_aiuto_voto_ufficio`
         static let rvAiutoVotoUfficio = "Tutti prendono lo stesso voto, senza bonus né malus."
+
+        /// `regole.scegli_almeno_modulo`
+        static let scegliAlmenoModulo = "Scegli almeno un modulo"
+
+        /// `regole.due_fasce_hanno`
+        static let dueFasceHanno = "Due fasce hanno la stessa media: toglierne una"
+
+        /// `regole.media_somma`
+        static let mediaSomma = "La media è la somma di"
+
+        /// `regole.portiere_migliori_difensori`
+        static let portiereMiglioriDifensori = "portiere + i 3 migliori difensori"
+
+        /// `regole.divisa_per_per`
+        static let divisaPerPer = "divisa per 4. Per ogni fascia raggiunta si prende il bonus più alto raggiunto."
+
+        /// `regole.uscita_titolo`
+        static let uscitaTitolo = "Le modifiche alle regole non sono salvate"
+
+        /// `regole.esci_senza_salvare`
+        static let esciSenzaSalvare = "Esci senza salvare"
+
+        /// `regole.continua_modificare`
+        static let continuaModificare = "Continua a modificare"
+
+        /// `regole.modifiche_non_salvate`
+        static let modificheNonSalvate = "Modifiche non salvate"
     }
 }

@@ -60,5 +60,8 @@ extension Catalogo {
 
         /// `imp.avanzate`
         static let avanzate = "Avanzate"
+
+        /// `imp.mia_squadra_senza_rete`
+        static let miaSquadraSenzaRete = "Si apre quando il server torna raggiungibile"
     }
 }

@@ -118,6 +118,9 @@ final class LegaViewModel: ViewModelBase {
     /// La propria squadra, se scelta.
     var miaSquadra: String? { squadre.dato?.first { $0.mia == true }?.nome }
 
+    /// Le squadre non sono arrivate perché il server non si raggiunge.
+    var squadreNonArrivate: Bool { false }
+
     /// «Non è la tua squadra?» e la prima scelta della propria (come `collegaSceltaMia` della web, #863): `PUT /api/mia-squadra`,
     /// poi le squadre si rileggono (la riga «La mia squadra» dice quella nuova) e, come la web che ridisegna «La mia squadra», al
     /// posto della pagina aperta (la rosa di prima o la scelta) c'è la rosa della squadra scelta. Se nel frattempo si è passati a

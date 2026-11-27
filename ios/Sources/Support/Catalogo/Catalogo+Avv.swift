@@ -72,5 +72,22 @@ extension Catalogo {
 
         /// `avv.prova_sola_dopo`
         static let provaSolaDopo = "La prova si fa da sola dopo gli aggiornamenti, appena c'è almeno una giornata finita."
+
+        /// `avv.punti_delle_formazioni`
+        static let puntiDelleFormazioni = "Punti delle formazioni giornata per giornata: modello, fantamedia e massimo possibile"
+
+        /// `avv.modello_nbsp`
+        static let modelloNbsp = "modello &nbsp;"
+
+        /// `avv.fantamedia_nbsp`
+        static let fantamediaNbsp = "da fantamedia &nbsp;"
+
+        /// `avv.max_possibile`
+        static let maxPossibile = "massimo possibile"
+
+        /// `avv.giornate_da_a`
+        static func giornateDaA(a: String, b: String) -> String {
+            "dalla \(a)ª alla \(b)ª giornata di Serie A"
+        }
     }
 }

@@ -260,5 +260,23 @@ extension Catalogo {
 
         /// `sd.mai`
         static let mai = "mai"
+
+        /// `sd.n_giocatori.one`, `sd.n_giocatori.other`
+        static func nGiocatori(_ n: Int) -> String {
+            n == 1 ? "\(n) giocatore" : "\(n) giocatori"
+        }
+
+        /// `sd.hanno_giocato`
+        static func hannoGiocato(o: String, p: String) -> String {
+            "hanno giocato \(o) · previsto \(p)"
+        }
+
+        /// `sd.correzione`
+        static func correzione(f: String) -> String {
+            "correzione ×\(f)"
+        }
+
+        /// `sd.corregge`
+        static let corregge = "Se «hanno giocato» e «previsto» sono lontani, l'app corregge da sola i numeri di partenza (dopo 3 giornate e almeno 30 giocatori per gruppo, mai oltre il 15%)."
     }
 }

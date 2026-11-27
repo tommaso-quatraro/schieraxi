@@ -188,6 +188,9 @@ final class RosaViewModel: ViewModelBase {
         }
     }
 
+    /// «Rimuovi» sotto lo stemma («stemma») o la maglia («maglia»).
+    func rimuoviImmagine(tipo: String) async {}
+
     /// Manda al server lo stemma («stemma») o la maglia («maglia») scelti dalla libreria foto.
     func inviaImmagine(_ dati: Data, tipo: String) async {
         inCorso = true
@@ -582,9 +585,7 @@ struct StatoDatiView: View {
                                 ForEach(gruppi) { g in
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(g.gruppo)
-                                        Text((g.n ?? 0) > 0
-                                             ? "\(Formato.plurale(g.n ?? 0, "giocatore", "giocatori")) · \((g.n ?? 0) == 1 ? "ha" : "hanno") giocato \(Formato.percento(g.osservato))% · previsto \(Formato.percento(g.previsto))%\(g.indicativo == true ? Catalogo.Sd.pochiDati : "")"
-                                             : Catalogo.Sd.nessunDato)
+                                        Text(ParoleRegistro.gruppo(g, fattore: c.fattori?[g.gruppo]))
                                             .font(.caption).foregroundStyle(Color.testoSecondario)
                                     }
                                     .accessibilityElement(children: .combine)

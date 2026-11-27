@@ -31,3 +31,9 @@ avv.punti_formazione_modello
 avv.punti_medi
 avv.mancano_probabili
 avv.prova_sola_dopo
+# Stato dei dati, «Quanto è affidabile il modello»: legenda, nome per VoiceOver e giornate del grafico (ParoleAffidabilita)
+avv.punti_delle_formazioni
+avv.modello_nbsp
+avv.fantamedia_nbsp
+avv.max_possibile
+avv.giornate_da_a
