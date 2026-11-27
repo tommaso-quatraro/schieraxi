@@ -85,6 +85,24 @@ def test_iscrizione_con_email_a_posta_spenta_lo_dice_uguale_per_tutti(spenta, mo
     assert spenta == [] and utenti() == ["giulia"]             # niente messaggi, niente iscrizioni «in attesa»
 
 
+def test_iscrizione_con_email_a_posta_spenta_non_chiede_l_invito_a_chi_l_ha_gia(spenta, monkeypatch):
+    """Nel modo `email` l'invito serve sempre: chi si iscrive l'ha già scritto nel modulo. Il messaggio diceva «Chiedi un invito a
+    chi gestisce il server» (era per la vecchia registrazione aperta con email, senza invito). Ora dice cosa è successo (le email
+    sono spente, il codice non arriverebbe), che l'invito non è stato usato e cosa fare. E l'invito vale davvero ancora: con le
+    email accese lo stesso codice fa partire l'iscrizione."""
+    monkeypatch.setenv("FANTA_REGISTRAZIONE", "email")
+    codice = invito()
+    corpo = {"nome_utente": "anna", "password": PASSWORD, "email": "anna@example.com", "invito": codice}
+    r = cliente().post("/api/account/registra", json=corpo)
+    assert r.status_code == 503 and r.json()["codice"] == "iscrizione_posta_spenta"
+    messaggio = r.json()["detail"]
+    assert "chiedi un invito" not in messaggio.lower(), messaggio
+    assert "Il tuo invito non è stato usato" in messaggio and "avvisa chi gestisce il server" in messaggio, messaggio
+    monkeypatch.setenv("FANTA_MAIL", "log")
+    r = cliente().post("/api/account/registra", json=corpo)
+    assert r.status_code == 200 and r.json()["verifica_email"] is True, r.text
+
+
 def test_iscrizione_con_invito_e_posta_spenta_crea_l_account_e_lo_dice(spenta, monkeypatch):
     monkeypatch.setenv("FANTA_REGISTRAZIONE", "aperta")        # in `aperta` un invito valido dà l'account subito
     c = cliente()
