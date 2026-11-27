@@ -145,20 +145,22 @@ private extension LegaDemo {
         d["gol_squadra"] = 1.8
         d["gol_avversario"] = 1.2
         if let data = dataPartita(di: p.squadra, adesso: adesso, fase: fase) { d["data_partita"] = data }
-        // titolarità: come nelle probabili formazioni (stato e percentuale come nel riassunto dei widget, `CalciatoreDemo`)
+        // titolarità: come nelle probabili formazioni (stato e percentuale come nel riassunto dei widget, `CalciatoreDemo`); a
+        // parole con la regola del server (`CalciatoreDemo.titolarita`), i motivi dallo stato delle probabili
         d["stato"] = p.statoProbabili
         d["percentuale"] = p.percentualeProbabili
+        d["titolarita"] = p.titolarita
         if p.assente {
-            d["titolarita"] = "fuori"; d["motivi"] = ["infortunato"]
+            d["motivi"] = ["infortunato"]
         } else if p.dubbio {
             // in dubbio: la probabilità delle probabili è la stessa di «gioca N%» (una sola percentuale, coerente ovunque).
             // Come il server: il motivo della titolarità e l'etichetta pronta «In dubbio · gioca N%» (`fanta/etichette.py`).
-            d["titolarita"] = "ballottaggio"; d["motivi"] = ["titolare in ballottaggio"]
+            d["motivi"] = ["titolare in ballottaggio"]
             d["etichetta"] = ["codice": "in_dubbio", "testo": DubbioRiassunto.inDubbio(p.pVoto), "tono": "attenzione"]
-        } else if p.pVoto < 0.75 {
-            d["titolarita"] = "improbabile"; d["motivi"] = ["parte dalla panchina"]
+        } else if p.statoProbabili == "panchina" {
+            d["motivi"] = ["parte dalla panchina"]
         } else {
-            d["titolarita"] = "titolare"; d["motivi"] = ["titolare"]
+            d["motivi"] = ["titolare"]
         }
         d["quotazione"] = quotazione(p)
         if conAvversario, let a = avversario(di: p.squadra) {
@@ -256,28 +258,17 @@ private extension LegaDemo {
     }
 
     static func schedaGiocatore(_ p: Calciatore, adesso: Date, fase: Fase = .prima) -> [String: Any] {
-        let presenze: Int = 7 + p.id % 4
-        let media: Double = 5.7 + p.punti / 12.0
         let q: Int = quotazione(p)
-        var gol: Int = p.id % 2
-        if p.ruolo == "A" { gol = 3 + p.id % 4 }
-        if p.ruolo == "C" { gol = 1 + p.id % 3 }
-        let assist: Int = p.ruolo == "P" ? 0 : p.id % 4
-        let espulsioni: Int = p.id % 11 == 0 ? 1 : 0
-
         var anagrafica: [String: Any] = ["id": p.id, "nome": p.nome, "ruolo": p.ruolo, "squadra": p.squadra.uppercased(), "squadra_slug": p.squadra]
         anagrafica["quotazione"] = q
         anagrafica["quotazione_iniziale"] = q - 1
         anagrafica["fvm"] = q * 3 / 2
 
-        var stagione: [String: Any] = ["presenze": presenze, "con_voto": presenze - 1, "giornate_giocate_serie_a": 10,
-                                       "gol_subiti": p.ruolo == "P" ? 9 : 0, "rig_segnati": 0, "rig_parati": p.ruolo == "P" ? 1 : 0]
-        stagione["media_voto"] = media
-        stagione["fantamedia"] = media + p.punti / 25.0
-        stagione["gol"] = gol
-        stagione["assist"] = assist
-        stagione["ammonizioni"] = p.id % 3
-        stagione["espulsioni"] = espulsioni
+        // la stagione è la somma delle giornate, come sul server (#944): media voto, fantamedia e cartellini tornano con i voti
+        let elencoVoti = voti(p)
+        let stagione = stagioneDaiVoti(elencoVoti)
+        let gol = stagione["gol"] as? Int ?? 0
+        let assist = stagione["assist"] as? Int ?? 0
 
         var d: [String: Any] = [:]
         d["calciatore"] = anagrafica
@@ -287,18 +278,55 @@ private extension LegaDemo {
         previsione["giornata"] = giornata
         previsione["giornata_lega"] = giornataLega   // come il server: la scheda dice «Giornata 8 · 11ª di Serie A»
         d["previsione"] = previsione
-        let elencoVoti = voti(p)
         d["voti"] = elencoVoti
         d["andamento"] = andamento(elencoVoti)
-        d["avanzate"] = ["minuti": 560 + p.id % 200, "xg": 3.4 + Double(p.id % 5) * 0.7, "xa": 1.2 + Double(p.id % 3) * 0.4, "tiri": 22 + p.id % 9,
+        // le statistiche avanzate hanno gli stessi gol e assist della stagione, e «ogni 90'» viene dai minuti. Gol e assist attesi
+        // dal ruolo, per le partite con il voto (`golAttesi` e `assistAttesi`: 0 per un portiere): prima erano uguali per tutti i
+        // ruoli e un portiere «rendeva» −2 punti a partita (revisione della #955). Chi oggi è infortunato, com'era quando giocava
+        let conVoto = stagione["con_voto"] as? Int ?? 0
+        let comeGiocava = giocatoreDelleGiornate(p)
+        let minuti = 560 + p.id % 200
+        let xg = (comeGiocava.golAttesi * Double(conVoto) * 100).rounded() / 100
+        let xa = (comeGiocava.assistAttesi * Double(conVoto) * 100).rounded() / 100
+        let tiri = 22 + p.id % 9
+        func ogni90(_ x: Double) -> Double { (x * 90 / Double(minuti) * 100).rounded() / 100 }
+        d["avanzate"] = ["minuti": minuti, "xg": xg, "xa": xa, "tiri": tiri, "gol": gol, "assist": assist,
                          "passaggi_chiave": 9 + p.id % 7, "rigori_calciati": p.id % 4 == 0 ? 2 : 0, "punizioni": p.id % 5 == 0 ? 3 : 0,
-                         "per_90": ["xg": 0.52, "xa": 0.18, "tiri": 3.1],
+                         "per_90": ["xg": ogni90(xg), "xa": ogni90(xa), "tiri": ogni90(Double(tiri))],
                          "stagioni_precedenti": [["stagione": "2025-26", "minuti": 2400, "gol": 11, "xg": 10.2, "assist": 4, "xa": 3.6]],
                          // come il server (#862): il giorno dell'ultima partita letta dalla fonte, qualche giorno prima di adesso
                          "dati_fino_al": formatta(adesso.addingTimeInterval(-3 * 86_400), "yyyy-MM-dd")] as [String: Any]
-        d["rendimento"] = ["sovra_rendimento": p.id % 2 == 0 ? 0.42 : -0.38, "gol_meno_xg": p.id % 2 == 0 ? 0.9 : -1.1, "assist_meno_xa": 0.2] as [String: Any]
+        d["rendimento"] = rendimento(gol: gol, xg: xg, assist: assist, xa: xa, conVoto: conVoto)
         if let o = fantasquadra(di: p.id) { d["proprietario"] = o }
         return d
+    }
+
+    /// La stagione della scheda dalle sue giornate, come `scheda` di fanta/scheda.py: le presenze sono le righe, media voto e
+    /// fantamedia (a due cifre) contano le partite con il voto, gol, assist, cartellini, gol subiti e rigori sono le somme.
+    static func stagioneDaiVoti(_ voti: [[String: Any]]) -> [String: Any] {
+        let con = voti.filter { $0["voto"] is Double }
+        func media(_ chiave: String) -> Any {
+            guard !con.isEmpty else { return NSNull() }
+            let somma = con.reduce(0.0) { $0 + (($1[chiave] as? Double) ?? 0) }
+            return (somma / Double(con.count) * 100).rounded() / 100
+        }
+        var s: [String: Any] = ["giornate_giocate_serie_a": giornata - 1, "presenze": voti.count, "con_voto": con.count,
+                                "media_voto": media("voto"), "fantamedia": media("fv")]
+        for chiave in ["gol", "assist", "ammonizioni", "espulsioni", "gol_subiti", "rig_segnati", "rig_sbagliati", "rig_parati", "autogol"] {
+            s[chiave] = voti.reduce(0) { $0 + (($1[chiave] as? Int) ?? 0) }
+        }
+        return s
+    }
+
+    /// «Gol e assist rispetto alle occasioni», come `rendimento` di fanta/scheda.py: gol meno gol attesi e assist meno assist
+    /// attesi, e i due insieme con i bonus della lega per partita con il voto. Nil senza partite con il voto.
+    static func rendimento(gol: Int, xg: Double, assist: Int, xa: Double, conVoto: Int) -> [String: Any]? {
+        guard conVoto > 0 else { return nil }
+        func dueCifre(_ x: Double) -> Double { (x * 100).rounded() / 100 }
+        let golMenoXg = Double(gol) - xg
+        let assistMenoXa = Double(assist) - xa
+        let extra = (bonus.gol * golMenoXg + bonus.assist * assistMenoXa) / Double(conVoto)
+        return ["sovra_rendimento": dueCifre(extra), "gol_meno_xg": dueCifre(golMenoXg), "assist_meno_xa": dueCifre(assistMenoXa)]
     }
 
     /// L'andamento della scheda come lo manda il server (`scheda.andamento` di `fanta/scheda.py`, #895): la demo fa da server, così
@@ -310,14 +338,62 @@ private extension LegaDemo {
         return differenza > 0.6 ? "in_crescita" : differenza < -0.6 ? "in_calo" : "stabile"
     }
 
-    /// Voti e fantavoti delle ultime giornate: qualcuna senza voto (partita saltata), per vedere anche i «sv» nel grafico.
+    /// Il giocatore com'era nelle giornate già giocate: chi oggi è infortunato (rendimento 0, nessun gol atteso) giocava da riserva,
+    /// con il rendimento di 5,8. Serve ai voti della scheda e ai loro gol e assist attesi.
+    static func giocatoreDelleGiornate(_ p: Calciatore) -> Calciatore {
+        guard p.assente || p.punti <= 0 else { return p }
+        var prima = p
+        prima.assente = false
+        prima.punti = 5.8
+        return prima
+    }
+
+    /// Le giornate del giocatore come le manda il server (`_voti` di fanta/scheda.py, #944): una riga per ogni giornata di Serie A
+    /// già giocata in cui era in campo, con il voto (null se senza voto), i bonus e i malus della giornata e il fantavoto con le
+    /// regole della demo (`punteggio.fantavoto`). I voti salgono e scendono attorno a un voto che viene dal suo rendimento
+    /// (`punti`); ogni tanto una giornata manca (non convocato) e qualcuna è senza voto, per vedere anche i «sv» nel grafico.
     static func voti(_ p: Calciatore) -> [[String: Any]] {
+        // scarti dal voto di base, in mezzi punti: prima il voto era sempre 5,5 per chi ha l'id multiplo di 15, come Marténi
+        let scarti: [Double] = [0, 0.5, -0.5, 1, 0, -1, 0.5, 0, -0.5, 0.5]
+        let base = 6.0 + (giocatoreDelleGiornate(p).punti - 6.3) * 0.3
+        func mezzoPunto(_ x: Double) -> Double { min(8, max(4.5, (x * 2).rounded() / 2)) }
         var elenco: [[String: Any]] = []
-        for (k, g) in [3, 4, 5, 6, 7, 8, 9, 10].enumerated() {
-            if (p.id + k) % 7 == 0 { elenco.append(["giornata": g]); continue }
-            let voto = 5.5 + Double((p.id * (k + 3)) % 15) / 10.0
-            let bonus = p.ruolo == "A" && (p.id + k) % 3 == 0 ? 3.0 : (k % 4 == 0 ? 1.0 : 0.0)
-            elenco.append(["giornata": g, "voto": voto, "fv": voto + bonus - (k % 5 == 0 ? 0.5 : 0), "gol": bonus >= 3 ? 1 : 0, "assist": 0])
+        for g in 1..<giornata {
+            if (p.id + g) % 6 == 0 { continue }                       // non convocato: nessuna riga, come sul server
+            var riga: [String: Any] = ["giornata": g, "gol": 0, "assist": 0, "ammonizioni": 0, "espulsioni": 0, "gol_subiti": 0,
+                                       "rig_segnati": 0, "rig_sbagliati": 0, "rig_parati": 0, "autogol": 0]
+            if (p.id * 3 + g) % 9 == 0 {                              // in campo, ma senza voto
+                riga["voto"] = NSNull()
+                riga["fv"] = NSNull()
+                elenco.append(riga)
+                continue
+            }
+            let gol: Int
+            switch p.ruolo {
+            case "A": gol = (p.id + 2 * g) % 5 < 2 ? 1 : 0
+            case "C": gol = (p.id + 3 * g) % 7 == 0 ? 1 : 0
+            case "D": gol = (p.id + g) % 13 == 0 ? 1 : 0
+            default: gol = 0
+            }
+            let assist = p.ruolo != "P" && (p.id * 2 + g) % 7 == 0 ? 1 : 0
+            let espulsioni = p.id % 11 == 0 && g == 5 ? 1 : 0
+            let ammonizioni = espulsioni == 0 && (p.id + 5 * g) % 6 == 0 ? 1 : 0
+            var voto = mezzoPunto(base + scarti[(p.id + g) % scarti.count] + (gol > 0 ? 0.5 : 0))
+            if espulsioni > 0 { voto = min(voto, 5) }
+            var fv = voto + Double(gol) * bonus.gol + Double(assist) * bonus.assist
+                + Double(ammonizioni) * malus.ammonizione + Double(espulsioni) * malus.espulsione
+            if p.ruolo == "P" {
+                let subiti = (p.id + g) % 3
+                riga["gol_subiti"] = subiti
+                fv += Double(subiti) * bonus.golSubito + (subiti == 0 ? bonus.imbattuto : 0)
+            }
+            riga["voto"] = voto
+            riga["fv"] = (fv * 100).rounded() / 100
+            riga["gol"] = gol
+            riga["assist"] = assist
+            riga["ammonizioni"] = ammonizioni
+            riga["espulsioni"] = espulsioni
+            elenco.append(riga)
         }
         return elenco
     }
@@ -549,6 +625,9 @@ private extension LegaDemo {
 
     /// I bonus delle regole della demo (`bonus` di `/api/regole`).
     static let bonus = (gol: 3.0, assist: 1.0, rigoreSegnato: 3.0, rigoreSbagliato: -3.0, golSubito: -1.0, imbattuto: 1.0)
+    /// I malus dei cartellini delle regole della demo (`ammonizione` ed `espulsione` di `/api/regole`): li usano anche i fantavoti
+    /// della scheda del giocatore (`voti`).
+    static let malus = (ammonizione: -0.5, espulsione: -1.0)
     /// Quante sostituzioni ammette la lega della demo (`panchina.max_sostituzioni` delle regole).
     static let maxSostituzioni = 5
 
@@ -918,7 +997,7 @@ private extension LegaDemo {
             "bonus": ["gol": ["P": bonus.gol, "D": bonus.gol, "C": bonus.gol, "A": bonus.gol], "rigore_segnato": bonus.rigoreSegnato,
                       "assist": bonus.assist, "rigore_parato": 3.0, "rigore_sbagliato": bonus.rigoreSbagliato, "autogol": -2.0,
                       "gol_subito_portiere": bonus.golSubito, "portiere_imbattuto": bonus.imbattuto,
-                      "ammonizione": -0.5, "espulsione": -1.0, "mvp": 0.0],
+                      "ammonizione": malus.ammonizione, "espulsione": malus.espulsione, "mvp": 0.0],
             "rosa": postiRosa, "crediti_iniziali": 500, "rimborso_svincolo": rimborsoSvincolo,
             "scadenza_minuti": minutiScadenza, "prima_giornata_lega": 4, "aggiornamenti_vicino_scadenza": true,
             "partite_rinviate": "aspetta", "voto_ufficio_rinviate": 6, "rinvii_giornate": [String: Any](),
@@ -983,13 +1062,20 @@ private extension LegaDemo {
         func lega(_ serieA: Int) -> Int { serieA - 3 }
         // Gli id seguono il nome (non la posizione), così due formazioni con un nome diverso risultano davvero diverse.
         let anagrafe = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Marténi", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Dunfrey", "Orsetti", "Mkhedrian", "Zelawski"]
-        let ruoliDi = ["Sorvani": "P", "Bastrani": "D", "Dimarzi": "D", "Dunfrey": "D", "Marténi": "A", "Thorvan": "A", "Lemão": "A", "Pulinski": "A", "Orsetti": "A"]
-        func titolari(_ nomi: [String]) -> [[String: Any]] {
-            nomi.map { ["id": 9000 + (anagrafe.firstIndex(of: $0) ?? 99), "nome": $0, "ruolo": ruoliDi[$0] ?? "C"] }
+        // Il ruolo è quello della rosa della demo per chi c'è (Pulinski era attaccante qui e centrocampista nella rosa, e Giornate
+        // mostrava un 3-4-3 con quattro attaccanti); scritto qui solo per chi nella rosa non c'è più (`DemoDiarioRuoliTests`).
+        let ruoliFuoriRosa = ["Dunfrey": "D", "Orsetti": "A", "Mkhedrian": "C", "Zelawski": "C"]
+        func ruolo(_ cognome: String) -> String {
+            tutti.first { $0.nome == cognome || $0.nome.hasSuffix(" " + cognome) }?.ruolo ?? ruoliFuoriRosa[cognome] ?? "C"
         }
+        func titolari(_ nomi: [String]) -> [[String: Any]] {
+            nomi.map { ["id": 9000 + (anagrafe.firstIndex(of: $0) ?? 99), "nome": $0, "ruolo": ruolo($0)] }
+        }
+        // gli undici dei moduli di `giornateFinite`: la consigliata un 3-4-3, la tua della giornata 9 un 3-5-2 (Mkhedrian al posto di
+        // Lemão), quella della giornata 8 un 3-4-3 (Mkhedrian e Zelawski al posto di Çalvaroğlu e Kloosmeijer)
         let base = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Marténi", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Dunfrey"]
-        let altra = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Marténi", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Orsetti"]
-        let altra2 = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Mkhedrian", "Marténi", "Thorvan", "Pulinski", "Lemão", "Zelawski", "Orsetti"]
+        let altra = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Marténi", "Thorvan", "Pulinski", "Mkhedrian", "Kloosmeijer", "Dunfrey"]
+        let altra2 = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Mkhedrian", "Marténi", "Thorvan", "Pulinski", "Lemão", "Zelawski", "Dunfrey"]
         // Fantavoto atteso e preso di ogni giocatore (pagina Giornate, #673 passo 2): numeri inventati e fermi, vicini ai punti della
         // squadra divisi per 11; ogni giornata uno è senza voto.
         let scarti: [Double] = [1.5, -1, 0.5, -0.5, 2, -1.5, 0, 1, -2, 0.5, -0.5, 0.5, -1, 1]
@@ -1066,8 +1152,8 @@ private extension LegaDemo {
         // qui il suo testo per i numeri della tabella qui sopra (`DemoDiarioTests` controlla che siano quelli)
         let frasiScarti: [Int: String] = [
             10: "Meglio del previsto: Marténi (+2,6) e Bastrani (+1,5). Peggio: Thorvan (\u{2212}1,5) e Kloosmeijer (\u{2212}1,2).",
-            9: "Meglio del previsto: Thorvan (+2,7) e Dimarzi (+1,6). Peggio: Pulinski (\u{2212}1,4).",
-            8: "Meglio del previsto: Pulinski (+2,3) e Sorvani (+1,2). Peggio: Lemão (\u{2212}1,8) e Orsetti (\u{2212}1,5).",
+            9: "Meglio del previsto: Thorvan (+2,7) e Dimarzi (+1,6). Peggio: Pulinski (\u{2212}1,4) e Dunfrey (\u{2212}1,1).",
+            8: "Meglio del previsto: Pulinski (+2,3) e Sorvani (+1,2). Peggio: Lemão (\u{2212}1,8) e Thorvan (\u{2212}1,2).",
             7: "Meglio del previsto: Lemão (+2,0). Peggio: Kloosmeijer (\u{2212}2,1) e Pulinski (\u{2212}1,5).",
         ]
         // da dove vengono i punti (`spiegazione_punti`, #900): nella giornata 10 di Serie A Lemão è senza voto ed entra Orsetti, la prima
@@ -1135,10 +1221,10 @@ private extension LegaDemo {
             "scelte_tue": ["giornate": 2, "meglio_tua": 0, "meglio_consigliata": 2, "pari": 0, "punti_differenza": -12.0,
                            "percentuale_tua": 0, "pochi_dati": true,
                            "per_giornata": [
-                               ["stagione": "2026-27", "giornata": 9, "giornata_lega": lega(9), "hai_scelto": ["Orsetti"], "consigliava": ["Dunfrey"],
+                               ["stagione": "2026-27", "giornata": 9, "giornata_lega": lega(9), "hai_scelto": ["Mkhedrian"], "consigliava": ["Lemão"],
                                 "punti_tua": 63.5, "punti_consigliata": 71.0, "differenza": -7.5, "esito": "consigliata"],
-                               ["stagione": "2026-27", "giornata": 8, "giornata_lega": lega(8), "hai_scelto": ["Mkhedrian", "Zelawski", "Orsetti"],
-                                "consigliava": ["Çalvaroğlu", "Kloosmeijer", "Dunfrey"],
+                               ["stagione": "2026-27", "giornata": 8, "giornata_lega": lega(8), "hai_scelto": ["Mkhedrian", "Zelawski"],
+                                "consigliava": ["Çalvaroğlu", "Kloosmeijer"],
                                 "punti_tua": 59.5, "punti_consigliata": 64.0, "differenza": -4.5, "esito": "consigliata"],
                            ]],
         ])

@@ -24,7 +24,7 @@ import pandas as pd
 from . import consigli, verifica
 from . import formazione as fz
 from .lega import Rose
-from .modello import Parametri, previsioni
+from .modello import Parametri, giocate_prima, previsioni
 from .notifiche import SOGLIA_AVVISO_PUNTI
 from .punteggio import COLONNA_VOTO, fantavoto
 from .regole import RUOLI, Regole
@@ -206,7 +206,8 @@ def parte_giocate(d, regole: Regole, rose: Rose, stagione: str, simulazioni: int
     rose_ids = [[g.id for g in s.giocatori if g.id] for s in rose.squadre]
     righe, prove = [], []
     for g in giornate:
-        giocate = set(pt.loc[(pt["stagione"] == stagione) & (pt["giornata"] == g) & (pt["giocata"] == 1), "id"])
+        # niente partite giocate prima della scadenza: i loro giocatori sono previsti con dati di dopo (`giocate_prima`)
+        giocate = set(pt.loc[(pt["stagione"] == stagione) & (pt["giornata"] == g) & (pt["giocata"] == 1), "id"]) - giocate_prima(pt, stagione, g)
         prev = previsioni(d, stagione, g, regole, par)
         if prev.empty or not giocate:
             continue
