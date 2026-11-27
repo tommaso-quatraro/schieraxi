@@ -6,7 +6,8 @@ import Testing
 /// web (`alRitornoDellaRete` in `caricaConCache` di `app.js`, che aspetta l'evento `online` del browser). Qui la regola, senza la
 /// rete vera: `RitornoRete` la usa con le notizie di iOS sulla rete e manda «Aggiorna» a tutte le schermate. Con la rete a tratti
 /// un tentativo che non riesce non riarma l'attesa (revisione della #972: prima ogni ritorno della rete faceva ripartire 8-10
-/// richieste), e fra due tentativi automatici passano almeno 5 minuti.
+/// richieste), e fra due tentativi automatici passano almeno 5 minuti; la riarma un «Riprova» toccato a mano, come la web, e una
+/// lettura riuscita la toglie (#980).
 @Suite("Senza rete: tornata la rete si riprova da soli, una volta")
 struct RitornoReteTests {
     /// Quello che succede, in ordine, a tanti secondi dall'inizio: una copia che resta a video senza rete (`aspetta`) o una

@@ -29,8 +29,8 @@ extension FinteServer {
             finto.indirizzoFinto = "https://finto-senza-squadra.invalid"
         case "giornate-senza-server":
             // il server spento dopo una ricarica (collaudo del 26/11): giornate e stato dalle copie salvate in una lettura di prima;
-            // la riga sotto il titolo dice «Server non raggiungibile» e poi giornata, squadra e ora della copia. La coda della cache
-            // scrive le copie prima di ogni lettura della pagina.
+            // la striscia dei dati salvati con «Riprova» dice che il server non risponde, e la riga sotto il titolo non lo ripete:
+            // giornata, squadra e ora della copia, come la web (#980). La coda della cache scrive le copie prima di ogni lettura.
             finto.indirizzoFinto = "https://finto-giornate-senza-server.invalid"
             for percorso in ["/api/stato", "/api/diario"] {
                 if let testo = finto.risposte[percorso] { Cache.salva(Data(testo.utf8), percorso, indirizzo: finto.indirizzoFinto) }

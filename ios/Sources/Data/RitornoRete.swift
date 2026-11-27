@@ -29,6 +29,17 @@ final class RitornoRete {
         attesa.aspetta(adesso: Date())
     }
 
+    /// «Riprova» toccato a mano: se anche questa lettura resta senza rete, al ritorno della rete si riprova da soli, come la web,
+    /// anche se l'ultimo tentativo automatico è di meno di 5 minuti fa (#980).
+    func riprovaAMano() {
+        attesa.riprovaAMano()
+    }
+
+    /// Una lettura è riuscita: la copia non è più a video, al ritorno della rete non c'è niente da riprovare (#980).
+    func letturaRiuscita() {
+        attesa.letturaRiuscita()
+    }
+
     /// true se al ritorno della rete si riproverà (per le prove).
     var inAttesa: Bool { attesa.inAttesa }
 

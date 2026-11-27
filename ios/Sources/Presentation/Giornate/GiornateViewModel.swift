@@ -40,18 +40,29 @@ final class GiornateViewModel: ViewModelBase {
     var pagina: PaginaGiornate? { caricatore.dato.map(PaginaGiornate.init) }
 
     /// La riga sotto il titolo, come la riga di stato della web (#863): giornata, mia squadra e data dei dati; «Server non
-    /// raggiungibile» se `/api/stato` non ha risposto. Nil prima della prima risposta (anche dalla copia del telefono).
-    var rigaStato: RigaStato? { RigaStato(info: info.dato, nonRaggiungibile: info.errore != nil) }
+    /// raggiungibile» se `/api/stato` non ha risposto, ma non quando la pagina lo dice già (`guastoInPagina`), come la web (#980).
+    /// Nil prima della prima risposta (anche dalla copia del telefono), o senza server e senza niente altro da dire.
+    var rigaStato: RigaStato? {
+        RigaStato(info: info.dato, nonRaggiungibile: info.errore != nil, guastoInPagina: guastoInPagina)
+    }
 
-    /// La pagina che la vista mostra: le giornate solo quando c'è anche la riga sotto il titolo (o `/api/stato` ha detto che il
-    /// server non risponde). La riga sta in cima alla lista: se arrivava dopo le giornate, comparendo sopra la lista già in vista la
-    /// riportava in cima, e chi aveva cominciato a scorrere si ritrovava in alto (#913). Fino ad allora la vista tiene lo scheletro.
-    /// Le due letture partono insieme (`carica()`): l'attesa è quella della più lenta, e con le copie del telefono non c'è.
-    var paginaDaMostrare: PaginaGiornate? { rigaStato == nil ? nil : pagina }
+    /// La pagina dice già che il server non risponde: la striscia dei dati salvati con «Riprova», o l'errore al posto delle
+    /// giornate, come `main:has(> #nota-cache [data-riprova], > .errore)` in `stile.css` della web (#864).
+    private var guastoInPagina: Bool { caricatore.datiSalvati != nil || (caricatore.dato == nil && caricatore.errore != nil) }
+
+    /// `/api/stato` ha risposto (anche con la copia del telefono) o ha detto che il server non risponde: la riga sotto il titolo è
+    /// decisa, anche quando non c'è niente da scrivere (`rigaStato` nil perché la pagina dice già il guasto).
+    private var rigaDecisa: Bool { info.dato != nil || info.errore != nil }
+
+    /// La pagina che la vista mostra: le giornate solo quando la riga sotto il titolo è decisa (`rigaDecisa`). La riga sta in cima
+    /// alla lista: se arrivava dopo le giornate, comparendo sopra la lista già in vista la riportava in cima, e chi aveva cominciato
+    /// a scorrere si ritrovava in alto (#913). Fino ad allora la vista tiene lo scheletro. Le due letture partono insieme
+    /// (`carica()`): l'attesa è quella della più lenta, e con le copie del telefono non c'è.
+    var paginaDaMostrare: PaginaGiornate? { rigaDecisa ? pagina : nil }
 
     /// La cima della pagina è completa: le giornate con i Dettagli e la riga sotto il titolo. La foto `giornate-confronto` scorre
     /// solo da qui in poi (`ConfrontoDemo`).
-    var cimaCompleta: Bool { pagina?.dettagli != nil && rigaStato != nil }
+    var cimaCompleta: Bool { pagina?.dettagli != nil && rigaDecisa }
 
     /// Rilegge insieme le giornate e `/api/stato`, per la riga sotto il titolo (prima una dopo l'altra: la riga arrivava dopo e
     /// spostava la lista, #913). Solo una risposta fresca del server chiude la richiesta di «Com'è andata», come la web: la copia

@@ -148,6 +148,9 @@ final class Caricatore<T: Decodable>: ObservableObject {
             stato = .loaded(nuovo)
             ricordaFermo(richiesto)
             if usaCache { Cache.salva(dati, richiesto, indirizzo: server.indirizzo) }
+            // la copia non è più a video: un cambio di rete (dal Wi-Fi al cellulare) non deve far partire «Aggiorna» (#980). Vale per
+            // una lettura riuscita di qualunque schermata: il server si raggiunge, e un'altra copia ancora a video ha il suo «Riprova»
+            rete.letturaRiuscita()
         } catch {
             guard richiesto == percorso else { return }
             if Task.isCancelled || error is CancellationError {

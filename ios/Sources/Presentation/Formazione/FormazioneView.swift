@@ -282,7 +282,7 @@ struct FormazioneView: View {
                 .font(.subheadline)
                 .fixedSize(horizontal: false, vertical: true)
             // i 44 punti dentro l'etichetta: fuori dal pulsante allargavano la riga ma non la zona da toccare (#882)
-            Button { Task { await ricarica() } } label: {
+            Button { riprovaAMano() } label: {
                 Text(Catalogo.Comune.riprova).frame(minHeight: Tema.areaTocco).contentShape(Rectangle())
             }
             .font(.subheadline.weight(.semibold))
@@ -361,7 +361,7 @@ struct FormazioneView: View {
             CampoFormazione(titolari: v.titolari, apribile: true, spazioso: spazioso)
             RigaStatoScelta(stato: vm.statoScelta, spento: vm.comandiSpenti, occupato: vm.occupato,
                             tornaAllaConsigliata: { Task { await vm.tornaAllaConsigliata() } },
-                            riprova: { Task { await ricarica() } })
+                            riprova: { riprovaAMano() })
                 .id("stato")
             if vm.copiaFerma { copiaFerma }
             if vm.squadraVista == nil, !vm.chiusa { azioni(f) }
@@ -432,11 +432,18 @@ struct FormazioneView: View {
                 .font(.footnote).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 4)
-            Button { Task { await ricarica() } } label: {
+            Button { riprovaAMano() } label: {
                 Text(Catalogo.Comune.riprova).frame(minHeight: Tema.areaTocco).contentShape(Rectangle())
             }
             .font(.footnote.weight(.semibold))
         }
+    }
+
+    /// «Riprova» toccato a mano: rilegge come `ricarica()` e, se anche questa lettura resta senza rete, al ritorno della rete
+    /// l'app riprova da sola, come la web (#980).
+    private func riprovaAMano() {
+        RitornoRete.condiviso.riprovaAMano()
+        Task { await ricarica() }
     }
 
     /// «Copia per l'app della lega» e la spunta «L'ho messa» (salva gli 11 in campo con `messa`).
