@@ -1,0 +1,22 @@
+{
+  "titolo": "Aggiorna i dati e Gestione più chiari, e La mia squadra anche senza rete",
+  "voci": [
+    "Gestione, «Aggiorna i dati»: se una fonte non risponde l'avviso lo dice con una frase per riga, per esempio «Fantacalcio.it non risponde: riprova più tardi.», al posto del messaggio tecnico che copriva lo schermo.",
+    "Un aggiornamento in cui non arriva nessun dato non cambia più la data dei dati («dati del …» sotto il titolo), e per chi gestisce il server l'avviso «I dati delle partite non si aggiornano da …» resta finché i dati non arrivano davvero.",
+    "Gestione: dopo «Blocca», «Sblocca» o «Elimina» si aggiornano subito anche «Commenti degli utenti» ed «Errori recenti».",
+    "Impostazioni: senza rete «La mia squadra» resta al suo posto, spenta, con la frase «Si apre quando il server torna raggiungibile»."
+  ],
+  "titolo_en": "Clearer Refresh the data and Management, and My team even offline",
+  "voci_en": [
+    "Management, «Refresh the data»: if a source does not respond, the message says so with one sentence per line, for example «Fantacalcio.it is not responding: try again later.», instead of the technical message that covered the screen.",
+    "A refresh in which no data arrives no longer changes the date of the data («data as of …» under the title), and for whoever runs the server the «The match data has not been updated for …» warning stays until the data really arrives.",
+    "Management: after «Block», «Unblock» or «Delete», «Users' comments» and «Recent errors» are refreshed right away too.",
+    "Settings: when offline, «My team» stays in its place, greyed out, with the sentence «Opens when the server can be reached again»."
+  ],
+  "tecnico": [
+    "aggiorna.py: la riga generale «aggiornamento» prende l'ora di adesso solo se almeno un passo riuscito ha ricevuto una pagina (Aggiornamento.scaricati, da rete.arrivate_qui, un contatore per thread delle risposte buone di rete.scarica). Prima bastava un passo riuscito qualsiasi: «voti» senza giornate da scaricare, o il listone con la copia di oggi, rendeva freschi i dati di un giro senza rete. Ne dipendono ultimo_aggiornamento di /api/stato («dati del …»), da_fare._dati_vecchi, salute e widget.",
+    "aggiorna.py: Aggiornamento.per_utente() dà le frasi per chi ha premuto «Aggiorna i dati» (fanta/frasi.py: aggiorna.non_risponde, aggiorna.non_rispondono con un elenco_e delle fonti, aggiorna.parte_non_aggiornata, aggiorna.parte_non_aggiornata_generica, aggiorna.controlli); una fonte «non risponde» con ConnectionError, Timeout, 429 o 5xx. aggiorna.esegui ha il parametro per_utente. Gli errori tecnici della corsa (riga generale, Stato dei dati, righe) non cambiano.",
+    "server.py, GET /api/aggiorna: errori ha le frasi (con errori_frasi, campo nuovo, per tradurle), mai l'errore tecnico, che va nel registro (uvicorn.error, WARNING; un'eccezione dell'aggiornamento con il traceback e la frase aggiorna.errore_server). Errori senza frase: la frase generica. L'iPhone mostra già errori così com'è.",
+    "Web: l'avviso di «Aggiorna i dati» traduce da errori_frasi e mette una frase per riga; .avviso con overflow-wrap: anywhere. Gestione: azioneUtente rilegge utenti, registro e commenti. Impostazioni: «La mia squadra» spenta (rigaImpSpenta, testo imp.mia_squadra_senza_rete) quando /api/squadre non è arrivata per la rete o un 5xx (stato.squadreNonArrivate)."
+  ]
+}
