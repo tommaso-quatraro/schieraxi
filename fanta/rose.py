@@ -374,7 +374,9 @@ def _da_un_valore_per_riga(griglia: list[list], indice: Indice, attesi: int = RO
             corrente = None
             aperta, in_squadra = True, 0
         elif tipo == "crediti":
-            nuove.append(["", "", "", "", v])
+            # nella colonna dei nomi, che con dei giocatori è sempre piena: in una colonna sua, senza club né costo accanto ai
+            # giocatori, sarebbe un blocco a parte senza squadra e i crediti si perderebbero
+            nuove.append(["", v])
             corrente = None
             dopo_vuota = True                                  # i crediti chiudono la squadra: dopo può venire la prossima
             continue

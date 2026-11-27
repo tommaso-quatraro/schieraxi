@@ -113,6 +113,17 @@ def test_uno_per_riga_un_nome_non_riconosciuto_non_apre_una_squadra(indice):
     assert [r.testo for r in squadre["Sporting Fantasia"].righe] == ["Thuram", "Laurienté"]
 
 
+def test_uno_per_riga_i_crediti_si_leggono_anche_senza_club_ne_costo(indice):
+    """Un nome per riga, senza club né costo accanto a nessun giocatore: «Crediti residui: 37» si perdeva in silenzio."""
+    squadre = _da_testo("Alfa\nSommer\nBastoni\nCrediti residui: 37\n\nBeta\nKean\nCrediti residui: 12\n", indice)
+    assert list(squadre) == ["Alfa", "Beta"]
+    assert (squadre["Alfa"].crediti_residui, squadre["Beta"].crediti_residui) == (37, 12)
+    assert [r.testo for r in squadre["Alfa"].righe] == ["Sommer", "Bastoni"]
+    # con il club e il costo accanto ai giocatori si leggevano già, e restano
+    squadre = _da_testo("Alfa\nSommer\nInter\n10\nCrediti residui: 37\n", indice)
+    assert squadre["Alfa"].crediti_residui == 37 and squadre["Alfa"].righe[0].costo == 10
+
+
 def test_uno_per_riga_senza_riga_vuota_la_squadra_nuova_dopo_una_rosa_completa(indice):
     # senza righe vuote: un nome sconosciuto dopo una rosa già completa è la squadra dopo; prima, è un giocatore non trovato
     squadre = _da_testo("Alfa\nSommer\nBastoni\nBarella\nKean\nBeta\nThuram\nDimarco\n", indice, ROSA_PICCOLA)
