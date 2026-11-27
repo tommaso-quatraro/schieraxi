@@ -1129,6 +1129,31 @@ function testoFormazione(f, m, scheda) {
   return righe.join("\n");
 }
 
+// La copia per l'app della lega non è riuscita (il browser non lascia scrivere negli appunti): il testo compare sotto il pulsante, in
+// un riquadro di sola lettura già selezionato, alto quanto serve, da copiare a mano (l'avviso dice di tenere premuto sul testo; prima
+// il testo non c'era). Resta finché la Formazione non si ridisegna.
+function daCopiareAMano(testo) {
+  const azioni = $(".azioni-formazione");
+  if (!azioni) return;
+  let box = $("#da-copiare");
+  if (!box) {
+    const riquadro = document.createElement("div"), nome = document.createElement("label");
+    riquadro.className = "da-copiare";
+    nome.htmlFor = "da-copiare"; nome.className = "debole piccolo"; nome.textContent = t("formazione.da_copiare");
+    box = document.createElement("textarea");
+    box.id = "da-copiare"; box.readOnly = true; box.rows = 1; box.spellcheck = false;
+    riquadro.append(nome, box);
+    azioni.after(riquadro);
+  }
+  box.value = testo;
+  box.style.height = "auto";
+  box.style.height = `${box.scrollHeight + box.offsetHeight - box.clientHeight}px`;     // tutto il testo, senza barra
+  box.focus({ preventScroll: true });
+  box.select();
+  box.setSelectionRange(0, testo.length);                  // Safari dell'iPhone non seleziona con select() un campo di sola lettura
+  box.scrollIntoView({ block: "nearest" });
+}
+
 async function copiaTesto(testo) {
   try { await navigator.clipboard.writeText(testo); return true; }
   catch {
@@ -1583,7 +1608,12 @@ function mostraFormazione(b, squadra, opz = {}) {
       dfApri(v);
     }));
     bottone("#torna-consigliata", () => { if (!sc.sola && libero()) tornaConsigliata(); });
-    bottone("#copia", async () => avviso(await copiaTesto(testoFormazione(f, m, scheda)) ? t("formazione.copiata_lega") : t("formazione.non_copio")));
+    bottone("#copia", async () => {
+      const testo = testoFormazione(f, m, scheda);
+      if (await copiaTesto(testo)) { avviso(t("formazione.copiata_lega")); return; }
+      avviso(t("formazione.non_copio"));
+      daCopiareAMano(testo);
+    });
     const messa = $("#messa");
     if (messa) messa.addEventListener("change", () => {
       if (sc.sola || !libero()) { messa.checked = !messa.checked; return; }

@@ -391,6 +391,34 @@ def test_copia_per_l_app_della_lega_sta_sotto_il_campo(web):
     assert principale(web).get_by_role("checkbox", name="L'ho messa").is_visible()
 
 
+COPIA_NEGATA = """(() => { try { navigator.clipboard.writeText = () => Promise.reject(new Error('negato')); } catch (e) {}
+  document.execCommand = () => false; })()"""
+
+
+@pytest.mark.parametrize("larghezza", [390, PC])
+def test_se_la_copia_non_riesce_il_testo_della_formazione_compare_da_copiare_a_mano(web, larghezza):
+    """Copia non riuscita (browser che non lascia scrivere negli appunti): l'avviso diceva «tieni premuto sul testo», ma il testo
+    non c'era. Ora compare sotto il pulsante, in un riquadro di sola lettura già selezionato."""
+    solo(web, "prima")
+    web.pagina.add_init_script(COPIA_NEGATA)
+    web.risposta("/api/scelta?giornata=9", None)
+    f = web.registrata("/api/formazione")
+    web.apri("/", larghezza=larghezza)
+    riquadro = principale(web).get_by_role("textbox", name="Formazione da copiare")
+    assert riquadro.count() == 0
+    tocca(web, principale(web).get_by_role("button", name="Copia per l'app della lega"))
+    assert web.pagina.get_by_role("status").filter(has_text="Non riesco a copiare").first.is_visible()
+    assert riquadro.is_visible() and not riquadro.is_editable()
+    testo = riquadro.input_value()
+    consigliato = next(m for m in f["moduli"] if m["modulo"] == f["modulo"])
+    assert f["modulo"] in testo.splitlines()[0]
+    assert all(f["schede"][str(i)]["nome"] in testo for i in consigliato["titolari"]), testo
+    assert riquadro.evaluate("e => e.selectionStart === 0 && e.selectionEnd === e.value.length"), "il testo non è selezionato"
+    alto = riquadro.evaluate("e => e.scrollHeight <= e.clientHeight + 1")
+    assert alto, "il testo non sta tutto nel riquadro"
+    assert not web.scorre_di_lato() and not web.errori_mostrati() and not web.errori_console
+
+
 # ---------------------------------------------------------------- le decisioni in cima: al massimo due, solo con un'azione
 def _con_da_fare(web, da_fare: list[dict]) -> None:
     web.risposta("/api/oggi", {**web.registrata("/api/oggi"), "da_fare": da_fare})

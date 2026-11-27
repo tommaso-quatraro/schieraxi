@@ -111,6 +111,11 @@
     "it": "Non riesco a copiare: tieni premuto sul testo",
     "en": "I cannot copy: press and hold on the text"
   },
+  "formazione.da_copiare": {
+    "it": "Formazione da copiare",
+    "en": "Lineup to copy",
+    "nota": "il nome del riquadro con il testo della formazione, che compare quando la copia non riesce"
+  },
   "formazione.al_posto_di": {
     "it": "Al posto di {nome}",
     "en": "Instead of {nome}"
