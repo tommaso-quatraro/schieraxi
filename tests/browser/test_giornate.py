@@ -286,6 +286,26 @@ def test_il_fantavoto_atteso_e_quello_mostrato_prima_della_scadenza_se_c_e(web):
     assert [c.strip() for c in celle] == ["6,8", "7,0"], celle
 
 
+def test_chi_non_ha_un_atteso_ha_il_trattino_e_il_suo_voto(web):
+    """Chi non ha una previsione rifatta (la sua prima partita, dal 27/11/2026 nella tabella) arriva con `fv_atteso` null e il voto
+    preso: la riga dice «–» e il voto, mai «NaN» né «0,0»."""
+    solo(web, "prima")
+    d = web.registrata("/api/diario")
+    g = d["giornate"][0]
+    primo = undici(g)["titolari"][0]
+    g["giocatori"] = [x for x in g.get("giocatori") or [] if x["id"] != primo["id"]] + [
+        {"id": primo["id"], "p_voto": None, "fv_atteso": None, "fv": 7.0}]
+    for x in ((g.get("istantanea") or {}).get("titolari") or []) + ((g.get("istantanea") or {}).get("panchina") or []):
+        x.pop("fv_atteso", None) if x.get("id") == primo["id"] else None                 # nemmeno quello mostrato allora
+    web.risposta("/api/diario", d)
+    web.apri(GIORNATE)
+    tocca(web, riga(web, nome_di(g)))
+    zona = dettaglio(web, nome_di(g))
+    celle = zona.get_by_role("row", name=re.compile(re.escape(primo["nome"]))).get_by_role("cell").all_inner_texts()
+    assert [c.strip() for c in celle] == ["–", "7,0"], celle
+    assert "NaN" not in zona.inner_text() and not web.errori_console
+
+
 # ---------------------------------------------------------------- tu contro la consigliata: solo con quella mostrata
 PAROLE_DEL_CONFRONTO = ("rispetto alla consigliata", "cambi tuoi", "cambio tuo", "Hai schierato la consigliata", "hai messo",
                         "ha fatto meglio della tua")
