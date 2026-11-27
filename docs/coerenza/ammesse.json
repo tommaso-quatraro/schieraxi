@@ -109,12 +109,6 @@
       "motivo": "il widget ha misure fisse e con il testo grande la forma intera non entra: prima uscivano «SchieraXI 3-4-3, 72,7…», «3-4…» e un nome intero accanto a un cognome (#787); nel medio di «Formazione consigliata» restava solo «⚠ 2», che da solo non si capisce (#848)."
     },
     {
-      "titolo": "Accesso, «troppi tentativi»",
-      "precisazione": "(attesa fino a un'ora)",
-      "testo": "sulla web la frase dice quanto aspettare («(riprova tra 45 secondi)»); sull'iPhone il pulsante conta da solo («Riprova tra 35 s») e la frase sopra resta quella del server senza il numero («Troppi tentativi sbagliati.»). Oltre l'ora il pulsante non conta tutto e la frase tiene il tempo, come la web («Riprova tra 20 h»).",
-      "motivo": "un numero fermo nella frase accanto a quello che scende nel pulsante dice due tempi diversi (foto del 20/11: «Riprova tra 45 secondi» sopra «Riprova tra 35 s», #787)."
-    },
-    {
       "titolo": "Il tuo account, «Esci solo da questo telefono»",
       "precisazione": "(solo dopo un «Esci» che non arriva al server)",
       "testo": "sull'iPhone, se «Esci» non riesce perché la rete è giù o il server non risponde, sotto «Non riesco a farti uscire.» c'è anche il pulsante «Esci solo da questo telefono» con la frase «Sul server la sessione resta aperta finché non scade.»: toglie sessione, dati e widget dal telefono senza chiedere altro al server. Con un server che risponde con un errore (5xx, troppe richieste) non compare. La web non ha questo pulsante (`RigaEsci`, `SessioneAccount.esciSoloDaQuestoTelefono`, #809).",

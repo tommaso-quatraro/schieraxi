@@ -163,6 +163,7 @@ struct ModuloAccesso: Equatable {
     static let etichettaCodice = Catalogo.Accesso.codice
     static let etichettaCodiceEmail = Catalogo.Accesso.codiceEmail
     static let aiutoEmailFacoltativa = Catalogo.Accesso.emailFacoltativaAiuto
+    static let aiutoNome = Catalogo.Accesso.nomeUtenteAiuto
 
     /// L'etichetta sopra il campo, che resta mentre si scrive (come `campoAccesso` della web). Il campo non ha testo d'esempio.
     func etichetta(_ campo: Campo, _ modo: ModalitaRegistrazione) -> String {
@@ -176,9 +177,11 @@ struct ModuloAccesso: Equatable {
         }
     }
 
-    /// La spiegazione sotto il campo, se serve: oggi solo per l'email facoltativa della registrazione.
+    /// La spiegazione sotto il campo, se serve: le regole del nome utente quando lo si sceglie (Registrati, prima di sbagliare,
+    /// come la web, #940) e l'email facoltativa della registrazione.
     func aiuto(_ campo: Campo, _ modo: ModalitaRegistrazione) -> String? {
-        campo == .email && emailFacoltativa(modo) ? Self.aiutoEmailFacoltativa : nil
+        if campo == .nome && passo == .registra { return Self.aiutoNome }
+        return campo == .email && emailFacoltativa(modo) ? Self.aiutoEmailFacoltativa : nil
     }
 
     /// Il problema che si vede sotto il campo mentre si scrive (l'ultima parola resta del server).

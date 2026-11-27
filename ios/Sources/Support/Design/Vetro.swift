@@ -69,7 +69,7 @@ extension View {
 /// Il pulsante pieno (l'azione principale): fondo il colore dell'app (`.glassProminent` su iOS 26, `.borderedProminent` su iOS 18).
 /// La scritta la sceglie l'app: lo stile di sistema la fa bianca anche sul verde chiaro del tema scuro (1,8:1, issue #248); qui è
 /// `Color.scrittaPulsante`, come `--azione-testo` della web. Spento, il fondo diventa grigio e la scritta il grigio dell'app
-/// (`Color.testoSecondario`): si legge ancora cosa farà il pulsante («Riprova tra 34 s»), mentre il verde quasi nero sul grigio
+/// (`Color.testoSecondario`): si legge ancora cosa farà il pulsante («Riprova tra 34 secondi»), mentre il verde quasi nero sul grigio
 /// scuro dello scuro sparirebbe. Un solo modificatore con il colore che cambia, non due rami: il pulsante resta lo stesso
 /// quando si accende (VoiceOver non perde il punto).
 private struct PulsantePieno: ViewModifier {
