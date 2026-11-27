@@ -52,8 +52,15 @@ final class FogliAccount: ObservableObject {
         } catch let e as ErroreSocial where e.eSoloUnaChiusura {
             // chiusa la finestra: nessun errore da mostrare
         } catch {
-            erroreAccessi = SchermataAccesso.testoErrore(error)
+            mostraErroreAccessi(error)
         }
+    }
+
+    /// L'errore sotto «Accessi», letto anche da VoiceOver: compare lontano dal pulsante toccato.
+    private func mostraErroreAccessi(_ error: Error) {
+        let testo = SchermataAccesso.testoErrore(error)
+        erroreAccessi = testo
+        Annuncio.leggi(testo)
     }
 
     func scollegaGoogle(_ sessione: SessioneAccount) async {
@@ -62,7 +69,7 @@ final class FogliAccount: ObservableObject {
             try await sessione.scollegaGoogle()
             messaggioAccessi = Catalogo.Social.scollegatoOk
         } catch {
-            erroreAccessi = SchermataAccesso.testoErrore(error)
+            mostraErroreAccessi(error)
         }
     }
 }
@@ -374,29 +381,43 @@ struct FoglioCambiaPassword: View {
                 CodiceRecuperoView(codice: codice, titolo: TestiAccesso.passwordCambiata, testoPulsante: "Fatto") { chiudi() }
             } else {
                 Form {
+                    // il nome di ogni campo sopra il campo, come `CampoAccesso`: il testo grigio dentro spariva al primo carattere
+                    // (e non arrivava a 3:1), e VoiceOver aveva solo quello come nome
                     Section {
-                        SecureField(TestiAccount.passwordAttuale, text: $attuale)
-                            .textContentType(.password)
-                            .focused($focus, equals: 0)
-                            .submitLabel(.next)
-                            .onSubmit { focus = 1 }
-                            .frame(minHeight: Tema.areaTocco)
+                        VStack(alignment: .leading, spacing: 4) {
+                            nomeCampo(TestiAccount.passwordAttuale)
+                            SecureField("", text: $attuale)
+                                .textContentType(.password)
+                                .focused($focus, equals: 0)
+                                .submitLabel(.next)
+                                .onSubmit { focus = 1 }
+                                .frame(minHeight: Tema.areaTocco)
+                                .accessibilityLabel(TestiAccount.passwordAttuale)
+                        }
                     }
                     Section {
-                        SecureField(TestiAccount.nuovaPassword, text: $nuova)
-                            .textContentType(.newPassword)
-                            .focused($focus, equals: 1)
-                            .submitLabel(.next)
-                            .onSubmit { focus = 2 }
-                            .frame(minHeight: Tema.areaTocco)
-                        SecureField(TestiAccount.ripetiPassword, text: $ripeti)
-                            .textContentType(.newPassword)
-                            .focused($focus, equals: 2)
-                            // niente invio dal tasto Invio: la password forte suggerita da iOS o il portachiavi non devono mandare
-                            // il modulo da soli. Si cambia solo con il pulsante.
-                            .submitLabel(.done)
-                            .onSubmit { focus = nil }
-                            .frame(minHeight: Tema.areaTocco)
+                        VStack(alignment: .leading, spacing: 4) {
+                            nomeCampo(TestiAccount.nuovaPassword)
+                            SecureField("", text: $nuova)
+                                .textContentType(.newPassword)
+                                .focused($focus, equals: 1)
+                                .submitLabel(.next)
+                                .onSubmit { focus = 2 }
+                                .frame(minHeight: Tema.areaTocco)
+                                .accessibilityLabel(TestiAccount.nuovaPassword)
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            nomeCampo(TestiAccount.ripetiPassword)
+                            SecureField("", text: $ripeti)
+                                .textContentType(.newPassword)
+                                .focused($focus, equals: 2)
+                                // niente invio dal tasto Invio: la password forte suggerita da iOS o il portachiavi non devono mandare
+                                // il modulo da soli. Si cambia solo con il pulsante.
+                                .submitLabel(.done)
+                                .onSubmit { focus = nil }
+                                .frame(minHeight: Tema.areaTocco)
+                                .accessibilityLabel(TestiAccount.ripetiPassword)
+                        }
                     } footer: { Group {
                         VStack(alignment: .leading, spacing: 4) {
                             if let problema { Text(problema).foregroundStyle(Color.attenzione) }
@@ -435,8 +456,24 @@ struct FoglioCambiaPassword: View {
             fatto(TestiAccount.esitoCambioPassword(codiceNuovo: nuovo != nil))
             if let nuovo { codice = nuovo } else { chiudi() }
         } catch {
-            errore = SchermataAccesso.testoErrore(error)
+            mostra(error)
         }
+    }
+
+    /// L'errore in fondo al foglio, letto anche da VoiceOver: prima c'era solo la scritta, lontana dal pulsante toccato.
+    private func mostra(_ error: Error) {
+        let testo = SchermataAccesso.testoErrore(error)
+        errore = testo
+        Annuncio.leggi(testo)
+    }
+
+    /// Il nome di un campo, sopra il campo e nel grigio leggibile dell'app (4,5:1), come in `CampoAccesso`; lo legge il campo.
+    private func nomeCampo(_ testo: String) -> some View {
+        Text(testo)
+            .font(.subheadline)
+            .foregroundStyle(Color.testoSecondario)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityHidden(true)
     }
 }
 
@@ -491,7 +528,9 @@ struct FoglioNuovoCodice: View {
             codice = try await sessione.nuovoCodiceRecupero(password: password)
             password = ""
         } catch {
-            errore = SchermataAccesso.testoErrore(error)
+            let testo = SchermataAccesso.testoErrore(error)
+            errore = testo
+            Annuncio.leggi(testo)
         }
     }
 }
@@ -561,7 +600,9 @@ struct FoglioElimina: View {
 
     private func mostra(_ error: Error) {
         if case ErroreApi.codificato("serve_riconferma", _) = error { riconfermato = false }
-        errore = SchermataAccesso.testoErrore(error)
+        let testo = SchermataAccesso.testoErrore(error)
+        errore = testo
+        Annuncio.leggi(testo)
     }
 }
 
@@ -682,7 +723,7 @@ struct FoglioEmail: View {
             codiceInviato = true
         } catch {
             if case ErroreApi.codificato("serve_riconferma", _) = error { riconfermato = false }
-            errore = SchermataAccesso.testoErrore(error)
+            mostra(error)
         }
     }
 
@@ -692,7 +733,7 @@ struct FoglioEmail: View {
             fatto(TestiAccount.emailConfermataOk)
             chiudi()
         } catch {
-            errore = SchermataAccesso.testoErrore(error)
+            mostra(error)
         }
     }
 
@@ -703,8 +744,15 @@ struct FoglioEmail: View {
             chiudi()
         } catch {
             if case ErroreApi.codificato("serve_riconferma", _) = error { riconfermato = false }
-            errore = SchermataAccesso.testoErrore(error)
+            mostra(error)
         }
+    }
+
+    /// L'errore in fondo al foglio, letto anche da VoiceOver: prima c'era solo la scritta, lontana dal pulsante toccato.
+    private func mostra(_ error: Error) {
+        let testo = SchermataAccesso.testoErrore(error)
+        errore = testo
+        Annuncio.leggi(testo)
     }
 }
 

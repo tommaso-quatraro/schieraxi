@@ -145,7 +145,8 @@ struct RigaGiocatore: View {
                 if esito.fv != nil, let preso = esito.testo { parti.append(preso) }
             } else {
                 parti.append("fantavoto atteso \(testoPunti(g))")
-                parti.append("gioca al \(Formato.percento(g.pVoto)) per cento")
+                // «gioca all'85 per cento», come la pedina e la web (`formazione.voce_gioca_v`)
+                parti.append(LetturaPedina.voceGioca(Formato.percento(g.pVoto)))
             }
         }
         parti.append(contentsOf: g.etichette.map { $0.testo.lowercased() })

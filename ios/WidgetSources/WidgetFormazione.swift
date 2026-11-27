@@ -4,7 +4,8 @@ import SwiftUI
 /// Widget «Formazione consigliata»: modulo, punti attesi e i titolari sul campo (con i volti illustrati).
 /// Misure: piccolo (modulo e punti), medio (dato + campo mini), grande (campo con i cognomi), extra large per iPad (campo e lista
 /// dei titolari con il fantavoto atteso, come l'app),
-/// schermata di blocco: cerchio, rettangolo, riga. Ogni volto apre la scheda del giocatore, il resto la Formazione.
+/// schermata di blocco: cerchio, rettangolo, riga. Nel grande e nell'extra large ogni volto apre la scheda del giocatore, il resto (e
+/// tutto il medio, `CampoMini.apribili`) la Formazione.
 struct WidgetFormazione: Widget {
     let kind = "SchieraxiFormazione"
 
@@ -25,6 +26,9 @@ struct CampoMini: View {
     let titolari: [GiocatoreWidget]
     var lato: CGFloat = 22
     var conNomi = false
+    /// Ogni volto apre la scheda del suo giocatore. Nel medio no: undici volti da 24 punti in quattro file non arrivano ai 44 punti
+    /// di una zona da toccare, e un tocco sul campo apre la Formazione come il resto del widget.
+    var apribili = true
 
     private var righe: [[GiocatoreWidget]] { DisposizioneWidget.righeCampo(titolari) }
 
@@ -33,19 +37,27 @@ struct CampoMini: View {
             ForEach(Array(righe.enumerated()), id: \.offset) { _, riga in
                 HStack(spacing: conNomi ? 8 : 4) {
                     ForEach(riga) { g in
-                        Link(destination: URL(string: "schieraxi://giocatore/\(g.id)") ?? URL(fileURLWithPath: "/")) {
-                            VStack(spacing: 1) {
-                                AvatarMini(g: g, lato: lato)
-                                if conNomi {
-                                    Text(g.cognome).fontWidget(9, weight: .semibold).lineLimit(1).minimumScaleFactor(0.7)
-                                }
-                            }
-                            .frame(maxWidth: .infinity)
+                        if apribili {
+                            Link(destination: URL(string: "schieraxi://giocatore/\(g.id)") ?? URL(fileURLWithPath: "/")) { volto(g) }
+                                // il volto non ha nome (`AvatarMini` è nascosto a VoiceOver): senza, gli 11 collegamenti erano muti (#882)
+                                .accessibilityLabel(g.nome)
+                        } else {
+                            volto(g)
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel(g.nome)
                         }
-                        // il volto non ha nome (`AvatarMini` è nascosto a VoiceOver): senza, il medio aveva 11 collegamenti muti (#882)
-                        .accessibilityLabel(g.nome)
                     }
                 }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func volto(_ g: GiocatoreWidget) -> some View {
+        VStack(spacing: 1) {
+            AvatarMini(g: g, lato: lato)
+            if conNomi {
+                Text(g.cognome).fontWidget(9, weight: .semibold).lineLimit(1).minimumScaleFactor(0.7)
             }
         }
         .frame(maxWidth: .infinity)
@@ -217,7 +229,8 @@ struct VistaFormazione: View {
                 }
             }
             .frame(maxWidth: DisposizioneWidget.colonnaMedioFormazione, alignment: .leading)
-            CampoMini(titolari: tit, lato: 24)
+            // volti senza collegamento: troppo piccoli per un tocco ciascuno (`CampoMini.apribili`)
+            CampoMini(titolari: tit, lato: 24, apribili: false)
         }
     }
 

@@ -152,8 +152,9 @@ struct GraficoVoti: View {
             .chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) }
             .chartXSelection(value: $scelta)
             .sensoryFeedback(.selection, trigger: scelta)
-            .animation(.smooth(duration: 1.0), value: disegnato)
-            .animation(Tema.morbida, value: scelta)
+            // con «Animazioni ridotte» le linee compaiono già disegnate e la giornata scelta non scivola (`Movimento`)
+            .animazione(.smooth(duration: 1.0), value: disegnato)
+            .animazione(Tema.morbidaPiena, value: scelta)
             .onAppear { disegnato = true }
             .frame(height: 200)
             .accessibilityElement(children: .ignore)
@@ -173,7 +174,7 @@ struct ElencoNumeri: View {
     let righe: [String]
 
     var body: some View {
-        DisclosureGroup("Mostra i numeri") {
+        DisclosureGroup {
             VStack(alignment: .leading, spacing: 4) {
                 ForEach(Array(righe.enumerated()), id: \.offset) { _, riga in
                     Text(riga).font(.caption).foregroundStyle(Color.testoSecondario)
@@ -181,6 +182,11 @@ struct ElencoNumeri: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 4)
+        } label: {
+            // i 44 punti dentro l'etichetta: è lei la zona da toccare (con la sola scritta era alta una riga)
+            Text("Mostra i numeri")
+                .frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
+                .contentShape(Rectangle())
         }
         .font(.subheadline)
         .tint(Color.testoSecondario)

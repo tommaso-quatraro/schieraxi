@@ -19,6 +19,9 @@ final class OggiViewModel: ViewModelBase {
     /// La scelta sul rinvio si è salvata: la conferma della web («Fatto: consigli aggiornati per questa giornata»,
     /// `TestiRinvio.salvato`), sotto il menu; la Formazione la toglie dopo qualche secondo.
     @Published var confermaRinvio: String?
+    /// Fa leggere a VoiceOver il perché di una scelta sul rinvio che non si è salvata: compare sotto il menu, lontano dal dito, e
+    /// può essere uguale a quello di prima. Si sostituisce nei test per contare gli annunci.
+    var annuncia: @MainActor (String) -> Void = { Annuncio.leggi($0) }
     /// Cosa si fa con una giornata appena letta dal server (mai con la copia sul telefono), l'ora in cui è partita la lettura e di
     /// chi era (server e sessione di quel momento, `ChiLegge`): permesso per le notifiche la prima volta, promemoria e widget
     /// (`passaAWidgetEPromemoria`). Senza promemoria (test) niente; `OggiPerWidgetTests` la sostituisce per vedere che la giornata arriva.
@@ -99,8 +102,10 @@ final class OggiViewModel: ViewModelBase {
             Haptics.esito(riuscito: true)
             NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
         } catch {
-            erroreRinvio = error.localizedDescription
+            let testo = error.localizedDescription
+            erroreRinvio = testo
             Haptics.esito(riuscito: false)
+            annuncia(testo)
         }
     }
 

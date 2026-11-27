@@ -57,10 +57,13 @@ enum Tema {
     @MainActor static var movimentoRidotto: Bool { UIAccessibility.isReduceMotionEnabled }
     /// La dissolvenza breve che sostituisce ogni animazione di movimento.
     static let quieta: Animation = .easeInOut(duration: 0.3)
+    /// Le due animazioni dell'app così come sono, per chi sceglie da sé con `Movimento` (`animazione(_:value:)`).
+    static let morbidaPiena: Animation = .smooth(duration: 0.4)
+    static let mollaPiena: Animation = .spring(duration: 0.45, bounce: 0.22)
     /// Animazione «normale» dell'app: morbida, senza rimbalzo.
-    @MainActor static var morbida: Animation { movimentoRidotto ? quieta : .smooth(duration: 0.4) }
+    @MainActor static var morbida: Animation { movimentoRidotto ? quieta : morbidaPiena }
     /// Per i cambi di selezione e gli elementi che compaiono: una molla leggera.
-    @MainActor static var molla: Animation { movimentoRidotto ? quieta : .spring(duration: 0.45, bounce: 0.22) }
+    @MainActor static var molla: Animation { movimentoRidotto ? quieta : mollaPiena }
 }
 
 extension Color {
@@ -130,11 +133,22 @@ extension View {
             .accessibilityAddTraits(.isHeader)
     }
 
-    /// Un numero che cambia: le cifre scorrono invece di saltare.
-    @MainActor
-    func numerico(_ valore: Double) -> some View {
-        contentTransition(Tema.movimentoRidotto ? .opacity : .numericText(value: valore))
-            .animation(Tema.morbida, value: valore)
+    /// Un numero che cambia: le cifre scorrono invece di saltare (`Numerico`).
+    func numerico(_ valore: Double) -> some View { modifier(Numerico(valore: valore)) }
+}
+
+/// Le cifre di un numero che cambia scorrono; con «Riduci movimento» il numero cambia con una dissolvenza, con «Animazioni ridotte»
+/// cambia e basta (`Movimento`).
+struct Numerico: ViewModifier {
+    let valore: Double
+    @Environment(\.accessibilityReduceMotion) private var riduciMovimento
+    @AppStorage(Movimento.chiave) private var animazioniRidotte = false
+
+    func body(content: Content) -> some View {
+        let movimento = Movimento.scegli(riduciMovimento: riduciMovimento, animazioniRidotte: animazioniRidotte)
+        content
+            .contentTransition(movimento.cifreCheScorrono ? .numericText(value: valore) : .opacity)
+            .animation(movimento.animazione(Tema.morbidaPiena), value: valore)
     }
 }
 

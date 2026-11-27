@@ -165,7 +165,8 @@ struct CampoFormazione: View {
                 }
             }
         }
-        .animation(Tema.molla, value: titolari.map(\.id))
+        // la molla, una dissolvenza con «Riduci movimento», niente con «Animazioni ridotte»
+        .animazione(Tema.mollaPiena, value: titolari.map(\.id))
         .padding(.vertical, 14).padding(.horizontal, 6)
         .frame(maxWidth: .infinity)
         .background(erba)

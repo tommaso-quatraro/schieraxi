@@ -13,6 +13,9 @@ final class SquadraDaScegliere: ViewModelBase {
     /// Le squadre della lega, per il menu della domanda.
     let squadre: Caricatore<[SquadraLega]>
     private let server: any ServerClient
+    /// Fa leggere a VoiceOver il perché di «Questa è la mia» non riuscito: compare sotto il pulsante e prima era solo una vibrazione.
+    /// Si sostituisce nei test per contare gli annunci.
+    var annuncia: @MainActor (String) -> Void = { Annuncio.leggi($0) }
 
     init(server: any ServerClient) {
         self.server = server
@@ -44,8 +47,10 @@ final class SquadraDaScegliere: ViewModelBase {
         do {
             _ = try await server.corpoJSON("PUT", "/api/mia-squadra", NomeSquadra(nome: nome))
         } catch {
+            let testo = error.localizedDescription
             Haptics.esito(riuscito: false)
-            return error.localizedDescription
+            annuncia(testo)
+            return testo
         }
         Haptics.esito(riuscito: true)
         await info.ricarica()
@@ -57,6 +62,7 @@ final class SquadraDaScegliere: ViewModelBase {
 /// La domanda nella Formazione, con le parole del passo «La tua squadra» della guida della web (`pav.quale_squadra_tua`,
 /// `pav.questa_mia`): un menu con le squadre, già sulla prima, e il pulsante; un menu che salva al cambio non farebbe scegliere la
 /// prima. Senza l'elenco delle squadre, la frase «Indica la tua squadra in «La mia squadra»» (`err.indica_squadra`), come la web.
+/// Se la scelta non si salva il perché va sotto il pulsante e VoiceOver lo legge (`SquadraDaScegliere.annuncia`).
 @MainActor
 struct SceltaSquadraFormazione: View {
     @ObservedObject var squadra: SquadraDaScegliere
@@ -67,12 +73,26 @@ struct SceltaSquadraFormazione: View {
     var body: some View {
         Carta(Catalogo.Pav.qualeSquadraTua, simbolo: "person.3") {
             if let elenco = squadra.squadre.dato, !elenco.isEmpty {
-                Picker(Catalogo.Lega.tuaSquadra, selection: $scelta) {
-                    ForEach(elenco) { Text($0.nome).tag($0.nome) }
+                // un'etichetta nostra, che va a capo con un nome lungo o il testo grande: quella del menu di sistema lo tagliava
+                // con «…» (come `MenuRinvio`)
+                Menu {
+                    Picker(Catalogo.Lega.tuaSquadra, selection: $scelta) {
+                        ForEach(elenco) { Text($0.nome).tag($0.nome) }
+                    }
+                } label: {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(scelta)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Image(systemName: "chevron.up.chevron.down").font(.footnote.weight(.semibold))
+                        Spacer(minLength: 0)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
-                .pickerStyle(.menu)
-                .frame(minHeight: Tema.areaTocco)
                 .disabled(inCorso)
+                .accessibilityLabel(Catalogo.Lega.tuaSquadra)
+                .accessibilityValue(scelta)
                 Button { Task { await salva() } } label: {
                     Text(Catalogo.Pav.questaMia).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }

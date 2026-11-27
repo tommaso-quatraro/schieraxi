@@ -247,7 +247,7 @@ struct RadiceView: View {
     @EnvironmentObject private var nav: Navigazione
     @EnvironmentObject private var modello: AppModel
     /// Impostazioni > Aspetto: le animazioni (il tema lo applica `PortaDiAccesso`, per tutte le schermate).
-    @AppStorage("animazioniRidotte") private var animazioniRidotte = false
+    @AppStorage(Movimento.chiave) private var animazioniRidotte = false
     @Environment(\.horizontalSizeClass) private var classeOrizzontale
     @Environment(\.verticalSizeClass) private var classeVerticale
     @Environment(\.dynamicTypeSize) private var dimensioneTesto
@@ -309,7 +309,9 @@ struct RadiceView: View {
         .barraSchedeCheSiRiduce()
         // Il conto alla rovescia sta nell'intestazione di Oggi (e nel widget): sotto la barra delle schede faceva due barre sovrapposte.
         .tint(Color.verde)
-        .transaction { if animazioniRidotte { $0.animation = nil } }
+        // «Animazioni ridotte»: niente animazioni, nemmeno quelle scritte dentro le viste con `.animation(_:value:)`, che senza
+        // `disablesAnimations` rimettevano la loro (le viste che le scrivono leggono anche l'interruttore: `Movimento`)
+        .transaction { if animazioniRidotte { $0.animation = nil; $0.disablesAnimations = true } }
         .environment(\.server, modello.server)
         .environment(\.spazioZoom, zoom)
         .environment(\.apriGiocatore) { nav.apriScheda($0) }

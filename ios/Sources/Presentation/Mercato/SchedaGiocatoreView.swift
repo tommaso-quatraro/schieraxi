@@ -246,7 +246,11 @@ struct GiocatoreCorpo: View {
                 }
                 .padding(.top, 8)
             } label: {
+                // i 44 punti dentro l'etichetta: è lei la zona da toccare (con la sola scritta era alta una riga)
                 Text(Catalogo.Formazione.tuttiNumeri).font(.headline).foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, minHeight: Tema.areaTocco, alignment: .leading)
+                    .contentShape(Rectangle())
             }
             .tint(Color.testoSecondario)
         }

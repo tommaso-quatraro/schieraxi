@@ -95,6 +95,9 @@ final class FormazioneViewModel: ViewModelBase {
     private let memoria: UserDefaults
     /// Rimette in programma i promemoria del telefono quando la spunta cambia (nei test conta le chiamate).
     private let promemoria: @MainActor () -> Void
+    /// Fa leggere a VoiceOver la riga dello stato dopo un tuo cambio (`annunciaLoStato`). Si sostituisce nei test per contare gli
+    /// annunci.
+    var annuncia: @MainActor (String) -> Void = { Annuncio.leggi($0) }
 
     /// `promemoria`: nil = quelli veri, con l'ultima giornata salvata e senza rete (mai nei test né nella demo).
     init(server: any ServerClient, oggi: OggiViewModel? = nil, memoria: UserDefaults = .standard,
@@ -593,6 +596,7 @@ final class FormazioneViewModel: ViewModelBase {
             ricordaSulTelefono(f)
             ricordaLaSpunta(f, prima: spuntaPrima)
             Haptics.esito(riuscito: true)
+            annunciaLoStato()       // «Torna alla consigliata» è sparito, e VoiceOver era proprio lì
             return cera
         } catch {
             await nonRiuscita(error, generazione: g)
@@ -631,11 +635,22 @@ final class FormazioneViewModel: ViewModelBase {
                     nonValida: false, f, valutazione: r)
             ricordaLaSpunta(f, prima: spuntaPrima)
             Haptics.esito(riuscito: true)
+            // la spunta la legge già il suo interruttore, e la riga non cambia: si annuncia solo un cambio degli 11
+            if messa == nil { annunciaLoStato() }
             return true
         } catch {
             await nonRiuscita(error, generazione: g)
             return false
         }
+    }
+
+    /// Dopo un tuo cambio riuscito (un titolare, il modulo, «Torna alla consigliata») VoiceOver legge la riga dello stato nuova, come
+    /// la riga `role="status"` della web (`rigaStato` di `mostraFormazione`): la riga cambia sotto il campo, lontano dal dito. Un cambio
+    /// non riuscito lo dice già l'avviso sotto il campo (`messaggio`, letto dalla Formazione).
+    private func annunciaLoStato() {
+        let voce = statoScelta.voce
+        guard !voce.isEmpty else { return }
+        annuncia(voce)
     }
 
     /// Una scrittura non riuscita: 412 rilegge e lo dice (`cambiataAltrove`); 409 `formazione_chiusa` rilegge (la scadenza
