@@ -135,6 +135,26 @@ struct DemoWidgetComeAppTests {
         #expect(w.giornateGiocate.map { "G\($0.numero): \(Formato.punti($0.attesi)) → \(Formato.punti($0.fatti))" } == attese)
     }
 
+    /// Senza questa giornata il test di sopra non distingue la regola: dove la copia fatta alla scadenza ha gli stessi numeri della
+    /// consigliata, «la copia, poi la consigliata» e «la consigliata» danno lo stesso widget.
+    @Test("Nella demo c'è una giornata con la copia alla scadenza diversa dalla consigliata, e il widget mostra la copia")
+    func copiaAllaScadenzaDiversaDallaConsigliata() throws {
+        func diversa(_ g: [String: Any]) -> Bool {
+            guard (g["schierata"] as? [String: Any]) == nil, let a = g["automatica"] as? [String: Any],
+                  let c = g["consigliata"] as? [String: Any] else { return false }
+            return punti(a["reale"]) != punti(c["reale"]) || punti(a["atteso"]) != punti(c["atteso"])
+        }
+        let giornate = try elenco(try app("/api/diario"), "giornate")
+        let g = try #require(giornate.first(where: diversa),
+                             "nessuna giornata della demo ha la copia alla scadenza con numeri diversi dalla consigliata")
+        let copia = try #require(g["automatica"] as? [String: Any])
+        let numero = try #require(g["giornata_lega"] as? Int)
+        let giocate = try widget().giornateGiocate
+        let voce = try #require(giocate.first(where: { $0.numero == numero }), "il widget non ha la giornata \(numero)")
+        #expect(Formato.punti(voce.attesi) == punti(copia["atteso"]))
+        #expect(Formato.punti(voce.fatti) == punti(copia["reale"]))
+    }
+
     @Test("Un server senza scambio e svincolo: lo dice in «mancano», il resto c'è")
     func parziali() throws {
         let w = try widget(parziali: true)

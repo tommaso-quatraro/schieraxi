@@ -578,22 +578,31 @@ enum LegaDemo {
         let fatti: Double
     }
 
-    /// Una giornata finita (numero di Serie A): la consigliata e, se l'avevi schierata, la tua formazione.
+    /// Una giornata finita (numero di Serie A): la consigliata, se l'avevi schierata la tua formazione e, dove la consigliata
+    /// mostrata prima della scadenza non è stata salvata, la copia della consigliata fatta alla scadenza con i suoi numeri
+    /// (`automatica`). Con l'istantanea la copia è quella mostrata, con gli stessi numeri della consigliata (`DatiDemo`).
     struct GiornataFinita {
         let serieA: Int
         let consigliata: EsitoGiornata
         let schierata: EsitoGiornata?
+        var automatica: EsitoGiornata? = nil
+
+        /// La formazione dei punti, come `diario.formazione_che_conta` del server: la tua, poi la copia fatta alla scadenza, poi
+        /// la consigliata.
+        var cheConta: EsitoGiornata { schierata ?? automatica ?? consigliata }
     }
 
     /// Le giornate finite, dalla più recente (Serie A 10-7, cioè 7-4 della lega): il Diario dell'app e «Attesi e fatti» dei
-    /// widget, che come il server prendono la tua formazione se c'era, altrimenti la consigliata.
+    /// widget, che come il server prendono la formazione che conta (`cheConta`). Nella Serie A 7 la consigliata è rifatta a
+    /// giornata finita e la copia fatta alla scadenza ha numeri suoi: lì si vede quale delle due conta (`DemoWidgetComeAppTests`).
     static let giornateFinite: [GiornataFinita] = [
         GiornataFinita(serieA: 10, consigliata: EsitoGiornata(modulo: "3-4-3", atteso: 69.0, fatti: 72.5), schierata: nil),
         GiornataFinita(serieA: 9, consigliata: EsitoGiornata(modulo: "3-4-3", atteso: 68.5, fatti: 71.0),
                        schierata: EsitoGiornata(modulo: "3-5-2", atteso: 66.0, fatti: 63.5)),
         GiornataFinita(serieA: 8, consigliata: EsitoGiornata(modulo: "3-4-3", atteso: 67.0, fatti: 64.0),
                        schierata: EsitoGiornata(modulo: "3-4-3", atteso: 66.0, fatti: 59.5)),
-        GiornataFinita(serieA: 7, consigliata: EsitoGiornata(modulo: "4-3-3", atteso: 65.0, fatti: 60.5), schierata: nil),
+        GiornataFinita(serieA: 7, consigliata: EsitoGiornata(modulo: "4-3-3", atteso: 65.0, fatti: 60.5), schierata: nil,
+                       automatica: EsitoGiornata(modulo: "4-3-3", atteso: 66.5, fatti: 63.0)),
     ]
 
     /// Il miglior scambio (il primo di Scambi): con chi, chi dai, chi ricevi, quanto guadagnate tu e loro.
@@ -733,7 +742,7 @@ enum LegaDemo {
             w["mancano"] = ["scambio", "svincolato"]
         } else {
             w["diario"] = giornateFinite.map { g -> [String: Any] in
-                let e = g.schierata ?? g.consigliata
+                let e = g.cheConta
                 return ["giornata": g.serieA, "giornata_lega": g.serieA - (giornata - giornataLega), "stagione": stagioneInCorso,
                         "attesi": e.atteso, "fatti": e.fatti, "intervallo": fascia(e.atteso)]
             }
@@ -777,7 +786,7 @@ enum LegaDemo {
             "avvisi": [Any](), "rosa": [Any](), "squalificati": [Int](), "diffidati": [Int](), "rigoristi": [Int](),
             "campionato_finito": campionatoFinito, "fase": Fase.finita.rawValue, "riepilogo": riepilogoCampionatoFinito(),
             "diario": giornateFinite.map { g -> [String: Any] in
-                let e = g.schierata ?? g.consigliata
+                let e = g.cheConta
                 return ["giornata": g.serieA, "giornata_lega": g.serieA - (giornata - giornataLega), "stagione": stagioneInCorso,
                         "attesi": e.atteso, "fatti": e.fatti, "intervallo": fascia(e.atteso)]
             },
