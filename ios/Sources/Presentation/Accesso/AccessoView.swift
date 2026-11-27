@@ -24,8 +24,8 @@ struct SchermataAccesso: View {
     @Environment(\.dynamicTypeSize) private var testo
     /// Un solo invio alla volta, anche con due tocchi ravvicinati (prima che la sessione faccia in tempo a dire «in corso»).
     @State private var inInvio = false
-    /// Dopo un «troppi tentativi» (429): fino a quando aspettare. Il pulsante si riaccende da solo a zero.
-    @State private var attesaFinoA: Date?
+    /// Passi, testi, controlli e l'attesa dopo un «troppi tentativi» (`ModuloAccesso.attesaFinoA`: il pulsante si riaccende da
+    /// solo a zero).
     @State private var modulo: ModuloAccesso
     @State private var errore: String?
     @State private var messaggio: String?
@@ -271,7 +271,7 @@ struct SchermataAccesso: View {
 
     private var pulsante: some View {
         TimelineView(.periodic(from: Date(), by: 1)) { contesto in
-            let resto = attesaFinoA.map { AttesaRiprova.secondiRimasti(fino: $0, adesso: contesto.date) } ?? 0
+            let resto = modulo.attesaFinoA.map { AttesaRiprova.secondiRimasti(fino: $0, adesso: contesto.date) } ?? 0
             Button {
                 Task { await invia() }
             } label: {
@@ -286,14 +286,14 @@ struct SchermataAccesso: View {
             .sensoryFeedback(trigger: errore) { _, nuovo in nuovo != nil ? .error : nil }
             .onChange(of: resto) { _, nuovo in
                 // a zero il conto alla rovescia si ferma e il messaggio di attesa sparisce
-                if nuovo == 0, attesaFinoA != nil { attesaFinoA = nil; errore = nil }
+                if nuovo == 0, modulo.attesaFinoA != nil { modulo.attesa = nil; errore = nil }
             }
         }
     }
 
     private func invia() async {
         guard !inInvio, !sessione.inCorso else { return }
-        if let fine = attesaFinoA, AttesaRiprova.secondiRimasti(fino: fine) > 0 { return }
+        if let fine = modulo.attesaFinoA, AttesaRiprova.secondiRimasti(fino: fine) > 0 { return }
         switch modulo.primaDellInvio(modo, postaAccesa: postaAccesa) {
         case .manda: break
         case .avvisa(let problema):
@@ -346,7 +346,7 @@ struct SchermataAccesso: View {
             // il pulsante conta solo un'attesa fino all'ora: oltre il tempo sta nella frase (`fraseDopoInvio`), e un pulsante che
             // contasse un'ora sola direbbe un tempo diverso da quello della frase (#940)
             if case ErroreApi.troppiTentativi(_, let attesa) = error, let attesa, attesa > 0, attesa <= AttesaRiprova.massimoConto {
-                attesaFinoA = Date().addingTimeInterval(TimeInterval(attesa))
+                modulo.aspetta(fino: Date().addingTimeInterval(TimeInterval(attesa)))
             }
             // con il pulsante che conta la frase non dice i secondi (#787)
             errore = Self.fraseDopoInvio(error)
@@ -365,7 +365,7 @@ struct SchermataAccesso: View {
     private var sezioneGoogle: some View {
         if googleAcceso, modulo.passo == .accedi || modulo.passo == .registra {
             VStack(spacing: 10) {
-                BottoneGoogle(titolo: Catalogo.Social.continua, occupato: inInvio || sessione.inCorso || attesaFinoA != nil) {
+                BottoneGoogle(titolo: Catalogo.Social.continua, occupato: inInvio || sessione.inCorso || modulo.attesaFinoA != nil) {
                     Task { await continuaConGoogle() }
                 }
                 Text(Catalogo.Social.oppure).font(.footnote).foregroundStyle(Color.testoSecondario).accessibilityHidden(true)

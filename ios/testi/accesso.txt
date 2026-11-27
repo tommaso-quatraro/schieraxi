@@ -40,6 +40,8 @@ accesso.recupero_con_codice
 accesso.letto
 accesso.spunta_letto
 accesso.torna
+# la sessione chiusa dal server (account bloccato o eliminato, password cambiata altrove), come `sessioneScaduta` della web
+accesso.sessione_finita
 accesso.codice_inviato
 accesso.password_cambiata
 accesso.password_cambiata_accedi

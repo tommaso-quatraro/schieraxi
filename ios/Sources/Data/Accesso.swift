@@ -117,6 +117,11 @@ enum Accesso {
     /// L'archivio dei token in uso: il Keychain, o la memoria in modalità demo (le fotografie non toccano il Keychain).
     nonisolated(unsafe) static var archivio: any ArchivioToken = Demo.daLancio ? MemoriaToken() : KeychainToken()
 
+    /// Dove sta il segreto del «dispositivo fidato» (docs/API.md, 1.4b): nel Keychain, un elemento per server, accanto al token ma
+    /// con un servizio suo. In demo e nei test in memoria (le fotografie e le prove non toccano il Keychain).
+    static let archivioDispositivo: any ArchivioToken =
+        Demo.daLancio || Ambiente.ospiteDeiTest ? MemoriaToken() : KeychainToken(servizio: "it.schieraxi.app.dispositivo")
+
     /// Passa al widget, da sola, l'indirizzo e il TOKEN DEL WIDGET (`fw_`, a scopo limitato: solo lettura di oggi e widget) di adesso:
     /// nel file dell'App Group e nel Keychain condiviso (il ripiego). Il token della sessione non esce mai dal Keychain privato.
     /// Restituisce true se almeno uno dei due funziona (collegamento automatico); se qualcosa è cambiato il widget si ricarica.

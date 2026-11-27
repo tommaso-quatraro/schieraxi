@@ -317,6 +317,8 @@ final class SessioneAccount: ObservableObject {
 
     private let server: any ServerClient
     private let archivio: any ArchivioToken
+    /// Dove si tiene il segreto del «dispositivo fidato» che il server dà dopo un accesso (Keychain; i test ne passano uno finto).
+    private let dispositivi: any ArchivioToken
     private let memoria: UserDefaults
     private let pulisci: @MainActor () -> Void
     /// Dove sta il token del widget: nil = i luoghi veri (letti a ogni uso); i test ne passano di finti.
@@ -335,9 +337,11 @@ final class SessioneAccount: ObservableObject {
          archivio: any ArchivioToken = Accesso.archivio,
          memoria: UserDefaults = .standard,
          pulisci: @escaping @MainActor () -> Void = { DatiLocali.svuota() },
-         widget: TokenWidget.Luoghi? = nil) {
+         widget: TokenWidget.Luoghi? = nil,
+         dispositivi: any ArchivioToken = Accesso.archivioDispositivo) {
         self.server = server
         self.archivio = archivio
+        self.dispositivi = dispositivi
         self.memoria = memoria
         self.pulisci = pulisci
         self.widget = widget

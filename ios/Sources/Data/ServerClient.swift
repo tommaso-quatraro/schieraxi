@@ -237,6 +237,8 @@ struct ServerHTTP: ServerClient {
     var sessione: URLSession = .shared
     /// Dove sta il token di accesso (Keychain). Con un server senza account non c'è nessun token e non si manda niente.
     var archivioToken: any ArchivioToken = Accesso.archivio
+    /// Dove sta il segreto del «dispositivo fidato» dato dal server dopo un accesso (Keychain).
+    var archivioDispositivo: any ArchivioToken = Accesso.archivioDispositivo
     /// Il server risponde 202 «sto calcolando»: si riprova dopo questi secondi (se il server non dice altro) fino a `massimoTentativiCalcolo` volte.
     var attesaCalcolo: TimeInterval = 3
     var massimoTentativiCalcolo = 40

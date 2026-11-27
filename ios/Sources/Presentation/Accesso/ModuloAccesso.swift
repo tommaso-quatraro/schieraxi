@@ -65,6 +65,22 @@ struct ModuloAccesso: Equatable {
     var iscrizione: IscrizioneInAttesa?
     /// Recupero con l'email, secondo passo: l'indirizzo a cui è partito il codice.
     var emailRecupero: String?
+    /// Dopo un «troppi tentativi» (429): fino a quando aspettare, e il passo in cui l'attesa è nata.
+    var attesa: Attesa?
+
+    /// Un'attesa dopo «troppi tentativi»: la fine e il passo in cui è nata.
+    struct Attesa: Equatable {
+        let fino: Date
+        let passo: Passo
+    }
+
+    /// Fino a quando il pulsante d'invio resta spento e conta da solo.
+    var attesaFinoA: Date? { attesa?.fino }
+
+    /// Un «troppi tentativi» con l'attesa, nel passo che si vede.
+    mutating func aspetta(fino: Date) {
+        attesa = Attesa(fino: fino, passo: passo)
+    }
 
     var passo: Passo {
         switch scheda {
