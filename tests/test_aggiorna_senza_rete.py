@@ -143,6 +143,34 @@ def test_un_passo_riuscito_con_la_copia_di_oggi_non_conta_come_scaricato(db, mon
     assert _ultimo(db) == UN_MESE_FA
 
 
+def test_le_pagine_della_diretta_in_un_altro_thread_non_contano(db, monkeypatch):
+    """Revisione della #956: nel server la diretta scarica da un altro thread anche mentre gira «Aggiorna i dati». Una sua pagina
+    arrivata durante il passo «voti» (riuscito senza chiedere niente) non rende freschi i dati: `rete.arrivate_qui` conta per
+    thread. La fonte della diretta risponde, quelle dell'aggiornamento no."""
+    import threading
+    archivio.segna(db, "aggiornamento", UN_MESE_FA, "[]")
+    db.commit()
+    monkeypatch.setattr(aggiorna.rete, "PAUSA", 0)
+
+    def get(url, **_):
+        if "diretta" in url:
+            return _Pagina()
+        raise requests.exceptions.ProxyError(f"Unable to connect to proxy: {url}")
+    monkeypatch.setattr(aggiorna.rete._sessione, "get", get)
+    _passi(monkeypatch)
+    arrivate = []
+
+    def voti(self):                                   # come «voti» senza giornate nuove, mentre la diretta scarica
+        diretta = threading.Thread(target=lambda: arrivate.append(aggiorna.rete.scarica("https://diretta.invalid/partite")))
+        diretta.start()
+        diretta.join()
+    monkeypatch.setattr(aggiorna.Aggiornamento, "voti", voti)
+    a = _giro(db, monkeypatch)
+    assert len(arrivate) == 1, "la pagina della diretta non è arrivata: la prova non prova niente"
+    assert a.riusciti and a.scaricati == [], (a.riusciti, a.scaricati)
+    assert _ultimo(db) == UN_MESE_FA
+
+
 # ---------------------------------------------------------------- 2. le frasi per chi ha premuto «Aggiorna i dati»
 def test_senza_rete_una_frase_sola_con_le_fonti_che_non_rispondono(db, monkeypatch):
     _rete(monkeypatch, risponde=False)

@@ -421,7 +421,15 @@ def _dati_non_validi(_, e: RequestValidationError) -> JSONResponse:
                     for err in e.errors()})
     return JSONResponse(status_code=422, content={"detail": DATI_NON_VALIDI, "campi": campi[:20]},
                         headers={"Cache-Control": "no-store"})
-_aggiornamento = {"in_corso": False, "righe": [], "errori": []}
+
+
+def stato_aggiornamento_iniziale() -> dict:
+    """Lo stato di «Aggiorna i dati» (GET /api/aggiorna) all'avvio del server e all'inizio di ogni giro: gli stessi campi di un
+    giro finito (docs/API.md), anche `errori_frasi` (revisione della #956)."""
+    return {"in_corso": False, "righe": [], "errori": [], "errori_frasi": []}
+
+
+_aggiornamento = stato_aggiornamento_iniziale()
 _blocco = threading.Lock()
 
 
@@ -876,8 +884,9 @@ def avvia_aggiornamento():
         return GIA_IN_CORSO
 
     # Chi ha premuto legge una frase del catalogo per fatto (`errori`, con `errori_frasi` per tradurla: aggiorna.Aggiornamento.per_utente),
-    # mai l'errore tecnico, che va nel registro del server (collaudo d'insieme del 26/11: «ProxyError: HTTPSConnectionPool…» copriva
-    # lo schermo). Errori senza una loro frase: una frase generica, così l'avviso non dice «Dati aggiornati».
+    # mai l'errore tecnico (collaudo d'insieme del 26/11: «ProxyError: HTTPSConnectionPool…» copriva lo schermo). Il dettaglio resta per
+    # chi gestisce il server: nel registro, in `righe` della stessa risposta (rotta solo per l'amministratore, nessun client le mostra)
+    # e in Stato dei dati. Errori senza una loro frase: una frase generica, così l'avviso non dice «Dati aggiornati».
     def lavoro():
         global _aggiorna_finito_alle
         registro = logging.getLogger("uvicorn.error")
@@ -901,7 +910,7 @@ def avvia_aggiornamento():
             finally:
                 _blocco.release()
 
-    _aggiornamento.update(in_corso=True, righe=[], errori=[], errori_frasi=[])
+    _aggiornamento.update(stato_aggiornamento_iniziale(), in_corso=True)
     threading.Thread(target=lavoro, daemon=True).start()
     return {"avviato": True}
 

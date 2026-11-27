@@ -309,6 +309,15 @@ def test_aggiorna_con_errori_senza_frase_ne_mostra_una_generica(client, monkeypa
     assert r["errori"] == ["Una parte dei dati non si è aggiornata: il dettaglio è in Stato dei dati."], r
 
 
+def test_aggiorna_ha_gli_stessi_campi_all_avvio_e_dopo_un_giro(client, monkeypatch):
+    """Revisione della #956: appena avviato il server, GET /api/aggiorna non aveva `errori_frasi`, che docs/API.md dà sempre."""
+    monkeypatch.setattr(server, "_aggiornamento", server.stato_aggiornamento_iniziale())      # com'è all'avvio del server
+    prima = client.get("/api/aggiorna").json()
+    assert prima == {"in_corso": False, "righe": [], "errori": [], "errori_frasi": []}, prima
+    dopo = _aggiorna_e_leggi(client, monkeypatch, lambda **k: [])
+    assert set(dopo) == set(prima), dopo
+
+
 def test_aggiorna_riuscito_nessun_errore(client, monkeypatch):
     r = _aggiorna_e_leggi(client, monkeypatch, lambda **k: [])
     assert r["errori"] == [] and r["errori_frasi"] == [] and r["in_corso"] is False
