@@ -44,6 +44,17 @@ def test_chi_non_ha_previsione_sta_nella_tabella_con_il_suo_voto(riserva):
     assert len(v["giocatori"]) == 25                                        # tutta la rosa, lui compreso
 
 
+def test_con_l_atteso_mostrato_prima_della_scadenza_entra_nella_frase_come_nella_tabella(riserva):
+    """Se la consigliata di allora mostrava un atteso anche per lui, la tabella scrive quello (web e iPhone prendono prima
+    l'istantanea) e la frase su chi ha fatto meglio o peggio lo usa allo stesso modo: 5,5 atteso, 7 preso, +1,5. Solo senza
+    nessun atteso resta fuori dalla frase. «Quanto ci abbiamo preso» invece lo lascia fuori comunque."""
+    v = _giornata_2(riserva.file)
+    v["istantanea"] = {"titolari": [{"id": 2, "nome": "G2", "ruolo": "P", "p_voto": 0.9, "fv_atteso": 5.5}]}
+    fa = diario.fatti_e_attesi(v)
+    assert (2, 5.5, 7.0, 1.5) in [(r["id"], r["atteso"], r["preso"], r["differenza"]) for r in fa["meglio"]]
+    assert precisione.numeri_giornata(v)[0] == []                  # l'istantanea qui ha solo lui: nessun numero mostrato misurato
+
+
 def test_chi_non_ha_previsione_e_non_gioca_e_senza_voto(vero, monkeypatch):  # noqa: F811 (fixture importata)
     _senza_previsione(monkeypatch, 2)
     voti = vero.dati.voti
