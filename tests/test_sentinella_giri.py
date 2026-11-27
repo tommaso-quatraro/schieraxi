@@ -36,7 +36,7 @@ class Server:
         self.riesce = True
         self.mandati: list[str] = []
         self.trovate: list[Rottura] = []
-        monkeypatch.setattr(sentinella, "esegui", lambda db, adesso, minuti, stato: _esito(*self.trovate))
+        monkeypatch.setattr(sentinella, "esegui", lambda db, adesso, minuti, stato, solo=None: _esito(*self.trovate))
 
     def manda(self, titolo, testo):
         self.mandati.append(testo)

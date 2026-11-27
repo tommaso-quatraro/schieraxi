@@ -745,8 +745,10 @@ def _controlla_un_utente(etichetta: str, ctx, db: sqlite3.Connection, r_regole, 
 
 
 def esegui(db: sqlite3.Connection, adesso: datetime | None = None, minuti: float = 15, stato: dict | None = None,
-           contesti: list | None = None) -> dict:
-    """Un giro completo: {rotture, controllati, rimandati, secondi, stagione}. Non scrive niente (per salvare: `registra`)."""
+           contesti: list | None = None, solo: set[str] | None = None) -> dict:
+    """Un giro completo: {rotture, controllati, rimandati, secondi, stagione}. Non scrive niente (per salvare: `registra`).
+    `solo` (giro leggero): si controllano solo questi utenti (le etichette, «utente N»), gli altri passano al giro dopo come quelli
+    rimasti fuori per il tempo; i controlli comuni si fanno sempre."""
     from . import consigli, lega, regole as mod_regole, server
     inizio = time.monotonic()
     adesso = adesso or datetime.now()
@@ -763,7 +765,7 @@ def esegui(db: sqlite3.Connection, adesso: datetime | None = None, minuti: float
     contesti = sorted(contesti, key=lambda c: ultimi.get(c[0], ""))          # prima chi è stato controllato meno di recente
     controllati: list[str] = []
     live_corpo = None
-    for etichetta, ctx in contesti:
+    for etichetta, ctx in (contesti if solo is None else [c for c in contesti if c[0] in solo]):
         if controllati and time.monotonic() - inizio > 60 * minuti:
             break
         controllati.append(etichetta)
@@ -826,6 +828,7 @@ def registra(db: sqlite3.Connection, esito: dict, quando: str | None = None) -> 
     rotte = len(per_inv)
     riassunto = (f"{len(esito['controllati'])} utenti controllati in {esito['secondi']:g} s"
                  + (f", {esito['rimandati']} al prossimo giro" if esito["rimandati"] else "")
+                 + (f" (giro leggero: {esito['leggero']})" if esito.get("leggero") else "")
                  + (f"; {rotte} invarianti rotte su {len(INVARIANTI)}" if rotte else f"; {len(INVARIANTI)} invarianti a posto"))
     peggiore = "errore" if any(INVARIANTI[k][0] == "errore" for k in per_inv) else "avviso" if rotte else "ok"
     db.execute("INSERT OR REPLACE INTO controlli (stagione, nome, esito, valore, dettaglio, controllato) VALUES (?, ?, ?, ?, ?, ?)",
@@ -976,24 +979,54 @@ def manda_ntfy(titolo: str, testo: str, *, priorita: int = 4, tag: str = "mag") 
         return False
 
 
+def utenti_con_rotture(stato: dict) -> set[str]:
+    """Chi ha una rottura aperta e non ancora tornata a posto («utente N»; le rotture di tutti le rifanno i controlli comuni)."""
+    aperte = stato.get("aperte") if isinstance(stato.get("aperte"), dict) else {}
+    utenti = {k.split("|")[1] for k, v in aperte.items() if isinstance(v, dict) and not v.get("risolta") and k.count("|") == 2}
+    return utenti - {"-"}
+
+
+def _scadenza_vicina(db: sqlite3.Connection, adesso: datetime, leghe: Callable[[], list] | None,
+                     scrivi: Callable[[str], None]) -> str | None:
+    """«scadenza della formazione alle 20:45» se per una lega attiva manca al massimo un'ora alla scadenza (la regola di
+    `libero.scadenza_vicina`, la stessa che rimanda le installazioni), altrimenti None. Se le leghe attive non si leggono, il giro
+    resta completo e lo dice."""
+    from . import libero
+    try:
+        return libero.scadenza_vicina(db, (leghe or libero.leghe_attive)(), adesso)
+    except Exception as e:                     # noqa: BLE001 - il giro completo è il ripiego sicuro; il guasto va nel log
+        scrivi(f"sentinella: leghe attive non lette ({type(e).__name__}), giro completo")
+        return None
+
+
 def giro(minuti: float = 15, manda: Callable[[str, str], bool] | None = manda_ntfy, file_stato: Path | None = None,
-         adesso: datetime | None = None, scrivi: Callable[[str], None] = print, db_percorso: Path | None = None) -> dict:
+         adesso: datetime | None = None, scrivi: Callable[[str], None] = print, db_percorso: Path | None = None,
+         leghe: Callable[[], list] | None = None) -> dict:
     """Il comando del cron: controlla, scrive la tabella `controlli`, avvisa le rotture nuove e aggiunge il giro alla storia
     (`giri`). Con `manda=None` (--senza-invio) stampa l'avviso invece di mandarlo e non tocca il file di stato: le prove a mano non
-    consumano gli avvisi e non entrano nella storia (non coprono il buco di un cron fermo)."""
+    consumano gli avvisi e non entrano nella storia (non coprono il buco di un cron fermo).
+    Nell'ora prima della scadenza della formazione di una lega attiva (`leghe`, di base `libero.leghe_attive`) il giro del cron è
+    leggero: lì il servizio rifà probabili, consigliate e promemoria per tutti, e rifare a freddo Oggi, Formazione e widget di ogni
+    utente in questo processo gli toglierebbe il processore. Si ricontrolla solo chi ha una rottura aperta (`utenti_con_rotture`:
+    la conferma e l'avviso arrivano come sempre), più i controlli comuni; gli altri passano al giro dopo. Il giro entra nella
+    storia come gli altri. A mano il giro è sempre completo."""
     from . import archivio
     adesso = adesso or datetime.now()
     file_stato = file_stato or FILE_STATO
     stato = leggi_stato(file_stato)
     db = archivio.apri(db_percorso) if db_percorso else archivio.apri()
     try:
-        esito = esegui(db, adesso, minuti, stato)
+        leggero = _scadenza_vicina(db, adesso, leghe, scrivi) if manda is not None else None
+        esito = esegui(db, adesso, minuti, stato, solo=utenti_con_rotture(stato) if leggero else None)
+        if leggero:
+            esito["leggero"] = leggero
         registra(db, esito)
     finally:
         db.close()
     nuovo, da_avvisare = aggiorna_stato(stato, esito, adesso)
     scrivi(f"sentinella: {len(esito['controllati'])} utenti in {esito['secondi']:g} s, {len(esito['rotture'])} rotture"
-           + (f", {esito['rimandati']} rimandati al prossimo giro" if esito["rimandati"] else ""))
+           + (f", {esito['rimandati']} rimandati al prossimo giro" if esito["rimandati"] else "")
+           + (f" (giro leggero: {leggero})" if leggero else ""))
     for r in esito["rotture"]:
         scrivi(f"  [{INVARIANTI[r.invariante][0]}] {r.invariante} · {r.utente or 'tutti'} · g{r.giornata}: {r.dettaglio}")
     inviato = False

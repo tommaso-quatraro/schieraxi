@@ -330,7 +330,7 @@ def test_il_testo_dell_avviso_non_ha_nomi_ne_dettagli():
 
 def test_giro_manda_un_solo_messaggio_e_se_l_invio_fallisce_riprova(tmp_path, monkeypatch):
     r = Rottura("risposta_in_errore", "utente 2", 10, "widget: KeyError")
-    monkeypatch.setattr(sentinella, "esegui", lambda db, adesso, minuti, stato: _esito(r, controllati=["utente 2"]))
+    monkeypatch.setattr(sentinella, "esegui", lambda db, adesso, minuti, stato, solo=None: _esito(r, controllati=["utente 2"]))
     mandati, riesce = [], [False]
 
     def manda(titolo, testo):
