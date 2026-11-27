@@ -481,6 +481,9 @@ final class DubbiRoseViewModel: ViewModelBase {
     @Published private(set) var trovati: [GiocatoreBreve] = []
     @Published private(set) var cercando = false
     @Published private(set) var errore: String?
+    /// Le rose non si sono lette: la frase della web (`pav.da_sistemare_errore`) con il motivo, al posto della sezione. Gli errori
+    /// della ricerca e dell'abbinamento restano in `errore`, nel foglio della ricerca.
+    @Published private(set) var erroreLettura: String?
     @Published private(set) var sistemati = 0
     @Published var scelto: GiocatoreDaSistemare?
     /// Pausa prima di interrogare il server mentre si scrive (i test la azzerano).
@@ -500,9 +503,10 @@ final class DubbiRoseViewModel: ViewModelBase {
             }
             dubbi = DubbiRose.trova(in: rose)
             errore = nil
+            erroreLettura = nil
         } catch {
             if error is CancellationError { return }
-            errore = error.localizedDescription
+            erroreLettura = Catalogo.Pav.daSistemareErrore(motivo: error.localizedDescription)
         }
         caricato = true
     }

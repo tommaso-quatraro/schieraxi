@@ -12,6 +12,8 @@ account.esci_conferma_spiega
 account.esci_no
 account.esci_solo_qui
 account.esci_solo_qui_spiega
+# l'aiuto di VoiceOver su «Esci», solo dell'app (#955)
+account.esci_aiuto
 account.esci_tutti
 account.esci_tutti_conferma
 account.esci_tutti_google

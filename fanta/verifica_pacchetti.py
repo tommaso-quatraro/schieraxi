@@ -34,7 +34,7 @@ import numpy as np
 import pandas as pd
 
 from . import nostri, verifica
-from .modello import Dati, Parametri, _p_da_probabili, forza_squadre, previsioni, prima_di
+from .modello import Dati, Parametri, _p_da_probabili, forza_squadre, giocate_prima, previsioni, prima_di
 from .punteggio import COLONNA_VOTO
 from .regole import RUOLI, Regole
 
@@ -151,11 +151,13 @@ def _con_registro(prevedi, raccolte: list):
     quelle: i numeri della verifica non cambiano."""
     def f(dm: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri) -> pd.DataFrame:
         prev = prevedi(dm, stagione, giornata, regole, par)
-        if {"id", "e_gol", "e_rigori", "e_assist", "minuti"} <= set(prev.columns):
-            raccolte.append(pd.DataFrame({"stagione": stagione, "giornata": giornata, "id": prev["id"].astype(int),
-                                          "e_gol": prev["e_gol"], "e_rigori": prev["e_rigori"],
-                                          "e_assist": prev["e_assist"], "minuti": prev["minuti"],
-                                          "gol_attesi": nostri.gol_attesi(prev, par)}))
+        if {"id", "e_gol", "e_rigori", "e_assist", "minuti", "partita"} <= set(prev.columns):
+            # come la verifica: non chi ha giocato prima della scadenza, previsto con dati di dopo la sua partita (`giocate_prima`)
+            p = prev[~prev["partita"].isin(giocate_prima(dm.partite, stagione, giornata))]
+            raccolte.append(pd.DataFrame({"stagione": stagione, "giornata": giornata, "id": p["id"].astype(int),
+                                          "e_gol": p["e_gol"], "e_rigori": p["e_rigori"],
+                                          "e_assist": p["e_assist"], "minuti": p["minuti"],
+                                          "gol_attesi": nostri.gol_attesi(p, par)}))
         return prev
     return f
 
@@ -270,7 +272,7 @@ def prevedi_pacchetto_a(rette: dict):
         dd = senza_xg(d)
         forza = forza_squadre(dd, stagione, giornata, par)
         # chi prevedere: stessa popolazione della verifica normale (solo per confrontare; nessun suo dato entra nel calcolo)
-        V = d.voti[prima_di(d.voti, data0)]
+        V = d.voti[prima_di(d.voti, data0, (stagione, giornata))]
         ultime = V.sort_values("t").groupby("calciatore_id").tail(1)
         qi = d.quotazioni[d.quotazioni["stagione"] == stagione].drop_duplicates("calciatore_id").set_index("calciatore_id")["qi"]
         prossime = d.partite[(d.partite["stagione"] == stagione) & (d.partite["giornata"] == giornata)]
@@ -310,9 +312,9 @@ def _verita(d: Dati, stagione: str, giornata: int, col: str) -> tuple[set, set, 
 
 def squalificati(d: Dati, stagione: str, giornata: int) -> set:
     """Squalificati noti prima della giornata, dai cartellini: rosso nella giornata prima, o ammonizione che fa scattare la
-    squalifica (5ª, 10ª, 14ª, 17ª, poi ogni ammonizione). Solo le partite giocate prima dell'inizio della giornata, per data come
-    il modello (`modello.prima_di`): un recupero giocato dopo non si poteva sapere (#840, come `verifica.avversari` dopo #832)."""
-    v = d.voti[(d.voti["stagione"] == stagione) & prima_di(d.voti, Dati.inizio(d, stagione, giornata))]
+    squalifica (5ª, 10ª, 14ª, 17ª, poi ogni ammonizione). Solo le partite che vede il modello (`Dati.prima`: giocate prima che si
+    chiuda la formazione, per data): un recupero giocato dopo non si poteva sapere (#840, come `verifica.avversari` dopo #832)."""
+    v = d.voti[(d.voti["stagione"] == stagione) & Dati.prima(d, d.voti, stagione, giornata)]
     out = set(v.loc[(v["giornata"] == giornata - 1) & (v["espulsioni"] > 0), "calciatore_id"])
     amm = v[v["ammonizioni"] > 0].sort_values("giornata")
     amm = amm.assign(n=amm.groupby("calciatore_id").cumcount() + 1)

@@ -233,7 +233,7 @@ def anteprima(lette: list[SquadraLetta], avvisi_lettura: list[str], regole: Rego
             avvisi.append(F("rose.in_piu_squadre", nome=nome, squadre=", ".join(dove)))
     if len(nuove.squadre) == 1:
         avvisi.append(lega.UNA_SQUADRA)
-    diff = movimenti.differenze(prima, nuove)
+    diff = movimenti.differenze(prima, nuove, letti)
     return {"squadre": squadre, "avvisi": avvisi, "avvisi_frasi": frasi.lista(avvisi), "mia_squadra": _mia_suggerita(lette, prima, nuove),
             "totale_squadre": len(nuove.squadre), "sicuri": totali[SICURO], "da_controllare": totali[DA_CONTROLLARE],
             "non_trovati": totali[NON_TROVATO], "differenze": diff, "riepilogo": diff["testo"]}

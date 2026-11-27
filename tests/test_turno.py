@@ -216,3 +216,18 @@ def test_il_turno_non_comincia_dopo_la_giornata_dopo():
     assert turno.inizio(anticipi, d("2026-11-14 15:00")) == d("2026-11-07 15:00")
     sosta = [d(x) for x in quattro] + [d("2026-11-11 18:30")] * 3 + [d("2026-11-12 20:45")] * 3
     assert turno.inizio(sosta, d("2026-11-20 20:45")) == d("2026-11-11 18:30")
+
+
+def test_la_prima_partita_che_conta_per_la_scadenza_e_una_regola_sola():
+    """`turno.prima_che_conta` è la regola della scadenza (dall'inizio del turno, senza anticipi né anticipi lontani): la usano
+    `avvisi.prima_partita` e il modello (`modello.inizio_giornata`), che non la ricopiano."""
+    sei_prima = [d(x) for x in NORMALE]
+    dopo = [x + timedelta(days=14) for x in sei_prima]
+    turno_vero = [x + timedelta(days=7) for x in sei_prima]
+    lontano = (turno_vero[0] - timedelta(days=19), True)                    # anticipata di settimane, già giocata
+    mercoledi = (turno_vero[0] - timedelta(days=3), True)                   # anticipo di metà settimana
+    vecchia = (turno_vero[0] - timedelta(days=30), False)                   # rinviata rimasta con la data vecchia
+    for prima in (lontano, mercoledi, vecchia):
+        assert turno.prima_che_conta([prima] + [(x, False) for x in turno_vero[1:]], sei_prima, dopo) == turno_vero[1]
+    assert turno.prima_che_conta([(x, False) for x in turno_vero], sei_prima, dopo) == turno_vero[0]
+    assert turno.prima_che_conta([], sei_prima, dopo) is None

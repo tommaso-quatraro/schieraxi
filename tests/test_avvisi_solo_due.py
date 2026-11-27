@@ -243,7 +243,7 @@ def test_un_osservato_lasciato_libero_non_avvisa_piu(client, monkeypatch):
     inviati = []
     monkeypatch.setattr(notifiche, "invia", lambda *a, **k: inviati.append(a) or True)
     monkeypatch.setattr(osservati, "leggi", lambda *a, **k: [7])
-    monkeypatch.setattr(server.movimenti, "differenze", lambda prima, nuove: {
+    monkeypatch.setattr(server.movimenti, "differenze", lambda prima, nuove, *lette: {
         "tagliati": [{"squadra": "Real Esempio", "giocatori": [{"id": 7, "nome": "Bonny", "ruolo": "A"}]}], "testo": ""})
     assert client.post("/api/rose/testo", json={"testo": "Mia\nP\tSommer\t10\n"}).status_code == 200
     assert inviati == []
