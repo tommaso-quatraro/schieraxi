@@ -62,6 +62,15 @@
       "forma": "web",
       "chi": "**fatto** (#931): prova `RestiDalCatalogoTests`; foto `lega-stato`",
       "stato": "fatto"
+    },
+    {
+      "id": 128,
+      "schermata": "Stato dei dati, ultimi aggiornamenti: le righe d'errore (collaudo in inglese del 27/11/2026)",
+      "web": "sotto una riga che non riesce la frase del server (`errori`, tradotta con `errori_frasi`): «Non riuscito ven 27 nov alle 11:31: Fantacalcio.it non risponde.», dopo un giorno «Fermo da 3 giorni, non riesce da mar 24 nov alle 08:03: il dettaglio è nel registro del server.»; nella riga generale «Non riusciti: Listone e quotazioni, Calendario.». Mai il messaggio tecnico («ProxyError: HTTPSConnectionPool…»), che resta nel registro del server (`apriStatoDati`)",
+      "iphone": "uguale: mostra il testo di `errori` com'è (`StatoDatiView`), e il server lo scrive già nella forma nuova",
+      "forma": "web",
+      "chi": "**fatto**: prova `tests/browser/test_stato_dati_errori.py` e i test del server; sull'iPhone nessun cambio di codice, da vedere sul telefono",
+      "stato": "fatto"
     }
   ]
 }

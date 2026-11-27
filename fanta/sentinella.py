@@ -48,6 +48,7 @@ TOLLERANZA_PUNTI = 0.051                                  # i punti attesi sono 
 TOLLERANZA_ORE = 0.25                                     # ore_mancanti è calcolato in un altro istante (e arrotondato)
 MAX_BYTE_WIDGET = 20 * 1024                               # docs/API.md: il widget resta sotto i 20 kB
 CONFERME = 2                                              # giri di fila con la stessa rottura prima di avvisare
+A_ROTAZIONE = 3                                           # giro leggero (ora prima della scadenza): utenti in più, a turno
 RICORDA_RISOLTE = timedelta(hours=24)                     # una rottura già avvisata non si riavvisa prima che sia a posto da tanto
 TIENI_GIRI = timedelta(days=60)                           # storia dei giri nel file di stato (la legge la «giornata senza errori»)
 MAX_RIGHE_AVVISO = 6
@@ -745,8 +746,11 @@ def _controlla_un_utente(etichetta: str, ctx, db: sqlite3.Connection, r_regole, 
 
 
 def esegui(db: sqlite3.Connection, adesso: datetime | None = None, minuti: float = 15, stato: dict | None = None,
-           contesti: list | None = None) -> dict:
-    """Un giro completo: {rotture, controllati, rimandati, secondi, stagione}. Non scrive niente (per salvare: `registra`)."""
+           contesti: list | None = None, solo: set[str] | None = None) -> dict:
+    """Un giro completo: {rotture, controllati, rimandati, secondi, stagione}. Non scrive niente (per salvare: `registra`).
+    `solo` (giro leggero): si controllano solo questi utenti (le etichette, «utente N») e, a rotazione, gli A_ROTAZIONE rimasti
+    fuori da un giro leggero da più tempo (`leggeri` dello stato, scritto da `aggiorna_stato`); gli altri passano al giro dopo
+    come quelli rimasti fuori per il tempo. I controlli comuni si fanno sempre."""
     from . import consigli, lega, regole as mod_regole, server
     inizio = time.monotonic()
     adesso = adesso or datetime.now()
@@ -763,7 +767,14 @@ def esegui(db: sqlite3.Connection, adesso: datetime | None = None, minuti: float
     contesti = sorted(contesti, key=lambda c: ultimi.get(c[0], ""))          # prima chi è stato controllato meno di recente
     controllati: list[str] = []
     live_corpo = None
-    for etichetta, ctx in contesti:
+    if solo is not None:                       # giro leggero: più gli A_ROTAZIONE fuori da un giro leggero da più tempo (o mai)
+        # l'ora dell'ultimo giro LEGGERO, non dell'ultimo controllo: dopo un giro completo tutti hanno la stessa, e fra due giri
+        # leggeri di solito ce n'è uno completo; a pari merito l'ordine di `ultimi` (sort stabile)
+        leggeri = (stato or {}).get("leggeri")
+        leggeri = leggeri if isinstance(leggeri, dict) else {}
+        fila = sorted((c[0] for c in contesti if c[0] not in solo), key=lambda u: str(leggeri.get(u, "")))
+        solo = set(solo) | set(fila[:A_ROTAZIONE])
+    for etichetta, ctx in (contesti if solo is None else [c for c in contesti if c[0] in solo]):
         if controllati and time.monotonic() - inizio > 60 * minuti:
             break
         controllati.append(etichetta)
@@ -826,6 +837,7 @@ def registra(db: sqlite3.Connection, esito: dict, quando: str | None = None) -> 
     rotte = len(per_inv)
     riassunto = (f"{len(esito['controllati'])} utenti controllati in {esito['secondi']:g} s"
                  + (f", {esito['rimandati']} al prossimo giro" if esito["rimandati"] else "")
+                 + (f" (giro leggero: {esito['leggero']})" if esito.get("leggero") else "")
                  + (f"; {rotte} invarianti rotte su {len(INVARIANTI)}" if rotte else f"; {len(INVARIANTI)} invarianti a posto"))
     peggiore = "errore" if any(INVARIANTI[k][0] == "errore" for k in per_inv) else "avviso" if rotte else "ok"
     db.execute("INSERT OR REPLACE INTO controlli (stagione, nome, esito, valore, dettaglio, controllato) VALUES (?, ?, ?, ?, ?, ?)",
@@ -846,12 +858,18 @@ def leggi_stato(file: Path | None = None) -> dict:
 def aggiorna_stato(stato: dict, esito: dict, adesso: datetime) -> tuple[dict, list[Rottura]]:
     """(stato nuovo, rotture da avvisare adesso). Una rottura si avvisa quando è vista CONFERME giri di fila e non è già stata
     avvisata; tornata a posto resta ricordata come «avvisata» per RICORDA_RISOLTE, così un'altalena non manda raffiche. Le rotture
-    di chi non è stato controllato in questo giro (tempo finito) restano come sono."""
+    di chi non è stato controllato in questo giro (tempo finito) restano come sono.
+    `leggeri`: l'ora dell'ultimo giro leggero (`esito["leggero"]`) in cui ogni utente è stato controllato; la rotazione del giro
+    leggero sceglie con questa (`esegui`), perché l'ora di `utenti` la pareggia ogni giro completo."""
     ora = adesso.isoformat(timespec="seconds")
     aperte = {k: dict(v) for k, v in (stato.get("aperte") or {}).items() if isinstance(v, dict)}
     utenti = dict(stato.get("utenti") or {})
     for u in esito["controllati"]:
         utenti[u] = ora
+    leggeri = dict(stato.get("leggeri") or {}) if isinstance(stato.get("leggeri"), dict) else {}
+    if esito.get("leggero"):
+        for u in esito["controllati"]:
+            leggeri[u] = ora
     viste: dict[str, Rottura] = {}
     for r in esito["rotture"]:
         viste.setdefault(r.chiave, r)
@@ -872,7 +890,7 @@ def aggiorna_stato(stato: dict, esito: dict, adesso: datetime) -> tuple[dict, li
         e["risolta"], e["volte"] = True, 0
         if not e.get("avvisata") or adesso - (_data(e.get("ultima")) or adesso) > RICORDA_RISOLTE:
             del aperte[chiave]
-    return {"aperte": aperte, "utenti": utenti, "ultimo_giro": ora}, da_avvisare
+    return {"aperte": aperte, "utenti": utenti, "leggeri": leggeri, "ultimo_giro": ora}, da_avvisare
 
 
 def segna_avvisate(stato: dict, rotture: list[Rottura]) -> None:
@@ -976,24 +994,55 @@ def manda_ntfy(titolo: str, testo: str, *, priorita: int = 4, tag: str = "mag") 
         return False
 
 
+def utenti_con_rotture(stato: dict) -> set[str]:
+    """Chi ha una rottura aperta e non ancora tornata a posto («utente N»; le rotture di tutti le rifanno i controlli comuni)."""
+    aperte = stato.get("aperte") if isinstance(stato.get("aperte"), dict) else {}
+    utenti = {k.split("|")[1] for k, v in aperte.items() if isinstance(v, dict) and not v.get("risolta") and k.count("|") == 2}
+    return utenti - {"-"}
+
+
+def _scadenza_vicina(db: sqlite3.Connection, adesso: datetime, leghe: Callable[[], list] | None,
+                     scrivi: Callable[[str], None]) -> str | None:
+    """«scadenza della formazione alle 20:45» se per una lega attiva manca al massimo un'ora alla scadenza (la regola di
+    `libero.scadenza_vicina`, la stessa che rimanda le installazioni), altrimenti None. Se le leghe attive non si leggono, il giro
+    resta completo e lo dice."""
+    from . import libero
+    try:
+        return libero.scadenza_vicina(db, (leghe or libero.leghe_attive)(), adesso)
+    except Exception as e:                     # noqa: BLE001 - il giro completo è il ripiego sicuro; il guasto va nel log
+        scrivi(f"sentinella: leghe attive non lette ({type(e).__name__}), giro completo")
+        return None
+
+
 def giro(minuti: float = 15, manda: Callable[[str, str], bool] | None = manda_ntfy, file_stato: Path | None = None,
-         adesso: datetime | None = None, scrivi: Callable[[str], None] = print, db_percorso: Path | None = None) -> dict:
+         adesso: datetime | None = None, scrivi: Callable[[str], None] = print, db_percorso: Path | None = None,
+         leghe: Callable[[], list] | None = None) -> dict:
     """Il comando del cron: controlla, scrive la tabella `controlli`, avvisa le rotture nuove e aggiunge il giro alla storia
     (`giri`). Con `manda=None` (--senza-invio) stampa l'avviso invece di mandarlo e non tocca il file di stato: le prove a mano non
-    consumano gli avvisi e non entrano nella storia (non coprono il buco di un cron fermo)."""
+    consumano gli avvisi e non entrano nella storia (non coprono il buco di un cron fermo).
+    Nell'ora prima della scadenza della formazione di una lega attiva (`leghe`, di base `libero.leghe_attive`) il giro del cron è
+    leggero: lì il servizio rifà probabili, consigliate e promemoria per tutti, e rifare a freddo Oggi, Formazione e widget di ogni
+    utente in questo processo gli toglierebbe il processore. Si ricontrolla chi ha una rottura aperta (`utenti_con_rotture`: la
+    conferma e l'avviso arrivano come sempre) e, a turno, gli A_ROTAZIONE fuori da un giro leggero da più tempo (una rottura nuova
+    si vede lo stesso), più i controlli comuni; gli altri passano al giro dopo. Il giro entra nella storia come gli altri. A mano
+    il giro è sempre completo."""
     from . import archivio
     adesso = adesso or datetime.now()
     file_stato = file_stato or FILE_STATO
     stato = leggi_stato(file_stato)
     db = archivio.apri(db_percorso) if db_percorso else archivio.apri()
     try:
-        esito = esegui(db, adesso, minuti, stato)
+        leggero = _scadenza_vicina(db, adesso, leghe, scrivi) if manda is not None else None
+        esito = esegui(db, adesso, minuti, stato, solo=utenti_con_rotture(stato) if leggero else None)
+        if leggero:
+            esito["leggero"] = leggero
         registra(db, esito)
     finally:
         db.close()
     nuovo, da_avvisare = aggiorna_stato(stato, esito, adesso)
     scrivi(f"sentinella: {len(esito['controllati'])} utenti in {esito['secondi']:g} s, {len(esito['rotture'])} rotture"
-           + (f", {esito['rimandati']} rimandati al prossimo giro" if esito["rimandati"] else ""))
+           + (f", {esito['rimandati']} rimandati al prossimo giro" if esito["rimandati"] else "")
+           + (f" (giro leggero: {leggero})" if leggero else ""))
     for r in esito["rotture"]:
         scrivi(f"  [{INVARIANTI[r.invariante][0]}] {r.invariante} · {r.utente or 'tutti'} · g{r.giornata}: {r.dettaglio}")
     inviato = False

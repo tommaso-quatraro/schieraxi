@@ -293,6 +293,20 @@ def test_aggiorna_dice_le_frasi_e_tiene_il_dettaglio_tecnico_nel_registro(client
     assert "ProxyError: HTTPSConnectionPool" in caplog.text, "il dettaglio tecnico non è nel registro"
 
 
+def test_aggiorna_scrive_nel_registro_gli_indirizzi_senza_i_parametri(client, monkeypatch, caplog):
+    """Revisione della #975: nel registro l'errore di «Aggiorna i dati» c'è (Stato dei dati rimanda lì), ma senza quello che segue
+    «?» o «#» negli indirizzi, che può portare chiavi; come il giro dei risultati della sera (`aggiorna.per_il_registro`)."""
+    from fanta import frasi
+
+    def esegui(scrivi=print, per_utente=None, **k):
+        per_utente.append(frasi.F("aggiorna.parte_non_aggiornata", fonte="Fantacalcio.it"))
+        return ["voti: HTTPError: 404 Client Error: Not Found for url: https://fonte.invalid/voti?chiave=segreta&g=12#parte"]
+    with caplog.at_level("WARNING"):
+        _aggiorna_e_leggi(client, monkeypatch, esegui)
+    assert "voti: HTTPError: 404 Client Error: Not Found for url: https://fonte.invalid/voti" in caplog.text, caplog.text
+    assert "chiave=segreta" not in caplog.text and "#parte" not in caplog.text, caplog.text
+
+
 def test_aggiorna_che_si_ferma_per_un_errore_del_server_non_mostra_l_eccezione(client, monkeypatch, caplog):
     def esegui(**k):
         raise RuntimeError("database is locked: /percorso/interno/archivio.sqlite")

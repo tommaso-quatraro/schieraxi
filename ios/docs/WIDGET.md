@@ -7,6 +7,19 @@ tolti il 12/11/2026 con le loro foto (#634). Più sotto le regole che parlano di
 
 Tutti leggono UNA chiamata compatta, `GET /api/widget` (token `fw_` a scopo limitato, sempre `If-None-Match`; 304 = dati uguali, 202 = il server sta calcolando e il widget tiene quelli di prima). La lega non usa il capitano e non ha una classifica della lega nei dati: niente widget per quelle due cose.
 
+Ricariche (`RicaricaWidget`, usata dal `Fornitore`; test in `RicaricaWidgetTests`): ogni mezz'ora; a meno di un giorno dalla
+scadenza ogni 20 minuti, a meno di 3 ore ogni 10, nelle 3 ore dopo la scadenza ogni 15. Con una partita di un giocatore della rosa
+(`rosa[].data_partita`, `RiassuntoWidget.conPartite`), da 10 minuti prima del calcio d'inizio a 4 ore e 15 minuti dopo, ogni 15
+minuti, con una ricarica quando la finestra si apre (`prossimaFinestra`): la finestra copre i due giri dei risultati del server,
+2 ore e 30 dopo l'inizio e, se mancano ancora i voti, 4 ore (`pianificatore.GIRI_RISULTATI`), più una ricarica; lì arrivano voti,
+punti fatti e la fine della giornata. L'app non legge il pianificatore: `tests/test_widget_ricariche.py` controlla che
+`RicaricaWidget.dopoIlCalcio` copra il suo ultimo giro. Fino al 27/11/2026 durante le partite erano ogni 2 minuti,
+con le partite del blocco `live` di `/api/widget`: nessun widget mostra più la diretta (#634), le ricariche che iOS concede al
+giorno finivano prima dei punti (la finestra della diretta finiva 130 minuti dopo l'inizio, prima dei voti) e il minuto della
+partita cambiava l'ETag, quindi ogni ricarica scaricava tutta la risposta invece di un 304. Il server non manda più `live`; un
+widget di prima, senza `live`, torna alle ricariche di 10-30 minuti. iOS decide comunque quando ricaricare davvero: conto alla
+rovescia, scadenza e mezzanotte sono voci della timeline (`VociTimeline.istanti`), non ricariche.
+
 | Widget | piccolo | medio | grande | extra large (iPad) | cerchio | rettangolo | riga | Motivo |
 |---|---|---|---|---|---|---|---|---|
 | Prossima giornata | si | si | no | no | si | si | si | conto alla rovescia come la web («6 h 44 min», «2 giorni 3 h»: una voce della timeline per ogni minuto in cui cambia, per l'ora che viene, senza ricaricare) e scadenza «oggi 05:30» / «ven 6 03:32»; grande ed extra large non aggiungerebbero dati. Sulla schermata di blocco il conto c'è in tutte e tre le forme (#871: cerchio e riga mostravano modulo e punti, come la Formazione): nel cerchio la giornata e il conto, lo stesso cerchio di chi è entrato a giornata iniziata; nel rettangolo la giornata, il conto e la formazione; nella riga «Giornata 8: 17 h 50 min» e, dove non entra, il solo conto (`RiassuntoOggi.formeRigaInLineaConto`; senza scadenza resta la formazione), con VoiceOver che legge il conto a parole intere |
@@ -39,8 +52,12 @@ Un widget ha misure fisse: con il testo grande, su iPad o sulla schermata di blo
 parola («4 da contr…»): ogni testo ha più forme, dalla più lunga alla più corta, scritte in `ParoleWidget` (`Sources/Support/WidgetRiassunto.swift`,
 provate in `TestiCortiWidgetTests`), e la vista mostra la prima che entra (`TestoCheEntra`, `PrimaCheEntra`, cioè `ViewThatFits`).
 Esempi: «4 da controllare» → «4 da vedere» (`oggi.da_vedere` del catalogo, #848) → «4»; «In dubbio · gioca 70%» → prima senza volti, poi «gioca 70%»; «Giornata 7 · 10ª di Serie A» →
-«Giornata 7»; tabella dei punti: prima via «10ª di Serie A», poi via la fascia; elenchi di nomi: «Sorvani e altri 2». VoiceOver
-legge sempre la forma intera.
+«Giornata 7»; tabella dei punti: prima via «10ª di Serie A», poi via la fascia; elenchi di nomi: «Sorvani e altri 2»; nel rettangolo
+di Prossima giornata «3-4-3 · 72,7 punti attesi» → «3-4-3 · 72,7 attesi» → «3-4-3 · 72,7» (`ParoleWidget.moduloEPuntiAttesi`: prima
+andava a capo e usciva dal riquadro). «probabili non uscite» nel piccolo di Prossima giornata non si accorcia a parole («probabili»
+da solo direbbe il contrario): perde il simbolo, poi resta il solo simbolo (`ProbabiliNonUscite`; prima, con il testo grande o
+sull'iPhone SE, «probabili non usc…»). Foto: `-DATI senza_probabili`, giri `iphone_senza_probabili` e
+`iphone_senza_probabili_testo_grande` di `scripts/screenshot_widget.sh`. VoiceOver legge sempre la forma intera.
 Un testo che può andare a capo non si spezza a metà di una data o del conto alla rovescia (#871: «alla scadenza, lun / 23 20:35»):
 giorno, numero e ora restano uniti con lo spazio che non va a capo (`ParoleWidget.unito`), e si va a capo prima, dopo la virgola
 («alla scadenza,» e sotto «lun 23 20:35», `ParoleWidget.allaScadenza`, l'unica che i widget usano: lo prova un test sui sorgenti).
@@ -95,9 +112,10 @@ Copia salvata (server che non risponde o rete assente, #834): una riga sola per 
 oltre la settimana «dati di dom 8 nov 18:30»; dove non entra perde l'ora («dati di ieri»), poi «dati di» (la sola data accanto al
 simbolo, «ieri», di oggi «18:30»: con il testo molto grande sta su una riga anche nel medio), mai «…» (`ParoleWidget.datiSalvati`,
 ora italiana, contata dall'istante della voce: a mezzanotte «dati delle 23:30» diventa «dati di ieri 23:30»). La stessa riga c'è
-anche con i dati arrivati bene ma vecchi, perché iOS ha rimandato le ricariche: oltre 15 minuti con una partita in gioco o che sta
-per iniziare, oltre un'ora negli altri momenti, con l'orologio al posto della nuvola sbarrata (`EtaDatiWidget`, `Voce.oraDeiDati`;
-la timeline ha una voce in più quando passa ogni soglia). Prima a partite in corso i punti di un'ora prima sembravano attuali.
+anche con i dati arrivati bene ma vecchi, perché iOS ha rimandato le ricariche: oltre 30 minuti con una partita della rosa (il doppio
+della ricarica chiesta, la stessa finestra di `RicaricaWidget`; fino al 27/11 erano 15 minuti con ricariche ogni 2), oltre un'ora
+negli altri momenti, con l'orologio al posto della nuvola sbarrata (`EtaDatiWidget`, `Voce.oraDeiDati`; la timeline ha una voce in
+più quando passa ogni soglia). Prima a partite in corso i punti di un'ora prima sembravano attuali.
 Nel Formazione piccolo
 e medio la riga c'è anche con «2 da controllare», sopra, e con il testo normale ci stanno tutte e due, anche sull'iPad: per fare
 posto cedono prima il titolo del piccolo (resta il simbolo con la giornata), nel medio «punti attesi» e la fascia su due righe

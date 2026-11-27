@@ -2402,7 +2402,7 @@ async function vistaRosa(nome) {
           ${r.mia ? "" : `<button class="bottone" type="button" id="vedi-formazione">${t("scambio.formazione_consigliata_per")}</button>`}</div>
         ${r.avvisi.length ? `<div class="attenzione" style="margin-top:12px">${testiDi(r, "avvisi").map(esc).join("<br>")}</div>` : ""}
         ${gruppi}
-        <div class="debole piccolo" style="margin-top:12px">${elidiGiorno(t("scambio.rose_aggiornate", { data: parseData(r.aggiornato) ? esc(fData(parseData(r.aggiornato), { day: "numeric", month: "long", year: "numeric" })) : "–" }))}</div>
+        <div class="debole piccolo" style="margin-top:12px">${elidiGiorno(t("scambio.rose_aggiornate", { data: parseData(r.aggiornato) ? esc(fDataEstesa(parseData(r.aggiornato))) : "–" }))}</div>
       </div></div>`, { titolo: r.nome, stato: false, indietro });          // il titolo è il nome della squadra (pagina() lo scrive con esc)
     collegaSceltaMia();
     const vf = $("#vedi-formazione");
@@ -2582,10 +2582,11 @@ async function apriStatoDati() {
     const s = await api("/api/stato-dati");
     if (numero !== ultimaScheda || $("#foglio").hidden) return;
     // il nome di ogni riga (aggiornamenti, controlli, fasce, funzioni) lo scrive il server, campo `etichetta` (fanta/stato_dati.py,
-    // fanta/controlli.py, fanta/uso.py) con la sua frase (`etichetta_frase`, #949): in inglese si traduce
+    // fanta/controlli.py, fanta/uso.py) con la sua frase (`etichetta_frase`, #949): in inglese si traduce. Anche gli errori di ogni
+    // riga sono frasi del server (`errori_frasi`, collaudo in inglese del 27/11/2026), senza il messaggio tecnico
     const agg = s.aggiornamenti.length ? s.aggiornamenti.map(a => `<div class="riga"><span>${esc(testoDi(a, "etichetta") || a.cosa)}</span>
       <span class="debole piccolo">${a.quando ? esc(quando(a.quando)) : t("sd.mai")}</span></div>
-      ${a.errori.map(e => `<div class="debole piccolo" style="color:var(--rosso)">${esc(e)}</div>`).join("")}`).join("") : `<div class="debole">${t("scambio.nessun_aggiornamento_registr")}</div>`;
+      ${testiDi(a, "errori").map(e => `<div class="debole piccolo" style="color:var(--rosso)">${esc(e)}</div>`).join("")}`).join("") : `<div class="debole">${t("scambio.nessun_aggiornamento_registr")}</div>`;
     const c = s.calibrazione;
     const usoDal = s.uso ? parseData(s.uso.dal) : null, coppeFino = parseData(s.coppe_fino);        // solo il giorno
     const gruppi = c.gruppi.map(g => `<div class="riga"><span>${esc(testoDi(g, "gruppo"))}</span>
@@ -2936,7 +2937,8 @@ const fraseGiornata = (oggetto, campo = "testo") => (oggetto && typeof oggetto[c
 function dettaglioGiornata(d, g, stagioni) {
   const id = idGiornata(g), { tipo, f } = formazioneDi(g), mostrata = conMostrata(g);
   const nome = nomeGiornata(g.giornata_lega, g.giornata) + (stagioni ? ` · ${esc(g.stagione)}` : "");
-  const modulo = esc(f.modulo || "");
+  // il modulo non va a capo a metà («(4-4-» e sotto «2)», collaudo in inglese del 27/11/2026, 390 px)
+  const modulo = f.modulo ? `<span class="gn-modulo">${esc(f.modulo)}</span>` : "";
   const titolo = tipo === "tua" ? t("giornate.formazione_tua", { modulo }) : tipo === "automatica" ? t("giornate.formazione_automatica", { modulo })
     : t(mostrata ? "giornate.formazione_consigliata" : "giornate.formazione_rifatta", { modulo });
   const ist = g.istantanea || {};
@@ -4518,7 +4520,7 @@ function schedaAccount() {
   const a = stato.account;
   if (!a) return "";
   const campo = (id, etichetta, extra = "") => `<label class="accesso-campo"><span class="debole piccolo">${etichetta}</span><input class="campo-testo" id="${id}" type="password" ${extra}></label>`;
-  const creato = parseData(a.creato), data = creato ? fData(creato, { day: "numeric", month: "long", year: "numeric" }) : "–";
+  const creato = parseData(a.creato), data = creato ? fDataEstesa(creato) : "–";
   return `<div class="carta" id="scheda-account">
     <div><b class="nome-account">${esc(a.nome_visualizzato || a.nome_utente)}</b><span class="debole piccolo" style="display:block">${elidiGiorno(t("account.dal", { ruolo: a.ruolo === "amministratore" ? t("account.ruolo_admin") : t("account.ruolo_utente"), data }))}</span></div>
     ${socialPronto() || (stato.accessi && stato.accessi.social && stato.accessi.social.length) ? `<details style="margin-top:14px"${soloGoogle() ? " open" : ""}><summary>${t("social.accessi")}</summary>

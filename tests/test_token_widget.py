@@ -455,12 +455,13 @@ def test_limiti_di_frequenza(due_utenti, monkeypatch):
 
 
 def test_il_token_legge_anche_i_risultati_live(due_utenti):
-    """/api/live è in sola lettura e comune a tutti; /api/widget ne porta una copia piccola (anche con l'archivio ancora vuoto)."""
+    """/api/live è in sola lettura e comune a tutti (anche con l'archivio ancora vuoto). /api/widget non ne porta più una copia
+    (27/11/2026, test_widget_senza_diretta.py)."""
     a, b = due_utenti
     c, h = widget(token_di(a))
     r = c.get("/api/live", headers=h)
     assert r.status_code == 200 and r.json()["partite"] == [] and "etag" in r.headers
-    assert c.get("/api/widget", headers=h).json()["live"]["partite"] == []
+    assert "live" not in c.get("/api/widget", headers=h).json()
     assert c.post("/api/live", headers=h | {"X-Fanta": "1"}).status_code == 403
     assert b.get("/api/live").status_code == 200                       # con la sessione, come ogni utente
     assert cliente().get("/api/live").status_code == 401               # senza accesso no

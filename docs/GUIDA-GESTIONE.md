@@ -153,12 +153,15 @@ di recupero e in **Il tuo account** non si può collegare un'email.
   corso.». Con tutte le fonti spente lo dice e non parte. Fra un giro e il successivo passano almeno 10 minuti, per non chiedere
   troppo alle fonti: premuto prima, dice fra quanto riprovare («Hai appena provato: riprova fra 9 minuti.») e non parte. Finito
   con dei problemi, l'avviso dice «Aggiornato, ma con problemi:» e sotto una frase per riga, per esempio «Fantacalcio.it non
-  risponde: riprova più tardi.»; il dettaglio tecnico sta nel registro del server e in **Stato dei dati**. Un giro in cui non
+  risponde: riprova più tardi.»; il dettaglio tecnico sta solo nel registro del server, e **Stato dei dati** dice quale parte non
+  è riuscita e perché, in breve. Un giro in cui non
   arriva nessuna pagina non cambia l'ora dei dati («dati del …»): l'avviso «I dati delle partite non si aggiornano da …» resta
   finché i dati non arrivano, e l'avviso di **Aggiorna i dati** dice «Nessun dato nuovo:» con sotto le stesse frasi (o, se non
   c'era niente da scaricare, «Nessun dato nuovo: non c'era niente di più recente da scaricare.»).
 - **Stato dei dati** (**Apri lo stato dei dati**): da dove arrivano i dati, se qualche fonte ha dato errore e quanto è affidabile
-  il modello. Le fonti si accendono e si spengono da qui: sotto ogni fonte spenta c'è cosa non arriva, e una volta sola sotto
+  il modello. Sotto una parte che non si è aggiornata c'è una frase semplice, per esempio «Non riuscito ven 27 nov alle 11:31:
+  Fantacalcio.it non risponde.» o, se il guasto non è la rete, «…: il dettaglio è nel registro del server.»; la riga
+  «Aggiornamento generale» dice solo quali parti non sono riuscite. Il messaggio tecnico non si mostra. Le fonti si accendono e si spengono da qui: sotto ogni fonte spenta c'è cosa non arriva, e una volta sola sotto
   l'elenco cosa fa l'app senza e le condizioni d'uso. La scelta vale subito, anche per i risultati in diretta (ESPN e la
   funzione «Risultati in diretta»): non serve riavviare il server. **Quanto si usa l'app** conta le richieste delle ultime 4
   settimane per funzione e, sotto **Le schermate più usate**, per parte dell'app (per esempio «Formazione», «La mia lega»).
@@ -209,6 +212,23 @@ Le misure dello **Stato dei dati**:
   il file delle fonti.
 - **Server senza account.** In **Gestione** c'è anche **Avvisi anche per l'app nativa**: gli avvisi arrivano anche con ntfy,
   e il tocco sulla notifica apre l'app per iPhone.
+- **L'ora prima della scadenza.** È l'ora in cui il server lavora di più: rilegge le probabili a 60, 30 e 15 minuti dalla
+  chiusura e ricalcola le formazioni di tutti. Per non rifare gli stessi calcoli due volte:
+  - con gli account i **promemoria** della scadenza (un'ora prima e di nuovo un quarto d'ora prima) li manda il servizio, ogni
+    10 minuti come prima e con gli stessi orari. La riga di `promemoria.sh` nel crontab resta com'è: fa il controllo di salute
+    e, se il servizio non riesce a fare il giro da un quarto d'ora (per esempio perché è fermo), manda lui i promemoria e scrive
+    in `dati/promemoria.log` «promemoria: il servizio non fa il giro da N minuti, lo fa il cron». Gli avvisi partiti dal
+    servizio si vedono con `journalctl -u fantacalcio --since today | grep Promemoria` (solo il numero dell'utente). Quando il
+    servizio si riavvia (per esempio per un'installazione) prima finisce il promemoria che sta mandando, al massimo un minuto.
+    `FANTA_PIANIFICATORE=0` nelle variabili del servizio riporta i promemoria tutti al cron, ma spegne anche il resto del
+    pianificatore: i giri delle probabili a 60, 30 e 15 minuti dalla scadenza con gli avvisi sui cambi che li seguono (restano
+    quelli dell'aggiornamento programmato, `aggiorna.sh`), i risultati e i voti della sera e il registro delle giornate;
+  - il **controllo automatico** di ogni ora (la sentinella, al minuto 37) in quell'ora fa un giro leggero: ricontrolla chi ha
+    già un problema aperto e, a turno, 3 utenti (ogni giro leggero altri 3), più i controlli di tutti; gli altri utenti al
+    giro dopo. In **Stato dei dati** la riga del controllo lo dice: «giro leggero: scadenza della formazione alle 20:45».
+
+  Non c'è niente da cambiare a mano: crontab e servizio restano quelli di prima, e la versione nuova arriva con
+  l'aggiornamento automatico.
 
 ## 5. App per iPhone
 

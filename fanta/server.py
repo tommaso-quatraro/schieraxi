@@ -74,6 +74,9 @@ async def _ciclo(_):
     threading.Thread(target=pianificatore.sorveglia, args=(fermo, _leghe_attive, _db, _aggiorna_leggero, _dopo_giro_leggero),
                      kwargs={"risultati": _risultati_leggeri},       # e risultati e voti la sera stessa, dopo le partite
                      name="pianificatore", daemon=True).start()          # giri in più vicino alla scadenza (FANTA_PIANIFICATORE=0 lo spegne)
+    promemoria = threading.Thread(target=avvisi_utenti.sorveglia_promemoria, args=(fermo, _db),
+                                  name="promemoria", daemon=True)        # promemoria della scadenza con gli account (spento: li fa il cron)
+    promemoria.start()
     threading.Thread(target=copia_scadenza.sorveglia, args=(fermo, lambda: copia_scadenza.contesti(_contesto_locale), _db),
                      name="copia-scadenza", daemon=True).start()       # copia della consigliata alla scadenza per ogni utente (FANTA_COPIA_SCADENZA=0 la spegne)
     # risultati in diretta: un solo raccoglitore per tutto il servizio, sempre avviato; a ogni giro `live.sorveglia` guarda la funzione
@@ -84,9 +87,19 @@ async def _ciclo(_):
         yield
     finally:
         fermo.set()
+        # un riavvio (per esempio un'installazione alle 19:40, quando parte il promemoria di un'ora prima delle 20:45) non deve
+        # cadere fra l'invio di un promemoria e il suo stato «mandato»: il servizio nuovo lo rimanderebbe. Il giro finisce l'utente a
+        # cui è arrivato e si ferma (`fermo` in avvisi_utenti.esegui); qui lo si aspetta, al massimo ATTESA_CHIUSURA_PROMEMORIA.
+        await run_in_threadpool(promemoria.join, ATTESA_CHIUSURA_PROMEMORIA)
+        if promemoria.is_alive():
+            logging.getLogger("uvicorn.error").warning("Promemoria: il giro non è finito in %d secondi, il servizio si chiude lo stesso",
+                                                       ATTESA_CHIUSURA_PROMEMORIA)
         uso.salva()
 
 
+# secondi: il lavoro di un utente nel giro dei promemoria (due invii da limiti.MAX_SECONDI_INVIO e un calcolo già in memoria), dentro
+# i 90 secondi che systemd dà di norma a un servizio per fermarsi prima di chiuderlo a forza
+ATTESA_CHIUSURA_PROMEMORIA = 60
 app = FastAPI(title="SchieraXI", lifespan=_ciclo)
 app.add_middleware(GZipMiddleware, minimum_size=800, compresslevel=5)     # risposte più leggere; livello 5: meno della metà della CPU del 9 per lo 0,5-2% di byte in più (1 solo processore sul server)
 MAX_FILE = 5 * 1024 * 1024
@@ -700,7 +713,8 @@ def _novita() -> list[dict]:
 
 
 def _novita_en() -> dict:
-    """Le novità tradotte per le versioni vecchie: {versione: {titolo, voci}} (fanta/contenuti/novita.en.json)."""
+    """Le novità tradotte per le versioni vecchie e le correzioni di quelle uscite: {versione: {titolo, voci}}
+    (fanta/contenuti/novita.en.json)."""
     try:
         dati = json.loads(FILE_NOVITA_EN.read_text(encoding="utf-8"))
         return dati if isinstance(dati, dict) else {}
@@ -716,10 +730,11 @@ NOVITA_EN_GRUPPO = "Versions {da} to {a} have no English description yet. Switch
 
 
 def _novita_tradotta(v: dict, en: dict) -> tuple[str, list[str]] | None:
-    """(titolo, voci) in inglese di una versione: `titolo_en`/`voci_en` (li mette il bot dai file di novita.d) oppure novita.en.json.
+    """(titolo, voci) in inglese di una versione: novita.en.json (traduzioni delle versioni vecchie e correzioni di quelle uscite:
+    novita.json lo scrive il rilascio e non si tocca a mano) oppure `titolo_en`/`voci_en` (li mette il bot dai file di novita.d).
     None senza un titolo inglese; voci in numero diverso dalle italiane si scartano (resta la voce generica NOVITA_EN_VOCE)."""
     e = en.get(str(v.get("versione"))) or {}
-    titolo, voci = v.get("titolo_en") or e.get("titolo"), v.get("voci_en") or e.get("voci")
+    titolo, voci = e.get("titolo") or v.get("titolo_en"), e.get("voci") or v.get("voci_en")
     if not (isinstance(titolo, str) and titolo.strip()):
         return None
     if not (isinstance(voci, list) and voci and len(voci) == len(v.get("voci") or []) and all(isinstance(x, str) for x in voci)):
@@ -920,8 +935,10 @@ def avvia_aggiornamento():
 
     # Chi ha premuto legge una frase del catalogo per fatto (`errori`, con `errori_frasi` per tradurla: aggiorna.Aggiornamento.per_utente),
     # mai l'errore tecnico (collaudo d'insieme del 26/11: «ProxyError: HTTPSConnectionPool…» copriva lo schermo). Il dettaglio resta per
-    # chi gestisce il server: nel registro, in `righe` della stessa risposta (rotta solo per l'amministratore, nessun client le mostra)
-    # e in Stato dei dati. Errori senza una loro frase: una frase generica, così l'avviso non dice «Dati aggiornati».
+    # chi gestisce il server: nel registro (accorciato e con gli indirizzi senza i parametri, `aggiorna.per_il_registro`) e in `righe`
+    # della stessa risposta (rotta solo per l'amministratore, nessun client le mostra); Stato dei dati dice quale passo non è
+    # riuscito e, se non è la rete, rimanda al registro. Errori senza una loro frase: una frase generica, così l'avviso non dice
+    # «Dati aggiornati».
     # `nessun_dato_nuovo` (collaudo del 27/11/2026): non è arrivato niente, la stessa regola che lascia ferma l'ora dei dati
     # (aggiorna.Aggiornamento.dati_nuovi); vero anche se il giro si ferma prima della fine, perché l'ora non è cambiata.
     def lavoro():
@@ -932,7 +949,7 @@ def avvia_aggiornamento():
         try:
             errori = aggiorna.esegui(scrivi=_aggiornamento["righe"].append, per_utente=per_utente, esito=esito)
             for e in errori:
-                registro.warning("Aggiorna i dati: %s", str(e)[:1000])
+                registro.warning("Aggiorna i dati: %s", aggiorna.per_il_registro(e, massimo=1000))
             if errori and not per_utente:
                 per_utente.append(frasi.F("aggiorna.parte_non_aggiornata_generica"))
             _scalda()
@@ -1670,13 +1687,6 @@ def _stati_live() -> dict:
         return {}
 
 
-def _live_per_widget() -> dict:
-    """Versione piccola per il widget: stato, minuto e punteggio di ogni partita, solo i marcatori (niente cartellini)."""
-    c = _risposta_live()
-    return {"aggiornato_il": c["aggiornato_il"], "fonte": c["fonte"], "in_corso": c["in_corso"],
-            "partite": [p | {"eventi": [e for e in p["eventi"] if e["tipo"] != "giallo"][:8]} for p in c["partite"]]}
-
-
 def _calendario_live() -> list[dict]:
     db = _db()
     try:
@@ -1733,7 +1743,8 @@ def widget(request: Request, ctx: Contesto = Depends(lega_corrente)):
                                             scambi_trova=funz["scambi_trova"])
     finally:
         db.close()
-    corpo["live"] = _live_per_widget()
+    # niente diretta (27/11/2026): nessun widget la mostra (#634), e il minuto della partita cambiava l'ETag a ogni ricarica, che
+    # scaricava tutta la risposta invece di un 304. I risultati in diretta restano in GET /api/live.
     corpo["funzioni"] = funz
     widget_riassunto.entro_il_peso(corpo)                 # rete di sicurezza sulla dimensione: i blocchi tolti vanno in `mancano`
     etag = widget_riassunto.etag(corpo)                   # senza i campi che cambiano solo con l'orologio (#651)
