@@ -649,7 +649,15 @@ html[data-animazioni="ridotte"] .avatar-anello.grande-a .avatar svg {
 /* davanti al nome in una riga di testo (Diario, ricerca) */
 .ruolo-l.ruolo-in { display: inline-block; margin-right: 2px; text-align: left; }
 .voce-g .dettaglio { display: block; font-size: var(--t-sec); color: var(--testo-2); line-height: 1.35; }
-.voce-g .dettaglio .nb { display: inline-block; max-width: 100%; }        /* a capo tra i pezzi («… 20:45 ·» / «Real Esempio»), non dentro */
+/* I pezzi della riga (pezziRiga in app.js: «FRO vs PAR», «domani 15:00», «costo 2»…) vanno a capo fra un pezzo e l'altro, non
+   dentro; uno più lungo della riga va a capo al suo interno. Il «·» sta davanti al pezzo, nello spazio fra i due: il margine
+   negativo porta quello del primo pezzo di ogni riga oltre il bordo sinistro, dove la riga lo taglia. Così nessuna riga finisce
+   con «·» e nessuna comincia con «·» (collaudo tablet del 27/11: «domani 15:00 ·» e a capo «costo 2…»). La lineetta del club sta
+   nel primo pezzo e va a capo con lui. */
+.voce-g .dettaglio { overflow: hidden; }
+.voce-g .pezzi { display: flex; flex-wrap: wrap; align-items: baseline; margin-left: -.9em; }
+.voce-g .pezzi > .nb { position: relative; min-width: 0; margin-left: .9em; }
+.voce-g .pezzi .sep { position: absolute; top: 0; left: -.9em; width: .9em; text-align: center; }
 .voce-g .etichette { margin-top: 1px; }
 .voce-g .etichette:empty { display: none; }
 /* lineetta nel colore sociale davanti alla sigla: decorativa, la sigla dice già la squadra. app.js sceglie per ogni tema il colore del

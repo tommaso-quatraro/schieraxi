@@ -29,7 +29,8 @@ def test_giornata_della_lega_dappertutto():
 def test_partita_nelle_righe_e_nelle_celle():
     assert 'const vsAt = x => `<span aria-hidden="true">${x.in_casa ? "vs" : "@"} ${sigla(x.avversario)}</span>' in APP
     assert "const partitaRiga = x => `${sigla(x.squadra)} ${vsAt(x)}`;" in APP
-    assert "const partitaBreve = x => `${partitaRiga(x)} · ${quando(x.data_partita)}`;" in APP
+    # nelle righe dei giocatori in due pezzi, «INT @ MIL» e «sab 31 20:45», separati dal «·» (pezziRiga; collaudo tablet del 27/11)
+    assert "const pezziPartita = x => (x.avversario ? [partitaRiga(x), quando(x.data_partita)] : [sigla(x.squadra)]);" in APP
     # per i lettori di schermo la frase intera, «in trasferta contro Genoa», dentro vsAt; mai «GEN fuori» (#453)
     assert APP.count('t(x.in_casa ? "formazione.voce_casa" : "formazione.voce_fuori", { avv: nomeClub(x.avversario) })') == 1
     assert "giocatore.casa" not in APP and "giocatore.fuori" not in APP
