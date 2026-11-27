@@ -1,4 +1,19 @@
 {
+  "1.610": {
+    "titolo": "iPhone widgets: useful refreshes during matches and whole sentences",
+    "voci": [
+      "During matches the widgets refresh every quarter of an hour, no longer every 2 minutes, until 4 hours 15 minutes after your players' kick-off: so the iPhone does not run out of refreshes before the points scored arrive.",
+      "In the small “Next matchday” widget “probable lineups not out” no longer ends with dots with large text or on the iPhone SE: it drops the symbol or shows only the symbol, and VoiceOver reads the whole sentence.",
+      "On the Lock Screen, in the “Next matchday” rectangle, the line “3-4-3 · 72.7 expected points” with large text drops whole words (“72.7 expected”, then “72.7”) instead of wrapping and spilling out of the box."
+    ]
+  },
+  "1.609": {
+    "titolo": "A less busy server in the hour before the deadline",
+    "voci": [
+      "Deadline reminders arrive at the same times as before, an hour before and again fifteen minutes before the lineup closes, but the server no longer does the same calculations twice: in that hour it stays freer for whoever opens the app.",
+      "Management › Data status: in the hour before the deadline the automatic check does a “light check” and its row says so."
+    ]
+  },
   "1.608": {
     "titolo": "iPhone: the reminder shows even with the app open and tapping it opens the Lineup",
     "voci": [
