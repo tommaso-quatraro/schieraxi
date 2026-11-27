@@ -77,4 +77,16 @@ struct AccessibilitaVociTests {
         #expect(RigaGiocatore.voce(g, posizione: 2) == "2. " + RigaGiocatore.voce(g))
         #expect(RigaGiocatore.voce(g).hasPrefix("Mario Prova, "), "fuori dalla panchina niente numero")
     }
+
+    // MARK: «gioca al N per cento»
+
+    @Test("La riga di un giocatore dice «gioca all'85 per cento» come la pedina e la web, mai «gioca al 85 per cento»",
+          arguments: [(0.85, "gioca all'85 per cento"), (0.08, "gioca all'8 per cento"), (0.72, "gioca al 72 per cento")])
+    func giocaConLApostrofo(probabilita: Double, voce: String) throws {
+        let g: Giocatore = try Decodifica.decodifica(Data(#"""
+        {"id": 7, "nome": "Mario Prova", "ruolo": "C", "squadra": "genoa", "fv_atteso": 6.5, "p_voto": \#(probabilita)}
+        """#.utf8))
+        #expect(RigaGiocatore.voce(g).contains("fantavoto atteso 6,5, \(voce)"))
+        #expect(voce == LetturaPedina.voceGioca(Formato.percento(probabilita)))
+    }
 }
