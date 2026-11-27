@@ -282,3 +282,23 @@ def test_stato_dei_dati_dopo_un_giro_senza_rete_dice_frasi_semplici(db, monkeypa
     for v in voci.values():
         assert len(v["errori_frasi"]) == len(v["errori"]) and all(v["errori_frasi"]), v
         assert not any(p in e for e in v["errori"] for p in ("Error", "HTTPS", "fonte.invalid", "mai riuscito")), v["errori"]
+
+
+# ---------------------------------------------------------------- 4. gli errori nel registro
+@pytest.mark.parametrize("errore, atteso", [
+    ("voti: HTTPError: 404 Client Error: Not Found for url: https://fonte.invalid/voti?chiave=a&g=12#parte",
+     "voti: HTTPError: 404 Client Error: Not Found for url: https://fonte.invalid/voti"),
+    # i proxy e le connessioni cadute scrivono solo il percorso dopo «url:» (revisione della #975)
+    ("listone: ProxyError: HTTPSConnectionPool(host='fonte.invalid', port=443): Max retries exceeded with url: /voti/12?chiave=a "
+     "(Caused by ProxyError('Unable to connect to proxy'))",
+     "listone: ProxyError: HTTPSConnectionPool(host='fonte.invalid', port=443): Max retries exceeded with url: /voti/12 "
+     "(Caused by ProxyError('Unable to connect to proxy'))"),
+    ("calendario: ConnectionError: Max retries exceeded with URL: fonte.invalid/calendario?stagione=2026#x (giù)",
+     "calendario: ConnectionError: Max retries exceeded with URL: fonte.invalid/calendario (giù)"),
+    ("probabili: ValueError: la pagina è cambiata? 3 righe invece di 20", "probabili: ValueError: la pagina è cambiata? 3 righe invece di 20"),
+])
+def test_per_il_registro_toglie_i_parametri_degli_indirizzi(errore, atteso):
+    """Nel registro gli errori della corsa senza quello che segue «?» o «#» negli indirizzi (può portare chiavi): sia negli indirizzi
+    interi sia nel percorso dopo «url:» dei messaggi di requests; un «?» nel testo resta."""
+    assert aggiorna.per_il_registro(errore) == atteso
+    assert len(aggiorna.per_il_registro("x" * 500)) == 300 and len(aggiorna.per_il_registro("x" * 1500, massimo=1000)) == 1000
