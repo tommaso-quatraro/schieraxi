@@ -145,20 +145,22 @@ private extension LegaDemo {
         d["gol_squadra"] = 1.8
         d["gol_avversario"] = 1.2
         if let data = dataPartita(di: p.squadra, adesso: adesso, fase: fase) { d["data_partita"] = data }
-        // titolarità: come nelle probabili formazioni (stato e percentuale come nel riassunto dei widget, `CalciatoreDemo`)
+        // titolarità: come nelle probabili formazioni (stato e percentuale come nel riassunto dei widget, `CalciatoreDemo`); a
+        // parole con la regola del server (`CalciatoreDemo.titolarita`), i motivi dallo stato delle probabili
         d["stato"] = p.statoProbabili
         d["percentuale"] = p.percentualeProbabili
+        d["titolarita"] = p.titolarita
         if p.assente {
-            d["titolarita"] = "fuori"; d["motivi"] = ["infortunato"]
+            d["motivi"] = ["infortunato"]
         } else if p.dubbio {
             // in dubbio: la probabilità delle probabili è la stessa di «gioca N%» (una sola percentuale, coerente ovunque).
             // Come il server: il motivo della titolarità e l'etichetta pronta «In dubbio · gioca N%» (`fanta/etichette.py`).
-            d["titolarita"] = "ballottaggio"; d["motivi"] = ["titolare in ballottaggio"]
+            d["motivi"] = ["titolare in ballottaggio"]
             d["etichetta"] = ["codice": "in_dubbio", "testo": DubbioRiassunto.inDubbio(p.pVoto), "tono": "attenzione"]
-        } else if p.pVoto < 0.75 {
-            d["titolarita"] = "improbabile"; d["motivi"] = ["parte dalla panchina"]
+        } else if p.statoProbabili == "panchina" {
+            d["motivi"] = ["parte dalla panchina"]
         } else {
-            d["titolarita"] = "titolare"; d["motivi"] = ["titolare"]
+            d["motivi"] = ["titolare"]
         }
         d["quotazione"] = quotazione(p)
         if conAvversario, let a = avversario(di: p.squadra) {

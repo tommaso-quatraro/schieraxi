@@ -34,6 +34,16 @@ struct CalciatoreDemo {
         return dubbio || pVoto >= 0.75 ? "titolare" : "panchina"
     }
 
+    /// La titolarità a parole (`titolarita`) con la regola del server (`titolarita` di fanta/consigli.py): titolare dall'80% se le
+    /// probabili lo danno titolare o la quota da titolare arriva al 60% (nella demo la quota è `pVoto`, quindi dall'80% basta), in
+    /// ballottaggio dal 50%, probabile panchina dal 20%, poi improbabile. Prima la demo diceva «improbabile» chiunque sotto il 75%,
+    /// anche accanto a «gioca 72%» (foto della #955, `DemoTitolaritaTests`).
+    var titolarita: String {
+        if assente { return "fuori" }
+        if pVoto >= 0.8 { return "titolare" }
+        return pVoto >= 0.5 ? "ballottaggio" : pVoto >= 0.2 ? "panchina" : "improbabile"
+    }
+
     /// La percentuale delle probabili (`percentuale`): il server la manda ancora, ma app e widget mostrano solo `p_voto`.
     var percentualeProbabili: Double {
         if assente { return 0 }
