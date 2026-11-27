@@ -259,7 +259,8 @@ def esegui(funzione: str, db: sqlite3.Connection, adesso: datetime | None = None
 FILE_SEGNO = "promemoria-servizio.json"    # nella cartella degli account: {"giro": inizio dell'ultimo giro riuscito del servizio}
 OGNI_MINUTI = 10                           # come il cron (*/10): stessi orari, quindi stesse finestre dei promemoria
 # secondi dopo il minuto tondo: il servizio comincia il giro mezzo secondo dopo e di solito lo finisce in pochi secondi; un giro in
-# errore si riprova al minuto dopo. Il ritardo del cron quando subentra non fa uscire nessuno dalle finestre dei promemoria.
+# errore si riprova al minuto dopo. Quando il cron subentra, dopo l'attesa gli restano almeno 4 minuti e mezzo nella finestra del
+# quarto d'ora prima per caricare il modello e servire gli utenti (servizio passato poco più di 20 minuti prima della chiusura).
 ATTESA_CRON = 90.0
 PASSO_CRON = 5.0                           # secondi: mentre aspetta, il cron riguarda il segno ed esce appena il servizio ha finito
 ATTESA_MASSIMA = 60.0                      # secondi: l'ora si riguarda almeno ogni minuto (cambio dell'ora legale, sospensioni)

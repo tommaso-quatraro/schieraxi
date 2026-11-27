@@ -219,7 +219,8 @@ Le misure dello **Stato dei dati**:
     e, se il servizio salta un giro (per esempio perché è fermo), manda lui i promemoria in quello stesso giro e scrive in
     `dati/promemoria.log` «promemoria: il servizio non fa il giro da N minuti, lo fa il cron». Siccome il servizio e il cron
     partono negli stessi minuti, il cron prima aspetta al massimo un minuto e mezzo che il servizio finisca il suo giro: quando
-    subentra, i promemoria di quel giro partono al massimo un minuto e mezzo più tardi, ancora in tempo. Gli avvisi partiti dal
+    subentra, i promemoria di quel giro partono qualche minuto più tardi del solito (l'attesa, poi il cron carica il modello e
+    serve gli utenti uno alla volta). Gli avvisi partiti dal
     servizio si vedono con `journalctl -u fantacalcio --since today | grep Promemoria` (solo il numero dell'utente). Quando il
     servizio si riavvia (per esempio per un'installazione) prima finisce il promemoria che sta mandando, al massimo un minuto.
     `FANTA_PIANIFICATORE=0` nelle variabili del servizio riporta i promemoria tutti al cron, ma spegne anche il resto del
