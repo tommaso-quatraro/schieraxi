@@ -105,7 +105,7 @@ async function anteprimaRose(dove, sorgente, opz = {}) {
     const cerca = scelta === AR_CERCA || (g.stato === "non_trovato" && scelta === "");
     const etichetta = g.stato === "non_trovato" ? `<span class="etichetta rossa">${t("ar.non_trovato")}</span>` : `<span class="etichetta arancio">${t("ar.da_controllare")}</span>`;
     return `<li class="ar-dubbio ${scelta === AR_TOGLI ? "tolto" : ""}" data-i="${i}">
-      <div class="ar-dubbio-testa"><b>«${esc(g.testo)}»</b>${etichetta}</div>
+      <div class="ar-dubbio-testa"><b>${t("ar.nome_scritto", { nome: esc(g.testo) })}</b>${etichetta}</div>
       ${g.avviso ? `<div class="debole piccolo">${esc(testoDi(g, "avviso"))}</div>` : ""}
       <label class="ar-nascosto" for="ar-sel-${i}">${t("ar.chi_e", { nome: esc(g.testo), squadra: esc(s.nome) })}</label>
       <select class="campo-testo ar-scelta" id="ar-sel-${i}">${opzioni(k, g)}</select>

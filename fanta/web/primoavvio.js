@@ -73,24 +73,65 @@ function paEvidenzia(p) {
   if (titolo) titolo.textContent = PA_NOMI[p || pa.passo];
 }
 
-// Guida chiusa senza finire (✕, Esc, tocco fuori, foglio trascinato giù, un collegamento che porta altrove): i passi rimasti
+// Guida chiusa senza finire (✕, Esc, tocco fuori, foglio trascinato giù, un collegamento che porta altrove, Indietro): i passi rimasti
 // diventano saltati, come «Più tardi» sull'iPhone. Così non si riapre da sola: si ritrova con «Importa le rose» di Oggi (dopo le
 // rose, in «Da fare»).
-// Si guarda il foglio, non ogni modo di chiuderlo: quando si nasconde con la guida dentro.
+// Si guarda il foglio, non ogni modo di chiuderlo: quando si nasconde con la guida dentro. Chiusa in un modo che non è Indietro, la
+// sua voce nella cronologia se ne va (paTogliVoce): Indietro non resta a vuoto.
 let paOsservatore = null;
 function paOsservaChiusura() {
   const foglio = $("#foglio");
   if (paOsservatore || !foglio || typeof MutationObserver !== "function") return;
   paOsservatore = new MutationObserver(() => {
     if (!foglio.hidden || !$("#foglio-contenuto .pa-capo")) return;
+    paTogliVoce();
     const rimasti = PA_PASSI.filter(p => !paFatto(p) && !paSaltato(p));
     if (rimasti.length) paSalva({ saltati: [...new Set([...pa.stato.saltati, ...rimasti])] });
   });
   paOsservatore.observe(foglio, { attributes: true, attributeFilter: ["hidden"] });
 }
 
+// Indietro del browser durante il primo avvio (collaudo dell'amico nuovo del 27/11): con l'app aperta da un link (l'invito) come prima
+// pagina usciva dall'app, su una pagina bianca. La guida aperta ha una sua voce nella cronologia, con lo stesso indirizzo
+// (`primoAvvio` nello stato): Indietro la chiude come la ✕ e si resta nell'app (paIndietro, dal popstate di app.js).
+const paVoceAperta = () => { try { return !!(history.state && history.state.primoAvvio); } catch { return false; } };
+function paVoceInCronologia() {
+  if (paVoceAperta()) return;
+  try { history.pushState({ ...(history.state || {}), primoAvvio: true }, "", location.href); } catch { /* niente cronologia */ }
+}
+// Indietro ha lasciato la voce della guida (stesso indirizzo): la guida aperta si chiude.
+function paIndietro(statoNuovo) {
+  if (statoNuovo && statoNuovo.primoAvvio) return;
+  if (!$("#foglio").hidden && $("#foglio-contenuto .pa-capo")) chiudiFoglio();
+}
+// Toglie la voce della guida, se è quella di adesso, e aspetta che la cronologia sia tornata indietro (al più mezzo secondo).
+function paTogliVoce() {
+  return new Promise(fatto => {
+    if (!paVoceAperta()) { fatto(); return; }
+    const fine = () => { clearTimeout(scaduto); window.removeEventListener("popstate", fine); fatto(); };
+    const scaduto = setTimeout(fine, 500);
+    window.addEventListener("popstate", fine);
+    history.back();
+  });
+}
+
+// Il testo delle rose incollato resta come bozza in questo browser finché le rose non si salvano (collaudo dell'amico nuovo del 27/11:
+// chiusa la guida, tornati indietro o ricaricata la pagina, spariva). Solo il testo, mai il file; con la memoria del browser bloccata
+// resta finché la pagina è aperta. Si toglie con le copie dei dati quando si esce dall'account (svuotaDatiLocali, app.js).
+const PA_BOZZA = "bozza-rose";
+let paBozza = null;                                // la copia in memoria: vale anche senza la memoria del browser
+function paBozzaLeggi() {
+  if (paBozza !== null) return paBozza;
+  try { return localStorage.getItem(PA_BOZZA) || ""; } catch { return ""; }
+}
+function paBozzaScrivi(testo) {
+  paBozza = testo;
+  try { if (testo.trim()) localStorage.setItem(PA_BOZZA, testo); else localStorage.removeItem(PA_BOZZA); } catch { /* niente memoria */ }
+}
+
 function paDisegna() {
   paOsservaChiusura();
+  paVoceInCronologia();
   const p = pa.passo;
   pa.evidenziato = null;
   if (!p) { paFine(); return; }
@@ -99,7 +140,8 @@ function paDisegna() {
     <h3 class="pa-titolo">${esc(PA_NOMI[p])}</h3><div class="pa-corpo">${corpo.html}</div>
     <div id="pa-msg" role="alert"></div>
     <div class="pulsanti">${corpo.principale ? `<button class="bottone" id="pa-avanti">${esc(corpo.principale)}</button>` : ""}
-      <button class="bottone secondario" id="pa-salta">${t(corpo.principale ? "pav.salta" : "onb.avanti")}</button></div>`);
+      <button class="bottone secondario" id="pa-salta">${t(corpo.principale ? "pav.salta" : "onb.avanti")}</button></div>
+    ${corpo.coda ? `<div id="pa-coda">${corpo.coda}</div>` : ""}`);
   paCollegaPassi();
   $("#pa-salta").addEventListener("click", async () => { if (corpo.principale && !paFatto(p)) await paSalta(p); paProssimo(); });
   const avanti = $("#pa-avanti");
@@ -161,6 +203,7 @@ function paFine() {
     if (stato.account) {                                       // la vecchia procedura ricorda com'è finita: resta coerente
       try { await api("/api/onboarding", { method: "PUT", body: JSON.stringify({ stato: saltati.length ? "saltato" : "completato", passo: "avvisi" }) }); } catch { /* non blocca */ }
     }
+    await paTogliVoce();                                       // prima la voce della guida, poi quella della schermata dove si va
     svuotaCache(); chiudiFoglio(); vai(vista, gruppo, { focoTitolo: !!gruppo });
   };
   $("#pa-chiudi").addEventListener("click", () => chiudi("formazione"));
@@ -193,8 +236,8 @@ function paDimenticaFile() {
 function paAnteprima() {
   const file = $("#pa-file").files[0], testo = $("#pa-testo").value;
   if (!file && !testo.trim()) throw new Error(t("pav.incolla_testo_delle_2"));
-  const ingresso = $("#pa-ingresso"), avanti = $("#pa-avanti"), salta = $("#pa-salta");
-  const mostra = si => { ingresso.hidden = !si; avanti.hidden = !si; salta.hidden = !si; };
+  const ingresso = $("#pa-ingresso"), avanti = $("#pa-avanti"), salta = $("#pa-salta"), coda = $("#pa-coda");
+  const mostra = si => { ingresso.hidden = !si; avanti.hidden = !si; salta.hidden = !si; if (coda) coda.hidden = !si; };
   $("#pa-msg").innerHTML = "";
   mostra(false);
   anteprimaRose($("#pa-anteprima"), file ? { file } : { testo }, {
@@ -202,6 +245,7 @@ function paAnteprima() {
     mostrata: r => paEvidenzia((r.squadre || []).length ? "squadra" : null),        // in cima chiede la tua squadra
     // una squadra basta per cominciare: lo dice già l'anteprima (avviso del server), niente avviso che copra la pagina dopo (#873)
     fatto: async (esito, mia) => {
+      paBozzaScrivi("");                                       // le rose sono salvate: la bozza non serve più
       await paAggiornaRose();
       await paSegnaFatto("rose");
       if (mia) { await paRegoleStandard(); stato.squadraVista = null; await paSegnaFatto("squadra"); }
@@ -249,15 +293,19 @@ async function paTempiSalva() {
 const PA_SCHERMATE = {
   rose: () => ({
     principale: t("pav.controlla"),
+    // dove si prendono le rose su Leghe, in una riga (collaudo del 27/11); le parole sono quelle della guida e di «Aggiorna le rose»
     html: `<div id="pa-ingresso"><p class="debole">${t("pav.incolla_testo_delle")}</p>
+      <p class="debole piccolo">${t("pav.dove_su_leghe")}</p>
       <textarea id="pa-testo" class="campo-testo" placeholder="${t("lega.incolla_qui_testo")}" maxlength="200000" aria-label="${t("pav.testo_delle_rose")}"></textarea>
       <p class="debole piccolo" style="margin:12px 0 0">${t("pav.oppure_file")}</p>
       <div class="pulsanti"><button class="bottone secondario" id="pa-scegli-file" type="button">${t("pav.scegli_file")}</button></div>
       <p class="debole piccolo" id="pa-file-nome" role="status"></p>
-      <input id="pa-file" type="file" accept=".xlsx,.xlsm,.csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values" hidden>
-      ${stato.account ? `<div class="onb-blocco"><b>${t("onb.prova_con_una")}</b><p class="debole piccolo">${t("onb.quattro_squadre_inventate")}</p>
-        <button class="bottone secondario" id="pa-esempi" type="button">${t("pav.usa_esempi")}</button></div>` : ""}</div>
+      <input id="pa-file" type="file" accept=".xlsx,.xlsm,.csv,.tsv,.txt,text/csv,text/plain,text/tab-separated-values" hidden></div>
       <div id="pa-anteprima"></div>`,
+    // gli esempi sotto «Controlla le rose» e «Salta», staccati: prima «Controlla le rose» stava subito sotto «Usa le squadre di
+    // esempio» e sembrava parte di quel riquadro (collaudo del 27/11)
+    coda: stato.account ? `<div class="onb-blocco"><b>${t("onb.prova_con_una")}</b><p class="debole piccolo">${t("onb.quattro_squadre_inventate")}</p>
+        <button class="bottone secondario" id="pa-esempi" type="button">${t("pav.usa_esempi")}</button></div>` : "",
     esegui: async () => { paAnteprima(); return false; },        // il passo si segna fatto alla conferma dell'anteprima
     dopo: () => {
       // il pulsante dell'app al posto del controllo del browser (#456), come in Impostazioni › Aggiorna le rose: scelto il file, si controlla subito
@@ -267,7 +315,9 @@ const PA_SCHERMATE = {
         $("#pa-file-nome").textContent = file ? t("pav.file_scelto", { nome: file.name }) : "";
         if (file) { try { paAnteprima(); } catch (err) { paErrore(err); } }
       });
-      $("#pa-testo").addEventListener("input", () => { if ($("#pa-file").files.length) paDimenticaFile(); });
+      const testo = $("#pa-testo");
+      if (!testo.value) testo.value = paBozzaLeggi();         // il testo incollato prima e non ancora salvato
+      testo.addEventListener("input", () => { paBozzaScrivi(testo.value); if ($("#pa-file").files.length) paDimenticaFile(); });
       const e = $("#pa-esempi");
       if (e) e.addEventListener("click", async () => {
         e.disabled = true;
