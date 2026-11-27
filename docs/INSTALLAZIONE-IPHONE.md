@@ -104,6 +104,8 @@ Se il widget dice «Tocca per collegare» (sotto: «Si apre SchieraXI per colleg
 
 Il widget legge solo la formazione, i dati del widget e i risultati in diretta, e il suo permesso scade dopo 90 giorni (si rinnova aprendo l'app).
 
+Ogni iPhone e iPad ha il suo permesso: con lo stesso account, entrare o uscire su uno non scollega il widget dell'altro. I dispositivi collegati possono essere al massimo 10; con l'undicesimo si scollega quello usato meno di recente.
+
 ## 8. Rimuovere l'app
 
 1. In SideStore, nella scheda **My Apps**, tocca l'app e scegli **Rimuovi** (o **Remove**).
@@ -111,10 +113,10 @@ Il widget legge solo la formazione, i dati del widget e i risultati in diretta, 
 
 ## 9. Limiti noti
 
-- Niente notifiche push vere (servono a un account a pagamento). Gli avvisi del server arrivano dalla web app, oppure con ntfy se la scelta è attiva (interruttore «Avvisi anche per l'app nativa»). Dettagli in `ios/README.md`.
+- Niente notifiche push vere (servono a un account a pagamento). L'app manda da sola solo i promemoria della scadenza (un'ora e un quarto d'ora prima) e quelli del rinnovo; l'avviso quando cambia la formazione da schierare arriva dalla web app, oppure con ntfy se la scelta è attiva (interruttore «Avvisi anche per l'app nativa»). Dettagli in `ios/README.md`.
 - Il certificato dura 7 giorni: se il rinnovo fallisce più giorni di fila, l'app smette di aprirsi.
 - Il repository è pubblico: così le Actions di GitHub su macOS sono gratuite. Lì dentro non ci sono firme, certificati o password.
-- Problemi che non si risolvono: scrivi al recapito indicato nella pagina [Privacy](https://app.schieraxi.it/privacy).
+- Problemi che non si risolvono: scrivi da **Impostazioni › Scrivici** dell'app, oppure al recapito indicato nella pagina [Privacy](https://app.schieraxi.it/privacy).
 
 ## 10. Notifiche dopo un cambio di chiave
 
