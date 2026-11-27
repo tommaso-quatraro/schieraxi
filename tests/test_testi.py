@@ -210,7 +210,7 @@ MESSAGGI_SENZA_TRADUZIONE = {
     "L'amministratore deve rimetterlo dalla copia di backup (cartella backup accanto al file) e riavviare il servizio.",
     "deve essere una lista", "deve essere un elenco di voci", "formato non riconosciuto",                                        # dentro il controllo del backup
     "{x}: atteso un gruppo di valori {...}, trovato {x}", "{x}: atteso un valore di tipo {x}, ricevuto {x}",                      # regole.json a mano
-    "calciatore {x} non nel listone", "token non valido",
+    "token non valido",
     "Questa funzione serve solo con gli account attivi: accendi FANTA_MULTIUTENTE=1 sul server",
 }
 
