@@ -1,5 +1,26 @@
 [
   {
+    "versione": "1.600",
+    "data": "2026-11-27T11:29:02",
+    "titolo": "iPhone e iPad: scheda del giocatore più ordinata sull'iPad e frasi giuste anche sull'iPad",
+    "voci": [
+      "Sull'iPad la scheda del giocatore mette «Tutti i numeri» sotto, a tutta larghezza e in due colonne, senza lasciare metà pagina vuota; le pagine delle Impostazioni hanno il titolo allineato alle righe.",
+      "Primo avvio e uscita dall'account dicono «questo dispositivo» invece di «questo telefono»: vale anche sull'iPad.",
+      "Nella «Prova con dati di esempio» la formazione consigliata è davvero la migliore e la scheda di ogni giocatore ha voti, medie e cartellini che tornano."
+    ],
+    "tecnico": [
+      "Catalogo: account.esci_solo_qui dice «dispositivo»; nuove account.esci_aiuto (aiuto di VoiceOver su «Esci») e accesso.indirizzo_spiega (primo avvio), solo dell'app; testi.js e Catalogo+Accesso/Account rigenerati con script/testi.py --scrivi. La web non usa queste chiavi: nessuna pagina della web cambia.",
+      "iPhone e iPad: SchedaGiocatoreView con le carte in alto in Colonne e «Tutti i numeri» sotto (TuttiINumeri in Colonne al massimo 2); titoliNellaColonna() sulla NavigationStack di Impostazioni mette il titolo grande nella pagina sull'iPad largo e alto; foto «-fondo» di scheda e Impostazioni fino in fondo.",
+      "Demo (LegaDemo, DatiDemo): probabilità di giocare di Lemão, Kervan, Dimarzi, Di Corvara, Reimvaldt e Lobrenka abbassate perché la consigliata sia la migliore; voti della scheda come _voti di fanta/scheda.py, stagione come la sua somma, gol e assist attesi dal ruolo; ruoli del Diario come quelli della rosa."
+    ],
+    "titolo_en": "iPhone and iPad: a tidier player card on the iPad and the right wording on the iPad too",
+    "voci_en": [
+      "On the iPad the player card puts “All the numbers” below, full width and in two columns, without leaving half the page empty; the Settings pages have the title aligned with the rows.",
+      "First launch and signing out of the account say “this device” instead of “this phone”: it also applies to the iPad.",
+      "In “Try with sample data” the suggested lineup is really the best one and every player's card has ratings, averages and cards that add up."
+    ]
+  },
+  {
     "versione": "1.599",
     "data": "2026-11-27T11:21:45",
     "titolo": "Previsioni aggiornate anche con una partita anticipata di settimane, e avviso alla scadenza più preciso",
