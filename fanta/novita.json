@@ -1,5 +1,26 @@
 [
   {
+    "versione": "1.611",
+    "data": "2026-11-27T16:32:32",
+    "titolo": "Stato dei dati senza messaggi tecnici, e la web in inglese con le parole giuste",
+    "voci": [
+      "Gestione › Stato dei dati: se un aggiornamento non riesce, ogni riga dice in breve perché, per esempio «Non riuscito ven 27 nov alle 11:31: Fantacalcio.it non risponde.», al posto del messaggio tecnico. Uguale sull'iPhone.",
+      "Web in inglese: Stato dei dati, le novità e le altre schermate usano sempre le stesse parole (per esempio «no grade» e «the lineup closes») e le date brevi come «27 Nov 2026».",
+      "Giornate: nel titolo della formazione di una giornata il modulo (per esempio 4-4-2) non va più a capo a metà sul telefono."
+    ],
+    "tecnico": [
+      "GET /api/stato-dati: campo nuovo aggiornamenti[].errori_frasi (chiavi aggiornamento.non_riuscito, aggiornamento.fermo, aggiornamento.non_riusciti); errori senza il messaggio tecnico, che resta nel registro e nell'archivio. Il dettaglio dei passi in aggiornamenti ha anche tipo (rete, dati, controlli) e fonte. Il registro del giro dei risultati della sera ha il messaggio accorciato (300 caratteri) e senza i parametri degli indirizzi, non più solo il tipo d'errore; anche gli errori di «Aggiorna i dati» vanno nel registro senza i parametri degli indirizzi (aggiorna.per_il_registro).",
+      "fanta/contenuti/novita.en.json vale più di titolo_en/voci_en per la stessa versione: corrette 1.593-1.599, 1.420, 1.328, 1.292, 1.241, 1.214 e le voci con «squad». Test sulle voci in attesa e sulle novità in inglese.",
+      "Catalogo inglese: no grade, closes, roster, calendar, forecasts, make-up game; test_inglese_web vieta le parole vecchie. fDataEstesa per le date con il mese a parole."
+    ],
+    "titolo_en": "Data status without technical messages, and the English app with the right words",
+    "voci_en": [
+      "Management › Data status: when a refresh fails, each row briefly says why, for example “Failed on Fri 27 Nov at 11:31: Fantacalcio.it is not responding.”, instead of the technical message. Same on iPhone.",
+      "English app: Data status, What's new and the other screens always use the same words (for example “no grade” and “the lineup closes”) and short dates such as “27 Nov 2026”.",
+      "Matchdays: in the title of a matchday's lineup the formation (for example 4-4-2) no longer breaks in the middle on the phone."
+    ]
+  },
+  {
     "versione": "1.610",
     "data": "2026-11-27T16:27:26",
     "titolo": "Widget dell'iPhone: aggiornamenti che servono durante le partite e frasi intere",
