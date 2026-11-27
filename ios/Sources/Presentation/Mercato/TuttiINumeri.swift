@@ -69,7 +69,8 @@ struct TuttiINumeri: View {
                     Spacer(minLength: 0)
                     if let risultato = LetturaScheda.risultatoAtteso(p) {
                         Text(risultato).font(.caption).foregroundStyle(Color.testoSecondario)
-                            .accessibilityLabel(LetturaScheda.voceRisultatoAtteso(p, squadra: scheda.calciatore.squadra) ?? risultato)
+                            // il club per intero dallo slug: `squadra` della scheda è la sigla («INT» si leggeva «Int»)
+                            .accessibilityLabel(LetturaScheda.voceRisultatoAtteso(p, squadra: scheda.calciatore.squadraSlug ?? scheda.calciatore.squadra) ?? risultato)
                     }
                 }
                 let motivi = LetturaScheda.motiviPartita(p)

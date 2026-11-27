@@ -1857,8 +1857,10 @@ function bloccoPerche(x) {
 // decidere: il fantavoto atteso (se gioca), «gioca N%» con lo stato a parole e la nota che lo spiega, perché è titolare, i motivi del numero, gli ultimi voti
 // e, per un titolare della tua formazione ancora aperta, «Sostituisci» (se gioca un anticipo già cominciato, la riga che dice che non
 // si sposta più). Tutto il resto (probabilità, stagione, occasioni, prossime partite) sta dietro «Tutti i numeri».
-// `c`: {id, nome, ruolo, squadra, squadra_slug}; `pr`: la sua previsione per la giornata (la scheda della Formazione o `previsione`
-// di /api/giocatore), null se non c'è; `fz`: la Formazione in pagina (stato.formaz), se la scheda si apre da lì.
+// `c`: {id, nome, ruolo, squadra, squadra_slug}; sotto il nome la squadra per intero dal suo nome nell'indirizzo («inter» → «Inter»):
+// `squadra` della scheda del server è la sigla del listone («INT», collaudo del 27/11 sera). `pr`: la sua previsione per la giornata
+// (la scheda della Formazione o `previsione` di /api/giocatore), null se non c'è; `fz`: la Formazione in pagina (stato.formaz), se la
+// scheda si apre da lì.
 function htmlScheda(c, pr, fz) {
   const esito = pr ? esitoPartita(pr) : null, stato = pr && !esito ? parolaStato(pr) : null;
   const finitaP = !!pr && PARTITA_FINITA.includes(pr.stato_partita);
@@ -1887,7 +1889,7 @@ function htmlScheda(c, pr, fz) {
     <div class="intestazione-scheda">
       ${volto({ id: c.id, nome: c.nome, squadra: c.squadra_slug, ruolo: c.ruolo }, true)}
       <div><h2>${esc(c.nome)}</h2>
-        <div class="debole">${NOME_RUOLO_1[c.ruolo] || esc(c.ruolo)} · ${esc(c.squadra)}${pr && pr.diffidato ? ` · <span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : ""}</div>
+        <div class="debole">${NOME_RUOLO_1[c.ruolo] || esc(c.ruolo)} · ${esc(nomeClub(c.squadra_slug || c.squadra))}${pr && pr.diffidato ? ` · <span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : ""}</div>
         ${partita ? `<div class="debole">${partita}</div>` : ""}</div>
     </div>
     ${cifre}

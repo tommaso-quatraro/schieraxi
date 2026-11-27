@@ -24,13 +24,14 @@ struct TestaScheda {
         previsione = g
     }
 
-    /// Dalla scheda del server.
+    /// Dalla scheda del server: il club dal suo nome nell'indirizzo del listone («inter» → «Inter»), come `htmlScheda` della web;
+    /// `squadra` è la sigla del listone («INT», collaudo del 27/11 sera: l'app scriveva «Int») e vale solo senza lo slug.
     init(scheda s: SchedaGiocatore) {
         let c = s.calciatore
         id = c.id
         nome = c.nome
         ruolo = c.ruolo
-        club = c.squadra.map(\.capitalized)
+        club = (c.squadraSlug ?? c.squadra).map(\.capitalized)
         slug = c.squadraSlug ?? s.previsione?.squadra
         previsione = s.previsione
     }
