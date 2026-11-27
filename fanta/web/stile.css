@@ -1141,6 +1141,7 @@ body.senza-accesso .salta { display: none; }
 /* gli 11: il nome, poi atteso e preso in due colonne della stessa larghezza; il voto preso è il dato principale */
 .gn-dettaglio { padding: 2px 0 16px; }
 .gn-titolo { margin: 0 0 4px; font-size: var(--t-sec); font-weight: 650; color: var(--testo-2); }
+.gn-modulo { white-space: nowrap; }
 .gn-tabella { width: 100%; border-collapse: collapse; font-size: var(--t-corpo); font-variant-numeric: tabular-nums; }
 .gn-tabella th, .gn-tabella td { padding: 7px 0; border-top: 1px solid var(--filo); font-weight: 400; text-align: right; vertical-align: baseline; }
 .gn-tabella th:first-child { text-align: left; overflow-wrap: anywhere; }

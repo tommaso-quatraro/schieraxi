@@ -220,7 +220,8 @@
   },
   "regole.v_italia": {
     "it": "Italia",
-    "en": "Italia"
+    "en": "Italia",
+    "nota": "nome di una delle tre fonti dei voti di Leghe Fantacalcio (Fantacalcio, Statistico, Italia): resta «Italia» anche in inglese, come lo vede l'utente nella sua lega"
   },
   "regole.md_attivo": {
     "it": "Attivo nella mia lega",

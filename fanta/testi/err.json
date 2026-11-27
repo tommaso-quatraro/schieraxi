@@ -614,7 +614,7 @@
   },
   "err.fogli_saltati": {
     "it": "Nel file non ho trovato rose. Ho saltato i fogli che sono listone, calendario o classifica: {1}. Carica il file delle rose esportato dalla lega.",
-    "en": "I found no rosters in the file. I skipped the sheets that are a player list, fixtures or standings: {1}. Upload the rosters file exported from your league."
+    "en": "I found no rosters in the file. I skipped the sheets that are a player list, calendar or standings: {1}. Upload the rosters file exported from your league."
   },
   "err.file_sembra": {
     "it": "Il file sembra {1}, non le rose: carica il file delle rose esportato dalla lega.",
@@ -626,7 +626,7 @@
   },
   "err.p_calendario": {
     "it": "un calendario",
-    "en": "a fixture list"
+    "en": "a calendar"
   },
   "err.p_classifica": {
     "it": "una classifica",
@@ -1130,7 +1130,7 @@
   },
   "err.regole_partite_rinviate": {
     "it": "le partite rinviate devono aspettare il recupero, restare senza voto o avere il voto d'ufficio",
-    "en": "postponed matches must wait for the rescheduled match, stay without a grade or get the default grade"
+    "en": "postponed matches must wait for the make-up game, stay without a grade or get the default grade"
   },
   "err.regole_eccezioni_rinviate": {
     "it": "ogni eccezione delle partite rinviate deve dire la giornata e cosa fare",

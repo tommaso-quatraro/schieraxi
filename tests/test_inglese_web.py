@@ -49,15 +49,20 @@ def test_i_nomi_di_stato_dei_dati_si_traducono():
             'traduciFrase({ chiave: "uso.funzione_diario", param: {} }, "Diario delle giornate")',
             'traduciFrase({ chiave: "controllo.titolari_per_squadra", param: {} }, "11 titolari per squadra")',
             'traduciFrase(null, "vecchia_funzione")']
-    assert _node("en", casi) == ["Starter 90-100%", "Bench below 20%", "Full data refresh", "Full fixtures 2026-27", "Player photos",
+    assert _node("en", casi) == ["Starter 90-100%", "Bench below 20%", "Full data refresh", "Full calendar 2026-27", "Player photos",
                                  "Matchdays", "11 starters per team", "vecchia_funzione"]
     assert _node("it", casi[:2]) == ["Titolare 90-100%", "Panchina sotto 20%"]
 
 
-# parole che in inglese non si usano più (#949): il voto è «grade», la giornata «matchday», le probabili «probable lineups»
+# parole che in inglese non si usano più (#949): il voto è «grade», la giornata «matchday», le probabili «probable lineups». Dal
+# collaudo del 27/11/2026: «senza voto» = «no grade», la formazione «closes» (non «locks»), la rosa è «roster» («expected squad»
+# resta: sono i convocati), il calendario «calendar», le previsioni «forecasts»
 PAROLE_VIETATE = [(r"[«»]", "virgolette «» (in inglese “”)"), (r"\bratings?\b|\bvotes?\b", "voto = grade"),
                   (r"\brounds?\b", "giornata = matchday"), (r"predicted line-?ups?", "probable lineups"), (r"\bDiaries\b", "Diaries"),
-                  (r"recogniz", "recognise"), (r"\bmaluse?s?\b", "malus = deduction"), (r"\bline-ups?\b", "lineup")]
+                  (r"recogniz", "recognise"), (r"\bmaluse?s?\b", "malus = deduction"), (r"\bline-ups?\b", "lineup"),
+                  (r"\bno score\b", "senza voto = no grade"), (r"\block(s|ed)?\b", "si chiude = closes"),
+                  (r"(?<!expected )\bsquads?\b", "rosa = roster"), (r"\bfixtures?\b|fixture list", "calendario = calendar"),
+                  (r"\bpredictions?\b", "previsione = forecast")]
 
 
 def test_nel_catalogo_inglese_le_stesse_parole_dappertutto():
