@@ -115,6 +115,11 @@
     "it": "Giocatori da sistemare ({n})",
     "en": "Players to fix ({n})"
   },
+  "pav.da_sistemare_errore": {
+    "it": "Non ho potuto controllare i giocatori da sistemare. {motivo}",
+    "en": "I could not check the players to fix. {motivo}",
+    "nota": "una rosa non si è letta: {motivo} è il messaggio dell'errore (web paNonRiconosciuti, iPhone ImportaRoseView)"
+  },
   "pav.n_squadra": {
     "it": "La tua squadra",
     "en": "Your team"
