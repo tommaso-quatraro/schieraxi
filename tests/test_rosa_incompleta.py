@@ -13,7 +13,7 @@ from datetime import datetime
 import pytest
 from fastapi.testclient import TestClient
 
-from fanta import archivio, consigli, gestione, lega, regole, server
+from fanta import archivio, consigli, lega, regole, server
 from fanta.consigli import formazione as formazione_vera
 from test_fasi import ST, _oggi, ambiente  # noqa: F401  (fixture)
 

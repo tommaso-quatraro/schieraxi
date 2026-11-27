@@ -102,6 +102,9 @@ def test_rosa_che_non_basta_si_ricorda_come_un_esito_e_il_widget_lo_legge(mondo,
     """Tre giocatori: «non si riesce a formare una squadra» è un esito di quei dati e di quella rosa, non un guasto. Si ricorda come
     un risultato (non si ricalcola a ogni richiesta) e il token del widget lo legge invece di ricevere «sto calcolando» per sempre."""
     tre = lega.Rose([_squadra(senza=[i for i, _, _ in ROSA if i not in (1, 4, 20)])], "Squadra Prova")
+    # qui si prova il ricordo dell'esito del calcolo (un reparto dove nessuno gioca): la rosa corta, che dal 27/11 si ferma prima del
+    # calcolo con la sua frase (test_rosa_incompleta.py), non deve fermarla prima
+    monkeypatch.setattr(consigli, "rosa_incompleta", lambda s, regole: None)
     chiamate, vera = [], consigli._calcola_formazione
     monkeypatch.setattr(consigli, "_calcola_formazione", lambda *a, **k: chiamate.append(1) or vera(*a, **k))
     for _ in range(2):
