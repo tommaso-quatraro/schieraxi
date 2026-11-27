@@ -790,18 +790,20 @@ function tornaImp(gruppo) {
 const urlImg = (nome, tipo) => `/api/squadre/immagine?squadra=${encodeURIComponent(nome)}&tipo=${tipo}&v=${stato.vImg || 0}`;
 // `stato.squadreLette`: l'elenco è arrivato davvero almeno una volta (o il server ha detto che le rose non ci sono). Se la lettura non
 // riesce l'elenco resta vuoto, ma non vuol dire «senza rose»: il primo avvio non parte da solo su quello (#874, primoavvio.js).
+// `stato.squadreNonArrivate`: l'ultima lettura non è arrivata (senza rete, o il server che riparte): Impostazioni mostra «La mia
+// squadra» spenta, con la frase che dice quando si apre, invece di toglierla (collaudo d'insieme del 26/11).
 async function caricaSquadre(seServono = false) {
   // seServono: all'avvio, se le rose non ci sono ancora (primo avvio) non si chiede nulla: niente errore in console.
-  if (seServono && stato.info && stato.info.rose_importate === false) { stato.squadre = []; stato.squadreLette = true; }
+  if (seServono && stato.info && stato.info.rose_importate === false) { stato.squadre = []; stato.squadreLette = true; stato.squadreNonArrivate = false; }
   else {
-    try { stato.squadre = await api("/api/squadre"); stato.squadreLette = true; }
-    catch (e) { stato.squadre = stato.squadre || []; segnaAvvioDaRileggere(e); }
+    try { stato.squadre = await api("/api/squadre"); stato.squadreLette = true; stato.squadreNonArrivate = false; }
+    catch (e) { stato.squadre = stato.squadre || []; stato.squadreNonArrivate = !!(e && (e.rete || e.status >= 500)); segnaAvvioDaRileggere(e); }
   }
   aggiornaRigaStato();                                                     // lo stemma della mia squadra nella riga di stato
 }
 // Lo stato d'avvio (#801): /api/stato e /api/squadre si leggono all'avvio (e dopo un cambio di rose o regole). Se una lettura non
-// riesce (aperta senza rete o mentre il server riparte) la riga di stato dice «Server non raggiungibile», Impostazioni nasconde «La
-// mia squadra» e «Le altre squadre», La mia squadra chiede di importare le rose. Si rileggono quando il browser dice che la rete è
+// riesce (aperta senza rete o mentre il server riparte) la riga di stato dice «Server non raggiungibile», Impostazioni nasconde «Le
+// altre squadre» e mostra «La mia squadra» spenta (`stato.squadreNonArrivate`, collaudo d'insieme del 26/11). Si rileggono quando il browser dice che la rete è
 // tornata e alla prima risposta buona del server (api(): con il server che riparte il browser non dice niente), una lettura alla
 // volta; riuscite, la pagina di Impostazioni che ne dipende si ridisegna. Una lettura che non riesce ancora aspetta il segnale dopo.
 // Solo dopo un guasto della rete o del server (5xx): un rifiuto (4xx) rileggendo non cambia, e ripartirebbe a ogni risposta buona.
@@ -951,7 +953,9 @@ async function aggiornaDati() {
       }
       if (s.in_corso) { setTimeout(controlla, 2000); return; }
       segnaAggiornamento(false);
-      avviso(s.errori.length ? t("aggiorna.problemi", { errori: s.errori.join("; ") }) : t("aggiorna.ok"), 6000);
+      // le frasi del server (`errori`, tradotte da `errori_frasi`: collaudo d'insieme del 26/11), una per riga sotto la testa
+      const problemi = testiDi(s, "errori");
+      avviso(problemi.length ? t("aggiorna.problemi", { errori: "\n" + problemi.join("\n") }) : t("aggiorna.ok"), 6000);
       stato.calendario = null;
       svuotaCache();
       await caricaInfo();
@@ -4563,15 +4567,16 @@ function collegaAmministratore() {
         b.addEventListener("click", () => azioneUtente(b.dataset.azione, r.utenti.find(u => Number(u.id) === Number(b.dataset.utente))));
     } catch (e) { if (document.body.contains(dove)) dove.textContent = e.message; }
   };
-  // Blocca, sblocca, elimina: prima la conferma con il nome (l'eliminazione non si annulla), poi l'elenco si rilegge e il focus va
-  // sul titolo «Utenti» (il pulsante premuto non c'è più)
+  // Blocca, sblocca, elimina: prima la conferma con il nome (l'eliminazione non si annulla), poi si rileggono l'elenco, i commenti
+  // (quelli di un account eliminato vanno via con lui) e gli eventi di sicurezza (collaudo d'insieme del 26/11: restavano quelli di
+  // prima), e il focus va sul titolo «Utenti» (il pulsante premuto non c'è più)
   const azioneUtente = (azione, u) => u && AZIONI_UTENTE[azione] && provaCosi(t(AZIONI_UTENTE[azione].no), async () => {
     if (!confirm(t(AZIONI_UTENTE[azione].conferma, { nome: u.nome_visualizzato || u.nome_utente }))) return;
     const id = Number(u.id);
     if (azione === "elimina") await api(`/api/admin/utenti/${id}`, { method: "DELETE" });
     else await api(`/api/admin/utenti/${id}/${azione}`, { method: "POST" });
     avviso(t(AZIONI_UTENTE[azione].fatto), 4000);
-    await caricaUtenti();
+    await Promise.all([caricaUtenti(), caricaRegistro(), typeof caricaCommenti === "function" ? caricaCommenti() : null]);
     if ($("#adm-utenti-titolo")) $("#adm-utenti-titolo").focus();
   });
   caricaUtenti();

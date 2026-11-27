@@ -247,6 +247,37 @@ def test_impostazioni_aperta_prima_dello_stato_d_avvio_si_completa_quando_arriva
             pytest.fail(f"arrivati stato e squadre, Impostazioni non ha «{nome}»: {_testo(web)[:300]!r}")
 
 
+@pytest.mark.parametrize("larghezza", [390, 1440])
+def test_senza_rete_impostazioni_tiene_la_mia_squadra_spenta_con_una_frase(web, larghezza):
+    """Collaudo d'insieme del 26/11: riaperta senza rete, Impostazioni perdeva la riga «La mia squadra» (dipendeva dall'elenco
+    delle squadre, che non arriva) e lasciava un buco in «La mia lega». Ora la riga resta, spenta, con la frase che dice quando
+    si apre; tornata la rete, si riaccende da sola."""
+    solo_prima(web)
+    rete = Rete(web.pagina)
+    web.apri("/?vista=impostazioni", larghezza=larghezza)
+    riga = web.pagina.locator("main").get_by_role("button", name=re.compile(r"^\s*La mia squadra"))
+    assert riga.count() == 1 and riga.is_enabled()
+    rete.giu = True
+    web.pagina.reload(wait_until="load")
+    web.aspetta()
+    try:
+        riga.wait_for(timeout=10000)
+    except Exception:                        # noqa: BLE001 - si dice cosa manca
+        pytest.fail(f"senza rete Impostazioni non ha «La mia squadra»: {_testo(web)[:300]!r}")
+    assert riga.is_disabled(), "senza rete la riga si tocca, ma la pagina non si aprirebbe"
+    assert "Si apre quando il server torna raggiungibile" in riga.inner_text(), riga.inner_text()
+    voci = web.pagina.locator("#imp-lega li").all_inner_texts()
+    assert [v.split("\n")[0].strip() for v in voci][:3] == ["Aggiorna le rose", "La mia squadra", "Regole e scadenza"], voci
+    assert not web.scorre_di_lato()
+    rete.giu = False
+    web.pagina.evaluate("() => window.dispatchEvent(new Event('online'))")
+    try:
+        web.pagina.wait_for_function("""() => [...document.querySelectorAll('main button')].some(b =>
+          b.innerText.trim().startsWith('La mia squadra') && !b.disabled)""", timeout=10000)
+    except Exception:                        # noqa: BLE001
+        pytest.fail(f"tornata la rete «La mia squadra» resta spenta: {_testo(web)[:300]!r}")
+
+
 # ---------------------------------------------------------------- 3. le prossime partite nella scheda
 def _calendario_vecchio(web) -> dict:
     """Il calendario registrato con le partite cambiate: tutte contro lo Spezia (che nel calendario registrato non c'è), «Molto

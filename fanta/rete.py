@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 from pathlib import Path
 
@@ -33,6 +34,14 @@ _sessione = requests.Session()
 _sessione.headers["User-Agent"] = UA
 _ultima = 0.0
 contatore = 0        # richieste fatte in questa esecuzione (per i resoconti)
+_qui = threading.local()
+
+
+def arrivate_qui() -> int:
+    """Le risposte buone ricevute finora dal thread che chiede (un contatore per thread: la diretta, che gira in un altro thread
+    del server, non conta). `aggiorna.Aggiornamento._passo` lo legge prima e dopo un passo: un passo riuscito senza nessuna
+    pagina arrivata non ha portato dati nuovi (collaudo del 26/11/2026)."""
+    return getattr(_qui, "arrivate", 0)
 
 
 def scarica(url: str, headers: dict | None = None, timeout: int = 30, tentativi: int = TENTATIVI) -> requests.Response:
@@ -51,6 +60,7 @@ def scarica(url: str, headers: dict | None = None, timeout: int = 30, tentativi:
                 errore = requests.HTTPError(f"{r.status_code} per {url}")
                 continue
             r.raise_for_status()
+            _qui.arrivate = arrivate_qui() + 1
             return r
         except (requests.ConnectionError, requests.Timeout) as e:
             errore = e
