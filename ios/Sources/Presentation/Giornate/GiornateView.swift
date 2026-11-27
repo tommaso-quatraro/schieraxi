@@ -162,7 +162,7 @@ struct GiornateView: View {
     /// freccia dice che si tocca (#919).
     @ViewBuilder
     private func testaIPad(_ p: PaginaGiornate, scelta: String?) -> some View {
-        if p.precisione != nil || p.dettagli != nil {
+        if p.precisione != nil || p.dettagli != nil || !p.inAttesa.isEmpty {
             Section {
                 if let frase = p.precisione {
                     Text(frase)
@@ -184,6 +184,7 @@ struct GiornateView: View {
                         .frame(minHeight: Tema.areaTocco)
                     }
                 }
+                attese(p)
             }
         }
     }
@@ -225,10 +226,11 @@ struct GiornateView: View {
 
     // MARK: parti comuni
 
-    /// In cima una riga sola sulla precisione e, a richiesta, i numeri di «Quanto ci abbiamo preso».
+    /// In cima una riga sola sulla precisione e, a richiesta, i numeri di «Quanto ci abbiamo preso»; sotto le giornate che
+    /// aspettano il recupero.
     @ViewBuilder
     private func testa(_ p: PaginaGiornate) -> some View {
-        if p.precisione != nil || p.dettagli != nil {
+        if p.precisione != nil || p.dettagli != nil || !p.inAttesa.isEmpty {
             Section {
                 if let frase = p.precisione {
                     Text(frase)
@@ -246,15 +248,31 @@ struct GiornateView: View {
                     }
                     .tint(Color.testoSecondario)
                 }
+                attese(p)
             }
         }
     }
 
-    /// Nessuna giornata finita: il motivo che dice il server.
+    /// Nessuna giornata finita: il motivo che dice il server. Con una giornata in attesa del recupero niente: la sua frase, in cima,
+    /// prende il posto di questa (come la web).
+    @ViewBuilder
     private func vuoto(_ p: PaginaGiornate) -> some View {
-        Section {
-            Text(p.vuoto ?? Catalogo.Giornate.vuoto)
-                .font(.subheadline).foregroundStyle(Color.testoSecondario)
+        if p.inAttesa.isEmpty {
+            Section {
+                Text(p.vuoto ?? Catalogo.Giornate.vuoto)
+                    .font(.subheadline).foregroundStyle(Color.testoSecondario)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// Le giornate finite che aspettano il recupero e non hanno la loro riga (`in_attesa`, revisione di #947): la frase del server,
+    /// piccola e grigia come sulla web, sotto la precisione e «Dettagli».
+    @ViewBuilder
+    private func attese(_ p: PaginaGiornate) -> some View {
+        ForEach(Array(p.inAttesa.enumerated()), id: \.offset) { _, frase in
+            Text(frase)
+                .font(.footnote).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }

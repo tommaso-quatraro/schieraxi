@@ -193,13 +193,14 @@ struct GiocatoreCorpo: View {
     }
 
     /// Nella tua formazione ancora aperta «Sostituisci» per un titolare e «Metti in campo» per chi non è fra gli 11 (alle stesse
-    /// condizioni, come la web); per chi gioca un anticipo già cominciato la frase della web (`formazione.bloccati`).
+    /// condizioni, come la web), spenti finché i comandi della Formazione non sono accesi (`pronta`); per chi gioca un anticipo già
+    /// cominciato la frase della web (`formazione.bloccati`).
     @ViewBuilder
     private var azioneFormazione: some View {
         if let contesto, contesto.sostituibile, let sostituisci {
-            pulsanteFormazione(Catalogo.Formazione.sostituisci, azione: sostituisci)
+            pulsanteFormazione(Catalogo.Formazione.sostituisci, acceso: contesto.pronta, azione: sostituisci)
         } else if let contesto, contesto.entrabile, let mettiInCampo {
-            pulsanteFormazione(Catalogo.Formazione.mettiInCampo, azione: mettiInCampo)
+            pulsanteFormazione(Catalogo.Formazione.mettiInCampo, acceso: contesto.pronta, azione: mettiInCampo)
         } else if contesto?.fermo == true {
             Text(Catalogo.Formazione.bloccati).font(.footnote).foregroundStyle(Color.testoSecondario)
                 .fixedSize(horizontal: false, vertical: true)
@@ -207,12 +208,13 @@ struct GiocatoreCorpo: View {
     }
 
     /// Il pulsante pieno di un cambio nella formazione: chi apre il foglio lo chiude e apre la scelta.
-    private func pulsanteFormazione(_ titolo: String, azione: @escaping () -> Void) -> some View {
+    private func pulsanteFormazione(_ titolo: String, acceso: Bool, azione: @escaping () -> Void) -> some View {
         Button(action: azione) {
             Label(titolo, systemImage: "arrow.left.arrow.right")
                 .frame(maxWidth: .infinity, minHeight: 44)
         }
         .pulsanteVetro(prominente: true)
+        .disabled(!acceso)
     }
 
     private var cartaTuttiINumeri: some View {
@@ -244,7 +246,8 @@ struct GiocatoreCorpo: View {
     """
     if let g: Giocatore = try? Decodifica.decodifica(Data(json.utf8)) {
         GiocatoreSheet(id: g.id, server: FinteServer.esempio,
-                       contesto: ContestoScheda(previsione: g, perche: "Preferito a Rossi: vale di più.", sostituibile: true),
+                       contesto: ContestoScheda(previsione: g, perche: "Preferito a Rossi: vale di più.", sostituibile: true,
+                                                pronta: true),
                        sostituisci: {})
     }
 }

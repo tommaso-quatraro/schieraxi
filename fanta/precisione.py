@@ -51,8 +51,10 @@ MIN_GIORNATE_MOSTRATI = 3              # sotto queste giornate con i numeri most
 def numeri_giornata(voce: dict) -> tuple[list[tuple[float, float, float | None]], list[tuple[float, float, float | None]]]:
     """(mostrati, ricostruiti) di una voce del diario, ognuno [(p_voto, fantavoto atteso, fantavoto vero o None)].
     «Mostrati» = i numeri che l'app mostrava prima della scadenza (istantanea; le probabili formazioni comprese);
-    «ricostruiti» = rifatti dopo con i soli dati di prima della giornata, SENZA le probabili formazioni."""
-    veri = {g["id"]: g for g in voce.get("giocatori") or [] if isinstance(g, dict) and "id" in g}
+    «ricostruiti» = rifatti dopo con i soli dati di prima della giornata, SENZA le probabili formazioni.
+    Non c'è chi aveva la partita rinviata e ha il voto della regola della lega (`rinvio`, diario.py): d'ufficio o nessun voto, che
+    non dicono se il fantavoto atteso o «gioca N%» erano giusti."""
+    veri = {g["id"]: g for g in voce.get("giocatori") or [] if isinstance(g, dict) and "id" in g and not g.get("rinvio")}
     if not veri:
         return [], []
     ist = voce.get("istantanea") if isinstance(voce.get("istantanea"), dict) else {}
