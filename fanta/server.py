@@ -697,7 +697,8 @@ def _novita() -> list[dict]:
 
 
 def _novita_en() -> dict:
-    """Le novità tradotte per le versioni vecchie: {versione: {titolo, voci}} (fanta/contenuti/novita.en.json)."""
+    """Le novità tradotte per le versioni vecchie e le correzioni di quelle uscite: {versione: {titolo, voci}}
+    (fanta/contenuti/novita.en.json)."""
     try:
         dati = json.loads(FILE_NOVITA_EN.read_text(encoding="utf-8"))
         return dati if isinstance(dati, dict) else {}
@@ -713,10 +714,11 @@ NOVITA_EN_GRUPPO = "Versions {da} to {a} have no English description yet. Switch
 
 
 def _novita_tradotta(v: dict, en: dict) -> tuple[str, list[str]] | None:
-    """(titolo, voci) in inglese di una versione: `titolo_en`/`voci_en` (li mette il bot dai file di novita.d) oppure novita.en.json.
+    """(titolo, voci) in inglese di una versione: novita.en.json (traduzioni delle versioni vecchie e correzioni di quelle uscite:
+    novita.json lo scrive il rilascio e non si tocca a mano) oppure `titolo_en`/`voci_en` (li mette il bot dai file di novita.d).
     None senza un titolo inglese; voci in numero diverso dalle italiane si scartano (resta la voce generica NOVITA_EN_VOCE)."""
     e = en.get(str(v.get("versione"))) or {}
-    titolo, voci = v.get("titolo_en") or e.get("titolo"), v.get("voci_en") or e.get("voci")
+    titolo, voci = e.get("titolo") or v.get("titolo_en"), e.get("voci") or v.get("voci_en")
     if not (isinstance(titolo, str) and titolo.strip()):
         return None
     if not (isinstance(voci, list) and voci and len(voci) == len(v.get("voci") or []) and all(isinstance(x, str) for x in voci)):

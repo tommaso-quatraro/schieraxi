@@ -1,8 +1,81 @@
 {
+  "1.599": {
+    "titolo": "Predictions updated even with a match brought forward by weeks, and a more precise deadline alert",
+    "voci": [
+      "Expected fantasy score: if a match of the matchday has been brought forward by weeks (for example for the Super Cup) or to midweek, the predictions also count the matches played in the meantime, such as the previous matchday.",
+      "Alert before the deadline: it also goes off when the new recommended lineup is worth exactly one more expected point, for example 64.1 against 63.1.",
+      "Recommended lineup: if one of its starters no longer has a prediction (removed from the player list or with a changed role), the new recommendation still keeps the players of matches already started in their place."
+    ]
+  },
+  "1.598": {
+    "titolo": "Lineup: the old probable lineups warning no longer repeats hours and deadline",
+    "voci": [
+      "Lineup, probable lineups read at least six hours ago with the deadline close: the warning only says “The probable lineups may have changed: check them again before the lineup closes.” The line above says when they were read, the header says when the lineup closes. Same on iPhone."
+    ]
+  },
+  "1.596": {
+    "titolo": "A more precise Privacy page about whoever runs the app, and the right message when signing up without emails",
+    "voci": [
+      "The Privacy page says everything whoever runs the app sees in Management: also the last sign-in, the block with its date, the comments sent with “Write to us” and the latest security events. Updated on 27 Nov 2026.",
+      "Where signing up needs you to confirm your email but the server cannot send emails, the message no longer asks you for an invitation you already have: it says emails are turned off and that you should let whoever runs the server know."
+    ]
+  },
+  "1.595": {
+    "titolo": "More privacy in the logs and in the new sign-in email",
+    "voci": [
+      "“Sign-in from a new device” email: the device is described in plain words, for example “iPhone, Safari” or “SchieraXI app”, instead of the long technical string of the program.",
+      "The server's request log keeps only the page asked for, without team names and the other choices that come with it.",
+      "Management, “Recent errors”: important events (sign-ups, password recoveries, deletions, role changes, blocks, invitations) stay in the list even after many wrong sign-in attempts."
+    ]
+  },
+  "1.594": {
+    "titolo": "Clearer “Refresh the data” and Management, and My team even offline",
+    "voci": [
+      "Management, “Refresh the data”: if a source does not respond, the message says so with one sentence per line, for example “Fantacalcio.it is not responding: try again later.”, instead of the technical message that covered the screen.",
+      "A refresh in which no data arrives no longer changes the date of the data (“data as of …” under the title), and for whoever runs the server the “The match data has not been updated for …” warning stays until the data really arrives.",
+      "Management: after “Block”, “Unblock” or “Delete”, “Users' comments” and “Recent errors” are refreshed right away too.",
+      "Settings: when offline, “My team” stays in its place, greyed out, with the sentence “Opens when the server can be reached again”."
+    ]
+  },
+  "1.593": {
+    "titolo": "Account: invitation for a group, clearer account deletion, one message at a time",
+    "voci": [
+      "Management, New invitation: with “How many people” the same link works for a group of friends, to send in the chat.",
+      "Delete the account: the app first checks your password, then asks you to confirm; afterwards the sign-in page says that the account and its data have been deleted. The same on iPhone.",
+      "Sign in: after too many attempts the button counts down by itself, and in Sign up the username rules are under the field. The same on iPhone.",
+      "When the session ends there is only one message; in Management, Recent errors, “Signed out of all devices” says whose it is."
+    ]
+  },
+  "1.420": {
+    "titolo": "Missing make-up games written like the postponed matches",
+    "voci": [
+      "When a matchday is over, the line about missing make-up games writes the matches like the postponed matches card: “ATA vs PAR”. Same on phone and computer."
+    ]
+  },
+  "1.328": {
+    "titolo": "More accurate expected fantasy score for the most expensive players",
+    "voci": [
+      "The expected match grade of the most expensive players is much less overestimated: before, it was on average about a tenth higher than the real one, now half of that or less, in both seasons tested."
+    ]
+  },
+  "1.292": {
+    "titolo": "Example teams even with sources off",
+    "voci": [
+      "“Use the example teams” and roster import also work when whoever runs the server has turned Fantacalcio.it off: the players already saved are used."
+    ]
+  },
+  "1.241": {
+    "titolo": "A smoother app installation",
+    "voci": [
+      "When a new version is out, a small “Update ready – Reload” notice appears.",
+      "On tablets the app can now be rotated to landscape.",
+      "The preview images show up even before signing in."
+    ]
+  },
   "1.214": {
     "titolo": "Advice even without xG data",
     "voci": [
-      "Line-ups and predictions work even when the xG (expected goals) statistics are not there yet: they no longer give an error."
+      "Lineups and predictions work even when the expected goals (xG) statistics are not there yet: they no longer give an error."
     ]
   },
   "1.213": {
@@ -50,7 +123,7 @@
   "1.206": {
     "titolo": "English: guided setup and first start",
     "voci": [
-      "With English selected, the guided first sign-in and the first-start steps (squads, team, crest, installation, widget, alerts) are also in English."
+      "With English selected, the guided first sign-in and the first-start steps (rosters, team, crest, installation, widget, alerts) are also in English."
     ]
   },
   "1.205": {
@@ -68,19 +141,19 @@
   "1.203": {
     "titolo": "More complete Privacy",
     "voci": [
-      "The Privacy page explains that, if you ask, whoever runs the app can import your squads for you and keeps the last 5 copies of your previous squads, deleted together with your account."
+      "The Privacy page explains that, if you ask, whoever runs the app can import your rosters for you and keeps the last 5 copies of your previous rosters, deleted together with your account."
     ]
   },
   "1.202": {
-    "titolo": "Safer squad imports",
+    "titolo": "Safer roster imports",
     "voci": [
-      "If you import your squads twice almost at the same time, the second waits for the first: no more squads lost or mixed up."
+      "If you import your rosters twice almost at the same time, the second waits for the first: no more rosters lost or mixed up."
     ]
   },
   "1.201": {
-    "titolo": "English: Trades, squad and data status",
+    "titolo": "English: Trades, roster and data status",
     "voci": [
-      "With English selected, Trades (find, build, evaluate an offer), the squad page and the data status are also in English."
+      "With English selected, Trades (find, build, evaluate an offer), the roster page and the data status are also in English."
     ]
   },
   "1.200": {
