@@ -4913,6 +4913,11 @@ try {                                                                           
   const q = new URLSearchParams(location.search);
   if (q.get("vista")) iniziale = { vista: q.get("vista"), gruppo: q.get("gruppo"), voce: q.get("voce"), rosa: q.get("rosa") };
 } catch { /* indirizzo strano */ }
+// Gli script si caricano uno dopo l'altro e l'ultimo (impostazioni.js) arriva dopo questo, che è grosso: con la rete lenta, o senza rete
+// (i dati «arrivano» subito, con un errore), la prima schermata si disegnava prima che il suo codice esistesse (`vistaImpostazioni is
+// not defined`) e la pagina restava vuota. DOMContentLoaded viene quando tutti gli script sono partiti: la prima schermata aspetta lì.
+const scriptPronti = document.readyState === "loading"
+  ? new Promise(ok => document.addEventListener("DOMContentLoaded", ok, { once: true })) : Promise.resolve();
 controllaAccesso().then(async entrato => {
   if (!entrato) return;
   // via l'iscrizione di un altro account (#874); poi quella di chi è dentro torna al server dopo un nuovo accesso, o se l'ultima
@@ -4936,6 +4941,7 @@ controllaAccesso().then(async entrato => {
   caricaFoto();
   const disegna = () => vai(iniziale.vista, iniziale.gruppo || undefined, { voce: iniziale.voce, rosa: iniziale.rosa });
   const subito = dove(iniziale).vista !== "impostazioni";
+  await scriptPronti;
   if (subito) disegna();
   Promise.all([avvioLetto, funzioni]).then(() => {
     if (!subito) disegna();
