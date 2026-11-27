@@ -308,7 +308,8 @@ struct RosaView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .avvisoDatiSalvati(vm.caricatore)
+            // «Riprova» come quello dell'errore: anche nome e crediti si riallineano alla rosa riletta
+            .avvisoDatiSalvati(vm.caricatore, riprova: { await vm.carica() })
             // fotografia `lega-rosa-fondo` (#425): la lista scorsa fino all'ultima riga, a dati arrivati
             .demoInFondo()
             .demoScorriA(FondoDemo.idRiga, proxy: proxy, schermate: ["lega-rosa"], inFondo: true, ancora: .bottom,
@@ -633,7 +634,8 @@ struct StatoDatiView: View {
                 }
                 .scrollContentBackground(.hidden)
                 // la copia salvata sul telefono non sembra nuova: la striscia «dati salvati», come nelle altre pagine (#808)
-                .avvisoDatiSalvati(striscia?.data, motivo: striscia?.motivo)
+                .avvisoDatiSalvati(striscia?.data, motivo: striscia?.motivo,
+                                   riprova: { await caricatore.ricarica(); await affidabilita.ricarica() })
                 // fotografie `lega-stato-fondo` (#425: la lista scorsa fino in fondo, agli indicatori del consiglio) e `lega-stato-nostri`
                 // (#430: ferma sul riquadro dei gol attesi nostri, che col consiglio non entra in una foto sola); `lega-stato-taratura`
                 // e `lega-stato-prova` (#527, #842) si fermano più in alto (`FondoDemo.arrivo`). Lo stato arriva per primo, la prova

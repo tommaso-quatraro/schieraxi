@@ -70,7 +70,8 @@ struct GiornateView: View {
                 }
                 .scrollContentBackground(.hidden)
                 .background(Sfondo())
-                .avvisoDatiSalvati(vm.caricatore)
+                // «Riprova» nella striscia come quello dell'errore: giornate e riga sotto il titolo insieme
+                .avvisoDatiSalvati(vm.caricatore, riprova: { await vm.carica() })
                 .titoloPagina(Catalogo.Nav.giornate)
                 .refreshable { await vm.carica() }
                 .demoScorriAlConfronto(proxy: proxy, pronto: vm.cimaCompleta)   // foto `giornate-confronto` (#842)
@@ -103,7 +104,7 @@ struct GiornateView: View {
                 }
             }
             .background(Sfondo())
-            .avvisoDatiSalvati(vm.caricatore)
+            .avvisoDatiSalvati(vm.caricatore, riprova: { await vm.carica() })
             // il titolo piccolo nella barra, fermo (#919): con quello grande, in orizzontale, scorrendo la colonna di destra il
             // titolo spariva senza lasciare quello piccolo e la colonna di sinistra saliva di ~50 punti con la barra
             .titoloPagina(Catalogo.Nav.giornate, piccoloInBarra: true)

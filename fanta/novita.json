@@ -1,5 +1,65 @@
 [
   {
+    "versione": "1.605",
+    "data": "2026-11-27T13:46:30",
+    "titolo": "Gestione: permessi degli amministratori più stretti e inviti più sicuri",
+    "voci": [
+      "Gestione: il codice di «Password dimenticata» e l'importazione delle rose per conto di un altro non valgono più per un altro amministratore, come già Blocca ed Elimina.",
+      "Un invito da amministratore chiede conferma e la casella si spegne dopo ogni invito; un doppio tocco su «Crea l'invito», «Genera il codice» o «Aggiorna i dati» non fa più due richieste.",
+      "Errori recenti si aggiorna anche dopo inviti e codici, e se il server non legge il suo registro lo dice invece di «Nessun evento»."
+    ],
+    "tecnico": [
+      "account.crea_reset(..., chi=Utente): 403 account.RESET_ALTRO_AMMINISTRATORE (err.reset_altro_amministratore) per l'account di un altro amministratore, il proprio sì; l'evento reset_creato ha da=chi.nome_utente. POST /api/admin/reset-password passa chi (solo_amministratore come parametro).",
+      "server.importa_per_conto_di: dalla web (da_chi) 403 account.ROSE_ALTRO_AMMINISTRATORE (err.rose_altro_amministratore) sull'account di un altro amministratore, prima del tetto di frequenza; il proprio sì; dal comando importa-per-conto-di (da_chi None) sì.",
+      "registro.ultimi: salta solo FileNotFoundError; un altro OSError scrive la causa nel log del servizio (logger fanta.registro) e alza RegistroIlleggibile. GET /api/admin/registro risponde 503 «Non riesco a leggere il registro del server ({nome}): …» (err.registro_illeggibile); la web lo mostra con role=alert.",
+      "Web (collegaAmministratore): spentoMentre per #adm-invito e #adm-reset; confirm(admin.invito_admin_conferma) con #adm-admin accesa e spunta tolta dopo l'invito; caricaRegistro dopo invito, annullamento e codice; #adm-registro senza aria-live. aggiornaDati: chiedoAggiornamento e #aggiorna-dati spento durante il POST, riacceso nel finally se l'aggiornamento non è partito."
+    ],
+    "titolo_en": "Management: stricter administrator permissions and safer invitations",
+    "voci_en": [
+      "Management: the “\u0001” code and importing rosters on someone's behalf no longer work for another administrator, as already for Block and Delete.",
+      "An administrator invitation asks for confirmation and the box clears after each invitation; a double tap on “\u0001”, “\u0001” or “\u0001” no longer sends two requests.",
+      "Recent errors also refreshes after invitations and codes, and if the server cannot read its log it says so instead of “\u0001”."
+    ]
+  },
+  {
+    "versione": "1.604",
+    "data": "2026-11-27T13:31:14",
+    "titolo": "La web non resta più vuota se l'ultimo pezzo dell'app arriva in ritardo",
+    "voci": [
+      "Apertura della web con la rete lenta o assente: se Impostazioni (o una sua pagina) si apriva prima di aver ricevuto tutti i pezzi dell'app, la pagina restava bianca fino alla ricarica. Ora aspetta che ci siano tutti e poi si disegna, anche senza rete, con «La mia squadra» spenta e la frase che dice quando si apre."
+    ],
+    "tecnico": [
+      "app.js: l'avvio aspetta DOMContentLoaded (`scriptPronti`) prima di disegnare la prima schermata. impostazioni.js è l'ultimo degli script (dopo app.js): se i dati d'avvio arrivavano (o fallivano, senza rete) prima che fosse eseguito, `vai()` chiamava `vistaImpostazioni` non ancora definita e il <main> restava vuoto. La richiesta dei dati (stato, squadre, funzioni, volti) parte subito come prima: aspetta solo il disegno.",
+      "Test: tests/browser/test_copie_e_rete.py::test_l_ultimo_script_in_ritardo_non_lascia_vuota_la_prima_schermata (impostazioni.js trattenuto, con e senza rete). Spiega i fallimenti, ogni tanto, di test_senza_rete_impostazioni_tiene_la_mia_squadra_spenta_con_una_frase sui server di GitHub (pagina vuota dopo il ricaricamento senza rete): non visto in locale, nemmeno sotto carico, ma riprodotto trattenendo lo script."
+    ],
+    "titolo_en": "The web app no longer stays blank when the last piece of the app arrives late",
+    "voci_en": [
+      "Opening the web app with a slow or missing connection: if Settings (or one of its pages) was drawn before all the pieces of the app had arrived, the page stayed blank until a reload. It now waits for all of them and then draws, even offline, with “My team” switched off and the sentence saying when it opens."
+    ]
+  },
+  {
+    "versione": "1.603",
+    "data": "2026-11-27T12:54:39",
+    "titolo": "Giornate più chiare: tutti i voti in tabella, le giornate in attesa del recupero e la stessa panchina di Oggi",
+    "voci": [
+      "In Giornate la tabella degli 11 mostra anche chi giocava la sua prima partita (per esempio un portiere di riserva o chi è arrivato da poco): il suo voto c'è, l'atteso resta vuoto, e la somma dei voti torna con i punti.",
+      "Una giornata che aspetta ancora un recupero non sparisce più da Giornate: in cima c'è la frase «in attesa del recupero, i punti arrivano dopo».",
+      "Se hai salvato solo gli 11 senza panchina, la panchina scelta da SchieraXI è la stessa in Oggi e in Giornate quando c'è la copia fatta alla scadenza (di solito c'è): il totale e chi è entrato dalla panchina non cambiano quando la giornata entra in Giornate."
+    ],
+    "tecnico": [
+      "fanta/diario.py: chi non ha una previsione ricostruita (`_senza_previsione`) entra in `giocatori` con p_voto e fv_atteso null e il voto che la lega ha contato (`_numeri_senza_previsione`), anche nei punti rifatti e in `numeri_giocatori`/`_stessi_voti` (con `giocatori_rosa`), così una correzione del suo voto rifà la voce; le voci di prima lo prendono quando se ne rifanno i punti. fanta/precisione.py lo esclude in modo esplicito da mostrati e ricostruiti: la misura resta quella di prima (python -m fanta verifica non usa questi file).",
+      "fanta/rinvii.py: `giornate_in_attesa` (stessa lettura del calendario di `giornate_chiuse`, rifatta su `_partite_per_giornata` e `_solo_recuperi`); `diario.elenco` la mette in `in_attesa` per le giornate senza voce, una lettura del calendario per chiamata (il widget no: `attese=False`). GET /api/diario senza la tua squadra lascia `in_attesa` vuoto.",
+      "fanta/widget.py: il campo `diario` di GET /api/widget con `diario.formazione_che_conta` (resa pubblica): schierata, poi automatica, poi consigliata, come Giornate e Oggi (oggi nessun widget dell'iPhone lo disegna). Il test iPhone `diarioComeLApp` ripete la stessa regola.",
+      "Panchina del sistema per 11 salvati senza panchina: `diario.panchina_alla_scadenza` con i numeri della rosa alla scadenza (`numeri_rosa`), usata da `fasi._panchina_della_giornata` e da `calcola_giornata` (voce nuova, «Correggi», punti rifatti); la consigliata rifatta tiene la panchina dei numeri rifatti. I numeri della scadenza restano per 12 giornate (MAX_NUMERI_ROSA = MASSIMO_GIORNATE, prima 4). Senza copia alla scadenza Oggi resta senza panchina e il Diario la sceglie con i numeri rifatti, come prima: Oggi non può rifare le previsioni. docs/API.md aggiornato."
+    ],
+    "titolo_en": "Clearer Matchdays: every mark in the table, matchdays waiting for a rescheduled match and the same bench as Today",
+    "voci_en": [
+      "In Matchdays the table of the 11 also shows whoever was playing their first match (for example a reserve goalkeeper or a new arrival): their mark is there, the expected score stays empty, and the marks add up to the points.",
+      "A matchday still waiting for a rescheduled match no longer disappears from Matchdays: at the top it says it is waiting for the rescheduled match and the points will come later.",
+      "If you saved only the 11 without a bench, the bench chosen by SchieraXI is the same in Today and in Matchdays when there is the copy made at the deadline (usually there is): the total and who came off the bench do not change when the matchday enters Matchdays."
+    ]
+  },
+  {
     "versione": "1.602",
     "data": "2026-11-27T12:36:06",
     "titolo": "Gli stessi numeri con la virgola su iPhone, web e nelle frasi",

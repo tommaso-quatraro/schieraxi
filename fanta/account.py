@@ -1141,6 +1141,7 @@ def _altri_amministratori_attivi(db: sqlite3.Connection, utente_id: int) -> int:
 
 BLOCCATO = "Questo account è bloccato: chiedi a chi gestisce SchieraXI."
 AMMINISTRATORE_DAL_SERVER = "Un amministratore si blocca, si sblocca o si elimina solo sul server, dalla riga di comando"
+ROSE_ALTRO_AMMINISTRATORE = "Le rose di un altro amministratore si importano solo sul server, dalla riga di comando."
 
 
 def utente_comune(db: sqlite3.Connection, utente_id: int) -> Utente:
@@ -1935,19 +1936,27 @@ def imposta_ruolo(db: sqlite3.Connection, nome_utente: str, ruolo: str) -> Utent
 
 
 # ---------------------------------------------------------------- password dimenticata
-def crea_reset(db: sqlite3.Connection, nome_utente: str, adesso: datetime | None = None) -> str:
-    """Per l'amministratore: un codice monouso di 24 ore con cui l'utente sceglie una nuova password (insieme al suo nome utente)."""
+RESET_ALTRO_AMMINISTRATORE = ("Per un altro amministratore il codice non si crea dalla web: la password si cambia con il suo codice "
+                              "di recupero.")
+
+
+def crea_reset(db: sqlite3.Connection, nome_utente: str, adesso: datetime | None = None, chi: Utente | None = None) -> str:
+    """Per l'amministratore: un codice monouso di 24 ore con cui l'utente sceglie una nuova password (insieme al suo nome utente).
+    `chi` è l'amministratore che lo chiede dalla web: come per blocca ed elimina, mai per l'account di un altro amministratore
+    (403; il proprio sì), e il suo nome va nella riga del registro di sicurezza (`da`)."""
     adesso = _ora(adesso)
     limite.consuma(db, _chiave("crea-reset"), 30, ORA)
-    riga = db.execute("SELECT id FROM utenti WHERE nome_utente = ?", (normalizza_nome(nome_utente),)).fetchone()
+    riga = db.execute("SELECT id, ruolo FROM utenti WHERE nome_utente = ?", (normalizza_nome(nome_utente),)).fetchone()
     if riga is None:
         raise ErroreAccount("Utente non trovato", 404)
+    if chi is not None and riga["ruolo"] == "amministratore" and riga["id"] != chi.id:
+        raise ErroreAccount(RESET_ALTRO_AMMINISTRATORE, 403)
     codice = nuovo_codice(20)
     db.execute("UPDATE reset_password SET usato = 1 WHERE utente_id = ?", (riga["id"],))          # il nuovo annulla i vecchi
     db.execute("INSERT INTO reset_password (utente_id, codice_hash, creato, scade) VALUES (?, ?, ?, ?)",
                (riga["id"], _hash_codice(codice), _testo(adesso), _testo(adesso + DURATA_RESET)))
     db.commit()
-    evento("reset_creato", nome=normalizza_nome(nome_utente))
+    evento("reset_creato", nome=normalizza_nome(nome_utente), da=chi.nome_utente if chi else None)
     return codice
 
 

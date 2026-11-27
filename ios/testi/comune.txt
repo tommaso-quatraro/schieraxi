@@ -27,6 +27,9 @@ comune.calcolo_lungo
 # La striscia dei dati salvati quando il server ha risposto con un errore (DatiVecchi.frase): il motivo in testa e la nota fra
 # parentesi, come la web (comune.cache_errore in app.js), #830; nella nota il giorno e l'ora della copia, #845
 comune.cache_errore
+# La stessa striscia senza rete o con il server che non risponde (DatiVecchi.frase senza motivo), come la web
+# (comune.cache_offline in caricaConCache di app.js, #864); prima l'iPhone aveva una frase sua scritta nel codice
+comune.cache_offline
 
 # Il pulsante dell'accesso che conta dopo «troppi tentativi» (AttesaRiprova.testoPulsante), come attesaTesto della web, #940
 comune.attesa_secondi

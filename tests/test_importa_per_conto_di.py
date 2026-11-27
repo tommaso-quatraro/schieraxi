@@ -60,6 +60,35 @@ def test_solo_l_amministratore_e_utente_esistente(mondo):
     assert capo.post("/api/admin/utenti/9999/rose", json={"testo": ROSE}).status_code == 404
 
 
+def test_le_rose_di_un_altro_amministratore_non_si_cambiano_dalla_web(mondo, tmp_path, monkeypatch, capsys):
+    """Permessi degli amministratori (27/11): come blocca ed elimina, dalla web chi gestisce non importa le rose di un altro
+    amministratore (403 chiaro, niente scritto, nessuna riga nel registro, nessun tentativo consumato); nelle proprie e in quelle
+    di un amico sì. Dal comando del server resta possibile."""
+    capo = mondo["capo"]
+    c = cliente()
+    with contextlib.closing(account.apri()) as db:
+        inv = account.crea_invito(db, "vice", True)
+    r = c.post("/api/account/registra", json={"nome_utente": "vice", "password": PASSWORD, "invito": inv})
+    assert r.status_code == 200, r.text
+    vice_id = r.json()["utente"]["id"]
+    r = c.post(f"/api/admin/utenti/{capo[1]}/rose", json={"testo": ROSE})
+    assert r.status_code == 403, r.text
+    assert r.json()["detail"] == account.ROSE_ALTRO_AMMINISTRATORE
+    assert capo[0].get("/api/squadre").status_code == 409                                                    # niente è stato scritto
+    with contextlib.closing(account.apri()) as db:
+        chiave = account._chiave("importa-per-conto-di")
+        assert not db.execute("SELECT COUNT(*) FROM tentativi WHERE chiave = ?", (chiave,)).fetchone()[0]
+    sicurezza = capo[0].get("/api/admin/registro").json()["sicurezza"]
+    assert not [e for e in sicurezza if e["tipo"] == "importazione_per_conto_di"]
+    assert c.post(f"/api/admin/utenti/{vice_id}/rose", json={"testo": ROSE}).status_code == 200              # le proprie sì
+    assert c.post(f"/api/admin/utenti/{mondo['amico'][1]}/rose", json={"testo": ROSE}).status_code == 200    # un amico sì
+    file = tmp_path / "rose.txt"
+    file.write_text(ROSE, encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["fanta", "importa-per-conto-di", "--utente", "capo", str(file)])
+    cli.main()                                                                                               # dal server sì
+    assert [s["nome"] for s in capo[0].get("/api/squadre").json()] == ["Squadra dell'amico", "Altra"]
+
+
 def test_controlli_come_l_importazione_normale(mondo):
     capo, amico = mondo["capo"][0], mondo["amico"]
     assert capo.post(f"/api/admin/utenti/{amico[1]}/rose", json={"testo": "x" * 300_000}).status_code in (400, 413)

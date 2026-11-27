@@ -281,17 +281,19 @@ def _copia_alla_scadenza(a, prev, titolari, panchina) -> None:
     copia_scadenza.salva(f, ST, a.tmp / "scelte.json", a.tmp / "diario.json")
 
 
-def test_i_numeri_della_rosa_alla_scadenza_restano_per_le_ultime_quattro_giornate(ambiente):
-    """La copia alla scadenza di cinque giornate di fila: restano i numeri delle ultime quattro, la 10 e la 11 comprese (le
-    giornate si ordinano come numeri), e non entrano nell'istantanea che va ai client."""
+def test_i_numeri_della_rosa_alla_scadenza_restano_per_le_giornate_che_il_diario_rifa(ambiente):
+    """La copia alla scadenza di tredici giornate di fila: restano i numeri delle ultime dodici, quante il Diario ne rifà a un cambio
+    di regole (`MASSIMO_GIORNATE`): con meno, dalla quinta alla dodicesima la panchina del sistema (scelta con questi numeri)
+    cambiava per un motivo che non è la regola cambiata. La 10 e la 11 comprese (le giornate si ordinano come numeri), e non
+    entrano nell'istantanea che va ai client."""
     from fanta import copia_scadenza, diario
     prev, _, _ = consigli.previsioni(None, REGOLE)
-    for g in (7, 8, 9, 10, 11):
+    for g in range(1, 14):
         f = {"giornata": g, "modulo": "4-4-2", "punteggio_atteso": 70.0, "titolari": [_scheda(prev, i) for i in TITOLARI],
              "panchina": [_scheda(prev, i) for i in PANCHINA], "schede": {str(i): _scheda(prev, i) for i in prev.index}}
         copia_scadenza.salva(f, ST, ambiente.tmp / "scelte.json", ambiente.tmp / "diario.json")
     d = diario.carica(ambiente.tmp / "diario.json")
-    assert set(d["numeri_rosa"]) == {f"{ST}/{g}" for g in (8, 9, 10, 11)}
+    assert diario.MASSIMO_GIORNATE == 12 and set(d["numeri_rosa"]) == {f"{ST}/{g}" for g in range(2, 14)}
     assert set(diario.numeri_rosa(ambiente.tmp / "diario.json", ST, 11)) == set(prev.index)
     assert all("numeri" not in str(list(ist)) for ist in d["istantanee"].values())
 
