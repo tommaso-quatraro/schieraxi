@@ -129,6 +129,11 @@
     "it": "Tra circa {n} ore l'app smette di aprirsi. Rinnovala dall'app con cui l'hai installata.",
     "en": "In about {n} hours the app will stop opening. Renew it from the app you installed it with."
   },
+  "avv.certificato_aiuto": {
+    "it": "Con l'Apple ID gratuito il certificato dura 7 giorni. 24 ore e 6 ore prima della scadenza arriva un promemoria: «{promemoria}» Non suona mai nelle ore tranquille: arriva un minuto prima che comincino; se l'app lo prepara quando sono già cominciate, arriva alla loro fine, ma solo se manca ancora almeno un'ora alla scadenza.",
+    "en": "With a free Apple ID the certificate lasts 7 days. 24 hours and 6 hours before it expires a reminder arrives: «{promemoria}» It never plays during quiet hours: it arrives a minute before they start; if the app prepares it when they have already started, it arrives when they end, but only if at least an hour is left before the expiry.",
+    "nota": "solo iPhone: Impostazioni › Gestione, la riga sotto la scadenza del certificato; {promemoria} è avv.certificato_ore con 6 ore. Il comportamento è quello di Notifiche.promemoriaCertificato (#906)"
+  },
   "avv.versione_nuova_titolo": {
     "it": "SchieraXI · C'è una versione nuova",
     "en": "SchieraXI · A new version is out",

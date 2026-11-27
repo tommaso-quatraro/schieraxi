@@ -20,11 +20,22 @@ struct AvvisiDalCatalogoTests {
         #expect(NuovaVersione.versione(build: 216) == "1.0.216")
     }
 
-    @Test("La riga del certificato cita il promemoria com'è davvero (`avv.certificato_ore`) e dice delle ore tranquille")
+    @Test("Gestione, versione nuova: la riga di chi gestisce dice le versioni come il banner, senza «build-38»")
+    func rigaVersioneDiChiGestisce() {
+        let riga = NuovaVersioneSezione.disponibile(NuovaVersione.Esito(build: 38, nome: "build-38"), installata: 37)
+        #expect(riga.contains(NuovaVersione.versione(build: 38)) && riga.contains(NuovaVersione.versione(build: 37)), "«\(riga)»")
+        #expect(!riga.contains("build"), "«\(riga)»")
+    }
+
+    @Test("La riga del certificato viene dal catalogo, cita il promemoria com'è davvero e dice cosa fa con le ore tranquille")
     func rigaCertificato() {
         let riga = CertificatoSezione.aiuto
+        #expect(riga == Catalogo.Avv.certificatoAiuto(promemoria: Catalogo.Avv.certificatoOre(6)))
         #expect(riga.contains(Catalogo.Avv.certificatoOre(6)), "«\(riga)»")
         #expect(!riga.contains("SideStore"), "il promemoria non nomina SideStore: «\(riga)»")
-        #expect(riga.contains("ore tranquille"), "nelle ore tranquille arriva prima che comincino: «\(riga)»")
+        // come `Notifiche.promemoriaCertificato` (provato in `PromemoriaTestiDelServerTests`): prima che comincino, oppure alla loro
+        // fine se sono già cominciate e manca almeno un'ora
+        #expect(riga.contains("un minuto prima che comincino") && riga.contains("già cominciate") && riga.contains("almeno un'ora"),
+                "«\(riga)»")
     }
 }

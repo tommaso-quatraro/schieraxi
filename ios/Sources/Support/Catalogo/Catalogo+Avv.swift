@@ -29,6 +29,11 @@ extension Catalogo {
             n == 1 ? "Tra circa un'ora l'app smette di aprirsi. Rinnovala dall'app con cui l'hai installata." : "Tra circa \(n) ore l'app smette di aprirsi. Rinnovala dall'app con cui l'hai installata."
         }
 
+        /// `avv.certificato_aiuto`
+        static func certificatoAiuto(promemoria: String) -> String {
+            "Con l'Apple ID gratuito il certificato dura 7 giorni. 24 ore e 6 ore prima della scadenza arriva un promemoria: «\(promemoria)» Non suona mai nelle ore tranquille: arriva un minuto prima che comincino; se l'app lo prepara quando sono già cominciate, arriva alla loro fine, ma solo se manca ancora almeno un'ora alla scadenza."
+        }
+
         /// `avv.versione_nuova_titolo`
         static let versioneNuovaTitolo = "SchieraXI · C'è una versione nuova"
 
