@@ -17,6 +17,15 @@
       "forma": "web",
       "chi": "**fatto** (27/11/2026): prova `LaMiaLegaComeLaWebTests`; foto `lega-rosa`",
       "stato": "fatto"
+    },
+    {
+      "id": 145,
+      "schermata": "Rosa: giocatore uscito dal listone",
+      "web": "la riga si tocca e dice «Questo giocatore non è più nel listone di Serie A.» in un avviso breve (`err.fuori_listone`, `data-fuori-listone` in `vistaRosa` di `app.js`), senza chiedere la scheda. Chi è fuori lo dice il server (`fuori_listone` di `/api/rosa`); con un server di prima, la quotazione vuota. Prima il tocco apriva la scheda, che diceva «calciatore 1234 non nel listone», il testo interno del server",
+      "iphone": "come la web, la stessa frase in una finestra di avviso (`RigaRosa.fuoriListone`, dallo stesso campo del server con lo stesso ripiego; l'iPhone non ha avvisi brevi); prima il tocco apriva la scheda con lo stesso errore tecnico",
+      "forma": "la frase del catalogo, nessuna scheda; lo stato lo decide il server (`fuori_listone`), che risponde alla scheda con 404 e la stessa frase (`scheda.FuoriDalListone`)",
+      "chi": "**fatto** (27/11/2026): prove `tests/browser/test_scheda_numeri_del_server.py`, `SchedaNumeriDelServerTests`, `tests/test_scheda.py`. Resta diversa solo la forma dell'avviso (breve sulla web, finestra sull'iPhone)",
+      "stato": "fatto"
     }
   ]
 }

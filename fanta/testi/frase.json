@@ -1649,5 +1649,17 @@
   "frase.aggiorna.errore_server": {
     "it": "L'aggiornamento si è fermato per un errore del server: il dettaglio è nel registro.",
     "en": "The refresh stopped because of a server error: the details are in the log."
+  },
+  "frase.rendimento.cala": {
+    "it": "Sta segnando più di quanto crea: è probabile che cali.",
+    "en": "He is scoring more than he creates: he is likely to cool off."
+  },
+  "frase.rendimento.sblocca": {
+    "it": "Crea più di quanto segna: è probabile che si sblocchi.",
+    "en": "He creates more than he scores: he is likely to break through."
+  },
+  "frase.rendimento.in_linea": {
+    "it": "In linea con le occasioni che ha.",
+    "en": "In line with the chances he gets."
   }
 }

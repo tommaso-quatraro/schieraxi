@@ -523,6 +523,11 @@ CATALOGO: dict[str, str] = {
     "aggiorna.parte_non_aggiornata_generica": "Una parte dei dati non si è aggiornata: il dettaglio è in Stato dei dati.",
     "aggiorna.controlli": "I controlli sui dati hanno trovato un problema: il dettaglio è in Stato dei dati.",
     "aggiorna.errore_server": "L'aggiornamento si è fermato per un errore del server: il dettaglio è nel registro.",
+    # scheda del giocatore, «Gol e assist rispetto alle occasioni» (`rendimento.testo` di GET /api/giocatore, scheda.rendimento):
+    # prima la frase la sceglievano i client con la soglia 0,3 (mercato.rend_* del catalogo, che resta per i server di prima)
+    "rendimento.cala": "Sta segnando più di quanto crea: è probabile che cali.",
+    "rendimento.sblocca": "Crea più di quanto segna: è probabile che si sblocchi.",
+    "rendimento.in_linea": "In linea con le occasioni che ha.",
 }
 
 

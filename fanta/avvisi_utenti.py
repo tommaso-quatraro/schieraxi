@@ -17,7 +17,8 @@ avvisato». Delle impostazioni contano le ore tranquille, la lingua e `app_nativ
 - Il giro ha un tempo massimo e un ordine a rotazione: chi resta fuori per il tempo finito passa per primo al giro dopo.
 - Lavoro pesante: i cambi confrontano prima gli stati dei giocatori (poco costoso) e ricalcolano la formazione solo se qualcosa è cambiato.
 - Il giro dei promemoria lo fa il servizio (`sorveglia_promemoria`), con i calcoli che ha già in memoria: il comando `promemoria`
-  del cron lo rifà solo se il servizio non lo fa da SEGNO_FRESCO (servizio fermo), come prima (`promemoria_dal_cron`).
+  del cron lo rifà solo se il servizio salta il turno in corso (servizio fermo, giro bloccato o in errore), come prima
+  (`promemoria_dal_cron`).
 """
 from __future__ import annotations
 
@@ -245,15 +246,23 @@ def esegui(funzione: str, db: sqlite3.Connection, adesso: datetime | None = None
 # Il giro dei promemoria (cron `script/server/promemoria.sh`, ogni 10 minuti) caricava il modello in un processo a parte e rifaceva
 # previsioni e formazione di ogni utente proprio mentre il servizio, nell'ora prima della scadenza, rifà le stesse cose (giri delle
 # probabili a 60, 30 e 15 minuti, pianificatore.py). Con gli account lo fa il servizio, negli stessi minuti tondi del cron, con i
-# calcoli che ha già in memoria (riscaldamento.py). Dopo ogni giro riuscito segna in FILE_SEGNO l'ora in cui l'ha cominciato; il
-# comando `promemoria` del cron, con un segno di meno di SEGNO_FRESCO, non rifà il giro. Servizio fermo, giro bloccato o giri in
-# errore: il segno invecchia e il cron torna a fare il giro come prima, così i promemoria arrivano lo stesso. Due giri insieme non
-# mandano doppioni: blocco per utente e stato di «cosa ho già mandato» (`blocco_avvisi`). Alla chiusura il servizio aspetta la fine
-# del lavoro dell'utente in corso (server._ciclo, `fermo` in `esegui`). FANTA_PIANIFICATORE=0 (come nell'ambiente di prova) spegne
-# anche questo giro.
+# calcoli che ha già in memoria (riscaldamento.py). Dopo ogni giro riuscito segna in FILE_SEGNO l'ora in cui l'ha cominciato.
+# Il comando `promemoria` del cron (`promemoria_dal_cron`) non rifà il giro se il segno è del turno in corso: un segno più vecchio
+# vuol dire che il servizio quel turno non l'ha fatto, o non ancora. Il cron e il servizio partono insieme al minuto tondo e il
+# segno arriva alla fine del giro: se il segno è del turno prima il cron aspetta, fino a ATTESA_CRON secondi dopo il minuto tondo.
+# Servizio fermo, giro bloccato o in errore: niente segno del turno, e il giro lo fa il cron già in quel turno, così ogni finestra
+# dei promemoria (larga almeno 16 minuti, notifiche.FINESTRE) ha sempre un giro. Una soglia sull'età del segno (15 minuti, fino
+# alla 1.611) lasciava un turno senza nessuno quando il servizio si fermava subito dopo un giro: scadenza alle 20:43, giri alle 20:20
+# e alle 20:40, a 3 minuti, fuori dal «quarto d'ora prima». Due giri insieme non mandano doppioni: blocco per utente e stato di
+# «cosa ho già mandato» (`blocco_avvisi`). Alla chiusura il servizio aspetta la fine del lavoro dell'utente in corso
+# (server._ciclo, `fermo` in `esegui`). FANTA_PIANIFICATORE=0 (come nell'ambiente di prova) spegne anche questo giro.
 FILE_SEGNO = "promemoria-servizio.json"    # nella cartella degli account: {"giro": inizio dell'ultimo giro riuscito del servizio}
 OGNI_MINUTI = 10                           # come il cron (*/10): stessi orari, quindi stesse finestre dei promemoria
-SEGNO_FRESCO = timedelta(minutes=15)       # il cron gira negli stessi minuti del servizio: un giro saltato dal servizio e lo rifà lui
+# secondi dopo il minuto tondo: il servizio comincia il giro mezzo secondo dopo e di solito lo finisce in pochi secondi; un giro in
+# errore si riprova al minuto dopo. Quando il cron subentra, dopo l'attesa gli restano almeno 4 minuti e mezzo nella finestra del
+# quarto d'ora prima per caricare il modello e servire gli utenti (servizio passato poco più di 20 minuti prima della chiusura).
+ATTESA_CRON = 90.0
+PASSO_CRON = 5.0                           # secondi: mentre aspetta, il cron riguarda il segno ed esce appena il servizio ha finito
 ATTESA_MASSIMA = 60.0                      # secondi: l'ora si riguarda almeno ogni minuto (cambio dell'ora legale, sospensioni)
 
 
@@ -276,18 +285,30 @@ def _ora_del_segno(file: Path | None) -> datetime | None:
     return ora if ora.tzinfo is None else None      # il servizio scrive l'ora senza fuso, come `adesso`
 
 
-def promemoria_dal_cron(adesso: datetime | None = None, file: Path | None = None) -> tuple[bool, str]:
-    """(il comando `promemoria` del cron fa il giro?, riga per il registro del cron o ""). No se il servizio ha fatto un giro
-    riuscito da meno di SEGNO_FRESCO. Sì, senza dire niente, se il segno non c'è (servizio senza promemoria, spento apposta, o
-    nessun giro riuscito) o è «nel futuro» (l'ora legale è tornata indietro); sì, con una riga, se il segno è vecchio: il servizio
-    è fermo o i suoi giri non riescono."""
-    adesso = adesso or datetime.now()
-    segno = _ora_del_segno(file)
-    if segno is None or segno > adesso:
+def promemoria_dal_cron(adesso: Callable[[], datetime] | None = None, file: Path | None = None,
+                        dormi: Callable[[float], None] | None = None) -> tuple[bool, str]:
+    """(il comando `promemoria` del cron fa il giro?, riga per il registro del cron o ""). No se il servizio ha già fatto il giro
+    di questo turno di OGNI_MINUTI minuti. Segno del turno prima: il servizio sta forse facendo il giro di adesso (lo scrive solo
+    alla fine), e il cron lo aspetta fino a ATTESA_CRON secondi dopo il minuto tondo, riguardando il segno ogni PASSO_CRON secondi;
+    se non arriva il servizio ha saltato il turno: sì, con una riga. Segno più vecchio (saltato anche il turno prima): sì, subito,
+    con una riga. Sì, senza dire niente, se il segno non c'è (servizio senza promemoria, spento apposta, o nessun giro riuscito) o
+    è «nel futuro» (l'ora legale è tornata indietro). `adesso` e `dormi`: l'orologio e l'attesa (le prove li fingono)."""
+    adesso, dormi = adesso or datetime.now, dormi or time.sleep
+    ora, segno = adesso(), _ora_del_segno(file)
+    if segno is None or segno > ora:
         return True, ""
-    if adesso - segno < SEGNO_FRESCO:
+    turno = _turno(ora)
+    if segno >= turno:
         return False, ""
-    minuti = int((adesso - segno).total_seconds() // 60)
+    if segno >= turno - timedelta(minutes=OGNI_MINUTI):
+        resta = (turno - ora).total_seconds() + ATTESA_CRON      # contato con le attese, non con l'ora: regge un cambio d'ora
+        while resta > 0:
+            dormi(min(PASSO_CRON, resta))
+            resta -= PASSO_CRON
+            nuovo = _ora_del_segno(file)
+            if nuovo is not None and nuovo >= turno:
+                return False, ""
+    minuti = int((adesso() - segno).total_seconds() // 60)
     return True, f"promemoria: il servizio non fa il giro da {minuti} minuti, lo fa il cron"
 
 
@@ -316,7 +337,7 @@ def sorveglia_promemoria(fermo: threading.Event, apri_db: Callable[[], sqlite3.C
     minuti, mezzo secondo dopo il minuto tondo.
     Il segno si scrive solo dopo un giro riuscito e finito (non interrotto dalla chiusura del servizio): vuol dire «i promemoria di
     questo turno sono partiti». Un giro in errore lascia una riga nel registro (solo il tipo), niente segno, e si riprova al minuto
-    dopo invece che al turno dopo; se continua a non riuscire il segno invecchia e il giro lo rifà il cron.
+    dopo invece che al turno dopo; se non riesce entro ATTESA_CRON secondi dal minuto tondo il giro di quel turno lo fa il cron.
     Quanti promemoria sono partiti va nel registro del servizio, con il numero dell'utente e mai il nome."""
     if not promemoria_nel_servizio():
         if account.multiutente():

@@ -291,6 +291,43 @@ final class RicercaESchedaViewModelTests: XCTestCase {
         XCTAssertTrue(vm.risultati.isEmpty)
     }
 
+    /// Come `scriviRisultati` della web: l'errore prende il posto dei risultati, che erano di un'altra ricerca (prima restavano sotto
+    /// il messaggio, e sembravano quelli del testo nuovo).
+    func testUnErroreTogliIRisultatiDellaRicercaDiPrima() async {
+        let giu = Scatola<Bool>()
+        let s = ServerDiProva { _, percorso, _ in
+            if giu.valore == true { throw ErroreApi.senzaRete }
+            if percorso.hasPrefix("/api/giocatori") { return Data(#"[{"id": 1, "nome": "Marco Rossi", "ruolo": "A", "squadra": "inter", "quotazione": 10}]"#.utf8) }
+            throw ErroreApi.server("niente")
+        }
+        let vm = RicercaViewModel(server: s)
+        vm.testo = "mar"
+        await vm.cerca()
+        XCTAssertEqual(vm.risultati.map(\.nome), ["Marco Rossi"])
+        giu.valore = true
+        vm.testo = "marco"
+        await vm.cerca()
+        XCTAssertNotNil(vm.errore)
+        XCTAssertTrue(vm.risultati.isEmpty, "i risultati di «mar» non restano sotto l'errore di «marco»")
+    }
+
+    /// Le prossime partite le manda il server nella scheda (`prossime_partite`), anche senza previsione: valgono quelle, non il
+    /// calendario (come `riempiScheda` della web).
+    func testLeProssimePartiteDelServerVinconoSulCalendario() async throws {
+        let scheda = #"{"calciatore": {"id": 7, "nome": "Paolo Esempio", "ruolo": "C", "squadra": "GEN", "squadra_slug": "genoa"}, "#
+            + #""prossime_partite": [{"giornata": 10, "avversario": "como", "in_casa": true, "difficolta": 1, "data": null}]}"#
+        let s = ServerDiProva { _, percorso, _ in
+            if percorso.hasPrefix("/api/giocatore/") { return Data(scheda.utf8) }
+            if percorso.hasPrefix("/api/calendario") { return try Fixture.dati("calendario") }
+            throw ErroreApi.server("niente")
+        }
+        let vm = SchedaGiocatoreViewModel(id: 7, server: s)
+        await vm.carica()
+        XCTAssertNil(vm.caricatore.dato?.previsione)
+        XCTAssertEqual(vm.prossime.map(\.avversario), ["como"])
+        XCTAssertEqual(vm.prossime.first?.difficolta, 1)
+    }
+
     func testSchedaDelGiocatoreConLeProssimePartite() async throws {
         let s = ServerDiProva.conFixture(["/api/giocatore/": "giocatore", "/api/calendario": "calendario"])
         let vm = SchedaGiocatoreViewModel(id: 5585, server: s)

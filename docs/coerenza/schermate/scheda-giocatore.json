@@ -44,6 +44,33 @@
       "forma": "web; il vocabolario: un voto non si colora in base al valore",
       "chi": "**fatto** (#863, #923): `SchedaGiocatoreView.pallino`, `PercheNumero` in `Domain/FantavotoAtteso.swift`, senza il motivo «gioca» in `LetturaScheda.perche`; prova `FantavotoAttesoTests` (le frasi), `SchedaGiocatoreComeLaWebTests` (niente «gioca»), web `tests/browser/test_scheda_gioca.py`, foto `giocatore`",
       "stato": "fatto"
+    },
+    {
+      "id": 146,
+      "schermata": "Scheda giocatore, «Tutti i numeri»: «Gol e assist rispetto alle occasioni»",
+      "web": "colore del numero e frase dal server: `rendimento.tendenza` (`cala` verde, `sblocca` rosso, `in_linea` neutro) e `rendimento.testo` con la sua chiave (`frase.rendimento.*`, tradotta). Con un server di prima la soglia 0,3 sul numero e `mercato.rend_*` (`RENDIMENTO` e `riempiScheda` in `app.js`)",
+      "iphone": "uguale alla web (`LetturaScheda.tendenza`, `LetturaScheda.fraseRendimento`, usate in `TuttiINumeri`); prima tutti e due sceglievano frase e colore con la soglia 0,3",
+      "forma": "web: il codice e la frase li decide il server (`scheda.rendimento`)",
+      "chi": "**fatto** (27/11/2026): prove `tests/test_scheda.py`, `tests/browser/test_scheda_numeri_del_server.py`, `SchedaNumeriDelServerTests`",
+      "stato": "fatto"
+    },
+    {
+      "id": 147,
+      "schermata": "Scheda giocatore, «Tutti i numeri»: «Prossime partite»",
+      "web": "dalla scheda del server (`prossime_partite`, la squadra della previsione o, senza previsione, quella del listone), anche senza previsione; con un server di prima dal calendario della stessa squadra (`riempiScheda` in `app.js`). Prima senza previsione non c'erano",
+      "iphone": "uguale alla web (`SchedaGiocatoreViewModel.prossime`); prima, senza previsione, ripiegava già sulla squadra del listone",
+      "forma": "web: le partite le sceglie il server (`scheda.prossime_partite`)",
+      "chi": "**fatto** (27/11/2026): prove `tests/test_scheda.py`, `tests/browser/test_scheda_numeri_del_server.py`, `RicercaESchedaViewModelTests.testLeProssimePartiteDelServerVinconoSulCalendario`",
+      "stato": "fatto"
+    },
+    {
+      "id": 148,
+      "schermata": "Scheda giocatore, «Stagione»: la tessera «gol (N rig.)»",
+      "web": "il numero è `stagione.gol_con_rigori` del server; con un server di prima la somma di `gol` e `rig_segnati` (`riempiScheda` in `app.js`)",
+      "iphone": "uguale alla web (`LetturaScheda.golConRigori`); prima tutti e due sommavano gol e rigori",
+      "forma": "web: il numero lo manda il server",
+      "chi": "**fatto** (27/11/2026): prove `tests/test_scheda.py`, `tests/browser/test_scheda_numeri_del_server.py`, `SchedaNumeriDelServerTests`",
+      "stato": "fatto"
     }
   ]
 }

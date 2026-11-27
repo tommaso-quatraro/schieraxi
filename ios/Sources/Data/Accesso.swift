@@ -108,6 +108,13 @@ enum Accesso {
         return testo.utf8.allSatisfy { $0 > 0x20 && $0 < 0x7F }
     }
 
+    /// Il segreto del «dispositivo fidato» accettabile (il server ne dà di 43 caratteri, `secrets.token_urlsafe(32)`): breve, solo
+    /// lettere, cifre, «-» e «_». Finisce in un'intestazione HTTP e nel Keychain: niente spazi, a capo o caratteri di controllo.
+    static func dispositivoValido(_ testo: String) -> Bool {
+        guard (20...200).contains(testo.utf8.count) else { return false }
+        return testo.utf8.allSatisfy { ($0 >= 0x30 && $0 <= 0x39) || ($0 >= 0x41 && $0 <= 0x5A) || ($0 >= 0x61 && $0 <= 0x7A) || $0 == 0x2D || $0 == 0x5F }
+    }
+
     /// Un codice di recupero accettabile: breve, lettere, cifre e trattini.
     static func codiceRecuperoValido(_ testo: String) -> Bool {
         guard !testo.isEmpty, testo.utf8.count <= 100 else { return false }
@@ -116,6 +123,11 @@ enum Accesso {
 
     /// L'archivio dei token in uso: il Keychain, o la memoria in modalità demo (le fotografie non toccano il Keychain).
     nonisolated(unsafe) static var archivio: any ArchivioToken = Demo.daLancio ? MemoriaToken() : KeychainToken()
+
+    /// Dove sta il segreto del «dispositivo fidato» (docs/API.md, 1.4b): nel Keychain, un elemento per server, accanto al token ma
+    /// con un servizio suo. In demo e nei test in memoria (le fotografie e le prove non toccano il Keychain).
+    static let archivioDispositivo: any ArchivioToken =
+        Demo.daLancio || Ambiente.ospiteDeiTest ? MemoriaToken() : KeychainToken(servizio: "it.schieraxi.app.dispositivo")
 
     /// Passa al widget, da sola, l'indirizzo e il TOKEN DEL WIDGET (`fw_`, a scopo limitato: solo lettura di oggi e widget) di adesso:
     /// nel file dell'App Group e nel Keychain condiviso (il ripiego). Il token della sessione non esce mai dal Keychain privato.

@@ -47,6 +47,7 @@ final class RicercaViewModel: ViewModelBase {
             errore = nil
         } catch {
             if Task.isCancelled || error is CancellationError { return }
+            risultati = []          // erano di un'altra ricerca: l'errore prende il loro posto, come `scriviRisultati` della web
             errore = error.localizedDescription
         }
     }

@@ -1,5 +1,66 @@
 [
   {
+    "versione": "1.615",
+    "data": "2026-11-27T17:53:40",
+    "titolo": "Scheda del giocatore più chiara e Rosa senza errori per chi ha lasciato la Serie A",
+    "voci": [
+      "Nella rosa, un giocatore uscito dal listone di Serie A (per esempio ceduto all'estero) al tocco dice «Questo giocatore non è più nel listone di Serie A.» invece di un errore tecnico.",
+      "Scheda del giocatore: le prossime partite ci sono anche senza previsione, e «Gol e assist rispetto alle occasioni» dice la stessa cosa sulla web e sull'iPhone.",
+      "iPhone: se la ricerca di un giocatore non riesce per la rete, sotto il messaggio non restano i risultati della ricerca di prima."
+    ],
+    "tecnico": [
+      "GET /api/giocatore/{id} per un id che non è in calciatori: 404 con scheda.FUORI_DAL_LISTONE (err.fuori_listone), da scheda.FuoriDalListone; prima 400 «calciatore N non nel listone» (il testo dell'eccezione arrivava all'utente). Tolto da MESSAGGI_SENZA_TRADUZIONE.",
+      "scheda.rendimento: campi nuovi tendenza (cala/sblocca/in_linea, soglia SOGLIA_RENDIMENTO 0,3 sul numero arrotondato a due decimali), testo e frase (frasi.F rendimento.*, frase.rendimento.* nel catalogo). stagione.gol_con_rigori. prossime_partite da scheda.prossime_partite(gestione.calendario, previsione, calciatore): squadra della previsione o squadra_slug del listone; [] con CampionatoFinito o SenzaCalendario.",
+      "Web: riempiScheda usa tendenza, testo (testoDi), gol_con_rigori e prossime_partite, con il ripiego di prima per un server senza i campi (soglia, somma, calendario anche per squadra_slug). vistaRosa: riga con data-fuori-listone e avviso(err.fuori_listone) quando GET /api/rosa dice giocatori[].fuori_listone (campo nuovo: codice non nel listone dell'archivio; false senza codice o senza listone); con un server di prima, la quotazione vuota.",
+      "iPhone: Rendimento.tendenza e testo, StagioneGiocatore.golConRigori, SchedaGiocatore.prossimePartite; LetturaScheda.tendenza, fraseRendimento, golConRigori; SchedaGiocatoreViewModel.prossime preferisce il campo del server; RicercaViewModel svuota i risultati all'errore; GiocatoreRosa.fuoriListone; RigaRosa.fuoriListone (il campo del server, ripiego sulla quotazione vuota) con un avviso al posto della scheda. Registro di coerenza: righe 145-149."
+    ],
+    "titolo_en": "Clearer player card and no errors in the roster for players who left Serie A",
+    "voci_en": [
+      "In the roster, a player who left the Serie A player list (for example sold abroad) now says “This player is no longer in the Serie A player list.” when tapped, instead of a technical error.",
+      "Player card: the next matches are there even without a forecast, and “Goals and assists against chances” says the same thing on the web and on the iPhone.",
+      "iPhone: if a player search fails because of the network, the results of the previous search no longer stay under the message."
+    ]
+  },
+  {
+    "versione": "1.614",
+    "data": "2026-11-27T17:41:41",
+    "titolo": "iPhone: accesso più chiaro dopo troppi tentativi e a sessione finita",
+    "voci": [
+      "iPhone, accesso: dopo «troppi tentativi» l'attesa vale solo per quello che stavi facendo; «Password dimenticata», «Registrati» e «Continua con Google» non restano spenti.",
+      "iPhone: se un limite del giorno dice già quando si azzera (per esempio in Scrivici), il tempo non si ripete due volte.",
+      "iPhone: quando il server chiude la sessione, la schermata di accesso dice «La sessione è finita: accedi di nuovo.», come la web; e il telefono su cui entri viene riconosciuto, così poi rientri anche se qualcuno prova password sul tuo nome."
+    ],
+    "tecnico": [
+      "iPhone: ModuloAccesso.attesa (fine e passo del 429) al posto dello @State della vista; vale solo nel passo in cui è nata e ModuloAccesso.vai la toglie, come contaAttesa della web.",
+      "iPhone: ErroreApi.errorDescription non aggiunge «Riprova tra …» quando la frase del server contiene la parola «tra» (ErroreApi.diceGiaLAttesa, come attesaDa della web): Scrivici, err.limite_oggi, err.troppe_ora.",
+      "iPhone: SessioneAccount.chiudiPerSessioneFinita prepara accesso.sessione_finita (catalogo, nuova chiave in ios/testi/accesso.txt) per la schermata di accesso quando un 401 confermato chiude una sessione che c'era, come avviso «attenzione» (AvvisoAccesso: colore attenzione e icona d'avviso, senza vibrazione d'errore; le conferme restano verdi); non dopo Esci, né senza una sessione.",
+      "iPhone: il campo dispositivo di POST /api/account/accedi e registra (nativo) si salva nel Keychain (servizio it.schieraxi.app.dispositivo, un elemento per server; Accesso.dispositivoValido) e ServerHTTP lo rimanda in X-Fanta-Dispositivo su accedi, registra e recupero (docs/API.md 1.4b). Esci non lo toglie.",
+      "Web: solo il commento di spiegaRegistrazione (il modo predefinito è invito, non aperta). Registro di coerenza: riga 110 corretta, riga 124 nuova."
+    ],
+    "titolo_en": "iPhone: clearer sign-in after too many attempts and when the session ends",
+    "voci_en": [
+      "iPhone, sign in: after “\u0001” the wait only applies to what you were doing; “\u0001”, “\u0001” and “\u0001” no longer stay disabled.",
+      "iPhone: when a daily limit already says when it resets (for example in Write to us), the time is no longer repeated twice.",
+      "iPhone: when the server ends your session, the sign-in screen says “\u0001”, like the web; and the phone you sign in on is recognised, so you can get back in later even if someone is trying passwords on your name."
+    ]
+  },
+  {
+    "versione": "1.613",
+    "data": "2026-11-27T17:21:43",
+    "titolo": "Il promemoria del quarto d'ora prima arriva anche se il server si ferma",
+    "voci": [
+      "Il promemoria di un quarto d'ora prima della chiusura della formazione arriva anche quando la parte del server che lo manda si ferma all'improvviso: lo manda un secondo controllo, qualche minuto più tardi del solito. Prima poteva saltare, per esempio con la chiusura alle 20:43 e quella parte del server ferma dalle 20:25."
+    ],
+    "tecnico": [
+      "avvisi_utenti.promemoria_dal_cron: il cron non rifà il giro solo se il segno (promemoria-servizio.json) è del turno di 10 minuti in corso. Segno del turno prima: aspetta il giro del servizio fino a ATTESA_CRON (90 secondi) dopo il minuto tondo, riguardando il segno ogni PASSO_CRON (5 secondi) ed uscendo appena arriva; poi subentra, con la riga «promemoria: il servizio non fa il giro da N minuti, lo fa il cron». Segno più vecchio: subentra subito. Tolta la soglia SEGNO_FRESCO (15 minuti sull'età del segno): con il servizio fermo subito dopo un giro lasciava un turno senza nessun giro (scadenza alle 20:43, giri alle 20:20 e alle 20:40, fuori dalla finestra del quarto d'ora prima, da 4 a 20 minuti).",
+      "fanta promemoria: il tempo passato ad aspettare il servizio esce dal tempo del giro del cron (_avvisi_per_utente(funzione, max_secondi) -> esegui(max_secondi=secondi_del_giro - attesa)), così il timeout di promemoria.sh non ferma il giro a metà del lavoro di un utente. promemoria_dal_cron riceve l'orologio come funzione (adesso) e l'attesa (dormi) per le prove. Un giro fatto da tutti e due (servizio più lento dell'attesa) non manda doppioni: blocco per utente e stato «già mandato», provato in tests/test_promemoria_servizio.py."
+    ],
+    "titolo_en": "The fifteen-minute reminder arrives even if the server stops",
+    "voci_en": [
+      "The reminder fifteen minutes before the lineup closes arrives even when the part of the server that sends it stops suddenly: a second check sends it, a few minutes later than usual. Before, it could be skipped, for example with the lineup closing at 20:43 and that part of the server stopped since 20:25."
+    ]
+  },
+  {
     "versione": "1.612",
     "data": "2026-11-27T16:46:33",
     "titolo": "Novità in inglese più giuste",

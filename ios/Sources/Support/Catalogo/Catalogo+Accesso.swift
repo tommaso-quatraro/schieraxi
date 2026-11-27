@@ -109,6 +109,9 @@ extension Catalogo {
         /// `accesso.torna`
         static let torna = "Torna all'accesso"
 
+        /// `accesso.sessione_finita`
+        static let sessioneFinita = "La sessione è finita: accedi di nuovo."
+
         /// `accesso.codice_inviato`
         static let codiceInviato = "Se l'indirizzo è registrato, il codice sta arrivando (vale 15 minuti)."
 
