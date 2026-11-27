@@ -544,8 +544,11 @@ def _errore_valore(request: Request, e: ValueError):
         codice = getattr(type(e), "codice", None)           # nome breve dell'errore per i client (es. «formazione_non_valida»), facoltativo
         # 422 per i dati oltre i tetti (regole_testo.TestoTroppoLungo, regole.RegoleTroppoGrandi); 409 a campionato finito (consigli.CampionatoFinito)
         stato = getattr(type(e), "stato", 400)
+        # un messaggio scritto come frase con la chiave (fanta/frasi.py) porta anche `frase`: la web lo traduce (campo facoltativo)
+        frase = frasi.di(e.args[0]) if len(e.args) == 1 else None
         return JSONResponse(status_code=stato if stato in (400, 409, 422) else 400,
-                            content={"detail": str(e)[:500]} | ({"codice": codice} if isinstance(codice, str) else {}))
+                            content={"detail": str(e)[:500]} | ({"codice": codice} if isinstance(codice, str) else {})
+                            | ({"frase": frase} if frase else {}))
     codice = secrets.token_hex(4)               # lo stesso codice nel log del servizio: chi gestisce l'app ritrova il caso
     passi = traceback.extract_tb(e.__traceback__)
     dove = f"{Path(passi[-1].filename).name}:{passi[-1].lineno}" if passi else "?"

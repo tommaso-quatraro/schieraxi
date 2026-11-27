@@ -204,7 +204,9 @@ async function api(percorso, opzioni = {}) {
         const testo = dati && typeof dati.detail === "string" ? dati.detail
           : dati === null && r.status >= 502 && r.status <= 504 ? t("comune.server_non_risponde")
           : r.status >= 500 ? t("comune.errore_server", { n: r.status }) : t("comune.errore_n", { n: r.status });
-        const e = new Error(traduciErrore(testo)); e.originale = testo; e.status = r.status; e.riprova = Number(r.headers.get("Retry-After")) || 0;
+        // con la frase con la chiave (campo facoltativo `frase`, dal 27/11/2026) si traduce da lei; senza, dal testo italiano
+        const tradotto = dati && dati.frase && typeof dati.detail === "string" ? traduciFrase(dati.frase, testo) : traduciErrore(testo);
+        const e = new Error(tradotto); e.originale = testo; e.status = r.status; e.riprova = Number(r.headers.get("Retry-After")) || 0;
         e.codice = dati && typeof dati.codice === "string" ? dati.codice : "";            // nome breve dell'errore (accesso con Google)
         if (dati && Array.isArray(dati.social)) stato.social = dati.social;
         if (dati && typeof dati.email_attiva === "boolean") stato.emailAttiva = dati.email_attiva;

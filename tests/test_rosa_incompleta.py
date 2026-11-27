@@ -99,10 +99,19 @@ def _client():
 
 
 def test_formazione_risponde_con_la_causa_vera_e_il_codice(lega_corta):
-    """Le app già installate leggono il 400 di sempre: con la frase giusta e il nome breve dell'errore."""
+    """Le app già installate leggono il 400 di sempre: con la frase giusta e il nome breve dell'errore. In più la frase con la chiave
+    (`frase`), così la web in inglese la traduce (la Formazione di un'altra squadra, o uno stato d'avvio vecchio)."""
     r = _client().get("/api/formazione")
     assert r.status_code == 400, r.text
-    assert r.json() == {"detail": TESTO, "codice": "rosa_incompleta"}
+    corpo = r.json()
+    assert corpo["detail"] == TESTO and corpo["codice"] == "rosa_incompleta"
+    assert corpo["frase"]["chiave"] == "formazione.rosa_incompleta" and corpo["frase"]["param"]["squadra"] == "Real Finzione"
+
+
+def test_un_errore_senza_frase_non_cambia(lega_corta):
+    """Un messaggio scritto come testo semplice resta `{detail}` come prima: `frase` c'è solo per una frase con la chiave."""
+    r = _client().get("/api/formazione", params={"squadra": "Non esiste"})
+    assert r.status_code == 400 and set(r.json()) == {"detail"}, r.text
 
 
 def test_lo_stato_d_avvio_dice_se_la_rosa_non_basta(lega_corta):

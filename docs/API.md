@@ -570,6 +570,10 @@ Cosa devono fare gli altri client: **app iPhone** aggiungere `avviso_prima: Int?
 
 Per il client: `401` vuol dire «torna all'accesso»; `202` e `429` vogliono dire «riprova dopo `Retry-After`»; `412` vuol dire «ricarica e rifai».
 
+Dal 27/11/2026 un `400`, `409` o `422` il cui messaggio è una frase con la chiave (`fanta/frasi.py`, per esempio `rosa_incompleta` di
+`GET /api/formazione` e `campionato_finito`) porta anche `frase` = `{chiave, param}`, come le frasi delle altre risposte: la web in
+inglese lo traduce da lì. Campo facoltativo: un messaggio scritto come testo semplice non ce l'ha, e un client vecchio lo ignora.
+
 ## 9. Client e intestazioni
 
 - **Web app** (`fanta/web/app.js`): cookie di sessione; `X-Fanta: 1` su ogni scrittura; `Accept-Language` con la lingua scelta nell'app (`it` o `en`) su ogni richiesta.
