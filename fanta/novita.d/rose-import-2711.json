@@ -5,7 +5,7 @@
     "Se una squadra risulta con troppi giocatori perché il nome di una squadra della lega è stato preso per un club, il messaggio dice quale nome e cosa fare, invece di «ha 50 giocatori» e basta.",
     "Reimportando solo la tua rosa dopo uno scambio, «Cosa cambia» e lo storico mostrano il passaggio giusto anche se la rosa salvata dell'altra squadra è vecchia.",
     "Nel testo con un nome per riga «Crediti residui: 37» si legge anche se accanto ai giocatori non ci sono club e costo.",
-    "«Giocatori da sistemare»: se le rose non si leggono la web lo dice, come l'iPhone. Sull'iPhone, con due righe uguali nella stessa squadra, abbinandone una sparisce solo quella."
+    "«Giocatori da sistemare»: se le rose non si leggono la web e l'iPhone lo dicono al posto dell'elenco. Sull'iPhone, con due righe uguali nella stessa squadra, abbinandone una sparisce solo quella."
   ],
   "titolo_en": "Import rosters: teams named like a club and trades seen correctly",
   "voci_en": [
@@ -13,14 +13,14 @@
     "If a team ends up with too many players because the name of a league team was taken for a club, the message says which name and what to do, instead of just «has 50 players».",
     "When you re-import only your own roster after a trade, «What changes» and the history show the right move even if the saved roster of the other team is old.",
     "In text with one name per line, «Crediti residui: 37» is read even when the players have no club and cost next to them.",
-    "«Players to fix»: if the rosters cannot be read the web app says so, like the iPhone. On the iPhone, with two identical rows in the same team, matching one removes only that one."
+    "«Players to fix»: if the rosters cannot be read, the web app and the iPhone say so in place of the list. On the iPhone, with two identical rows in the same team, matching one removes only that one."
   ],
   "tecnico": [
     "rose.py: una riga con il solo nome di un club di Serie A è il titolo di una fantasquadra quando è una squadra già salvata (squadre_note), quando i giocatori hanno il club sulla stessa riga (_club_sulla_riga) o dove comincia una squadra: in cima al blocco, dopo una riga vuota, dopo totale o crediti (_estrai_blocco, _club_da_solo). Nel testo con un nome per riga (_club_e_titolo): dopo una riga vuota, dopo un giocatore che ha già il club, in prima riga, dopo i crediti; nei testi di soli nomi anche dopo una rosa completa o con il nome di una squadra salvata. Le righe decise come titoli arrivano a _Celle (titoli) e diventano «testo».",
     "rose.py: i club che potrebbero essere un titolo finiscono in SquadraLetta.club_dubbi e nell'avviso rose.club_forse_squadra (frasi.py, frase.json); limiti.controlla_rose(ctx, rose, lette) li usa nel 413 per troppi giocatori (err.squadra_troppi_giocatori_club). Un foglio diviso per club (titoli di club con sotto i giocatori di quel club, _giocatori_del_club) si salta come listone.",
     "rose.py: CSV con la colonna della fantasquadra: _colonna_fantasquadra conta anche i club che non sono quelli del giocatore della riga, e il club del giocatore non si prende più dalla colonna della fantasquadra.",
     "rose.py: nel testo con un nome per riga la riga dei crediti va nella colonna dei nomi (prima in una quinta colonna, che senza club e costo era un blocco senza squadra).",
-    "movimenti.differenze(prima, dopo, lette): un giocatore in due squadre è di quella letta dal file (server._importa, anteprima_rose.anteprima, comando importa).",
+    "movimenti.differenze(prima, dopo, lette): un giocatore in due squadre è di quella letta dal file (server._importa, anteprima_rose.anteprima, comando importa); chi era già nella squadra di arrivo non conta come passaggio, così il doppione rimasto non ripete il passaggio all'importazione dopo.",
     "Web: paNonRiconosciuti mostra l'errore di lettura (pav.da_sistemare_errore, role=alert). iPhone: GiocatoreDaSistemare.posizione nell'identificativo, DubbiRoseViewModel.erroreLettura mostrato in ImportaRoseView."
   ]
 }
