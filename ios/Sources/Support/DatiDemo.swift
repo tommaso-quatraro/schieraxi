@@ -278,10 +278,14 @@ private extension LegaDemo {
         d["previsione"] = previsione
         d["voti"] = elencoVoti
         d["andamento"] = andamento(elencoVoti)
-        // le statistiche avanzate hanno gli stessi gol e assist della stagione, e «ogni 90'» viene dai minuti
+        // le statistiche avanzate hanno gli stessi gol e assist della stagione, e «ogni 90'» viene dai minuti. Gol e assist attesi
+        // dal ruolo, per le partite con il voto (`golAttesi` e `assistAttesi`: 0 per un portiere): prima erano uguali per tutti i
+        // ruoli e un portiere «rendeva» −2 punti a partita (revisione della #955). Chi oggi è infortunato, com'era quando giocava
+        let conVoto = stagione["con_voto"] as? Int ?? 0
+        let comeGiocava = giocatoreDelleGiornate(p)
         let minuti = 560 + p.id % 200
-        let xg = 3.4 + Double(p.id % 5) * 0.7
-        let xa = 1.2 + Double(p.id % 3) * 0.4
+        let xg = (comeGiocava.golAttesi * Double(conVoto) * 100).rounded() / 100
+        let xa = (comeGiocava.assistAttesi * Double(conVoto) * 100).rounded() / 100
         let tiri = 22 + p.id % 9
         func ogni90(_ x: Double) -> Double { (x * 90 / Double(minuti) * 100).rounded() / 100 }
         d["avanzate"] = ["minuti": minuti, "xg": xg, "xa": xa, "tiri": tiri, "gol": gol, "assist": assist,
@@ -290,7 +294,7 @@ private extension LegaDemo {
                          "stagioni_precedenti": [["stagione": "2025-26", "minuti": 2400, "gol": 11, "xg": 10.2, "assist": 4, "xa": 3.6]],
                          // come il server (#862): il giorno dell'ultima partita letta dalla fonte, qualche giorno prima di adesso
                          "dati_fino_al": formatta(adesso.addingTimeInterval(-3 * 86_400), "yyyy-MM-dd")] as [String: Any]
-        d["rendimento"] = rendimento(gol: gol, xg: xg, assist: assist, xa: xa, conVoto: stagione["con_voto"] as? Int ?? 0)
+        d["rendimento"] = rendimento(gol: gol, xg: xg, assist: assist, xa: xa, conVoto: conVoto)
         if let o = fantasquadra(di: p.id) { d["proprietario"] = o }
         return d
     }
@@ -332,6 +336,16 @@ private extension LegaDemo {
         return differenza > 0.6 ? "in_crescita" : differenza < -0.6 ? "in_calo" : "stabile"
     }
 
+    /// Il giocatore com'era nelle giornate già giocate: chi oggi è infortunato (rendimento 0, nessun gol atteso) giocava da riserva,
+    /// con il rendimento di 5,8. Serve ai voti della scheda e ai loro gol e assist attesi.
+    static func giocatoreDelleGiornate(_ p: Calciatore) -> Calciatore {
+        guard p.assente || p.punti <= 0 else { return p }
+        var prima = p
+        prima.assente = false
+        prima.punti = 5.8
+        return prima
+    }
+
     /// Le giornate del giocatore come le manda il server (`_voti` di fanta/scheda.py, #944): una riga per ogni giornata di Serie A
     /// già giocata in cui era in campo, con il voto (null se senza voto), i bonus e i malus della giornata e il fantavoto con le
     /// regole della demo (`punteggio.fantavoto`). I voti salgono e scendono attorno a un voto che viene dal suo rendimento
@@ -339,8 +353,7 @@ private extension LegaDemo {
     static func voti(_ p: Calciatore) -> [[String: Any]] {
         // scarti dal voto di base, in mezzi punti: prima il voto era sempre 5,5 per chi ha l'id multiplo di 15, come Marténi
         let scarti: [Double] = [0, 0.5, -0.5, 1, 0, -1, 0.5, 0, -0.5, 0.5]
-        // chi oggi è infortunato (rendimento 0) ha giocato le giornate di prima con un voto da riserva
-        let base = 6.0 + ((p.punti > 0 ? p.punti : 5.8) - 6.3) * 0.3
+        let base = 6.0 + (giocatoreDelleGiornate(p).punti - 6.3) * 0.3
         func mezzoPunto(_ x: Double) -> Double { min(8, max(4.5, (x * 2).rounded() / 2)) }
         var elenco: [[String: Any]] = []
         for g in 1..<giornata {

@@ -98,18 +98,19 @@ enum LegaDemo {
     // MARK: - Calciatori
 
     /// La mia rosa (25): 3 portieri, 8 difensori, 8 centrocampisti, 6 attaccanti. La consigliata (`moduli[0]`) resta quella da
-    /// schierare: nessun cambio con un altro della rosa le dà un punto atteso o più (`SOGLIA_CAMBIO_PUNTI` del server, #944,
-    /// `DemoConsigliataTests`). Per questo Lemão gioca il 68% e Kervan il 78%, e valgono meno di Marténi, che resta titolare anche
-    /// in dubbio; Dimarzi gioca l'84%, e al posto di Marténi, con il 4-4-2, darebbe meno di un punto in più.
+    /// schierare: nessuna formazione della rosa, in nessun modulo della lega e con quanti cambi si vuole, le dà un punto atteso o più
+    /// (`SOGLIA_CAMBIO_PUNTI` del server, #944, `DemoConsigliataTests`). Per questo Lemão gioca il 68% e Kervan il 78%, e valgono
+    /// meno di Marténi, che resta titolare anche in dubbio; Dimarzi gioca l'80% e Di Corvara l'86%, e valgono più o meno quanto
+    /// Buonvicini (prima, insieme nel 4-4-2, davano +1,1). Il cambio migliore è Reimvaldt al posto di Marténi, con il 3-5-2: +0,5.
     static let miaRosa: [CalciatoreDemo] = [
         cal(101, "Ivo Sorvani", "P", "inter", costo: 12, pVoto: 0.98, punti: 6.1),
         cal(102, "Milo Magrenti", "P", "milan", costo: 22, pVoto: 0.97, punti: 5.8),
         cal(103, "Marcello Carsetti", "P", "atalanta", costo: 14, pVoto: 0.96, punti: 5.6),
         cal(104, "Alvise Bastrani", "D", "inter", costo: 28, pVoto: 0.96, punti: 6.4, diffidato: true),
-        cal(105, "Fabio Dimarzi", "D", "inter", costo: 31, pVoto: 0.84, punti: 6.9),
+        cal(105, "Fabio Dimarzi", "D", "inter", costo: 31, pVoto: 0.80, punti: 6.9),
         cal(106, "Glauco Brevisi", "D", "juventus", costo: 20, pVoto: 0.93, punti: 6.0),
         cal(107, "Aurelio Buonvicini", "D", "napoli", costo: 19, pVoto: 0.92, punti: 5.9),
-        cal(108, "Gianni Di Corvara", "D", "napoli", costo: 17, pVoto: 0.94, punti: 6.2),
+        cal(108, "Gianni Di Corvara", "D", "napoli", costo: 17, pVoto: 0.86, punti: 6.2),
         cal(109, "Rolf Gostein", "D", "fiorentina", costo: 9, pVoto: 0.0, punti: 0.0, assente: true),
         cal(110, "Adriano Cambrisi", "D", "juventus", costo: 15, pVoto: 0.85, punti: 5.7),
         cal(111, "Ewan Ndolani", "D", "roma", costo: 8, pVoto: 0.78, punti: 5.2),
