@@ -2838,7 +2838,7 @@
   },
   "/api/affidabilita": {
    "get": {
-    "description": "Il risultato dell'ultima prova del modello sulle giornate passate (vuoto se non è ancora stata fatta).",
+    "description": "Il risultato dell'ultima prova del modello sulle giornate passate (vuoto se non è ancora stata fatta). In `sintesi`\n`modello_batte_fantamedia` dice se i punti del modello valgono almeno quelli da fantamedia (i client li mostrano in verde).",
     "responses": {
      "200": {
       "content": {

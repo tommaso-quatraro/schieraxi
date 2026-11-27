@@ -57,10 +57,10 @@
     {
       "id": 117,
       "schermata": "Stato dei dati: titoli e prova del modello (#931)",
-      "web": "le carte «Ultimi aggiornamenti», «Probabili formazioni raccolte», «Quanto ci azzecca il modello», «Quanto è affidabile il modello»; nella prova «errore sui fantavoti (modello)», «errore (da fantamedia)», «punti formazione (modello)», «Punti medi per giornata: modello 70,1, da fantamedia 66,4, massimo possibile 88,0. …» e, senza giornate, «La prova si fa da sola dopo gli aggiornamenti…» (`apriStatoDati`, `mostraAffidabilita`, `avv.*`)",
-      "iphone": "prima: titoli scritti a mano («Dati», «Avanzate», «Quanto sono giuste le previsioni», «Quanto sono affidabili le previsioni») e nella prova «(SchieraXI)» al posto di «(modello)». Ora i titoli e le frasi della web dal catalogo, e i numeri in cima senza un titolo loro, come il riepilogo della web (`StatoDatiView`); il resto: Differenze ammesse",
+      "web": "le carte «Ultimi aggiornamenti», «Probabili formazioni raccolte», «Quanto ci azzecca il modello», «Quanto è affidabile il modello»; nella prova «errore sui fantavoti (modello)», «errore (da fantamedia)», «punti formazione (modello)», «Punti medi per giornata: modello 70,1, da fantamedia 66,4, massimo possibile 88,0. …» e, senza giornate, «La prova si fa da sola dopo gli aggiornamenti…» (`apriStatoDati`, `mostraAffidabilita`, `avv.*`). I punti della formazione del modello sono verdi quando il server dice che valgono almeno quelli da fantamedia (`sintesi.modello_batte_fantamedia`, #982: prima la web confrontava da sola i due numeri; con un server di prima, senza il campo, lo fa ancora; `modelloBatteFantamedia`)",
+      "iphone": "prima: titoli scritti a mano («Dati», «Avanzate», «Quanto sono giuste le previsioni», «Quanto sono affidabili le previsioni») e nella prova «(SchieraXI)» al posto di «(modello)». Ora i titoli e le frasi della web dal catalogo, e i numeri in cima senza un titolo loro, come il riepilogo della web (`StatoDatiView`); il resto: Differenze ammesse. L'app legge lo stesso campo del server, con lo stesso ripiego per un server di prima (`SintesiAffidabilita.batteFantamedia`, #982): è da qui che il verde sulla tessera dei punti del modello prende il sì o il no",
       "forma": "web",
-      "chi": "**fatto** (#931): prova `RestiDalCatalogoTests`; foto `lega-stato`",
+      "chi": "**fatto** (#931): prova `RestiDalCatalogoTests`; foto `lega-stato`. Verde dal server con #982: prove `test_affidabilita_batte.py`, `tests/browser/test_affidabilita_verde.py`, `AffidabilitaVerdeTests`",
       "stato": "fatto"
     }
   ]

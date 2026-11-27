@@ -1412,8 +1412,9 @@ def _imposta_crediti(dati: CreditiSquadre, ctx: Contesto):
 
 @app.get("/api/affidabilita")
 def leggi_affidabilita(ctx: Contesto = Depends(lega_corrente)):
-    """Il risultato dell'ultima prova del modello sulle giornate passate (vuoto se non è ancora stata fatta)."""
-    return affidabilita.carica(ctx.affidabilita) or {"righe": [], "sintesi": None}
+    """Il risultato dell'ultima prova del modello sulle giornate passate (vuoto se non è ancora stata fatta). In `sintesi`
+    `modello_batte_fantamedia` dice se i punti del modello valgono almeno quelli da fantamedia (i client li mostrano in verde)."""
+    return affidabilita.per_i_client(affidabilita.carica(ctx.affidabilita)) or {"righe": [], "sintesi": None}
 
 
 class SchierataDiario(BaseModel):
