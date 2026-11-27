@@ -73,9 +73,9 @@ final class DatiVecchiTests: XCTestCase {
         XCTAssertEqual(DatiVecchi.frase(salvatiIl: undici, motivo: nil),
                        "Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato l'11 nov alle 10:05 e può essere vecchio.")
         let diciotto = try oraItaliana(giorno: 18, ora: 10, minuto: 5)
-        XCTAssertTrue(DatiVecchi.frase(salvatiIl: diciotto, motivo: "Guasto").contains("(dati salvati il 18 nov alle 10:05,"))
+        XCTAssertTrue(DatiVecchi.frase(salvatiIl: diciotto, motivo: "Guasto").contains("Dati salvati il 18 nov alle 10:05,"))
         let primo = try oraItaliana(giorno: 1, ora: 10, minuto: 5)
-        XCTAssertTrue(DatiVecchi.frase(salvatiIl: primo, motivo: "Guasto").contains("(dati salvati il 1 nov alle 10:05,"))
+        XCTAssertTrue(DatiVecchi.frase(salvatiIl: primo, motivo: "Guasto").contains("Dati salvati il 1 nov alle 10:05,"))
     }
 
     func testIlCaricatoreRicordaIlMotivoSoloSeIlServerHaRisposto() async throws {
