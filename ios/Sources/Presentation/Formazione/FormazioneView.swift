@@ -96,13 +96,15 @@ struct FormazioneView: View {
             }
             // allo scadere della formazione in pagina si rilegge UNA volta (5 secondi dopo, per dare tempo al server): diventa di sola
             // lettura. Se il server la dice ancora aperta (orologio del telefono avanti) non si rilegge di nuovo: un salvataggio
-            // arrivato tardi riceve «formazione chiusa» e fa rileggere
+            // arrivato tardi riceve «formazione chiusa» e fa rileggere. Se nell'attesa è già partita una lettura (per esempio tornando
+            // nell'app con i dati vecchi), basta quella
             .task(id: "\(fase == .active)-\(scadenzaInPagina ?? "")") {
                 guard fase == .active, let inizio = Quando.data(scadenzaInPagina) else { return }
                 let attesa = inizio.timeIntervalSinceNow + DatiVecchi.attesaDopoLaScadenza
                 guard attesa > 0, attesa < 2 * 24 * 3600 else { return }
                 try? await Task.sleep(for: .seconds(attesa))
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled,
+                      DatiVecchi.rileggiDopoLAttesa(scadenza: inizio, ultimaLettura: vm.ultimaLettura) else { return }
                 await ricarica()
             }
             // quel lavoro si ferma quando l'app non è attiva: se l'app era fuori quando toccava rileggere, tornando si rilegge subito

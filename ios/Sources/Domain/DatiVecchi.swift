@@ -86,9 +86,12 @@ enum DatiVecchi {
         return adesso.timeIntervalSince(lettaIl) > etaMassimaAlRitorno
     }
 
-    /// Il lavoro della scadenza, finita l'attesa, rilegge.
+    /// Il lavoro della scadenza, finita l'attesa (`attesaDopoLaScadenza`), rilegge solo se dalla scadenza non è già partita
+    /// un'altra lettura: per esempio tornando nell'app in quei secondi con i dati vecchi (`rileggiAlRitorno`). Una lettura per
+    /// evento, come `scadenzaRiletta` della web (revisione della #984: prima partivano due letture).
     static func rileggiDopoLAttesa(scadenza: Date, ultimaLettura: Date?) -> Bool {
-        true
+        guard let ultimaLettura else { return true }
+        return ultimaLettura <= scadenza
     }
 
     private static let calendario: Calendar = {

@@ -89,10 +89,13 @@ final class FormazioneViewModel: ViewModelBase {
     /// Formazione e scelta si stanno rileggendo: i comandi aspettano i dati nuovi.
     @Published private(set) var leggendo = false
 
-    /// Quando è partita l'ultima lettura della Formazione (`sc.letta` della web): tornando dal secondo piano, con i dati di più di
-    /// 5 minuti fa, la schermata si rilegge (`DatiVecchi.rileggiAlRitorno`).
+    /// Da quando i dati a video sono freschi, come `sc.letta` della web: l'ultima lettura partita o l'ultima scrittura riuscita (il
+    /// server ha appena risposto su questa formazione). Tornando dal secondo piano, con i dati di più di 5 minuti fa, la schermata si
+    /// rilegge (`DatiVecchi.rileggiAlRitorno`).
     private(set) var lettaIl: Date?
-    /// Quando è partita l'ultima lettura.
+    /// Quando è partita l'ultima lettura, senza le scritture: se ne è partita una dopo la scadenza (per esempio tornando nell'app
+    /// con i dati vecchi), il lavoro della scadenza non rilegge di nuovo (`DatiVecchi.rileggiDopoLAttesa`). Un salvataggio accettato
+    /// in quei secondi non conta, come sulla web: dopo la scadenza solo una lettura dice se la formazione è chiusa.
     private(set) var ultimaLettura: Date?
 
     /// La giornata della scelta letta: se cambia si riparte da zero.
@@ -407,7 +410,9 @@ final class FormazioneViewModel: ViewModelBase {
         generazione += 1
         let g = generazione
         leggendo = true
-        lettaIl = Date()
+        let partita = Date()
+        lettaIl = partita
+        ultimaLettura = partita
         defer {
             if g == generazione {
                 leggendo = false
@@ -617,6 +622,7 @@ final class FormazioneViewModel: ViewModelBase {
                 return false
             }
             let spuntaPrima = spuntaValida
+            if cera { lettaIl = Date() }        // il server ha appena tolto la scelta: i dati sono freschi, come la web
             dimentica()
             ricordaSulTelefono(f)
             ricordaLaSpunta(f, prima: spuntaPrima)
@@ -655,6 +661,7 @@ final class FormazioneViewModel: ViewModelBase {
             let eraConsigliata = Set(ids) == Set(consigliati(f)) || (stessi && salvata?.eraConsigliata == true)
             let messaOra = messa ?? (stessi && salvata?.messa == true)
             let spuntaPrima = spuntaValida
+            lettaIl = Date()                    // il server ha appena risposto su questa formazione: i dati sono freschi, come la web
             ricorda(SceltaSalvata(titolari: ids, modulo: r.modulo, eraConsigliata: eraConsigliata ? true : nil, messa: messaOra ? true : nil),
                     nonValida: false, f, valutazione: r)
             ricordaLaSpunta(f, prima: spuntaPrima)
