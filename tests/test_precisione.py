@@ -187,7 +187,8 @@ def test_web_disegna_la_carta_senza_buchi(lingua):
     num = next(r for r in APP.splitlines() if r.startswith("const num = "))       # i numeri della carta passano da `num`
     prova = (TESTI + "\nconst virgola = x => (LINGUA === 'it' ? String(x).replace('.', ',') : String(x));\n" + al_percento + "\n"
              + num + "\n" + _funzione("nomeGiornata") + next(r for r in APP.splitlines() if r.startswith("const elidiOrdinali = ")) + "\n"
-             + _funzione("dettagliPrecisione") + f"""
+             + "".join(next(r for r in APP.splitlines() if r.startswith(p)) + "\n" for p in ("const altezzaGrafico = ", "const altezzaErrori = "))
+             + _funzione("disegnoErrori") + _funzione("dettagliPrecisione") + f"""
     LINGUA = "{lingua}";
     console.log(JSON.stringify([dettagliPrecisione({json.dumps(pieno)}, true), dettagliPrecisione({json.dumps(poco)}, true),
                                 dettagliPrecisione({{"giornate": 0}}, true)]));

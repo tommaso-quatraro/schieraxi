@@ -1,0 +1,20 @@
+{
+  "titolo": "Tablet: righe, grafici e campo più ordinati",
+  "voci": [
+    "Formazione e La mia squadra: la lineetta colorata della squadra resta sulla riga della partita, il puntino fra partita, orario, costo e quotazione non resta più da solo in fondo a una riga, e sul campo le linee non passano più sopra i nomi.",
+    "Scheda del giocatore › Tutti i numeri, Gestione › Stato dei dati e Giornate › Dettagli: su tablet e computer i grafici si allargano senza ingrandire le scritte e senza diventare altissimi, e i tre riquadri dei Dettagli stanno in fila.",
+    "In inglese, fra i sostituti «expected 5.3» sta su una riga, e la giornata si legge «Matchday 8 · Serie A matchday 11»."
+  ],
+  "titolo_en": "Tablet: tidier rows, charts and pitch",
+  "voci_en": [
+    "Lineup and My team: the team’s coloured line stays on the match row, the dot between match, time, cost and price no longer hangs alone at the end of a line, and on the pitch the lines no longer run over the names.",
+    "Player card › All the numbers, Management › Data status and Matchdays › Details: on tablets and computers the charts get wider without bigger text and without becoming very tall, and the three boxes in Details sit in a row.",
+    "In English, among the substitutes “expected 5.3” stays on one line, and the matchday reads “Matchday 8 · Serie A matchday 11”."
+  ],
+  "tecnico": [
+    "app.js pezziRiga(pezzi, testa): pezzi interi in .pezzi (flex a capo) con il «·» in .sep davanti a ogni pezzo dopo il primo; .voce-g .dettaglio overflow:hidden e margine negativo di .9em: il «·» del primo pezzo di ogni riga resta fuori dal bordo. La lineetta (testa) dentro il primo pezzo. Un elenco dentro l'elenco è un gruppo (.pezzi dentro un pezzo) che va a capo intero: la partita con l'orario (pezziPartita, al posto di partitaBreve, tolta) e nella Rosa costo e quotazione.",
+    "app.js adattaGrafico(svg, disegna, altezza): viewBox = larghezza calcolata dell'SVG in px, ridisegno con ResizeObserver (finestra, pannello, «Tutti i numeri» che si apre); altezze altezzaVoti (110-160), altezzaAffidabilita (100-160), altezzaErrori (96-120). Dopo il primo ridisegno la classe .ridisegnato toglie l'animazione della linea. disegnoVoti, disegnoErrori e la funzione di disegno dell'affidabilità scrivono il contenuto per L×A; etichette delle giornate una ogni 22 px.",
+    "stile.css: .qp-griglia con tre riquadri in tre colonne da 768 px, l'ultimo dispari a tutta riga fra 560 e 767; .pedina .nome e .pedina .gioca.parola con fondo e box-shadow di 2 px in var(--campo), .pedina.attesa .disco con fondo var(--campo); .sostituti .voce-g con --col-gioca: max-content e .pv-g senza a capo.",
+    "Catalogo frase.giornata.lega e frasi_avvisi n.giornata.lega in inglese: «Matchday {n} · Serie A matchday {a}». Test del browser nuovi: tests/browser/test_larghezze_tablet.py."
+  ]
+}

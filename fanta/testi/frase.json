@@ -58,7 +58,7 @@
   },
   "frase.giornata.lega": {
     "it": "Giornata {n} · {a}ª di Serie A",
-    "en": "Matchday {n} · Serie A {a}"
+    "en": "Matchday {n} · Serie A matchday {a}"
   },
   "frase.giornata.serie_a": {
     "it": "{a}ª giornata di Serie A",

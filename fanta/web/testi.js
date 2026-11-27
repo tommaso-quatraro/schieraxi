@@ -2937,7 +2937,7 @@ const TESTI = {
     "frase.tempo.giorni_fa.other": "{n} days ago",
     "frase.tempo.giornate.one": "one matchday",
     "frase.tempo.giornate.other": "{n} matchdays",
-    "frase.giornata.lega": "Matchday {n} · Serie A {a}",
+    "frase.giornata.lega": "Matchday {n} · Serie A matchday {a}",
     "frase.giornata.serie_a": "Serie A matchday {a}",
     "frase.giornata.senza_data": "Date to be confirmed",
     "frase.elenco.e": " and ",

@@ -181,7 +181,7 @@ def test_i_testi_dei_promemoria_nella_lingua_chiesta(tmp_path, monkeypatch):
     _mondo(tmp_path, monkeypatch)
     testi = notifiche.testi_promemoria(_db(), Regole(), ROSA_12, ST, 9, CHIUSURA, tmp_path / "scelte.json", adesso=UN_ORA, lingua="en")
     assert testi[1] == {"minuti": 15, "titolo": "SchieraXI · last minutes for the lineup",
-                        "testo": "Matchday 9 · Serie A 9: the lineup closes at 18:30. Have you entered it on Leghe?"}
+                        "testo": "Matchday 9 · Serie A matchday 9: the lineup closes at 18:30. Have you entered it on Leghe?"}
 
 
 def test_senza_la_scadenza_niente_testi(tmp_path, monkeypatch):

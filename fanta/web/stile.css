@@ -334,13 +334,18 @@ details[open] > summary { margin-bottom: 8px; }
 .pedina:has(> .gioca.medio) .disco { border: 3px solid #ffb04a; }
 .pedina:has(> .gioca.basso) .disco { border: 3px solid #ff9a8f; }
 /* a partita cominciata, finché il voto non c'è: il disco vuoto dentro con il fantavoto atteso (quello pieno è il voto preso) */
-.pedina.attesa .disco { background: none; color: #fff; border: 2px solid rgba(255, 255, 255, .85); }
+.pedina.attesa .disco { background: var(--campo); color: #fff; border: 2px solid rgba(255, 255, 255, .85); }
 .pedina .nome { margin-top: 2px; font-size: var(--t-eti); font-weight: 650; line-height: 1.15; overflow-wrap: anywhere; text-wrap: balance; }
 /* sotto il nome, solo quando serve: «gioca 62%» (pillola arancio), «gioca 45%» o «Infortunato» (pillola rossa), «In dubbio» e lo
    stato della partita a parole, in bianco */
 .pedina .gioca { font-size: var(--t-eti); font-weight: 650; color: #fff; font-variant-numeric: tabular-nums; line-height: 1.35; overflow-wrap: anywhere; text-wrap: balance; }
 .pedina .gioca.medio { background: #ffb04a; color: #2a1600; border-radius: calc(.7em + 4px); padding: 0 6px; }
 .pedina .gioca.basso { background: #ff9a8f; color: #3d0b06; border-radius: calc(.7em + 4px); padding: 0 6px; }
+/* Il nome e le parole bianche sotto il disco hanno sotto il colore del campo, un filo più largo del testo: dove passa una linea (la
+   laterale, il cerchio, la metà campo) la linea si interrompe e il nome resta leggibile (collaudo tablet del 27/11: a 768 px
+   «Zosaba Ndorti» sopra la linea laterale, a 1024 px il cerchio sopra «Roghecebe»). Lo stesso dentro il disco vuoto, a partita
+   cominciata (.pedina.attesa .disco, sopra). Dove non passa nessuna linea non si vede niente: è lo stesso colore. */
+.pedina .nome, .pedina .gioca.parola { background: var(--campo); box-shadow: 0 0 0 2px var(--campo); border-radius: 3px; }
 
 
 /* ---------------------------------------------------------------- elenchi di giocatori */
@@ -541,6 +546,8 @@ details[open] > summary { margin-bottom: 8px; }
 .grafico polyline { stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: disegna 1.1s var(--uscita) .25s forwards; }
 .grafico polyline.fv { stroke: var(--verde); } .grafico polyline.voto { stroke: var(--blu); }
 .grafico circle { animation: compare .4s var(--molla) both; animation-delay: 1s; transform-box: fill-box; transform-origin: center; }
+/* ridisegnato alla larghezza nuova (adattaGrafico in app.js, la finestra che cambia): la linea c'è già, senza ripartire da capo */
+.grafico.ridisegnato polyline { animation: none; stroke-dashoffset: 0; } .grafico.ridisegnato circle { animation: none; }
 .grafico circle.fv { fill: var(--verde); } .grafico circle.voto { fill: var(--blu); }
 .grafico .rif { stroke: var(--testo-2); opacity: .45; stroke-dasharray: 4 4; }
 .grafico text { font-size: var(--t-eti); fill: var(--testo-2); } .grafico text.sv { font-weight: 600; }
@@ -649,7 +656,16 @@ html[data-animazioni="ridotte"] .avatar-anello.grande-a .avatar svg {
 /* davanti al nome in una riga di testo (Diario, ricerca) */
 .ruolo-l.ruolo-in { display: inline-block; margin-right: 2px; text-align: left; }
 .voce-g .dettaglio { display: block; font-size: var(--t-sec); color: var(--testo-2); line-height: 1.35; }
-.voce-g .dettaglio .nb { display: inline-block; max-width: 100%; }        /* a capo tra i pezzi («… 20:45 ·» / «Real Esempio»), non dentro */
+/* I pezzi della riga (pezziRiga in app.js: «FRO vs PAR», «domani 15:00», «costo 2»…) vanno a capo fra un pezzo e l'altro, non
+   dentro; uno più lungo della riga va a capo al suo interno. Il «·» sta davanti al pezzo, nello spazio fra i due: il margine
+   negativo porta quello del primo pezzo di ogni riga oltre il bordo sinistro, dove la riga lo taglia. Così nessuna riga finisce
+   con «·» e nessuna comincia con «·» (collaudo tablet del 27/11: «domani 15:00 ·» e a capo «costo 2…»). La lineetta del club sta
+   nel primo pezzo e va a capo con lui. Un gruppo (la partita con l'orario, costo e quotazione) è un .pezzi dentro un pezzo: va a
+   capo intero e, se è più lungo della riga, si spezza con la stessa regola (sta da solo a inizio riga, quindi il «·» resta fuori). */
+.voce-g .dettaglio { overflow: hidden; }
+.voce-g .pezzi { display: flex; flex-wrap: wrap; align-items: baseline; margin-left: -.9em; }
+.voce-g .pezzi > .nb { position: relative; min-width: 0; margin-left: .9em; }
+.voce-g .pezzi .sep { position: absolute; top: 0; left: -.9em; width: .9em; text-align: center; }
 .voce-g .etichette { margin-top: 1px; }
 .voce-g .etichette:empty { display: none; }
 /* lineetta nel colore sociale davanti alla sigla: decorativa, la sigla dice già la squadra. app.js sceglie per ogni tema il colore del
@@ -662,6 +678,11 @@ html[data-animazioni="ridotte"] .avatar-anello.grande-a .avatar svg {
 .voce-g > .pv-g { grid-area: gioca; align-self: start; text-align: right; font-size: var(--t-sec); color: var(--testo-2); overflow-wrap: break-word; font-variant-numeric: tabular-nums; }
 .pv-g.medio { color: var(--eti-arancio); font-weight: 650; }       /* «gioca N%» c'è solo sotto l'80%: arancio fra 50 e 79, rosso sotto 50 (il colore non è da solo: c'è il numero) */
 .pv-g.basso { color: var(--eti-rosso); font-weight: 650; }
+/* fra i sostituti (Sostituisci, Metti in campo) sotto il numero grande c'è «atteso 5,3»: su una riga sola anche in inglese
+   («expected 5.3» andava su due righe anche a 1024 px, collaudo tablet del 27/11). Sopra questi elenchi non ci sono i nomi delle
+   colonne: la colonna prende la larghezza della scritta. */
+.sostituti .voce-g { --col-gioca: max-content; }
+.sostituti .voce-g > .pv-g { white-space: nowrap; }
 .voce-g > .valore { grid-area: fv; align-self: end; }
 /* i nomi delle colonne: una riga grigia da 12 px, nascosta ai lettori di schermo; «Partita» solo quando la riga è larga. Il 12 px sta
    sui pezzi, non sulla griglia: le colonne dei numeri sono in `ch` e misurano come quelle delle righe solo con lo stesso carattere */
@@ -1097,12 +1118,19 @@ body.senza-accesso .salta { display: none; }
 .regola-sez[open] > summary { margin-bottom: 8px; }
 
 
-/* Giornate > «Dettagli» della precisione: i numeri con la loro frase (2 colonne da 560 px in su), barre dell'andamento */
+/* Giornate > «Dettagli» della precisione: i numeri con la loro frase (2 colonne da 560 px in su), barre dell'andamento. Nessun
+   riquadro resta da solo con una colonna vuota accanto (collaudo tablet del 27/11): con un numero dispari l'ultimo prende la riga
+   intera, e da 768 px tre riquadri stanno in fila (quattro restano due e due). */
 .qp { margin-top: 12px; }
 .qp-pochi { margin: 10px 0 0; }
 .qp-griglia { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px 24px; margin: 12px 0; }
 @media (min-width: 560px) {
   .qp-griglia { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .qp-griglia > .qp-voce:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+@media (min-width: 768px) {
+  .qp-griglia:has(> .qp-voce:nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .qp-griglia > .qp-voce:nth-child(3):last-child { grid-column: auto; }
 }
 .qp-voce { min-width: 0; padding: 12px 0 4px; border-top: 1px solid var(--filo); }          /* righe, non carte dentro la carta (STILE-SENZA-AI) */
 .qp-num { display: block; font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; line-height: 1.1; }

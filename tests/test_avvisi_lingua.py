@@ -63,9 +63,9 @@ def test_promemoria_e_cambi_in_inglese(telefono, tmp_path, monkeypatch):
     notifiche.promemoria(_db("2026-10-28 18:30"), Regole(), ROSE, datetime(2026, 10, 28, 17, 35), tmp_path / "n.json", telefono.manda, opz)
     notifiche.promemoria(_db("2026-10-28 18:30"), Regole(), ROSE, datetime(2026, 10, 28, 18, 20), tmp_path / "n.json", telefono.manda, opz)
     (t1, c1), (t2, c2) = telefono.arrivati
-    assert t1 == "SchieraXI · lineup in one hour" and c1.startswith("Matchday 9 · Serie A 9: the lineup closes in about an hour (deadline at 18:30). Recommended: 4-3-3, 71.2 expected points.")
+    assert t1 == "SchieraXI · lineup in one hour" and c1.startswith("Matchday 9 · Serie A matchday 9: the lineup closes in about an hour (deadline at 18:30). Recommended: 4-3-3, 71.2 expected points.")
     assert "To check: Castro." in c1
-    assert t2 == "SchieraXI · last minutes for the lineup" and c2 == "Matchday 9 · Serie A 9: the lineup closes at 18:30. Have you entered it on Leghe?"
+    assert t2 == "SchieraXI · last minutes for the lineup" and c2 == "Matchday 9 · Serie A matchday 9: the lineup closes at 18:30. Have you entered it on Leghe?"
     metti = frasi.F("n.metti", motivi=frasi.F("n.m_infortunato", nome="Vicario"), entrano="Bonny")
     assert telefono.manda(frasi.F("n.t_cambia_titolare"), frasi.F("n.testo_cambiata", frase=metti, data="28/10", ora="18:30"), 4,
                           "rotating_light")
