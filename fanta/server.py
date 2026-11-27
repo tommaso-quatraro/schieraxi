@@ -2265,7 +2265,7 @@ def _importa(riconosciute: _Riconosciute, sostituisci_tutto: bool, ctx: Contesto
         immagini.pulisci([s.nome for s in nuove.squadre], ctx.immagini)
     except OSError:
         pass
-    diff = movimenti.differenze(prima, nuove)
+    diff = movimenti.differenze(prima, nuove, {s.nome for s in lette})     # un giocatore in due squadre: vale quella del file
     if prima and any(s.giocatori for s in prima.squadre):      # dopo il passaggio di stagione le rose partono vuote: non sono "acquisti"
         movimenti.registra(ctx.movimenti, diff)
     threading.Thread(target=_scalda, args=(ctx,), daemon=True).start()     # le rose sono cambiate: la nuova formazione si prepara subito

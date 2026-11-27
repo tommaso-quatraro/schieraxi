@@ -99,6 +99,19 @@ def test_nel_testo_uno_per_riga_le_squadre_gia_salvate_sono_titoli(ambiente):
     assert [s["nome"] for s in r.json()["squadre"]] == ["Alfa", "Beta"]
 
 
+def test_reimportando_solo_la_tua_rosa_dopo_uno_scambio_il_passaggio_si_vede(ambiente):
+    """Dopo uno scambio reimporti solo la tua rosa: quella salvata dell'altra squadra è vecchia e ha ancora il giocatore che hai
+    preso. Per «Cosa cambia» e per lo storico vale la squadra appena letta dal file, non l'ultima in elenco."""
+    a, _ = nuovo_utente("utentea")
+    assert importa(a, "Alfa\nP\tSommer\t1\nD\tBastoni\t1\nBeta\nA\tKean\t1\nA\tThuram\t1\n").status_code == 200
+    testo = "Alfa\nP\tSommer\t1\nA\tKean\t1\n"                    # Alfa ha dato Bastoni e preso Kean; Beta non è nel file
+    for rotta in ("/api/rose/anteprima", "/api/rose/testo"):
+        r = a.post(rotta, json={"testo": testo})
+        assert r.status_code == 200, r.text
+        assert "Passaggio da Beta a Alfa: Kean" in r.json()["riepilogo"], (rotta, r.json()["riepilogo"])
+    assert "Passaggio da Beta a Alfa: Kean" in a.get("/api/movimenti").json()[0]["testo"]          # il più recente per primo
+
+
 def test_ricaricando_lo_stesso_testo_le_scelte_di_prima_restano(ambiente):
     """Collaudo del 26/11: ricaricando lo stesso file le scelte fatte sui dubbi si perdevano («Cosa cambia» mostrava movimenti
     finti e si salvavano come non riconosciuti). La scelta salvata per lo stesso nome scritto, nella stessa squadra, torna

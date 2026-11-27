@@ -116,3 +116,16 @@ def test_giocatore_prima_non_riconosciuto_e_poi_si_non_conta_come_movimento():
     dopo = _rose(A=([_g(77, "Mendy P."), _g(2, "Kaiki", "D")], 50))
     d = movimenti.differenze(prima, dopo)
     assert d["nessuna_differenza"], d["testo"]
+
+
+def test_giocatore_in_due_squadre_vale_quella_appena_letta_dal_file():
+    """Dopo uno scambio reimporti solo la tua rosa: la rosa salvata dell'altra squadra è vecchia e ha ancora il giocatore che
+    hai preso. Vale la squadra letta dal file (`lette`), non l'ultima in elenco: «Cosa cambia» e lo storico dicono il passaggio."""
+    prima = _rose(A=([_g(1, "Rowe"), _g(2, "Kaiki", "D")], 50), B=([_g(4, "Paz"), _g(5, "Mangas", "D")], 30))
+    # A (dal file) ha dato Rowe e preso Paz; B è quella salvata prima, con Paz ancora dentro, ed è dopo A nell'elenco
+    dopo = _rose(A=([_g(4, "Paz"), _g(2, "Kaiki", "D")], 50), B=([_g(4, "Paz"), _g(5, "Mangas", "D")], 30))
+    d = movimenti.differenze(prima, dopo, lette={"A"})
+    assert "Passaggio da B a A: Paz" in d["testo"], d["testo"]
+    # e quando la squadra del file è l'ultima in elenco resta lei
+    dopo = _rose(B=([_g(4, "Paz"), _g(5, "Mangas", "D")], 30), A=([_g(4, "Paz"), _g(2, "Kaiki", "D")], 50))
+    assert "Passaggio da B a A: Paz" in movimenti.differenze(prima, dopo, lette={"A"})["testo"]
