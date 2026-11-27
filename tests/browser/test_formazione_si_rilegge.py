@@ -9,9 +9,12 @@ la scadenza passata.
 L'orologio della pagina qui è comandato dal test (`clock.install`): parte dal momento scelto e si porta avanti con
 `clock.fast_forward` (i timer scaduti partono una volta) o `clock.set_system_time` (cambia l'ora senza far partire i timer).
 """
+from urllib.parse import urlsplit
+
 import pytest
 
-from test_formazione_unica import principale, solo, sostituti_dal_server
+from test_formazione_unica import (COPIA_NEGATA, _altro_modulo, _aspetta_che, principale, server_con_memoria, solo, sostituti_dal_server,
+                                   stato, tocca)
 
 SCADENZA = "2026-10-27T18:20:00"            # la scadenza della giornata nello scenario registrato «prima» (/api/oggi)
 
@@ -119,6 +122,61 @@ def test_tornando_in_primo_piano_con_i_dati_vecchi_la_formazione_si_rilegge_una_
     _torna_in_primo_piano(web)
     assert _letture(web) == lette + 1, "a dati appena riletti, ogni ritorno in primo piano rilegge"
     assert not web.errori_mostrati() and not web.errori_console
+
+
+def test_la_rilettura_al_ritorno_chiede_al_server_senza_ripassare_dalla_copia_salvata(web):
+    """Difetto visto in revisione (#978): la rilettura da sola ridisegnava prima la pagina con la copia tenuta sul telefono («Dati
+    salvati il…», comandi spenti) e il riquadro della copia a mano spariva. Ora chiede al server con la pagina com'è: con i dati
+    uguali non ridisegna niente."""
+    solo(web, "prima")
+    web.pagina.add_init_script(COPIA_NEGATA)
+    _orologio(web, "2026-10-27T15:10:00")
+    web.apri("/")
+    tocca(web, principale(web).get_by_role("button", name="Copia per l'app della lega"))
+    riquadro = principale(web).get_by_role("textbox", name="Formazione da copiare")
+    assert riquadro.is_visible()
+    _avanti(web, 15 * 60_000)
+    fermi = []
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/formazione", lambda r: fermi.append(r))
+    web.pagina.evaluate(TORNA_IN_PRIMO_PIANO)
+    _aspetta_che(lambda: len(fermi) == 1)                           # la rilettura è partita e aspetta il server
+    assert principale(web).locator("#nota-cache").count() == 0, "la rilettura è ripassata dalla copia salvata"
+    assert principale(web).get_by_label("Modulo").is_enabled() and riquadro.is_visible()
+    fermi[0].fallback()
+    web.aspetta()
+    assert principale(web).locator("#nota-cache").count() == 0
+    assert riquadro.is_visible(), "con i dati uguali la pagina si è ridisegnata"
+    assert not web.errori_mostrati() and not web.errori_console
+
+
+def test_se_il_server_non_risponde_alla_rilettura_compare_la_copia_con_la_nota(web):
+    """La copia tenuta sul telefono solo se il server non risponde: allora la pagina dice di quando sono i dati, ha «Riprova» e non
+    fa cambiare niente, come all'apertura senza rete."""
+    solo(web, "prima")
+    _orologio(web, "2026-10-27T15:10:00")
+    web.apri("/")
+    _avanti(web, 15 * 60_000)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/oggi", lambda r: r.abort())
+    _torna_in_primo_piano(web)
+    nota = principale(web).locator("#nota-cache")
+    assert nota.is_visible() and "Non riesco a collegarmi" in nota.inner_text(), web.testo_principale()[:300]
+    assert nota.get_by_role("button", name="Riprova").is_visible()
+    assert principale(web).get_by_label("Modulo").is_disabled()
+
+
+def test_dopo_un_salvataggio_riuscito_i_dati_contano_come_appena_letti(web):
+    solo(web, "prima")
+    server_con_memoria(web, None)
+    _orologio(web, "2026-10-27T15:10:00")
+    web.apri("/")
+    _avanti(web, 4 * 60_000)
+    principale(web).get_by_label("Modulo").select_option(_altro_modulo(web)["modulo"])
+    web.aspetta()
+    assert stato(web).startswith("L'hai cambiata tu")
+    lette = _letture(web)
+    _avanti(web, 2 * 60_000)                                        # sei minuti dall'apertura, due dal salvataggio
+    _torna_in_primo_piano(web)
+    assert _letture(web) == lette, "due minuti dopo un salvataggio, tornando in primo piano la Formazione si è riletta"
 
 
 def test_tornando_in_primo_piano_a_scadenza_passata_la_formazione_si_rilegge(web):

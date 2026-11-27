@@ -363,11 +363,16 @@ function alRitornoDellaRete(riprova) {
 // `daSalvare(dati)` (facoltativo): true, la risposta si salva al posto della copia; false, non è un dato da ritrovare senza rete (la
 // domanda della squadra della Formazione, revisione della #929): non si salva, e la copia di prima, che non vale più, si toglie;
 // null, la risposta è a metà (la Formazione senza la scelta salvata, che non si è letta): non si salva e la copia di prima resta.
-async function caricaConCache(chiave, percorso, mostra, testo, { daSalvare = () => true } = {}) {
+// `inPagina` (facoltativo): la schermata già in pagina ({ pronta(), sola() }), che si rilegge da sola (la Formazione alla scadenza e
+// al ritorno in primo piano): si chiede al server lasciando la pagina com'è, senza la copia né il caricamento; con i dati uguali alla
+// copia non si ridisegna niente, con dati diversi sì; la copia, con la sua nota, compare solo se il server non risponde (senza copia
+// la pagina resta com'è). Prima la rilettura ripassava dalla copia: «Dati salvati il…» e comandi spenti (revisione della #978).
+async function caricaConCache(chiave, percorso, mostra, testo, { daSalvare = () => true, inPagina = null } = {}) {
   const mia = nuovaRichiesta();
   alRitornoDellaRete(null);
-  let salvata = leggiCache(chiave), vista = null;
-  if (salvata) {
+  let salvata = leggiCache(chiave), vista = inPagina;
+  if (inPagina) { /* la pagina resta com'è finché non risponde il server */ }
+  else if (salvata) {
     try { vista = mostra(salvata.dati, { daCache: salvata.quando }); }
     catch { rimuoviCache(chiave); salvata = null; caricamento(testo); }     // copia rovinata o di una versione vecchia
   } else caricamento(testo);
@@ -377,7 +382,7 @@ async function caricaConCache(chiave, percorso, mostra, testo, { daSalvare = () 
       if (!ancoraValida(mia)) return false;
       const copia = daSalvare(dati);
       if (copia === true) salvaCache(chiave, dati); else if (copia === false) rimuoviCache(chiave);
-      if (!salvata || JSON.stringify(salvata.dati) !== JSON.stringify(dati)) { mostra(dati, { sostituisce: !!salvata }); return true; }
+      if (!salvata || JSON.stringify(salvata.dati) !== JSON.stringify(dati)) { mostra(dati, { sostituisce: !!salvata || !!inPagina }); return true; }
       const b = $("#nota-cache");
       if (b && b.contains(document.activeElement)) $("#titolo-pagina").focus({ preventScroll: true });   // il fuoco era su «Riprova», che sparisce
       if (b) b.remove();
@@ -385,6 +390,11 @@ async function caricaConCache(chiave, percorso, mostra, testo, { daSalvare = () 
       return true;
     } catch (e) {
       if (!ancoraValida(mia)) return false;
+      if (inPagina && !$("#nota-cache")) {                  // in pagina c'erano i dati del server: ora la copia, con la nota che dice perché
+        const copia = salvata || leggiCache(chiave, true);
+        if (!copia) return false;
+        try { vista = mostra(copia.dati, { daCache: copia.quando, sostituisce: true }); salvata = copia; } catch { rimuoviCache(chiave); return false; }
+      }
       if (!salvata) {         // niente copia nella lingua scelta: meglio quella di un'altra lingua o senza lingua che una pagina vuota (#854)
         const altra = leggiCache(chiave, true);
         if (altra) try { vista = mostra(altra.dati, { daCache: altra.quando }); salvata = altra; } catch { rimuoviCache(chiave); }
@@ -1216,7 +1226,8 @@ function chiudiSostituzione() {
   if (foglio && !foglio.hidden && $("#foglio-contenuto [data-sostituzione]")) chiudiFoglio();
 }
 
-function vistaFormazione() {
+// `inPagina`: la Formazione già in pagina, che si rilegge da sola (vedi caricaConCache): prima il server, la copia solo se non risponde.
+function vistaFormazione(inPagina = null) {
   const squadra = stato.squadraVista;
   if (squadra) {                                            // la formazione di un'altra squadra della lega: si guarda e basta
     return caricaConCache("formazione-" + squadra, async () => ({ o: null, f: await api(`/api/formazione?squadra=${encodeURIComponent(squadra)}`) }),
@@ -1226,7 +1237,7 @@ function vistaFormazione() {
   // scelta salvata non letta (una lettura non riuscita, collaudo del 26/11) nemmeno, e la copia di prima resta: riaperta senza rete
   // avrebbe mostrato gli 11 consigliati come se fossero i tuoi.
   return caricaConCache("giornata", caricaGiornata, (b, opz) => mostraFormazione(b, null, opz), t("formazione.calcolo"),
-    { daSalvare: b => b.senza_squadra ? false : b.scelta_non_letta ? null : true });
+    { daSalvare: b => b.senza_squadra ? false : b.scelta_non_letta ? null : true, inPagina });
 }
 
 // Tutto ciò che serve alla schermata, in una volta: la giornata (/api/oggi), la formazione, la scelta salvata e, se gli 11 salvati non
@@ -1448,6 +1459,7 @@ function mostraFormazione(b, squadra, opz = {}) {
       const eraConsigliata = stessiIds(ids, consigliato.titolari) || (stessi && sc.salvata.era_consigliata === true);
       sc.salvata = { titolari: ids, modulo: r.modulo, ...(eraConsigliata ? { era_consigliata: true } : {}), ...((messa ?? (stessi && sc.salvata.messa === true)) ? { messa: true } : {}) };
       sc.nonValida = false;
+      sc.letta = Date.now();                                // il server ha appena risposto su questa formazione: i dati sono freschi
       const m = moduloDi(f, ids);
       sc.manuale = m === consigliato ? null : m || { modulo: r.modulo, titolari: ids, panchina: r.panchina, punteggio_atteso: r.punteggio_atteso, dev: r.dev, intervallo: r.intervallo };
       ricorda(m ? null : r);
@@ -1473,7 +1485,7 @@ function mostraFormazione(b, squadra, opz = {}) {
     try {
       if (sc.salvata !== null) await api(`/api/scelta?giornata=${f.giornata}`, { method: "DELETE", senzaRicarica: true });
       if (!qui(n)) { altrove(n); return; }
-      sc.manuale = null; sc.salvata = null; sc.nonValida = false;
+      sc.manuale = null; sc.salvata = null; sc.nonValida = false; sc.letta = Date.now();
       ricorda();
       disegna(true);
       rileggiDecisioni(n);
@@ -1638,6 +1650,9 @@ function mostraFormazione(b, squadra, opz = {}) {
     }));
     bottone("#torna-consigliata", () => { if (!sc.sola && libero()) tornaConsigliata(); });
     bottone("#copia", async () => {
+      // con un salvataggio in volo (anche quello partito uscendo dal menu del modulo per toccare qui) la formazione disegnata non è
+      // ancora quella scelta: la copia avrebbe preso quella di prima dicendo «Copiata» (revisione della #978)
+      if (!libero()) return;
       const testo = testoFormazione(f, m, scheda);
       if (await copiaTesto(testo)) { avviso(t("formazione.copiata_lega")); return; }
       avviso(t("formazione.non_copio"));
@@ -1675,26 +1690,9 @@ function mostraFormazione(b, squadra, opz = {}) {
       el.textContent = ct.manca; chiude.textContent = ct.chiude;
     }, 30000);
   }
-  // le riletture da sole (vedi RILEGGI_DOPO_SCADENZA_MS), per la formazione in pagina
-  if (o && !squadra) {
-    const quandoChiude = scadenzaDi(o), fine = parseData(quandoChiude), chiave = `${f.giornata}/${quandoChiude}`;
-    const inPagina = () => stato.scelta === sc && stato.vista === "formazione" && !stato.squadraVista;
-    const rileggiPerScadenza = () => { scadenzaRiletta = chiave; rileggiFormazione(); };
-    const manca = fine && !chiusa ? fine - Date.now() : NaN;
-    if (manca > 0 && manca + RILEGGI_DOPO_SCADENZA_MS <= TIMER_MASSIMO_MS) {
-      timerScadenza = setTimeout(() => { if (inPagina()) rileggiPerScadenza(); }, manca + RILEGGI_DOPO_SCADENZA_MS);
-    }
-    formazioneAlRitorno = () => {
-      if (!inPagina()) return;
-      const ora = Date.now();
-      // sulla copia del telefono i dati nuovi sono già chiesti: la scadenza aspetta loro
-      if (!chiusa && fine && fine <= ora && scadenzaRiletta !== chiave && !sc.copia) rileggiPerScadenza();
-      else if (ora - sc.letta > DATI_VECCHI_MS) rileggiFormazione();
-    };
-  }
   // Per caricaConCache: i dati nuovi sono uguali alla copia in pagina, i comandi spenti si accendono dove sono (niente ridisegno).
   // Se la scelta non era stata letta nemmeno stavolta, ora lo si dice. `sola()`: i comandi che scrivono sono spenti.
-  return { sola: () => stato.scelta === sc && sc.sola, pronta() {
+  const vista = { sola: () => stato.scelta === sc && sc.sola, pronta() {
     if (stato.scelta === sc) sc.letta = Date.now();         // i dati in pagina sono quelli appena letti
     if (stato.scelta !== sc || !sc.sola) return;
     sc.copia = false;
@@ -1703,6 +1701,26 @@ function mostraFormazione(b, squadra, opz = {}) {
     sc.sola = false;
     document.querySelectorAll("#contenuto [data-scrive], #foglio-contenuto [data-sostituisci], #foglio-contenuto [data-metti-in-campo]").forEach(e => { e.disabled = false; });
   } };
+  // le riletture da sole (vedi RILEGGI_DOPO_SCADENZA_MS), per la formazione in pagina: prima il server, con la pagina com'è
+  if (o && !squadra) {
+    const quandoChiude = scadenzaDi(o), fine = parseData(quandoChiude), chiave = `${f.giornata}/${quandoChiude}`;
+    const ancoraQui = () => stato.scelta === sc && stato.vista === "formazione" && !stato.squadraVista;
+    const rileggiDaSola = () => vistaFormazione(vista);
+    // una volta per scadenza: con i dati uguali la pagina non si ridisegna, e il timer di questa Formazione resterebbe acceso
+    const rileggiPerScadenza = () => { clearTimeout(timerScadenza); scadenzaRiletta = chiave; rileggiDaSola(); };
+    const manca = fine && !chiusa ? fine - Date.now() : NaN;
+    if (manca > 0 && manca + RILEGGI_DOPO_SCADENZA_MS <= TIMER_MASSIMO_MS) {
+      timerScadenza = setTimeout(() => { if (ancoraQui() && scadenzaRiletta !== chiave) rileggiPerScadenza(); }, manca + RILEGGI_DOPO_SCADENZA_MS);
+    }
+    formazioneAlRitorno = () => {
+      if (!ancoraQui()) return;
+      const ora = Date.now();
+      // sulla copia del telefono i dati nuovi sono già chiesti: la scadenza aspetta loro
+      if (!chiusa && fine && fine <= ora && scadenzaRiletta !== chiave && !sc.copia) rileggiPerScadenza();
+      else if (ora - sc.letta > DATI_VECCHI_MS) rileggiDaSola();
+    };
+  }
+  return vista;
 }
 
 // Il calendario, per le prossime partite nella scheda di un giocatore: quello letto in questa sessione, se c'è; se no lo si chiede.

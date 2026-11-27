@@ -1386,6 +1386,46 @@ def test_da_tastiera_il_menu_del_modulo_salva_solo_alla_conferma_e_tiene_il_fuoc
     assert not web.errori_mostrati() and not web.errori_console
 
 
+CONTA_COPIE = """(() => { window.__copie = [];
+  try { navigator.clipboard.writeText = t => { window.__copie.push(t); return Promise.resolve(); }; } catch (e) {} })()"""
+
+
+def _aspetta_che(condizione, ms: int = 10000) -> None:
+    """Aspetta che una condizione del test (non della pagina) diventi vera, per esempio una richiesta trattenuta arrivata."""
+    import time
+    fine = time.monotonic() + ms / 1000
+    while not condizione() and time.monotonic() < fine:
+        time.sleep(0.05)
+    assert condizione(), "attesa scaduta"
+
+
+def test_la_copia_non_prende_la_formazione_di_prima_mentre_si_salva_quella_scelta_con_le_frecce(web):
+    """Difetto visto in revisione (#978): con le frecce si sceglie un altro modulo, poi un clic su «Copia per l'app della lega».
+    L'uscita dal menu fa partire il salvataggio, ma la copia prendeva ancora la formazione disegnata e diceva «Copiata». Finché il
+    salvataggio è in volo la copia non si fa e un avviso lo dice; a salvataggio arrivato copia la formazione nuova."""
+    solo(web, "prima")
+    web.pagina.add_init_script(CONTA_COPIE)
+    server_con_memoria(web, None)
+    web.apri("/", larghezza=PC)
+    fermi = _trattieni_i_salvataggi(web)
+    menu = principale(web).get_by_label("Modulo")
+    valori = menu.locator("option").evaluate_all("os => os.map(o => o.value)")
+    scelto = valori[menu.evaluate("s => s.selectedIndex") + 2]
+    menu.focus()
+    web.pagina.keyboard.press("ArrowDown")
+    web.pagina.keyboard.press("ArrowDown")
+    principale(web).get_by_role("button", name="Copia per l'app della lega").click()
+    _aspetta_che(lambda: len(fermi) == 1)
+    assert web.pagina.evaluate("window.__copie") == [], "a salvataggio in volo la copia ha preso la formazione di prima"
+    assert web.pagina.get_by_role("status").filter(has_text="Sto ancora ricalcolando").first.is_visible()
+    fermi[0].fallback()
+    web.aspetta()
+    assert principale(web).get_by_label("Modulo").input_value() == scelto
+    tocca(web, principale(web).get_by_role("button", name="Copia per l'app della lega"))
+    copie = web.pagina.evaluate("window.__copie")
+    assert len(copie) == 1 and copie[0].splitlines()[0].endswith(scelto), copie
+
+
 def test_da_tastiera_spunta_torna_alla_consigliata_e_sostituisci_non_lasciano_il_fuoco_nel_vuoto(web):
     solo(web, "prima")
     server_con_memoria(web, None)

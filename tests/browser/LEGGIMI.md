@@ -99,7 +99,8 @@ prima della scadenza:
   salvata; «Torna alla consigliata» la toglie; la spunta «L'ho messa» resta dopo una ricarica; dopo una sostituzione nello
   stesso ruolo il menu del modulo ha scelta la voce della tua formazione con i suoi punti («… · la tua»), non quella
   consigliata, e scegliendo la consigliata ci si torna; se la copia per l'app della lega non riesce, il testo compare in un
-  riquadro di sola lettura già selezionato, a 390 e 1440 px;
+  riquadro di sola lettura già selezionato, a 390 e 1440 px; con un salvataggio in volo (anche quello partito uscendo dal
+  menu del modulo per toccare «Copia») la copia non si fa e un avviso lo dice, poi copia la formazione nuova;
 - ciò che si salva è ciò che si vede: la copia mostrata subito all'apertura è di sola lettura finché non arrivano i dati
   nuovi; se non arrivano (rete caduta) la nota dice perché non si può cambiare e ha «Riprova», e quando il browser segnala
   che la rete è tornata la pagina riprova da sola, una volta; un salvataggio che torna a schermata già ridisegnata fa rileggere,
@@ -148,7 +149,10 @@ pagina comandato dal test con `clock.install`, `fast_forward` e `set_system_time
 - alla scadenza (qualche secondo dopo) la Formazione si rilegge una volta e, se il server la dice chiusa, il modulo e la spunta
   non ci sono più; se il server la dice ancora aperta non si rilegge ogni 30 secondi;
 - tornando in primo piano si rilegge se i dati hanno più di 5 minuti o se la scadenza è passata (una volta per scadenza), non
-  a dati appena letti né a ogni ritorno.
+  a dati appena letti né a ogni ritorno; dopo un salvataggio riuscito i dati contano come appena letti;
+- la rilettura chiede prima al server con la pagina com'è (niente copia tenuta sul telefono né comandi spenti, e con i dati
+  uguali non ridisegna niente: il riquadro della copia a mano resta); la copia, con la nota e «Riprova», solo se il server non
+  risponde.
 
 `test_fasi_giornata.py`, la giornata in corso e quella finita ai bordi (#895), con la risposta registrata di /api/oggi (o di
 /api/giocatore) cambiata solo nel pezzo che serve:
