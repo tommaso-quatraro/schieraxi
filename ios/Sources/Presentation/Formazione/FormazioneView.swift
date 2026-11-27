@@ -19,7 +19,7 @@ struct FormazioneView: View {
     @Environment(\.dynamicTypeSize) private var taglia
     @Environment(\.scenePhase) private var fase
     /// Da quando l'app non è più attiva, e da quando è in secondo piano: tornando dicono se è passata la scadenza mentre era fuori
-    /// (`DatiVecchi.rileggiPerLaScadenza`).
+    /// o se i dati sono vecchi (`DatiVecchi.rileggiAlRitorno`).
     @State private var fuoriDal: Date?
     @State private var inBackgroundDal: Date?
 
@@ -94,9 +94,11 @@ struct FormazioneView: View {
                 guard fase == .active, oggi.oggi?.faseGiornata == .inCorso else { return }
                 await seguiGiornata()
             }
-            // allo scadere della formazione si rilegge UNA volta (5 secondi dopo, per dare tempo al server): diventa di sola lettura
-            .task(id: "\(fase == .active)-\(oggi.oggi?.chiusura ?? "")") {
-                guard fase == .active, let inizio = Quando.data(oggi.oggi?.chiusura) else { return }
+            // allo scadere della formazione in pagina si rilegge UNA volta (5 secondi dopo, per dare tempo al server): diventa di sola
+            // lettura. Se il server la dice ancora aperta (orologio del telefono avanti) non si rilegge di nuovo: un salvataggio
+            // arrivato tardi riceve «formazione chiusa» e fa rileggere
+            .task(id: "\(fase == .active)-\(scadenzaInPagina ?? "")") {
+                guard fase == .active, let inizio = Quando.data(scadenzaInPagina) else { return }
                 let attesa = inizio.timeIntervalSinceNow + DatiVecchi.attesaDopoLaScadenza
                 guard attesa > 0, attesa < 2 * 24 * 3600 else { return }
                 try? await Task.sleep(for: .seconds(attesa))
@@ -105,13 +107,15 @@ struct FormazioneView: View {
             }
             // quel lavoro si ferma quando l'app non è attiva: se l'app era fuori quando toccava rileggere, tornando si rilegge subito
             // (dopo 10 minuti fuori ricarica già tutto la porta, `PortaDiAccesso`). Prima la Formazione sembrava ancora modificabile
-            // e il primo cambio riceveva «La formazione è chiusa»
+            // e il primo cambio riceveva «La formazione è chiusa». Si rilegge anche tornando dal secondo piano con i dati di più di
+            // 5 minuti fa, come la web (#978), ma solo con la Formazione in vista: sulle altre schede l'età non conta
             .onChange(of: fase) { vecchia, nuova in
                 if vecchia == .active { fuoriDal = Date() }
                 if nuova == .background { inBackgroundDal = Date() }
                 guard nuova == .active else { return }
-                let rileggi = DatiVecchi.rileggiPerLaScadenza(Quando.data(oggi.oggi?.chiusura), fuoriDal: fuoriDal,
-                                                              inBackgroundDal: inBackgroundDal, adesso: Date())
+                let rileggi = DatiVecchi.rileggiAlRitorno(scadenza: Quando.data(scadenzaInPagina), fuoriDal: fuoriDal,
+                                                          inBackgroundDal: inBackgroundDal, lettaIl: vm.inVista ? vm.lettaIl : nil,
+                                                          adesso: Date())
                 fuoriDal = nil
                 inBackgroundDal = nil
                 if rileggi { Task { await ricarica() } }
@@ -136,6 +140,12 @@ struct FormazioneView: View {
                 if let nuova { AccessibilityNotification.Announcement(nuova).post() }
             }
         }
+    }
+
+    /// Quando si chiude la formazione in pagina, la stessa della testa (`TestaFormazione.scadenza`, `scadenzaDi` della web): a
+    /// giornata finita, o arrivati a partite cominciate, quella della prossima.
+    private var scadenzaInPagina: String? {
+        oggi.oggi.flatMap { TestaFormazione.scadenza($0) }
     }
 
     /// La giornata (`/api/oggi`, che passa i dati a widget e promemoria) e, insieme, formazione e scelta.
@@ -378,23 +388,26 @@ struct FormazioneView: View {
         }
     }
 
-    /// Il modulo come menu (`formazione.opzione_*`: «4-3-3 · 73,7 punti · consigliato»); a giornata chiusa fisso. Per la tua
-    /// formazione un altro modulo si salva subito.
+    /// Il modulo come menu (`FormazioneViewModel.vociModulo`: «4-3-3 · 73,7 punti · consigliato» e, dopo un cambio a mano, in
+    /// cima «4-3-3 · 71,0 punti · la tua»); a giornata chiusa fisso. Per la tua formazione un altro modulo si salva subito; la tua
+    /// voce è già in campo e sceglierla non cambia niente, come la web.
     @ViewBuilder
     private func modulo(_ f: Formazione, _ v: VistaFormazione) -> some View {
-        let moduli = vm.moduli(f)
-        if vm.chiusa || moduli.isEmpty {
+        let voci = vm.vociModulo(f)
+        if vm.chiusa || voci.isEmpty {
             Text(v.modulo).font(.system(.title2, design: .rounded).weight(.bold))
                 .lineLimit(1).fixedSize()
                 .accessibilityLabel("\(Catalogo.Formazione.modulo) \(v.modulo)")
         } else {
             Menu {
-                ForEach(moduli) { m in
-                    Button { Task { await vm.scegliModulo(m.modulo) } } label: {
-                        if m.modulo == v.modulo {
-                            Label(vm.etichettaModulo(m, f), systemImage: "checkmark")
+                ForEach(voci) { voce in
+                    Button {
+                        if let m = voce.modulo { Task { await vm.scegliModulo(m) } }
+                    } label: {
+                        if voce.scelta {
+                            Label(voce.etichetta, systemImage: "checkmark")
                         } else {
-                            Text(vm.etichettaModulo(m, f))
+                            Text(voce.etichetta)
                         }
                     }
                 }

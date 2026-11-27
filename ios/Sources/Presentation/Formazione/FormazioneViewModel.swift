@@ -256,7 +256,8 @@ final class FormazioneViewModel: ViewModelBase {
         livello(f)?.moduli.first { Set($0.titolari) == Set(ids) }
     }
 
-    /// I moduli del menu: quelli del livello equilibrato e, se gli 11 in campo non sono uno di loro, anche il loro.
+    /// Le formazioni calcolate dal server per il menu del modulo, quelle del livello equilibrato (la tua, se è un'altra, la mette in
+    /// cima `vociModulo`).
     func moduli(_ f: Formazione) -> [OpzioneModulo] { livello(f)?.moduli ?? [] }
 
     // MARK: cosa mostrare
@@ -303,7 +304,7 @@ final class FormazioneViewModel: ViewModelBase {
             let panchina = valutazione?.panchina ?? f.panchina.map(\.id).filter { !manuale.contains($0) }
             return VistaFormazione(titolari: titolari, panchina: giocatori(panchina),
                                    modulo: valutazione?.modulo ?? ModuloTitolari.modulo(ruoli: titolari.map(\.ruolo)),
-                                   punti: valutazione?.punteggioAtteso)
+                                   punti: valutazione?.punteggioAtteso, tua: true)
         }
         let guardato = squadraVista == nil ? nil : moduloScelto.flatMap { m in livello(f)?.moduli.first { $0.modulo == m } }
         guard let opzione = guardato ?? consigliato(f) else { return base }
@@ -340,10 +341,21 @@ final class FormazioneViewModel: ViewModelBase {
             : Catalogo.Formazione.opzioneModulo(modulo: m.modulo, punti: Formato.punti(m.punteggioAtteso))
     }
 
-    /// Le voci del menu del modulo.
+    /// Le voci del menu del modulo, come `voci` di `mostraFormazione` della web (#978): le formazioni calcolate dal server e, se gli
+    /// 11 in campo non sono quelli di una di loro (un cambio a mano, anche nello stesso modulo), in cima la tua con i suoi punti,
+    /// quelli del server (`formazione.opzione_tua`), con la spunta. Prima la spunta stava sulla voce del server con lo stesso
+    /// modulo e altri punti, e la tua non c'era. Vuote senza moduli: allora il modulo è fisso.
     func vociModulo(_ f: Formazione) -> [VoceModulo] {
+        let calcolati = moduli(f)
+        guard !calcolati.isEmpty else { return [] }
         let v = vista(f)
-        return moduli(f).map { VoceModulo(modulo: $0.modulo, etichetta: etichettaModulo($0, f), scelta: $0.modulo == v.modulo) }
+        let delServer = calcolati.map { m in
+            VoceModulo(modulo: m.modulo, etichetta: etichettaModulo(m, f), scelta: !v.tua && m.modulo == v.modulo)
+        }
+        guard v.tua else { return delServer }
+        let tua = VoceModulo(modulo: nil, etichetta: Catalogo.Formazione.opzioneTua(modulo: v.modulo, punti: Formato.punti(v.punti)),
+                             scelta: true)
+        return [tua] + delServer
     }
 
     /// Chi non è fra titolari e panchina e può giocare, dal più forte (punti attesi): «Non schierati».
@@ -393,6 +405,7 @@ final class FormazioneViewModel: ViewModelBase {
         generazione += 1
         let g = generazione
         leggendo = true
+        lettaIl = Date()
         defer {
             if g == generazione {
                 leggendo = false
@@ -651,11 +664,13 @@ final class FormazioneViewModel: ViewModelBase {
         }
     }
 
-    /// Una scrittura non riuscita: 412 rilegge e lo dice (`cambiataAltrove`); 409 `formazione_chiusa` rilegge (la scadenza
-    /// è passata con la schermata aperta); gli altri errori (per esempio 400 `giocatore_bloccato`) dicono il messaggio del server.
-    /// Come `nonSalvata` della web (#667, #726): nella tua Formazione il motivo; lasciata la scheda, o guardando la formazione di
-    /// un'altra squadra, una frase che nomina la formazione (lì «Non riesco a collegarmi» da solo sembrerebbe parlare d'altro). Le
-    /// scritture sono una alla volta, quindi questa è sempre l'ultima partita da qui.
+    /// Una scrittura non riuscita: 412 rilegge e lo dice (`cambiataAltrove`); 409 `formazione_chiusa` (la scadenza è passata con
+    /// la schermata aperta) e 400 `giocatore_bloccato` (è cominciata una partita che la schermata non sapeva) dicono la frase del
+    /// server e rileggono, come `rileggereDopo` della web (#978: prima dopo `giocatore_bloccato` restava spostabile chi gioca la
+    /// partita cominciata); gli altri errori dicono il messaggio del server. Come `nonSalvata` della web (#667, #726): nella tua
+    /// Formazione il motivo; lasciata la scheda, o guardando la formazione di un'altra squadra, una frase che nomina la formazione
+    /// (lì «Non riesco a collegarmi» da solo sembrerebbe parlare d'altro). Le scritture sono una alla volta, quindi questa è sempre
+    /// l'ultima partita da qui.
     private func nonRiuscita(_ error: Error, generazione g: Int) async {
         if let e = error as? ErroreApi, e.eConflitto {
             guasto = nil        // l'ultima scrittura è questa, e il suo seguito è la rilettura: un guasto di prima non vale più
@@ -671,13 +686,16 @@ final class FormazioneViewModel: ViewModelBase {
         }
         if g != generazione {
             await carica()
-        } else if case .codificato(let codice, _)? = error as? ErroreApi, codice == Self.codiceChiusa {
+        } else if case .codificato(let codice, _)? = error as? ErroreApi, Self.codiciDaRileggere.contains(codice) {
             await carica()
         }
     }
 
     /// Il codice del server per una scrittura arrivata dopo la scadenza (409).
     static let codiceChiusa = "formazione_chiusa"
+
+    /// I rifiuti di una scrittura che dicono che i dati a video sono vecchi: dopo, la Formazione si rilegge.
+    static let codiciDaRileggere: Set<String> = [codiceChiusa, codiceBloccato]
 
     /// L'avviso di una scrittura non riuscita nella Formazione: il motivo per la tua; guardando la formazione di un'altra squadra la
     /// frase che nomina la formazione, come la web.
