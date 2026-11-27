@@ -8,6 +8,9 @@ from datetime import datetime
 import pytest
 
 from fanta import aggiorna, consigli, pianificatore
+# `stato_dati.riepilogo` importa la sentinella solo quando serve: importata qui, la fixture di conftest ne sposta il file in una
+# cartella temporanea (lanciato da solo, il test aprirebbe `dati/sentinella.json` del repository)
+from fanta import sentinella  # noqa: F401
 
 ST = "2026-27"
 H = lambda giorno, ora, minuto=0: datetime(2026, 11, giorno, ora, minuto)  # noqa: E731
@@ -137,11 +140,41 @@ def test_aggiorna_risultati_con_la_rete_giu_lascia_la_riga_con_l_errore(monkeypa
     assert "ConnectionError" in passo["errore"] and "risultati 12" in passo["errore"]
     voce = next(a for a in stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 8, 20, 0))["aggiornamenti"]
                 if a["cosa"] == pianificatore.CHIAVE_RISULTATI)
-    assert voce["quando"] == "2026-11-07T17:30:00" and voce["errori"][0].startswith("Non riuscito alle 19:00 dell'08/11:")
+    assert voce["quando"] == "2026-11-07T17:30:00"
+    assert voce["errori"] == ["Non riuscito dom 8 nov alle 19:00: Fantacalcio.it non risponde."]      # niente messaggio tecnico
     assert archivio.passi_fermi(db, datetime(2026, 11, 9, 18, 0)) == []     # fuori dalla salute (revisione #700)
     db.close()
     righe = [rec.getMessage() for rec in caplog.records if rec.name == "fanta.pianificatore"]
     assert righe and all("ConnectionError" in r for r in righe)
+
+
+def test_la_pagina_dei_voti_cambiata_la_sera_ha_il_dettaglio_nel_registro(monkeypatch, tmp_path, caplog):
+    """Revisione della #975: con un guasto che non è la rete (pagina dei voti con meno righe, `VotiCalati`) Stato dei dati dice «il
+    dettaglio è nel registro del server»: il registro deve averlo davvero, accorciato e senza i parametri degli indirizzi (prima
+    c'era solo «risultati 12: VotiCalati»)."""
+    from fanta import archivio, fonti_attive, stato_dati
+    vero = archivio.apri
+    monkeypatch.setattr(archivio, "apri", lambda *a, **k: vero(tmp_path / "f.sqlite"))
+    monkeypatch.setattr(pianificatore, "blocco_processo", lambda: contextlib.nullcontext(True))
+    monkeypatch.setattr(fonti_attive, "acceso", lambda nome: True)
+    monkeypatch.setattr(aggiorna, "_ora", lambda: "2026-11-08T19:00:00")
+
+    def voti_calati(self, g):
+        raise aggiorna.VotiCalati(f"giornata {g}: 300 voti salvati, la pagina https://fonte.invalid/voti?chiave=segreta ne ha 120 "
+                                  "(tenuti quelli di prima)" + " x" * 400)
+    monkeypatch.setattr(aggiorna.Aggiornamento, "risultati_giornata", voti_calati)
+    with caplog.at_level("WARNING", logger="fanta.pianificatore"):
+        assert pianificatore.aggiorna_risultati([12]) is False
+    db = vero(tmp_path / "f.sqlite")
+    voce = next(a for a in stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 8, 20, 0))["aggiornamenti"]
+                if a["cosa"] == pianificatore.CHIAVE_RISULTATI)
+    db.close()
+    assert voce["errori"] == ["Non riuscito dom 8 nov alle 19:00: il dettaglio è nel registro del server."]
+    righe = [rec.getMessage() for rec in caplog.records if rec.name == "fanta.pianificatore"]
+    assert any("risultati 12: VotiCalati: giornata 12: 300 voti salvati, la pagina https://fonte.invalid/voti ne ha 120" in r
+               for r in righe), righe
+    assert not any("chiave=segreta" in r or "?" in r for r in righe), righe
+    assert all(len(r) < 700 for r in righe), [len(r) for r in righe]
 
 
 def _sera_fallita(db):

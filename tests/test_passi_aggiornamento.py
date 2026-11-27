@@ -10,6 +10,9 @@ import pytest
 
 from fanta import aggiorna, archivio, consigli, fonti_attive, funzioni, salute, stato_dati
 from fanta.fonti import understat as us
+# `stato_dati.riepilogo` importa la sentinella solo quando serve: importata qui, la fixture di conftest ne sposta il file in una
+# cartella temporanea (lanciato da solo, il test aprirebbe `dati/sentinella.json` del repository)
+from fanta import sentinella  # noqa: F401
 
 ST = "2026-27"
 
@@ -45,7 +48,8 @@ def test_un_passo_che_non_riesce_tiene_l_ultimo_successo_e_dice_da_quando(db, mo
     _agg(db, monkeypatch, "2026-11-02T08:03:00")._passo("Understat", _rotto)
     quando, d = _riga(db, "understat")
     assert quando == "2026-11-01T21:03:00"
-    assert d == {"errore": "ValueError: pagina strana", "dal": "2026-11-02T08:03:00", "ultimo": "2026-11-02T08:03:00"}
+    assert d == {"errore": "ValueError: pagina strana", "dal": "2026-11-02T08:03:00", "ultimo": "2026-11-02T08:03:00",
+                 "tipo": "dati"}                                       # una pagina che non si legge, non una fonte che non risponde
     righe = []
     a = _agg(db, monkeypatch, "2026-11-04T13:03:00", righe)
     a._passo("Understat", _rotto)
@@ -211,21 +215,89 @@ def test_la_salute_avvisa_per_nome_del_passo_fermo_e_ripete_ogni_24_ore(db, monk
     assert salute.controlla(db, datetime(2026, 11, 5, 13, 10), f, manda, lambda: True) == []
 
 
+REGISTRO = "il dettaglio è nel registro del server"
+
+
 def test_stato_dei_dati_mostra_il_passo_fermo_con_l_ora_vera(db, monkeypatch):
+    """Una frase semplice con il giorno come lo scrive l'app («lun 2 nov»), mai il messaggio tecnico, che resta nel registro e
+    nell'archivio (collaudo in inglese del 27/11/2026). Una pagina che non si legge non è una fonte che non risponde."""
     _agg(db, monkeypatch, "2026-11-01T21:03:00")._passo("Understat", lambda: None)
     _agg(db, monkeypatch, "2026-11-02T08:03:00")._passo("Understat", _rotto)
     r = stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 4, 9, 0))
     voce = next(a for a in r["aggiornamenti"] if a["cosa"] == "understat")
     assert voce["quando"] == "2026-11-01T21:03:00"                            # l'ultimo successo, non l'ora dell'ultima corsa
-    assert voce["errori"] == ["Fermo da 2 giorni (non riesce dal 02/11 alle 08:03): ValueError: pagina strana"]
+    assert voce["errori"] == [f"Fermo da 2 giorni, non riesce da lun 2 nov alle 08:03: {REGISTRO}."]
+    assert voce["errori_frasi"][0]["chiave"] == "aggiornamento.fermo"
+    assert voce["errori_frasi"][0]["param"]["durata"] == {"chiave": "tempo.giorni", "param": {"n": 2}}
     r = stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 2, 9, 0))
     voce = next(a for a in r["aggiornamenti"] if a["cosa"] == "understat")
-    assert voce["errori"] == ["Non riuscito alle 08:03 del 02/11: ValueError: pagina strana"]
+    assert voce["errori"] == [f"Non riuscito lun 2 nov alle 08:03: {REGISTRO}."]
+    assert voce["errori_frasi"] == [{"chiave": "aggiornamento.non_riuscito", "param": {
+        "quando": {"chiave": "data.giorno_mese", "param": {"giorno": {"chiave": "giorno.lun", "param": {}}, "n": 2,
+                                                             "mese": {"chiave": "mese.nov", "param": {}}}},
+        "ora": "08:03", "motivo": {"chiave": "aggiornamento.motivo_registro", "param": {}}}}]
+    assert _riga(db, "understat")[1]["errore"] == "ValueError: pagina strana"  # il dettaglio resta nell'archivio
+
+
+def test_stato_dei_dati_dice_quale_fonte_non_risponde(db, monkeypatch):
+    import requests
+
+    def giu():
+        raise requests.exceptions.ProxyError("HTTPSConnectionPool(host='fonte.invalid', port=443): Max retries exceeded")
+    monkeypatch.setattr(fonti_attive, "acceso", lambda nome: True)
+    righe = []
+    _agg(db, monkeypatch, "2026-11-27T11:31:00", righe)._passo("listone", giu, "fantacalcio")
+    _agg(db, monkeypatch, "2026-11-27T11:31:00")._passo("Understat", giu, "understat")
+    r = stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 27, 12, 0))
+    errori = {a["cosa"]: a["errori"] for a in r["aggiornamenti"]}
+    assert errori["listone"] == ["Non riuscito ven 27 nov alle 11:31: Fantacalcio.it non risponde."]
+    assert errori["understat"] == ["Non riuscito ven 27 nov alle 11:31: Understat non risponde."]
+    assert any("ProxyError: HTTPSConnectionPool" in riga for riga in righe), "il dettaglio tecnico non è più nel registro"
+    assert "fonte.invalid" not in json.dumps(r["aggiornamenti"])
+
+
+def test_stato_dei_dati_con_un_errore_salvato_dalla_versione_di_prima(db):
+    """Un errore salvato prima di questa versione (senza il tipo né la fonte) dice dove sta il dettaglio, senza il messaggio."""
+    archivio.segna_passo(db, "calendario", "2026-11-27T11:31:00", "ProxyError: HTTPSConnectionPool(host='fonte.invalid')")
+    r = stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 27, 12, 0))
+    voce = next(a for a in r["aggiornamenti"] if a["cosa"] == "calendario")
+    assert voce["quando"] is None and voce["errori"] == [f"Non riuscito ven 27 nov alle 11:31: {REGISTRO}."]
+
+
+def test_la_riga_generale_dice_solo_quali_passi_non_sono_riusciti(db):
+    """Gli errori della corsa (riga «aggiornamento») sono tecnici e ripetono quelli dei passi: Stato dei dati dice solo quali passi
+    non sono riusciti, con i loro nomi, una volta sola anche con più controlli storti. Anche per le righe già salvate."""
+    righe = ["listone: ProxyError: HTTPSConnectionPool(host='fonte.invalid', port=443) (mai riuscito)",
+             "Understat: ConnectTimeout: scaduto (non riesce dal 25/11 alle 08:03; ultimo riuscito il 24/11 alle 21:03)",
+             "voti 2025-26: ValueError: pagina strana", "controlli: gol_dei_voti: 3 partite", "controlli: titolari_per_squadra: 1"]
+    archivio.segna(db, "aggiornamento", "2026-11-27T11:31:00", json.dumps(righe))
+    voce = next(a for a in stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 27, 12, 0))["aggiornamenti"]
+                if a["cosa"] == "aggiornamento")
+    assert voce["errori"] == ["Non riusciti: Listone e quotazioni, Statistiche avanzate, Voti e bonus 2025-26, Controlli sui dati."]
+    frase = voce["errori_frasi"][0]
+    assert frase["chiave"] == "aggiornamento.non_riusciti" and frase["param"]["n"] == 4
+    archivio.segna(db, "aggiornamento", "2026-11-27T11:31:00", json.dumps(righe[:1]))
+    voce = next(a for a in stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 27, 12, 0))["aggiornamenti"]
+                if a["cosa"] == "aggiornamento")
+    assert voce["errori"] == ["Non riuscito: Listone e quotazioni."]
+
+
+def test_i_passi_delle_stagioni_passate_hanno_un_nome_da_tradurre(db):
+    """Revisione della #975: «quotazioni 2025-26» (aggiornamento con le stagioni passate, lanciato a mano) restava in italiano anche
+    in inglese, perché non aveva un nome nel catalogo."""
+    righe = ["quotazioni 2025-26: ValueError: pagina strana", "dati extra 2025-26: ValueError: pagina strana"]
+    archivio.segna(db, "aggiornamento", "2026-11-27T11:31:00", json.dumps(righe))
+    voce = next(a for a in stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 27, 12, 0))["aggiornamenti"]
+                if a["cosa"] == "aggiornamento")
+    assert voce["errori"] == ["Non riusciti: Quotazioni 2025-26, Statistiche di squadra 2025-26."]
+    parti = voce["errori_frasi"][0]["param"]["passi"]["param"]["parti"]
+    assert [x["param"]["passo"]["chiave"] for x in parti] == ["aggiornamento.quotazioni", "aggiornamento.dati_extra"]
 
 
 def test_le_righe_d_errore_con_l_apostrofo_davanti_all_08_e_all_11(db, monkeypatch):
     """«dall'08/11», «dell'11/11», «l'08/11» (si legge «dall'otto», «dell'undici»), mai «dal 08/11» o «del 11/11» (#859): nella
-    riga generale dell'aggiornamento e nelle righe d'errore di Stato dei dati. «il 01/11» e «del 02/11» restano."""
+    riga generale dell'aggiornamento (registro). «il 01/11» e «del 02/11» restano. Stato dei dati scrive il giorno come l'app
+    («da dom 8 nov», «mer 11 nov»)."""
     _agg(db, monkeypatch, "2026-11-01T21:03:00")._passo("Understat", lambda: None)
     _agg(db, monkeypatch, "2026-11-08T08:03:00")._passo("Understat", _rotto)
     a = _agg(db, monkeypatch, "2026-11-11T13:03:00")
@@ -233,7 +305,7 @@ def test_le_righe_d_errore_con_l_apostrofo_davanti_all_08_e_all_11(db, monkeypat
     assert "(non riesce dall'08/11 alle 08:03; ultimo riuscito il 01/11 alle 21:03)" in a.errori[0], a.errori[0]
     r = stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 11, 14, 0))
     voce = next(x for x in r["aggiornamenti"] if x["cosa"] == "understat")
-    assert voce["errori"] == ["Fermo da 3 giorni (non riesce dall'08/11 alle 08:03): ValueError: pagina strana"]
+    assert voce["errori"] == [f"Fermo da 3 giorni, non riesce da dom 8 nov alle 08:03: {REGISTRO}."]
     _agg(db, monkeypatch, "2026-11-08T21:03:00")._passo("Understat", lambda: None)
     _agg(db, monkeypatch, "2026-11-11T08:03:00")._passo("Understat", _rotto)
     a = _agg(db, monkeypatch, "2026-11-11T13:03:00")
@@ -241,7 +313,7 @@ def test_le_righe_d_errore_con_l_apostrofo_davanti_all_08_e_all_11(db, monkeypat
     assert "(non riesce dall'11/11 alle 08:03; ultimo riuscito l'08/11 alle 21:03)" in a.errori[0], a.errori[0]
     r = stato_dati.riepilogo(db, ST, adesso=datetime(2026, 11, 11, 14, 0))       # non è fermo da più di un giorno
     voce = next(x for x in r["aggiornamenti"] if x["cosa"] == "understat")
-    assert voce["errori"] == ["Non riuscito alle 13:03 dell'11/11: ValueError: pagina strana"]
+    assert voce["errori"] == [f"Non riuscito mer 11 nov alle 13:03: {REGISTRO}."]
 
 
 def test_stato_dei_dati_ha_un_nome_leggibile_per_ogni_riga_e_ogni_controllo(db, monkeypatch):

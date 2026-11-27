@@ -7,8 +7,9 @@ enum DatiGalleria {
     /// `-DATI`: pieni (prima della scadenza), parziali (un server senza scambio, svincolo e Diario), salvati (copia di due giorni
     /// prima), salvati_oggi (copia di oggi), in_corso, in_corso_recupero (più avanti nella giornata: la frase lunga del server su
     /// chi aspetta il recupero, #900, con la sua forma breve per il medio, #911), finita, campionato_finito (la frase del server al
-    /// posto della giornata, #727), senza_formazione (entrato a giornata iniziata: la prossima da preparare, #687), vuoto (widget da
-    /// collegare).
+    /// posto della giornata, #727), senza_formazione (entrato a giornata iniziata: la prossima da preparare, #687), senza_probabili
+    /// (prima della scadenza, probabili non ancora uscite e nessun titolare da controllare: «probabili non uscite» nel piccolo di
+    /// Prossima giornata), vuoto (widget da collegare).
     static func voce(_ tipo: String) -> Voce {
         let adesso = Date()
         if tipo == "vuoto" {
@@ -21,6 +22,11 @@ enum DatiGalleria {
         if tipo == "senza_formazione" {
             let quando = LegaDemo.momento(adesso: adesso, fase: .inCorso)
             let w = RiassuntoWidget.leggi(senzaFormazione(LegaDemo.widget(adesso: quando, fase: .inCorso), adesso: quando))
+            return Voce(date: quando, riassunto: w?.comeRiassuntoOggi(scaricatoIl: quando), datiSalvati: false, widget: w)
+        }
+        if tipo == "senza_probabili" {
+            let quando = LegaDemo.momento(adesso: adesso, fase: .prima)
+            let w = RiassuntoWidget.leggi(senzaProbabili(LegaDemo.widget(adesso: quando, fase: .prima)))
             return Voce(date: quando, riassunto: w?.comeRiassuntoOggi(scaricatoIl: quando), datiSalvati: false, widget: w)
         }
         if tipo == "in_corso_recupero" {
@@ -55,6 +61,17 @@ enum DatiGalleria {
         inCorso["situazione"] = LegaDemo.situazioneRecupero
         inCorso["situazione_breve"] = LegaDemo.situazioneRecuperoBreve
         w["in_corso"] = inCorso
+        return (try? JSONSerialization.data(withJSONObject: w)) ?? dati
+    }
+
+    /// La demo prima della scadenza con le probabili non ancora uscite (`con_probabili` falso) e nessun titolare da controllare
+    /// (`avvisi` vuoti, `da_controllare` 0): il piccolo di Prossima giornata mostra «probabili non uscite» al posto di «punti
+    /// attesi» (`ProbabiliNonUscite`), che con il testo grande diventava «probabili non usc…».
+    private static func senzaProbabili(_ dati: Data) -> Data {
+        guard var w = (try? JSONSerialization.jsonObject(with: dati)) as? [String: Any] else { return dati }
+        w["con_probabili"] = false
+        w["avvisi"] = [Any]()
+        w["da_controllare"] = 0
         return (try? JSONSerialization.data(withJSONObject: w)) ?? dati
     }
 

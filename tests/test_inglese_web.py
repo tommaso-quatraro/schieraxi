@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 
 import codice_web
+import parole_inglesi
 import pytest
 
 TESTI_JS = codice_web.leggi("testi.js")
@@ -40,6 +41,14 @@ def test_le_date_con_l_anno_hanno_il_mese_a_parole_in_inglese():
     assert _node("it", [giorno]) == ["26/11/2026"]                                       # in italiano come prima
 
 
+def test_le_date_estese_hanno_il_mese_breve_in_inglese_e_per_intero_in_italiano():
+    """«Rosters updated on 27 Nov 2026», «User · since 27 Nov 2026» (collaudo in inglese del 27/11/2026: era «27 November 2026»,
+    unica data lunga della web inglese); in italiano «27 novembre 2026», come sull'iPhone."""
+    giorno = 'fDataEstesa(new Date("2026-11-27T12:00:00Z"))'
+    assert _node("en", [giorno]) == ["27 Nov 2026"]
+    assert _node("it", [giorno]) == ["27 novembre 2026"]
+
+
 def test_i_nomi_di_stato_dei_dati_si_traducono():
     casi = ['traduciFrase({ chiave: "fascia.titolare", param: { da: 90, a: 100 } }, "Titolare 90-100%")',
             'traduciFrase({ chiave: "fascia.panchina_sotto", param: { a: 20 } }, "Panchina sotto 20%")',
@@ -49,20 +58,27 @@ def test_i_nomi_di_stato_dei_dati_si_traducono():
             'traduciFrase({ chiave: "uso.funzione_diario", param: {} }, "Diario delle giornate")',
             'traduciFrase({ chiave: "controllo.titolari_per_squadra", param: {} }, "11 titolari per squadra")',
             'traduciFrase(null, "vecchia_funzione")']
-    assert _node("en", casi) == ["Starter 90-100%", "Bench below 20%", "Full data refresh", "Full fixtures 2026-27", "Player photos",
+    assert _node("en", casi) == ["Starter 90-100%", "Bench below 20%", "Full data refresh", "Full calendar 2026-27", "Player photos",
                                  "Matchdays", "11 starters per team", "vecchia_funzione"]
     assert _node("it", casi[:2]) == ["Titolare 90-100%", "Panchina sotto 20%"]
 
 
-# parole che in inglese non si usano più (#949): il voto è «grade», la giornata «matchday», le probabili «probable lineups»
-PAROLE_VIETATE = [(r"[«»]", "virgolette «» (in inglese “”)"), (r"\bratings?\b|\bvotes?\b", "voto = grade"),
-                  (r"\brounds?\b", "giornata = matchday"), (r"predicted line-?ups?", "probable lineups"), (r"\bDiaries\b", "Diaries"),
-                  (r"recogniz", "recognise"), (r"\bmaluse?s?\b", "malus = deduction"), (r"\bline-ups?\b", "lineup")]
+# parole che in inglese non si usano più (#949): il voto è «grade», la giornata «matchday», le probabili «probable lineups». Dal
+# collaudo del 27/11/2026: «senza voto» = «no grade», la formazione «closes» (non «locks»), la rosa è «roster» («expected squad»
+# resta: sono i convocati), il calendario «calendar», le previsioni «forecasts». «», «round», «line-up» e «lock» solo nel senso
+# sbagliato, con le espressioni comuni alle novità (`parole_inglesi.py`: niente allarmi per «year-round» o «Lock Screen»)
+PAROLE_VIETATE = [(parole_inglesi.VIRGOLETTE, "virgolette «» (in inglese “”)"), (r"\bratings?\b|\bvotes?\b", "voto = grade"),
+                  (parole_inglesi.ROUND, "giornata = matchday"), (r"predicted line-?ups?", "probable lineups"), (r"\bDiaries\b", "Diaries"),
+                  (r"recogniz", "recognise"), (r"\bmaluse?s?\b", "malus = deduction"), (parole_inglesi.LINE_UP, "lineup"),
+                  (r"\bno score\b", "senza voto = no grade"), (parole_inglesi.LOCK, "la formazione si chiude = closes"),
+                  (r"(?<!expected )\bsquads?\b", "rosa = roster"), (r"\bfixtures?\b|fixture list", "calendario = calendar"),
+                  (r"\bpredictions?\b", "previsione = forecast")]
 
 
 def test_nel_catalogo_inglese_le_stesse_parole_dappertutto():
     storte = []
     for percorso in sorted(CATALOGO.glob("*.json")):
         for chiave, voce in json.loads(percorso.read_text(encoding="utf-8")).items():
-            storte += [f"{chiave}: {motivo}" for schema, motivo in PAROLE_VIETATE if re.search(schema, voce["en"], re.I)]
+            storte += [f"{chiave}: {motivo}" for schema, motivo in PAROLE_VIETATE
+                       if (schema if isinstance(schema, re.Pattern) else re.compile(schema, re.I)).search(voce["en"])]
     assert not storte, storte

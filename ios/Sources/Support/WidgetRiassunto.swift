@@ -812,10 +812,11 @@ enum VociTimeline {
 /// arrivati bene solo quando sono vecchi, perché iOS decide lui quando ricaricare un widget e può rimandare anche di ore. Prima l'ora
 /// si vedeva solo con la copia, e a partite in corso i punti di un'ora prima sembravano attuali.
 enum EtaDatiWidget {
-    /// Con una partita in gioco o che sta per iniziare (`RiassuntoWidget.finestraLive`) il widget chiede di ricaricare ogni 2 minuti:
-    /// dopo 15 i punti possono essere già cambiati.
-    static let sogliaPartite: TimeInterval = 15 * 60
-    /// Negli altri momenti chiede ogni 10-30 minuti (`Fornitore`): dopo un'ora iOS ha rimandato di sicuro.
+    /// Con una partita della rosa nella sua finestra (`RiassuntoWidget.conPartite`) il widget chiede di ricaricare ogni 15 minuti
+    /// (`RicaricaWidget.minutiPartite`): oltre il doppio iOS ha rimandato, e i punti possono essere già cambiati. Fino al 27/11/2026
+    /// chiedeva ogni 2 minuti e la soglia era 15: con le ricariche ogni 15 l'ora sarebbe comparsa quasi a ogni voce.
+    static let sogliaPartite: TimeInterval = 2 * RicaricaWidget.minutiPartite * 60
+    /// Negli altri momenti chiede ogni 10-30 minuti (`RicaricaWidget.minuti`): dopo un'ora iOS ha rimandato di sicuro.
     static let soglia: TimeInterval = 60 * 60
 
     /// L'ora da scrivere sotto i dati, o nil se non serve. `adesso`: l'istante della voce della timeline.
@@ -852,12 +853,6 @@ extension RiassuntoWidget {
     /// è in corso. Prima della scadenza la prossima partita dice quasi lo stesso della scadenza, ed è la prima cosa che si toglie.
     var partiteInPrimoPiano: Bool { !partiteInGioco.isEmpty || faseGiornata.fase == FaseRiassunto.faseInCorso }
 
-    /// La prossima partita da giocare (dopo adesso o iniziata da poco senza dati).
-    func prossimaPartita(dopo adesso: Date = Date()) -> PartitaLive? {
-        partiteLive.filter { !$0.inGioco && !$0.finita && $0.stato != "rinviata" && ($0.quando ?? .distantPast) > adesso.addingTimeInterval(-15 * 60) }
-            .min { ($0.quando ?? .distantFuture) < ($1.quando ?? .distantFuture) }
-    }
-
     /// I miei titolari che giocano in questa partita: la mia rosa dice contro chi e se in casa.
     func mieiTitolari(in p: PartitaLive) -> [GiocatoreWidget] {
         let titolari = Set((formazione?.titolari ?? []).map(\.id))
@@ -866,14 +861,58 @@ extension RiassuntoWidget {
             return g.inCasa == true ? (p.trasferta == avv) : (p.casa == avv)
         }
     }
+}
 
-    /// true se ha senso aggiornare spesso: c'è una partita in gioco o sta per iniziare (da 10 minuti prima).
-    func finestraLive(adesso: Date = Date()) -> Bool {
-        if !partiteInGioco.isEmpty { return true }
-        return partiteLive.contains { p in
-            guard !p.finita, p.stato != "rinviata", let q = p.quando else { return false }
-            return q.timeIntervalSince(adesso) < 10 * 60 && adesso.timeIntervalSince(q) < 130 * 60
+extension RiassuntoWidget {
+    /// true se una partita di un giocatore della rosa è nella sua finestra (`RicaricaWidget`): sta per cominciare, si gioca o
+    /// aspetta i voti. Dagli orari della rosa (`data_partita`), non dalla diretta, che `/api/widget` non manda più (27/11/2026):
+    /// prima valeva `finestraLive`, con le partite di `live`. Solo per decidere quando ricaricare: non si mostra.
+    func conPartite(adesso: Date) -> Bool {
+        (rosa ?? []).contains { g in
+            guard let calcio = g.quando else { return false }
+            return adesso >= calcio.addingTimeInterval(-RicaricaWidget.primaDelCalcio)
+                && adesso < calcio.addingTimeInterval(RicaricaWidget.dopoIlCalcio)
         }
+    }
+
+    /// Quando si apre la finestra della prossima partita della rosa (10 minuti prima del calcio d'inizio), se deve ancora aprirsi:
+    /// lì il `Fornitore` chiede una ricarica, e da lì ogni 15 minuti.
+    func prossimaFinestra(dopo adesso: Date) -> Date? {
+        (rosa ?? []).compactMap { $0.quando?.addingTimeInterval(-RicaricaWidget.primaDelCalcio) }.filter { $0 > adesso }.min()
+    }
+}
+
+/// Ogni quanto i widget chiedono a iOS di ricaricarsi (`Fornitore`). iOS decide poi quando farlo davvero, con un numero limitato di
+/// ricariche al giorno: per questo spesso solo quando i dati possono cambiare. Qui, e non nel `Fornitore`, perché si prova.
+enum RicaricaWidget {
+    /// Con una partita della rosa nella sua finestra (`RiassuntoWidget.conPartite`): ogni 15 minuti. Fino al 27/11/2026 erano 2,
+    /// per la diretta, che nessun widget mostra più (#634): le ricariche concesse da iOS finivano prima che arrivassero i punti.
+    static let minutiPartite = 15.0
+    /// La finestra di una partita comincia 10 minuti prima del calcio d'inizio e finisce 4 ore e 15 minuti dopo: il server legge
+    /// risultati e voti 2 ore e 30 dopo l'inizio e, se mancano ancora, di nuovo a 4 ore (`pianificatore.GIRI_RISULTATI`), e lì
+    /// arrivano i punti fatti e, con l'ultima partita, la fine della giornata. I 15 minuti in più sono una ricarica, perché anche il
+    /// secondo giro si veda. La finestra della diretta finiva 130 minuti dopo l'inizio, prima dei voti. L'app non legge il
+    /// pianificatore: `tests/test_widget_ricariche.py` controlla che questo valore copra il suo ultimo giro (scritto come somma di
+    /// prodotti di interi, che quel test sa leggere).
+    static let primaDelCalcio: TimeInterval = 10 * 60
+    static let dopoIlCalcio: TimeInterval = 4 * 3600 + 15 * 60
+
+    /// I minuti fino alla prossima ricarica. `scadenza`: quella della formazione (`RiassuntoOggi.inizio`); `partite`: una partita
+    /// della rosa è nella sua finestra. Più spesso quando la scadenza è vicina (probabili, dubbi e formazioni cambiano), meno quando
+    /// mancano giorni; le partite portano a 15 minuti, mai a più di prima (a meno di 3 ore dalla scadenza restano 10).
+    static func minuti(adesso: Date, scadenza: Date?, partite: Bool) -> Double {
+        var minuti = 30.0
+        if let scadenza {
+            let manca = scadenza.timeIntervalSince(adesso)
+            if manca > 0 && manca < 3 * 3600 {
+                minuti = 10
+            } else if manca > 0 && manca < 24 * 3600 {
+                minuti = 20
+            } else if manca < 0 && manca > -3 * 3600 {
+                minuti = 15
+            }
+        }
+        return partite ? min(minuti, minutiPartite) : minuti
     }
 }
 
@@ -1214,8 +1253,13 @@ enum ParoleWidget {
         guard let inizio else { return ["scadenza non nota"] }
         let quando = inizio > adesso ? "alla scadenza, \(Quando.relativa(inizio, adesso: adesso))"
             : "si è chiusa \(Quando.relativa(inizio, adesso: adesso))"
-        return conProbabili == false ? ["probabili non uscite · \(quando)", "probabili non uscite"] : [quando]
+        return conProbabili == false ? ["\(probabiliNonUscite) · \(quando)", probabiliNonUscite] : [quando]
     }
+
+    /// Le probabili formazioni della giornata non sono ancora uscite (`con_probabili` falso). Nel piccolo di Prossima giornata
+    /// dove non entra perde il simbolo, poi resta il solo simbolo (`ProbabiliNonUscite`): non si accorcia a parole, perché
+    /// «probabili» o «non uscite» da soli direbbero un'altra cosa.
+    static let probabiliNonUscite = "probabili non uscite"
 
     /// La frase del server a campionato finito nelle sue forme, dalla più lunga (#727): intera («Il campionato è finito: previsioni e
     /// consigli ripartono con il calendario della prossima stagione.») e, dove non entra, la sua prima parte, fino ai due punti («Il
@@ -1288,6 +1332,13 @@ enum ParoleWidget {
         let m = modulo ?? "—", p = Formato.punti(punti)
         let corte = ["\(m) · \(p) punti", "\(m) · \(p)"]
         return fascia.map { ["\(m) · \(p) punti · \($0)"] + corte } ?? corte
+    }
+
+    /// Il rettangolo di Prossima giornata sulla schermata di blocco: «3-4-3 · 72,7 punti attesi» → «3-4-3 · 72,7 attesi» →
+    /// «3-4-3 · 72,7». Con il testo grande la riga intera andava a capo e usciva dal riquadro; modulo e numero restano sempre.
+    static func moduloEPuntiAttesi(_ modulo: String?, punti: Double?) -> [String] {
+        let m = modulo ?? "—"
+        return puntiAttesi(punti).map { "\(m) · \($0)" } + ["\(m) · \(Formato.punti(punti))"]
     }
 
     /// «Formazione 3-4-3» (o «La tua scelta 3-4-3») → «3-4-3».

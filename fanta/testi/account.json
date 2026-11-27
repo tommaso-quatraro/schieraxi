@@ -197,7 +197,7 @@
   },
   "account.dati_spiega": {
     "it": "Un file con i dati del tuo account (nome, email, accessi collegati, termini accettati) e della tua lega: regole, rose, scelte, giocatori seguiti e notifiche. Contiene solo i tuoi dati, mai la password.",
-    "en": "A file with your account data (name, email, linked sign-ins, accepted terms) and your league: rules, squads, choices, followed players and notifications. It contains only your data, never the password."
+    "en": "A file with your account data (name, email, linked sign-ins, accepted terms) and your league: rules, rosters, choices, followed players and notifications. It contains only your data, never the password."
   },
   "account.dati_scarica": {
     "it": "Scarica il file",

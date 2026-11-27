@@ -76,6 +76,25 @@ struct TestiCortiWidgetTests {
         #expect(ParoleWidget.moduloEPunti(nil, punti: 73.7, fascia: nil).first == "— · 73,7 punti")
     }
 
+    /// Nel rettangolo di Prossima giornata la riga «3-4-3 · 72,7 punti attesi» con il testo grande andava a capo e la terza riga
+    /// usciva dal riquadro, sotto la giornata e il conto alla rovescia. La forma intera resta quella di prima; il modulo e il
+    /// numero non cedono mai.
+    @Test("Modulo e punti nel rettangolo di Prossima giornata: via «punti», poi «attesi»; modulo e numero restano")
+    func moduloEPuntiAttesi() {
+        #expect(ParoleWidget.moduloEPuntiAttesi("3-4-3", punti: 72.7)
+                == ["3-4-3 · 72,7 punti attesi", "3-4-3 · 72,7 attesi", "3-4-3 · 72,7"])
+        #expect(ParoleWidget.moduloEPuntiAttesi(nil, punti: 72.7).first == "— · 72,7 punti attesi")
+        #expect(ParoleWidget.moduloEPuntiAttesi("4-3-3", punti: nil).last == "4-3-3 · \(Formato.punti(nil))")
+    }
+
+    @Test("«probabili non uscite» è una frase sola, la stessa nel piccolo di Prossima giornata e sotto il conto del Cruscotto")
+    func probabiliNonUscite() throws {
+        #expect(ParoleWidget.probabiliNonUscite == "probabili non uscite")
+        let scadenza = try #require(Quando.data("2026-10-31 20:45"))
+        #expect(ParoleWidget.sottoScadenza(scadenza, adesso: scadenza.addingTimeInterval(-3600), conProbabili: false).last
+                == ParoleWidget.probabiliNonUscite)
+    }
+
     @Test("Titolo del rettangolo della Formazione: resta il modulo")
     func titoloFormazione() {
         #expect(ParoleWidget.titoloFormazione("3-4-3", tuaScelta: false) == ["Formazione 3-4-3", "3-4-3"])

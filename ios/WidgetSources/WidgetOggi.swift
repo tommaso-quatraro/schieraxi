@@ -336,7 +336,8 @@ struct VistaWidget: View {
             if r.daControllare > 0 {
                 EtichettaDaControllare(n: r.daControllare).font(.caption2).foregroundStyle(TintaWidget.attenzione).lineLimit(1)
             } else if r.probabili == false {
-                Label("probabili non uscite", systemImage: "clock").font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+                // intera, senza simbolo o il solo simbolo: mai «probabili non usc…» (VoiceOver legge la frase intera)
+                ProbabiliNonUscite().font(.caption2).foregroundStyle(TintaWidget.testo2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -398,7 +399,7 @@ struct VistaWidget: View {
                     EtichettaDaControllare(n: r.daControllare, icona: "exclamationmark.circle.fill")
                         .font(.caption).foregroundStyle(.orange)
                 } else if r.probabili == false {
-                    Label("probabili non uscite", systemImage: "clock").font(.caption2).foregroundStyle(.secondary)
+                    Label(ParoleWidget.probabiliNonUscite, systemImage: "clock").font(.caption2).foregroundStyle(.secondary)
                 }
             }
             }
@@ -423,7 +424,9 @@ struct VistaWidget: View {
         VStack(alignment: .leading, spacing: 2) {
             GiornataInRiga(forme: r.formeGiornata, voce: r.voceGiornata).font(.caption2).foregroundStyle(.secondary).minimumScaleFactor(0.7)
             conto(r).font(.headline).lineLimit(1).minimumScaleFactor(0.7)
-            Text("\(r.modulo ?? "—") · \(puntiTesto(r)) punti attesi").font(.caption2)
+            // «3-4-3 · 72,7 punti attesi», poi «… 72,7 attesi», poi «3-4-3 · 72,7»: con il testo grande andava a capo e la riga
+            // usciva dal riquadro; VoiceOver legge la forma intera
+            TestoCheEntra(ParoleWidget.moduloEPuntiAttesi(r.modulo, punti: r.punti)).font(.caption2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

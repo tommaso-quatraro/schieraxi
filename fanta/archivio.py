@@ -295,10 +295,13 @@ def _errore_passo(dettaglio: str | None) -> dict | None:
     return d if isinstance(d, dict) and isinstance(d.get("errore"), str) and isinstance(d.get("dal"), str) else None
 
 
-def segna_passo(db: sqlite3.Connection, nome: str, quando: str, errore: str | None = None) -> dict | None:
+def segna_passo(db: sqlite3.Connection, nome: str, quando: str, errore: str | None = None, *, tipo: str | None = None,
+                fonte: str | None = None) -> dict | None:
     """Esito di un passo seguito (gli altri non scrivono niente). Riuscito: `quando` diventa l'ultimo successo. Non riuscito: l'ultimo
-    successo resta quello di prima e si scrive l'errore, con l'ora del primo fallimento di fila. Restituisce lo stato del passo
-    PRIMA di questa prova ({"ultimo_successo", "dal"}; None se il passo non è seguito)."""
+    successo resta quello di prima e si scrive l'errore, con l'ora del primo fallimento di fila; `tipo` («rete»: la fonte non ha
+    risposto; «dati», «controlli») e `fonte` (`fonti_attive.FONTI`), se ci sono, servono a «Stato dei dati» per dirlo in parole
+    semplici senza il messaggio tecnico. Restituisce lo stato del passo PRIMA di questa prova ({"ultimo_successo", "dal"}; None se
+    il passo non è seguito)."""
     cosa = cosa_passo(nome)
     if cosa not in PASSI:
         return None
@@ -308,6 +311,7 @@ def segna_passo(db: sqlite3.Connection, nome: str, quando: str, errore: str | No
         segna(db, cosa, quando)
     else:
         dettaglio = {"errore": errore[:500], "dal": prima["dal"] or quando, "ultimo": quando}
+        dettaglio |= {k: v for k, v in (("tipo", tipo), ("fonte", fonte)) if v}
         segna(db, cosa, prima["ultimo_successo"], json.dumps(dettaglio, ensure_ascii=False))
     return prima
 
@@ -325,13 +329,14 @@ def togli_errore(db: sqlite3.Connection, nome: str) -> None:
 
 
 def passi(db: sqlite3.Connection) -> list[dict]:
-    """I passi seguiti che hanno una riga: [{passo, ultimo_successo, errore, dal, ultimo}] (errore, dal e ultimo None se va)."""
+    """I passi seguiti che hanno una riga: [{passo, ultimo_successo, errore, dal, ultimo, tipo, fonte}] (None se va; `tipo` e
+    `fonte` None anche per gli errori scritti prima che ci fossero)."""
     segnaposto = ", ".join("?" * len(PASSI))
     risultato = []
     for cosa, quando, dettaglio in db.execute(f"SELECT cosa, quando, dettaglio FROM aggiornamenti WHERE cosa IN ({segnaposto})", PASSI):
         e = _errore_passo(dettaglio) or {}
         risultato.append({"passo": cosa, "ultimo_successo": quando, "errore": e.get("errore"), "dal": e.get("dal"),
-                          "ultimo": e.get("ultimo")})
+                          "ultimo": e.get("ultimo"), "tipo": e.get("tipo"), "fonte": e.get("fonte")})
     return sorted(risultato, key=lambda p: PASSI.index(p["passo"]))
 
 
