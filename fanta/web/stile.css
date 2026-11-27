@@ -334,13 +334,18 @@ details[open] > summary { margin-bottom: 8px; }
 .pedina:has(> .gioca.medio) .disco { border: 3px solid #ffb04a; }
 .pedina:has(> .gioca.basso) .disco { border: 3px solid #ff9a8f; }
 /* a partita cominciata, finché il voto non c'è: il disco vuoto dentro con il fantavoto atteso (quello pieno è il voto preso) */
-.pedina.attesa .disco { background: none; color: #fff; border: 2px solid rgba(255, 255, 255, .85); }
+.pedina.attesa .disco { background: var(--campo); color: #fff; border: 2px solid rgba(255, 255, 255, .85); }
 .pedina .nome { margin-top: 2px; font-size: var(--t-eti); font-weight: 650; line-height: 1.15; overflow-wrap: anywhere; text-wrap: balance; }
 /* sotto il nome, solo quando serve: «gioca 62%» (pillola arancio), «gioca 45%» o «Infortunato» (pillola rossa), «In dubbio» e lo
    stato della partita a parole, in bianco */
 .pedina .gioca { font-size: var(--t-eti); font-weight: 650; color: #fff; font-variant-numeric: tabular-nums; line-height: 1.35; overflow-wrap: anywhere; text-wrap: balance; }
 .pedina .gioca.medio { background: #ffb04a; color: #2a1600; border-radius: calc(.7em + 4px); padding: 0 6px; }
 .pedina .gioca.basso { background: #ff9a8f; color: #3d0b06; border-radius: calc(.7em + 4px); padding: 0 6px; }
+/* Il nome e le parole bianche sotto il disco hanno sotto il colore del campo, un filo più largo del testo: dove passa una linea (la
+   laterale, il cerchio, la metà campo) la linea si interrompe e il nome resta leggibile (collaudo tablet del 27/11: a 768 px
+   «Zosaba Ndorti» sopra la linea laterale, a 1024 px il cerchio sopra «Roghecebe»). Lo stesso dentro il disco vuoto, a partita
+   cominciata (.pedina.attesa .disco, sopra). Dove non passa nessuna linea non si vede niente: è lo stesso colore. */
+.pedina .nome, .pedina .gioca.parola { background: var(--campo); box-shadow: 0 0 0 2px var(--campo); border-radius: 3px; }
 
 
 /* ---------------------------------------------------------------- elenchi di giocatori */
