@@ -65,9 +65,10 @@ ridagli il ruolo di amministratore.
 
 **Impostazioni › Gestione › Nuovo invito** crea il link da mandare (**Condividi l'invito** o **Copia il messaggio**): apre la
 registrazione con il codice già scritto e vale 7 giorni. Sotto c'è anche il codice, per chi usa l'app per iPhone. L'etichetta
-serve a ricordare per chi era; con la casella **Il nuovo account sarà amministratore** chi entra gestisce l'app anche lui (solo con
-**Quante persone** a 1). Con la casella accesa **Crea l'invito** chiede prima conferma, e dopo ogni invito la casella si spegne da
-sola: l'invito dopo è di nuovo per un utente normale. Mentre l'invito si crea il pulsante resta spento (un doppio tocco non crea due
+serve a ricordare per chi era; con la casella **Il nuovo account sarà amministratore** chi entra gestisce l'app anche lui. Con la
+casella accesa **Quante persone** torna a 1 e non si cambia (sotto c'è scritto «Un invito da amministratore vale per una persona
+sola.»), e **Crea l'invito** chiede prima conferma; dopo ogni invito la casella si spegne da sola: l'invito dopo è di nuovo per un
+utente normale, e **Quante persone** si cambia di nuovo. Mentre l'invito si crea il pulsante resta spento (un doppio tocco non crea due
 inviti).
 
 Per far entrare tutta una chat di amici con un solo link crea un **invito di gruppo**: in **Quante persone** scrivi quanti
@@ -85,8 +86,8 @@ liberi sono già tutti negli inviti ancora aperti (per esempio 3 utenti su 4 e u
 Il numero massimo è la variabile `MAX_UTENTI` del servizio (15 se manca), da cambiare come sopra. Dopo il riavvio, ricaricata la
 pagina, l'avviso non c'è più e lo stesso link funziona (vale 7 giorni dalla creazione).
 
-Sotto **Crea l'invito** c'è **Inviti aperti**: gli inviti non ancora usati e non scaduti, ognuno con l'etichetta, quando è stato
-creato e quando scade (per esempio «Creato mer 25 nov, scade mer 2 dic.») e, per un invito per più amici, i posti ancora liberi.
+Sotto **Crea l'invito** c'è **Inviti aperti**: gli inviti non ancora usati e non scaduti, ognuno con l'etichetta (con accanto
+«(amministratore)» se chi entra gestirà l'app), quando è stato creato e quando scade (per esempio «Creato mer 25 nov, scade mer 2 dic.») e, per un invito per più amici, i posti ancora liberi.
 **Annulla** toglie valore al link: prima l'app chiede conferma, poi l'invito sparisce dall'elenco e il suo posto torna libero.
 Chi è già entrato con quell'invito tiene il suo account. Gli inviti usati, scaduti o annullati non compaiono.
 
