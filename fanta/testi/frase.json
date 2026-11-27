@@ -50,7 +50,7 @@
   },
   "frase.giornata.lega": {
     "it": "Giornata {n} · {a}ª di Serie A",
-    "en": "Matchday {n} · Serie A matchday {a}"
+    "en": "Matchday {n} · Serie A {a}"
   },
   "frase.giornata.serie_a": {
     "it": "{a}ª giornata di Serie A",
@@ -350,7 +350,7 @@
   },
   "frase.senso.entra_non_sicuro": {
     "it": "{nome} non è sicuro di giocare ({p}% di prendere voto).",
-    "en": "{nome} is not sure to play ({p}% chance of getting a rating)."
+    "en": "{nome} is not sure to play ({p}% chance of getting a grade)."
   },
   "frase.senso.entra_non_titolare": {
     "it": "{nome} non è un titolare fisso: parte dall'inizio {p}% delle volte.",
@@ -474,11 +474,11 @@
   },
   "frase.perche.voti_su": {
     "it": "voti sopra la media del ruolo",
-    "en": "ratings above the role average"
+    "en": "grades above the role average"
   },
   "frase.perche.voti_giu": {
     "it": "voti sotto la media del ruolo",
-    "en": "ratings below the role average"
+    "en": "grades below the role average"
   },
   "frase.perche.partita_su_casa": {
     "it": "partita favorevole in casa",
@@ -534,7 +534,7 @@
   },
   "frase.perche.altro_giu": {
     "it": "cartellini e altri malus",
-    "en": "cards and other maluses"
+    "en": "cards and other deductions"
   },
   "frase.perche.gioca_dubbio": {
     "it": "gioca il {p}%: dubbio",
@@ -570,7 +570,7 @@
   },
   "frase.rinvio.senza_voto": {
     "it": "partita rinviata: in questa giornata non prende voto",
-    "en": "postponed match: no grade in this round"
+    "en": "postponed match: no grade this matchday"
   },
   "frase.rinvio.voto_ufficio": {
     "it": "partita rinviata: voto d'ufficio {voto}",
@@ -668,7 +668,7 @@
   },
   "frase.confronto.alto_voto": {
     "it": "voto in pagella atteso più alto (+{peso})",
-    "en": "higher expected match rating (+{peso})"
+    "en": "higher expected match grade (+{peso})"
   },
   "frase.confronto.alto_gol": {
     "it": "gol attesi più alto (+{peso})",
@@ -720,7 +720,7 @@
   },
   "frase.confronto.entra_se": {
     "it": "Se {titolare} non prende voto ({p}% di probabilità), al suo posto può entrare {altro} ({posto}).",
-    "en": "If {titolare} gets no rating ({p}% chance), {altro} ({posto}) can come on in their place."
+    "en": "If {titolare} gets no grade ({p}% chance), {altro} ({posto}) can come on in their place."
   },
   "frase.confronto.esito_meglio": {
     "it": "Con {titolare} titolare la formazione vale {attuale} punti attesi; con i due invertiti {invertita} ({d}).",
@@ -1234,11 +1234,11 @@
   },
   "frase.diario.punti_rinvio_senza_voto.one": {
     "it": "Partita rinviata: {nomi} non prende voto in questa giornata.",
-    "en": "Postponed match: {nomi} gets no grade in this round."
+    "en": "Postponed match: {nomi} gets no grade this matchday."
   },
   "frase.diario.punti_rinvio_senza_voto.other": {
     "it": "Partita rinviata: {nomi} non prendono voto in questa giornata.",
-    "en": "Postponed match: {nomi} get no grade in this round."
+    "en": "Postponed match: {nomi} get no grade this matchday."
   },
   "frase.diario.punti_senza_dettaglio": {
     "it": "Per questa giornata manca il dettaglio dei punti (riserve entrate, modificatore difesa): è stata calcolata prima che SchieraXI lo salvasse.",
@@ -1338,7 +1338,7 @@
   },
   "frase.fonte.spenta_fantacalcio": {
     "it": "Non scarico listone, quotazioni, calendario, voti e probabili formazioni.",
-    "en": "I don't download the player list, prices, fixtures, ratings and probable lineups.",
+    "en": "I don't download the player list, prices, fixtures, grades and probable lineups.",
     "nota": "Stato dei dati › Fonti dei dati, sotto una fonte spenta (#894): campo messaggio_frase"
   },
   "frase.fonte.spenta_understat": {
@@ -1356,6 +1356,114 @@
   "frase.fonte.spenta_foto": {
     "it": "L'app usa i volti illustrati.",
     "en": "The app uses the illustrated faces."
+  },
+  "frase.fonte.nome_foto": {
+    "it": "Foto dei giocatori",
+    "en": "Player photos"
+  },
+  "frase.fascia.titolare": {
+    "it": "Titolare {da}-{a}%",
+    "en": "Starter {da}-{a}%"
+  },
+  "frase.fascia.titolare_sotto": {
+    "it": "Titolare sotto {a}%",
+    "en": "Starter below {a}%"
+  },
+  "frase.fascia.panchina": {
+    "it": "Panchina {da}-{a}%",
+    "en": "Bench {da}-{a}%"
+  },
+  "frase.fascia.panchina_sotto": {
+    "it": "Panchina sotto {a}%",
+    "en": "Bench below {a}%"
+  },
+  "frase.aggiornamento.aggiornamento": {
+    "it": "Aggiornamento generale",
+    "en": "Full data refresh"
+  },
+  "frase.aggiornamento.listone": {
+    "it": "Listone e quotazioni",
+    "en": "Player list and prices"
+  },
+  "frase.aggiornamento.calendario": {
+    "it": "Calendario",
+    "en": "Fixtures"
+  },
+  "frase.aggiornamento.voti": {
+    "it": "Voti e bonus",
+    "en": "Grades and bonuses"
+  },
+  "frase.aggiornamento.probabili": {
+    "it": "Probabili formazioni",
+    "en": "Probable lineups"
+  },
+  "frase.aggiornamento.understat": {
+    "it": "Statistiche avanzate",
+    "en": "Advanced statistics"
+  },
+  "frase.aggiornamento.dati_extra": {
+    "it": "Statistiche di squadra",
+    "en": "Team statistics"
+  },
+  "frase.aggiornamento.controlli": {
+    "it": "Controlli sui dati",
+    "en": "Data checks"
+  },
+  "frase.aggiornamento.probabili_rapido": {
+    "it": "Probabili vicino alla scadenza",
+    "en": "Probable lineups near the deadline"
+  },
+  "frase.aggiornamento.risultati_rapido": {
+    "it": "Risultati la sera stessa",
+    "en": "Results the same evening"
+  },
+  "frase.aggiornamento.taratura_probabili": {
+    "it": "Taratura di «gioca N%»",
+    "en": "“Plays N%” calibration"
+  },
+  "frase.aggiornamento.calendario_stagione": {
+    "it": "Calendario completo {stagione}",
+    "en": "Full fixtures {stagione}"
+  },
+  "frase.aggiornamento.dati_extra_stagione": {
+    "it": "Statistiche di squadra {stagione}",
+    "en": "Team statistics {stagione}"
+  },
+  "frase.controllo.partite_per_giornata": {
+    "it": "10 partite per giornata",
+    "en": "10 matches per matchday"
+  },
+  "frase.controllo.voti_per_giornata": {
+    "it": "Voti nelle giornate finite",
+    "en": "Grades in finished matchdays"
+  },
+  "frase.controllo.somma_xg": {
+    "it": "Gol attesi dei giocatori e della partita",
+    "en": "Expected goals of the players and of the match"
+  },
+  "frase.controllo.titolari_per_squadra": {
+    "it": "11 titolari per squadra",
+    "en": "11 starters per team"
+  },
+  "frase.controllo.gol_dei_voti": {
+    "it": "Gol dei voti uguali al risultato",
+    "en": "Goals in the grades match the result"
+  },
+  "frase.controllo.gol_subiti_portieri": {
+    "it": "Gol presi dai portieri uguali al risultato",
+    "en": "Goals conceded by goalkeepers match the result"
+  },
+  "frase.controllo.partite_senza_statistiche": {
+    "it": "Statistiche delle partite giocate",
+    "en": "Statistics of the matches played"
+  },
+  "frase.controllo.squalificati_cartellini": {
+    "it": "Squalificati: cartellini e probabili",
+    "en": "Suspensions: cards and probable lineups"
+  },
+  "frase.controllo.sentinella": {
+    "it": "Sentinella: risposte dell'app",
+    "en": "Watchdog: app responses"
   },
   "frase.uso.parte_formazione": {
     "it": "Formazione",
@@ -1409,6 +1517,51 @@
   "frase.uso.parte_altro": {
     "it": "Altre richieste",
     "en": "Other requests"
+  },
+  "frase.uso.funzione_live": {
+    "it": "Risultati in diretta",
+    "en": "Live results",
+    "nota": "nome di una funzione contata in «Quanto si usa l'app» (fanta/uso.py, nome_funzione): lo stesso di funzioni.FUNZIONI (#949)"
+  },
+  "frase.uso.funzione_asta": {
+    "it": "Asta e riparazione",
+    "en": "Auction and repair"
+  },
+  "frase.uso.funzione_confronto": {
+    "it": "Confronto tra due giocatori",
+    "en": "Comparison between two players"
+  },
+  "frase.uso.funzione_scambi_trova": {
+    "it": "Scambi: trova per me",
+    "en": "Trades: find for me"
+  },
+  "frase.uso.funzione_scambi_costruisci": {
+    "it": "Scambi: costruisci",
+    "en": "Trades: build"
+  },
+  "frase.uso.funzione_immagini_web": {
+    "it": "Immagini da indirizzo web",
+    "en": "Images from a web address"
+  },
+  "frase.uso.funzione_elenco_giocatori": {
+    "it": "Elenco dei giocatori",
+    "en": "Player list"
+  },
+  "frase.uso.funzione_seguiti": {
+    "it": "Seguiti",
+    "en": "Followed players"
+  },
+  "frase.uso.funzione_diario": {
+    "it": "Diario delle giornate",
+    "en": "Matchdays"
+  },
+  "frase.uso.funzione_backup": {
+    "it": "Copia di sicurezza",
+    "en": "Backup"
+  },
+  "frase.uso.funzione_novita": {
+    "it": "Novità",
+    "en": "What's new"
   },
   "frase.aggiorna.non_risponde": {
     "it": "{fonte} non risponde: riprova più tardi.",

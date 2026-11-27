@@ -184,8 +184,8 @@ def test_frasi_vere_in_inglese_con_nomi_numeri_e_frasi_dentro():
         "The app on your phone expires in 1 day: renew it.", "The app on your phone expires in 2 days: renew it.",
         "I read them 7 hours ago and the lineup closes in 2 hours: they may have changed, check again first.",
         "Probable lineups updated on 3/11 at 14:05",
-        "Rossi is ahead of Bianchi by 0.7 expected points: plays more often (85% vs 60%: +0.4); higher expected match rating (+0.3).",
-        "The system fields Rossi as a starter. If Rossi gets no rating (15% chance), Bianchi (bench 1) can come on in their place. "
+        "Rossi is ahead of Bianchi by 0.7 expected points: plays more often (85% vs 60%: +0.4); higher expected match grade (+0.3).",
+        "The system fields Rossi as a starter. If Rossi gets no grade (15% chance), Bianchi (bench 1) can come on in their place. "
         "The two options are worth practically the same (60.1 vs 60.0). What counts is how much each is worth when playing (Rossi 7.2 vs Bianchi 6.9), not only whether they play.",
         "missing 2 goalkeepers and 1 forward",
         "contested starter", "difficult away match",
@@ -348,7 +348,7 @@ def test_una_frase_nella_lingua_dell_utente():
                       F("n.consigliato", modulo="3-4-3", punti=71.34)], sep=" ")
     assert f.in_lingua("it") == str(f) == ("Giornata 6 · 9ª di Serie A: la formazione si chiude tra circa un'ora (scadenza alle 18:30). "
                                           "Consigliato: 3-4-3, 71,3 punti attesi.")
-    assert f.in_lingua("en") == ("Matchday 6 · Serie A matchday 9: the lineup closes in about an hour (deadline at 18:30). "
+    assert f.in_lingua("en") == ("Matchday 6 · Serie A 9: the lineup closes in about an hour (deadline at 18:30). "
                                  "Recommended: 3-4-3, 71.3 expected points.")
     righe = frasi.elenco([F("n.ora_dubbio", nome="Rossi"), F("n.ora_infortunato", nome="Bianchi")], sep="\n")
     assert righe.in_lingua("en") == "Rossi: now in doubt\nBianchi: now injured" and str(righe) == "Rossi: ora in dubbio\nBianchi: ora infortunato"

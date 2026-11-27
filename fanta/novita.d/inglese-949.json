@@ -1,0 +1,19 @@
+{
+  "titolo": "App in inglese: testi più chiari e novità senza schede vuote",
+  "voci": [
+    "In inglese, Novità: le versioni senza descrizione inglese di fila diventano una scheda sola invece di tante schede uguali.",
+    "In inglese, Gestione › Stato dei dati: i nomi delle righe (aggiornamenti, fasce di «gioca N%», controlli, conteggi d'uso, foto dei giocatori) sono tradotti.",
+    "In inglese: plurali giusti con un numero solo, le stesse parole in tutta l'app, date con il mese scritto e il menu della prima giornata in Regole e scadenza che non si taglia più sul telefono."
+  ],
+  "titolo_en": "English app: clearer texts and no empty What's new cards",
+  "voci_en": [
+    "What's new: versions without an English description in a row now show as a single card instead of many identical cards.",
+    "Settings › Management › Data status: the row names (updates, “plays N%” groups, data checks, usage counts, player photos) are translated.",
+    "Correct plurals with a single number, the same words across the app, dates with the month written out, and the first matchday menu in Rules and deadline no longer cut off on the phone."
+  ],
+  "tecnico": [
+    "Novità in inglese (server.novita_in_lingua): le versioni senza traduzione di fila diventano una voce sola con versione e data della più nuova (NOVITA_EN_GRUPPO). Il controllo della PR (controlla_versione.py, errori_file con inglese=True) vuole titolo_en e voci_en; il rilascio (assegna_versione.py) li accetta ancora facoltativi.",
+    "Stato dei dati: etichetta_frase in aggiornamenti e controlli, gruppo_frase nei gruppi della calibrazione, etichetta_frase in uso.per_funzione (uso.nome_funzione, stesso italiano di funzioni.FUNZIONI), nome_frase nelle fonti (solo foto). Chiavi nuove in frasi.CATALOGO: fascia.*, aggiornamento.*, controllo.*, uso.funzione_*, fonte.nome_foto.",
+    "Catalogo: plurali .one/.other per mercato.n_gol_rig e mercato.prec_gol/prec_assist con mercato.stagione_prec_riga per la web (accesso.riprova_* e comune.attesa_* li ha già sistemati la #953) (l'iPhone tiene mercato.gol_rig e mercato.stagione_prec, solo in italiano). Inglese: grade, matchday, probable lineups, deductions, recognise, virgolette “”, «Matchday 8 · Serie A 11» anche negli avvisi; date inglesi con il mese a parole (fDataAnno, giornoMese). Le stesse parole nelle novità inglesi già uscite e in sotto-il-cofano.en.json."
+  ]
+}

@@ -1,12 +1,15 @@
 """Dopo l'unione di una PR, su main: dà il numero di versione alle novità in attesa in `fanta/novita.d/`.
 
 Ogni PR scrive le sue novità in un file proprio, `fanta/novita.d/<nome-breve>.json`, SENZA numero:
-    {"titolo": "Cosa cambia in una riga", "voci": ["una frase per l'utente", "..."], "tecnico": ["dettagli per chi sviluppa"]}
+    {"titolo": "Cosa cambia in una riga", "voci": ["una frase per l'utente", "..."],
+     "titolo_en": "The same in English", "voci_en": ["the same sentences in English", "..."], "tecnico": ["dettagli per chi sviluppa"]}
 Le `voci` le legge l'utente nell'app (Lega > Novità): italiano semplice, 2-3 voci da 1-2 righe, senza sigle, indirizzi
 /api, metodi HTTP, codici (202, 403) o nomi di file. I dettagli tecnici vanno in `tecnico` (facoltativo: l'app non lo
 mostra, finisce nelle note della release) o nella descrizione della PR.
-Facoltativi: `titolo_en` e `voci_en` (tante voci quante le italiane), la traduzione inglese che l'app mostra con la lingua inglese.
-così due PR in parallelo non toccano la stessa riga e non vanno in conflitto.
+`titolo_en` e `voci_en` (tante voci quante le italiane) sono la traduzione inglese che l'app mostra con la lingua inglese: dalla
+#949 il controllo della PR (controlla_versione.py, `errori_file(..., inglese=True)`) li vuole; al rilascio restano facoltativi,
+così una voce unita prima non ferma il bot.
+Un file per PR, così due PR in parallelo non toccano la stessa riga e non vanno in conflitto.
 Questo script (lo lancia il job `rilascia` dei controlli, uno alla volta) per ogni file in attesa, nell'ordine in cui
 sono entrati in main:
 - aggiunge in cima a `fanta/novita.json` una voce con la versione dopo la più alta (1.10 dopo 1.9) e data e ora
@@ -55,8 +58,9 @@ def numero(versione: str) -> tuple[int, ...]:
 
 # --- Parte pura (testata in tests/test_assegna_versione.py) ---
 
-def errori_file(nome: str, dati) -> list[str]:
-    """Cosa non va in un file di novità in attesa (lista vuota = va bene)."""
+def errori_file(nome: str, dati, inglese: bool = False) -> list[str]:
+    """Cosa non va in un file di novità in attesa (lista vuota = va bene). `inglese`: servono anche `titolo_en` e `voci_en` (il
+    controllo della PR; il rilascio no, per le voci unite prima che diventassero obbligatori)."""
     errori = []
     if not NOME_FILE.fullmatch(nome):
         errori.append(f"{nome}: il nome deve essere breve, con lettere minuscole, cifre e trattini, e finire in .json")
@@ -74,12 +78,16 @@ def errori_file(nome: str, dati) -> list[str]:
     tecnico = dati.get("tecnico", [])
     if not isinstance(tecnico, list) or not all(isinstance(v, str) and v.strip() for v in tecnico):
         errori.append(f"{nome}: «tecnico», se c'è, è una lista di frasi")
-    if "titolo_en" in dati and (not isinstance(dati["titolo_en"], str) or not dati["titolo_en"].strip()):
-        errori.append(f"{nome}: «titolo_en», se c'è, è un testo")
+    if inglese and "titolo_en" not in dati:
+        errori.append(f"{nome}: serve «titolo_en», il titolo in inglese (lo legge chi usa l'app in inglese)")
+    elif "titolo_en" in dati and (not isinstance(dati["titolo_en"], str) or not dati["titolo_en"].strip()):
+        errori.append(f"{nome}: «titolo_en» è un testo")
     voci_en = dati.get("voci_en")
-    if "voci_en" in dati and (not isinstance(voci_en, list) or not all(isinstance(v, str) and v.strip() for v in voci_en)
-                              or (isinstance(voci, list) and len(voci_en) != len(voci))):
-        errori.append(f"{nome}: «voci_en», se c'è, è una lista di frasi, tante quante le voci")
+    if inglese and "voci_en" not in dati:
+        errori.append(f"{nome}: serve «voci_en», le voci in inglese, tante quante quelle italiane")
+    elif "voci_en" in dati and (not isinstance(voci_en, list) or not all(isinstance(v, str) and v.strip() for v in voci_en)
+                                or (isinstance(voci, list) and len(voci_en) != len(voci))):
+        errori.append(f"{nome}: «voci_en» è una lista di frasi, tante quante le voci")
     altre = set(dati) - {"titolo", "voci", "data", "tecnico", "titolo_en", "voci_en"}
     if altre:
         errori.append(f"{nome}: chiavi non previste: {', '.join(sorted(altre))}")
