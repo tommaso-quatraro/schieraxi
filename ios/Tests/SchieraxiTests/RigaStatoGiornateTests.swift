@@ -88,6 +88,20 @@ struct RigaStatoGiornateTests {
         #expect(riga.squadra == nil, "senza server niente stemma, come la web dopo una ricarica")
     }
 
+    @Test("Con la striscia con «Riprova» o l'errore al posto delle giornate la riga non ripete «Server non raggiungibile», come la web (#864, #980)")
+    func guastoGiaDettoDallaPagina() throws {
+        let i = try info(#"""
+            {"prossima_giornata": 11, "prossima_giornata_lega": 8, "mia_squadra": "Nuvola Ovest",
+             "ultimo_aggiornamento": "2026-10-26T23:55:13"}
+            """#)
+        let riga = try #require(RigaStato(info: i, nonRaggiungibile: true, guastoInPagina: true))
+        #expect(riga.pezzi == ["Giornata 8 · 11ª di Serie A", "Nuvola Ovest", "dati del 26 ott 23:55"])
+        #expect(riga.voce == "Giornata 8, 11ª di Serie A, Nuvola Ovest, dati del 26 ott 23:55")
+        #expect(riga.squadra == nil, "senza server niente stemma, come prima")
+        #expect(RigaStato(info: nil, nonRaggiungibile: true, guastoInPagina: true) == nil,
+                "se restava solo «Server non raggiungibile» la riga non c'è, come la web")
+    }
+
     @Test("Prima della prima risposta di /api/stato non c'è riga")
     func primaDellaRisposta() {
         #expect(RigaStato(info: nil, nonRaggiungibile: false) == nil)
@@ -126,6 +140,57 @@ struct RigaStatoGiornateTests {
         #expect(vm.rigaStato?.pezzi == [Catalogo.Testata.offline])
         #expect(vm.pagina != nil, "le giornate si vedono lo stesso")
         #expect(vm.paginaDaMostrare != nil, "le giornate non aspettano una riga che non arriverà")
+    }
+
+    /// Un server che risponde con le giornate e, se `stato` non è nil, con `/api/stato` (senza, un errore del server); da quando
+    /// in `giu` c'è true, niente rete.
+    private static func server(stato: String?, giu: Scatola<Bool>) -> ServerDiProva {
+        ServerDiProva { _, percorso, _ in
+            if giu.valore == true { throw ErroreApi.rete("spento") }
+            if percorso == "/api/stato" {
+                guard let stato else { throw ErroreApi.server("guasto") }
+                return Data(stato.utf8)
+            }
+            if percorso.hasPrefix("/api/diario") { return Data(#"{"giornate": []}"#.utf8) }
+            throw ErroreApi.server("nessuna risposta per \(percorso)")
+        }
+    }
+
+    @Test("Senza rete con le giornate già lette: la striscia con «Riprova» lo dice, e la riga sotto il titolo non ripete «Server non raggiungibile» (#980)")
+    func copiaSenzaRete() async throws {
+        let giu = Scatola<Bool>()
+        let vm = GiornateViewModel(server: Self.server(stato: #"""
+            {"prossima_giornata": 11, "prossima_giornata_lega": 8, "mia_squadra": "Nuvola Ovest",
+             "ultimo_aggiornamento": "2026-10-26T23:55:13"}
+            """#, giu: giu))
+        await vm.carica()
+        giu.valore = true
+        await vm.carica()
+        try #require(vm.caricatore.datiSalvati != nil && vm.info.errore != nil, "la striscia dei dati salvati, con «Riprova»")
+        #expect(vm.rigaStato?.pezzi == ["Giornata 8 · 11ª di Serie A", "Nuvola Ovest", "dati del 26 ott 23:55"])
+        #expect(vm.paginaDaMostrare != nil)
+    }
+
+    @Test("Senza rete e senza una risposta di /api/stato da mostrare: niente riga sotto il titolo, ma le giornate salvate si vedono (#980)")
+    func copiaSenzaReteNeStato() async throws {
+        let giu = Scatola<Bool>()
+        let vm = GiornateViewModel(server: Self.server(stato: nil, giu: giu))
+        await vm.carica()
+        giu.valore = true
+        await vm.carica()
+        try #require(vm.caricatore.datiSalvati != nil && vm.info.dato == nil, "la striscia dei dati salvati, e /api/stato mai arrivato")
+        #expect(vm.rigaStato == nil, "restava solo «Server non raggiungibile», che la striscia dice già")
+        #expect(vm.paginaDaMostrare != nil, "le giornate non aspettano la riga")
+    }
+
+    @Test("Senza rete e senza copie: l'errore al posto delle giornate lo dice già, e la riga sotto il titolo non c'è (#980)")
+    func erroreSenzaCopie() async {
+        let giu = Scatola<Bool>()
+        giu.valore = true
+        let vm = GiornateViewModel(server: Self.server(stato: nil, giu: giu))
+        await vm.carica()
+        #expect(vm.caricatore.dato == nil && vm.caricatore.errore != nil, "l'errore con «Riprova» al posto delle giornate")
+        #expect(vm.rigaStato == nil)
     }
 
     // MARK: la lista non torna in cima (#913)

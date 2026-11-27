@@ -168,6 +168,55 @@ struct CaricatoreAnnullatoTests {
         #expect(!senzaCopia, "senza copia a video c'è l'errore con «Riprova», come la web")
     }
 
+    // #980: prima l'attesa restava anche con la copia non più a video, e un passaggio dal Wi-Fi al cellulare faceva partire un
+    // «Aggiorna» inutile.
+    @Test("Una lettura che riesce toglie l'attesa del ritorno della rete: la copia non è più a video")
+    func letturaRiuscitaTogliLAttesa() async throws {
+        let rete = RitornoRete()
+        let passo = Contatore()
+        let server = ServerDiProva { _, _, _ in
+            if passo.passo() == 1 { throw ErroreApi.rete("spento") }   // la seconda lettura resta senza rete
+            return try Fixture.dati("oggi")
+        }
+        let c = Caricatore<Oggi>("/api/oggi", cache: false, ascolta: false, server: server, rete: rete)
+        await c.ricarica()
+        await c.ricarica()
+        try #require(c.datiSalvati != nil && rete.inAttesa, "senza rete resta la copia e si aspetta il ritorno della rete")
+        await c.ricarica()                                              // «Riprova», e questa volta riesce
+        #expect(c.datiSalvati == nil, "la copia non è più a video")
+        #expect(!rete.inAttesa, "e non si aspetta più la rete: un cambio di rete non fa ricaricare niente")
+    }
+
+    // #980: «Riprova», «tira giù per aggiornare» e Cmd+R chiamano `RitornoRete.riprovaAMano()` prima di rileggere.
+    @Test("Entro 5 minuti dal tentativo automatico una lettura senza rete non riarma l'attesa; chiesta a mano sì, come la web")
+    func letturaAManoDopoIlTentativo() async {
+        let daSola = await aspettaDopoIlTentativo(aMano: false)
+        #expect(!daSola, "le letture del tentativo automatico, o di poco dopo, non fanno riprovare di nuovo")
+        let aMano = await aspettaDopoIlTentativo(aMano: true)
+        #expect(aMano, "«Riprova» (o tira giù, o Cmd+R) rimasto senza rete: al ritorno della rete si riprova da soli")
+    }
+
+    /// Subito dopo un tentativo automatico (la rete è tornata e una copia aspettava): una lettura riuscita e poi una senza rete,
+    /// chiesta a mano se `aMano`. Il ritorno della rete aspetta?
+    private func aspettaDopoIlTentativo(aMano: Bool) async -> Bool {
+        var attesa = AttesaRete()
+        attesa.aspetta()
+        _ = attesa.cambio(inLinea: false)
+        let tentativo = attesa.cambio(inLinea: true)
+        #expect(tentativo, "il tentativo automatico, adesso")
+        let rete = RitornoRete(attesa: attesa)
+        let passo = Contatore()
+        let server = ServerDiProva { _, _, _ in
+            if passo.passo() == 0 { return try Fixture.dati("oggi") }
+            throw ErroreApi.rete("spento")
+        }
+        let c = Caricatore<Oggi>("/api/oggi", cache: false, ascolta: false, server: server, rete: rete)
+        await c.ricarica()
+        if aMano { rete.riprovaAMano() }
+        await c.ricarica()
+        return rete.inAttesa
+    }
+
     /// Una lettura riuscita (se `conDati`) e poi una che finisce con `errore`: il ritorno della rete aspetta?
     private func aspettaLaRete(dopo errore: ErroreApi, conDati: Bool) async -> Bool {
         let rete = RitornoRete()

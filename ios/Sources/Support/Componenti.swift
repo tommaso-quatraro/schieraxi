@@ -191,7 +191,7 @@ struct BadgeRuolo: View {
 /// Striscia in alto che avvisa quando si vedono dati salvati perché l'aggiornamento non è riuscito.
 /// `motivo` nil = server non raggiungibile; altrimenti il messaggio dell'errore (limite, guasto del server...): si dice quello.
 /// `riprova`: «Riprova» accanto alla frase, come la nota della web (`caricaConCache`). La Formazione non lo passa: ha già il suo
-/// «Riprova» sotto il campo.
+/// «Riprova» sotto il campo. Toccato a mano riattiva il nuovo tentativo al ritorno della rete, come la web (`RitornoRete`, #980).
 struct AvvisoSalvati: ViewModifier {
     let data: Date?
     var motivo: String? = nil
@@ -229,7 +229,10 @@ struct AvvisoSalvati: ViewModifier {
                 etichetta(frase)
                     .fixedSize(horizontal: false, vertical: true)
                 // i 44 punti dentro l'etichetta del pulsante: fuori non allargano la zona da toccare (#882)
-                Button { Task { await riprova() } } label: {
+                Button {
+                    RitornoRete.condiviso.riprovaAMano()
+                    Task { await riprova() }
+                } label: {
                     Text(Catalogo.Comune.riprova).frame(minHeight: Tema.areaTocco).contentShape(Rectangle())
                 }
                 .font(.footnote.weight(.semibold))

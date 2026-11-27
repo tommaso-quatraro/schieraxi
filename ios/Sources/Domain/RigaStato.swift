@@ -4,8 +4,9 @@ import Foundation
 /// «Giornata 13 · 13ª di Serie A · Real Esempio · dati del 26 ott 23:55». I pezzi vengono da `GET /api/stato` (`prossima_giornata`,
 /// `prossima_giornata_lega`, `mia_squadra`, `ultimo_aggiornamento`) e un pezzo che manca non si scrive; la giornata con
 /// `NomeGiornata`, come ovunque. Se `/api/stato` non risponde, «Server non raggiungibile» e dopo, se c'è, i pezzi dell'ultima
-/// risposta (anche la copia salvata sul telefono), come la web dal collaudo del 26/11 (prima solo «Server non raggiungibile»). Testi
-/// dal catalogo comune (`testata.*`).
+/// risposta (anche la copia salvata sul telefono), come la web dal collaudo del 26/11 (prima solo «Server non raggiungibile»). Quando
+/// la pagina lo dice già lei (la striscia dei dati salvati con «Riprova», o l'errore al posto delle giornate) «Server non
+/// raggiungibile» non si ripete, come la web (`stile.css`, #864; sull'iPhone dalla #980). Testi dal catalogo comune (`testata.*`).
 struct RigaStato: Equatable {
     /// I pezzi nell'ordine della web: la giornata, la mia squadra, la data dei dati; senza server prima «Server non raggiungibile».
     let pezzi: [String]
@@ -18,13 +19,17 @@ struct RigaStato: Equatable {
     var testo: String { pezzi.joined(separator: " · ") }
 
     /// nil finché `/api/stato` non ha mai risposto (e non ce n'è una copia) e non si sa che il server non risponde: niente da dire,
-    /// come la web prima della sua prima lettura.
-    init?(info: InfoServer?, nonRaggiungibile: Bool) {
+    /// come la web prima della sua prima lettura. `guastoInPagina`: la pagina dice già che il server non risponde, e la riga non
+    /// lo ripete; se restava solo «Server non raggiungibile», nil, come la web che nasconde la riga intera.
+    init?(info: InfoServer?, nonRaggiungibile: Bool, guastoInPagina: Bool = false) {
         let copia = info.map(Self.pezziDi)
         if nonRaggiungibile {
-            pezzi = [Catalogo.Testata.offline] + (copia?.pezzi ?? [])
+            let guasto: [String] = guastoInPagina ? [] : [Catalogo.Testata.offline]
+            let tutti = guasto + (copia?.pezzi ?? [])
+            if tutti.isEmpty { return nil }
+            pezzi = tutti
             squadra = nil
-            voce = ([Catalogo.Testata.offline] + (copia?.voce ?? [])).joined(separator: ", ")
+            voce = (guasto + (copia?.voce ?? [])).joined(separator: ", ")
             return
         }
         guard let copia else { return nil }

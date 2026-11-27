@@ -9,8 +9,13 @@ import Network
 final class RitornoRete {
     static let condiviso = RitornoRete()
 
-    private var attesa = AttesaRete()
+    private var attesa: AttesaRete
     private var monitor: NWPathMonitor?
+
+    /// `attesa`: da dove si parte (nei test, per esempio, subito dopo un tentativo automatico).
+    init(attesa: AttesaRete = AttesaRete()) {
+        self.attesa = attesa
+    }
 
     /// Comincia ad ascoltare le notizie sulla rete (una volta sola). Arrivano sul thread principale, nell'ordine.
     func avvia() {
@@ -27,6 +32,17 @@ final class RitornoRete {
     /// Una schermata mostra la copia salvata perché la rete non c'era: al ritorno della rete si riprova.
     func aspetta() {
         attesa.aspetta(adesso: Date())
+    }
+
+    /// «Riprova» toccato a mano: se anche questa lettura resta senza rete, al ritorno della rete si riprova da soli, come la web,
+    /// anche se l'ultimo tentativo automatico è di meno di 5 minuti fa (#980).
+    func riprovaAMano() {
+        attesa.riprovaAMano()
+    }
+
+    /// Una lettura è riuscita: la copia non è più a video, al ritorno della rete non c'è niente da riprovare (#980).
+    func letturaRiuscita() {
+        attesa.letturaRiuscita()
     }
 
     /// true se al ritorno della rete si riproverà (per le prove).
