@@ -130,11 +130,12 @@ def test_attiva_senza_numeri_della_prova_ne_data():
                                             ("2027-01-18T06:00:00", "attiva dal 18/1"), ("2027-01-01T06:00:00", "attiva dal 1/1")])
 def test_attiva_dall_8_e_dall_11_con_l_apostrofo(dal, atteso):
     """«attiva dall'8/1», «dall'11/1» (si legge «dall'otto», «dall'undici»), mai «dal 8/1» (#859); «dal 18/1» e «dal 1/1» restano.
-    In inglese niente apostrofo: «active since 8/1». Lo stesso sull'iPhone (`TaraturaProbabiliTests`)."""
+    In inglese niente apostrofo e il mese a parole, come le altre date inglesi (#949): «active since 8 Jan». Lo stesso sull'iPhone
+    (`TaraturaProbabiliTests`), solo in italiano."""
     taratura = {"stato": "attiva", "giornate": 8, "minimo": 4, "versione": 3, "dal": dal, "prova": None, "motivo": None}
     assert _frase(taratura) == f"{TITOLO}: {atteso}"
     if dal.startswith("2027-01-08"):
-        assert "active since 8/1" in _frase(taratura, "en")
+        assert "active since 8 Jan" in _frase(taratura, "en")
 
 
 def test_errore_medio_con_due_decimali_scritto_dal_server():
@@ -145,7 +146,7 @@ def test_errore_medio_con_due_decimali_scritto_dal_server():
     taratura = {"stato": "attiva", "giornate": 8, "minimo": 4, "versione": 2, "dal": None, "prova": prova, "motivo": None}
     assert _frase(taratura) == (f"{TITOLO}: attiva · nelle ultime 5 giornate le percentuali «gioca N%» hanno sbagliato in media di "
                                 "30,91 punti, contro 31,00 senza questa taratura")
-    assert _frase(taratura, "en") == ("Calibration with the probable lineups: active · in the last 5 matchdays the «plays N%» "
+    assert _frase(taratura, "en") == ("Calibration with the probable lineups: active · in the last 5 matchdays the “plays N%” "
                                       "percentages were off by 30.91 points on average, against 31.00 without this calibration")
 
 
@@ -270,7 +271,7 @@ def test_niente_chiavi_mancanti_ne_numeri_rotti(tmp_path, monkeypatch, lingua):
         assert "undefined" not in testo and "NaN" not in testo and "null" not in testo and "[object" not in testo
         assert "Brier" not in testo and "version" not in testo and "–" not in testo
     if lingua == "en":
-        assert _frase(stati[1], "en").startswith("Calibration with the probable lineups: active since 15/1 · in the last 4 matchdays")
+        assert _frase(stati[1], "en").startswith("Calibration with the probable lineups: active since 15 Jan · in the last 4 matchdays")
 
 
 def test_la_fixture_dell_iphone_e_la_risposta_vera_del_server(tmp_path, monkeypatch):
@@ -289,8 +290,9 @@ def test_la_pagina_mostra_la_riga_sotto_i_gruppi_della_calibrazione():
 
 
 def test_negli_aggiornamenti_la_riga_della_taratura_ha_un_nome():
-    """Dal 12/11/2026 (#618) il nome di ogni riga lo scrive il server (campo `etichetta`): la web lo mostra e basta."""
+    """Dal 12/11/2026 (#618) il nome di ogni riga lo scrive il server (campo `etichetta`, con la sua frase dalla #949): la web lo
+    mostra e basta, tradotto con la frase."""
     from fanta import stato_dati
     assert stato_dati.etichetta_aggiornamento(tp.CHIAVE) == "Taratura di «gioca N%»"
     corpo = APP[APP.index("async function apriStatoDati"):APP.index("// Aspetto: tema")]
-    assert "esc(a.etichetta || a.cosa)" in corpo and "sd.f_" not in corpo
+    assert 'esc(testoDi(a, "etichetta") || a.cosa)' in corpo and "sd.f_" not in corpo

@@ -394,7 +394,10 @@ final class AggiornaDatiViewModel: ViewModelBase {
                 if stato.inCorso != true {
                     segna(occupato: false)
                     errori = stato.errori ?? []
-                    messaggio = errori.isEmpty ? Catalogo.Aggiorna.ok : Catalogo.Aggiorna.problemi(errori: errori.joined(separator: "; "))
+                    // una frase del server per riga sotto la testa, come l'avviso della web (#958: unite con «; » si leggeva
+                    // «…riprova più tardi.; I controlli…»)
+                    messaggio = errori.isEmpty ? Catalogo.Aggiorna.ok
+                        : Catalogo.Aggiorna.problemi(errori: "\n" + errori.joined(separator: "\n"))
                     Haptics.esito(riuscito: errori.isEmpty)
                     NotificationCenter.default.post(name: .aggiornaTutto, object: nil)   // tutte le schermate si ricaricano
                     return

@@ -123,6 +123,24 @@ def test_modelli_in_italiano_con_il_codice():
     assert "\n" not in a.oggetto and "password" in a.testo and "\nBcc: x" not in a.testo
 
 
+@pytest.mark.parametrize("user_agent, atteso", [
+    ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 "
+     "Safari/604.1", "iPhone, Safari"),
+    ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36 Edg/120.0",
+     "Windows, Edge"),
+    ("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36", "Android, Chrome"),
+    ("Mozilla/5.0 (Macintosh; Intel Mac OS X 14.0; rv:120.0) Gecko/20100101 Firefox/120.0", "Mac, Firefox"),
+    ("Schieraxi/57 CFNetwork/1568 Darwin/24.0.0", "app SchieraXI"),
+    ("Visita https://sito-finto.example per sbloccare l'account", "un dispositivo sconosciuto"),
+    ("", "un dispositivo sconosciuto"),
+])
+def test_avviso_accesso_nuovo_descrive_il_dispositivo_con_parole_fisse(user_agent, atteso):
+    """Nell'email solo parole scelte dal server: mai il testo dell'intestazione, che scrive chi entra."""
+    testo = posta.modello_accesso_nuovo("a@example.com", user_agent, "oggi").testo
+    assert f"    Dispositivo: {atteso}\n" in testo, testo
+    assert "sito-finto" not in testo and "Mozilla" not in testo and "CFNetwork" not in testo
+
+
 # ---------------------------------------------------------------- password da file e tetto orario
 def _finto_smtp(monkeypatch):
     chiamate = []

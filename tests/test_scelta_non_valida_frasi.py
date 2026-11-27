@@ -65,7 +65,7 @@ def test_le_frasi_nuove_hanno_italiano_e_inglese():
         it, en = NOTIFICHE[chiave]
         assert "non è più valida" in it and "no longer valid" in en
         f = F(chiave, giornata=nome_giornata(9, 6, avviso=True), ora="18:30")                  # la giornata con i due numeri (#299)
-        assert "Giornata 6 · 9ª di Serie A: " in str(f) and "Matchday 6 · Serie A matchday 9: " in f.in_lingua("en")
+        assert "Giornata 6 · 9ª di Serie A: " in str(f) and "Matchday 6 · Serie A 9: " in f.in_lingua("en")
         assert "{" not in str(f) and "{" not in f.in_lingua("en") and "18:30" in f.in_lingua("en")
     assert "dafare.formazione_non_valida" in CATALOGO
 
@@ -79,5 +79,5 @@ def test_da_fare_formazione_salvata_non_valida_ha_la_sua_frase(mondo):
     scelte.salva(STAGIONE, 9, [1, 2, 3, 4, 7, 8, 9, 10, 11, 12, CEDUTO], "3-5-2", mondo.ctx.scelte)
     voce = [x for x in vai(mondo) if x["tipo"] == "formazione"]
     assert len(voce) == 1 and voce[0]["priorita"] == 1 and voce[0]["azione"] == "Apri la formazione"
-    assert voce[0]["testo"] == "La formazione si chiude tra 2 ore e quella che hai salvato non è più valida: salvane un'altra."
+    assert voce[0]["testo"] == "La formazione si chiude fra 2 ore e quella che hai salvato non è più valida: salvane un'altra."
     assert voce[0]["frase"] == F("dafare.formazione_non_valida", tempo=F("tempo.ore", n=2)).json()

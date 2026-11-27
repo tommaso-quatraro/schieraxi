@@ -1123,7 +1123,8 @@ def test_in_inglese_le_giornate_della_prima_giornata_senza_ordinali(web):
     voci = principale(web).get_by_label("From which Serie A matchday did the league start?").locator("option").all_inner_texts()
     assert len(voci) == 38
     assert not [v for v in voci if re.search(r"\d(st|nd|rd|th)\b", v)], voci
-    assert voci[1] == "From Serie A matchday 2" and voci[20] == "From Serie A matchday 21", voci[:3]
+    assert voci[1] == "From matchday 2" and voci[20] == "From matchday 21", voci[:3]
+    assert voci[0] == "From matchday 1 (season start)", voci[:3]                # corta: a 390 px non si taglia (#949)
 
 
 def test_le_giornate_della_prima_giornata_con_l_apostrofo(web):

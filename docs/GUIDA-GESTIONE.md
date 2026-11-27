@@ -111,7 +111,8 @@ Chi è già entrato con quell'invito tiene il suo account. Gli inviti usati, sca
   `.venv/bin/python -m fanta utente-blocca <nome>`, `utente-sblocca <nome>` e `utente-elimina <nome>`.
 - **Errori recenti**: le richieste dall'ultimo riavvio con le rifiutate e gli errori del server, tempo medio e massimo, gli
   eventi di sicurezza con il loro nome in parole e, quando c'è, di chi sono (per esempio «Uscita da tutti i dispositivi · luca»),
-  le richieste più lente con accanto al percorso tecnico il nome della parte
+  con in più gli ultimi eventi importanti (registrazioni, recuperi, eliminazioni, cambi di ruolo, blocchi, inviti) anche dopo
+  tanti accessi sbagliati, le richieste più lente con accanto al percorso tecnico il nome della parte
   (per esempio «Formazione (/api/oggi)»). Ore nell'ora italiana. Le richieste senza nessun accesso verso le parti dell'app (di
   solito dalla pagina prima dell'ingresso) sono dette a parte; un accesso con un codice o una sessione che non vale, o una
   richiesta a una parte riservata, resta fra le rifiutate. Nessuna password e nessun dato delle richieste.
@@ -205,7 +206,7 @@ Le misure dello **Stato dei dati**:
 - **Certificato.** L'app installata con SideStore scade dopo 7 giorni. In **Impostazioni › Gestione** c'è **Certificato
   dell'app** (**Validità** e **Scade il**) e **Rinnovo automatico (SideStore)**, con i passi per far rinnovare l'app ogni notte
   (gli stessi di [INSTALLAZIONE-IPHONE.md](INSTALLAZIONE-IPHONE.md), sezione 5). Chi gestisce vede anche, in cima alla
-  Formazione, la decisione «L'app sul telefono scade tra N giorni: rinnovala.» con **Rinnova**. Tutti gli utenti dell'app per
+  Formazione, la decisione «L'app sul telefono scade fra N giorni: rinnovala.» con **Rinnova**. Tutti gli utenti dell'app per
   iPhone ricevono invece, se gli avvisi sono permessi, il promemoria «SchieraXI · Da rinnovare» 24 ore e 6 ore prima della
   scadenza, mai nelle ore tranquille: se ci cadono, arrivano un minuto prima che comincino.
 - **Registrazione.** Con le iscrizioni aperte l'app per iPhone ha lo stesso modulo della web (nome utente, password, email

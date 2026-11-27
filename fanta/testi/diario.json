@@ -73,7 +73,7 @@
   },
   "diario.qp_gioca_ric": {
     "it": "Con i dati disponibili prima di ogni giornata (senza le probabili formazioni), chi davamo {al} ha giocato {k} volte su 10.",
-    "en": "With the data available before each matchday (without the predicted lineups), players we gave {al} played {k} times out of 10."
+    "en": "With the data available before each matchday (without the probable lineups), players we put at {al} played {k} times out of 10."
   },
   "diario.qp_gioca_ottimisti": {
     "it": "Qui siamo stati troppo ottimisti.",

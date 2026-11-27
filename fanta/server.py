@@ -705,31 +705,53 @@ def _novita_en() -> dict:
         return {}
 
 
-# In inglese, per le versioni senza traduzione: un testo breve generico invece dell'italiano (collaudo del 2/11/2026).
+# In inglese, per le versioni senza traduzione: un testo breve generico invece dell'italiano (collaudo del 2/11/2026). Più versioni
+# senza traduzione di fila diventano una scheda sola (#949: erano dieci schede uguali una dopo l'altra).
 NOVITA_EN_TITOLO = "Improvements and fixes"
 NOVITA_EN_VOCE = "This version has no English description yet. Switch the language to Italian to read the details."
+NOVITA_EN_GRUPPO = "Versions {da} to {a} have no English description yet. Switch the language to Italian to read the details."
+
+
+def _novita_tradotta(v: dict, en: dict) -> tuple[str, list[str]] | None:
+    """(titolo, voci) in inglese di una versione: `titolo_en`/`voci_en` (li mette il bot dai file di novita.d) oppure novita.en.json.
+    None senza un titolo inglese; voci in numero diverso dalle italiane si scartano (resta la voce generica NOVITA_EN_VOCE)."""
+    e = en.get(str(v.get("versione"))) or {}
+    titolo, voci = v.get("titolo_en") or e.get("titolo"), v.get("voci_en") or e.get("voci")
+    if not (isinstance(titolo, str) and titolo.strip()):
+        return None
+    if not (isinstance(voci, list) and voci and len(voci) == len(v.get("voci") or []) and all(isinstance(x, str) for x in voci)):
+        voci = [NOVITA_EN_VOCE]
+    return titolo, voci
 
 
 def novita_in_lingua(lingua: str) -> list[dict]:
-    """Le novità nella lingua chiesta. In inglese: `titolo_en` e `voci_en` della voce (le mette il bot dai file di novita.d) oppure la
-    traduzione di novita.en.json; dove manca, un titolo e una voce generici in inglese (NOVITA_EN_*), mai l'italiano a metà.
-    I campi `titolo_en`/`voci_en` non escono mai."""
-    elenco, en = _novita(), (_novita_en() if lingua == lingua_testi.EN else {})
-    fuori = []
+    """Le novità nella lingua chiesta, dalla più recente. I campi `titolo_en`/`voci_en` non escono mai.
+    In inglese ogni versione tradotta ha il suo titolo e le sue voci; dove manca la traduzione, mai l'italiano a metà: una versione
+    sola ha un titolo e una voce generici (NOVITA_EN_TITOLO, NOVITA_EN_VOCE), più versioni di fila una scheda sola con la versione
+    e la data della più nuova e la frase NOVITA_EN_GRUPPO (dalla più vecchia alla più nuova), senza `tecnico`."""
+    elenco = [v for v in _novita() if isinstance(v, dict)]
+    pulita = lambda v: {k: x for k, x in v.items() if k not in ("titolo_en", "voci_en")}
+    if lingua != lingua_testi.EN:
+        return [pulita(v) for v in elenco]
+    en, fuori, senza = _novita_en(), [], []
+
+    def chiudi_gruppo():
+        if len(senza) == 1:
+            fuori.append(pulita(senza[0]) | {"titolo": NOVITA_EN_TITOLO, "voci": [NOVITA_EN_VOCE]})
+        elif senza:
+            nuova, vecchia = senza[0], senza[-1]
+            fuori.append({"versione": nuova.get("versione"), "data": nuova.get("data"), "titolo": NOVITA_EN_TITOLO,
+                          "voci": [NOVITA_EN_GRUPPO.format(da=vecchia.get("versione"), a=nuova.get("versione"))]})
+        senza.clear()
+
     for v in elenco:
-        if not isinstance(v, dict):
+        tradotta = _novita_tradotta(v, en)
+        if tradotta is None:
+            senza.append(v)
             continue
-        voce = {k: x for k, x in v.items() if k not in ("titolo_en", "voci_en")}
-        if lingua == lingua_testi.EN:
-            e = en.get(str(v.get("versione"))) or {}
-            titolo = v.get("titolo_en") or e.get("titolo")
-            voci = v.get("voci_en") or e.get("voci")
-            voce["titolo"] = titolo if isinstance(titolo, str) and titolo.strip() else NOVITA_EN_TITOLO
-            if isinstance(voci, list) and voci and len(voci) == len(v.get("voci") or []) and all(isinstance(x, str) for x in voci):
-                voce["voci"] = voci
-            else:
-                voce["voci"] = [NOVITA_EN_VOCE]
-        fuori.append(voce)
+        chiudi_gruppo()
+        fuori.append(pulita(v) | {"titolo": tradotta[0], "voci": tradotta[1]})
+    chiudi_gruppo()
     return fuori
 
 
