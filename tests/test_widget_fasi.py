@@ -124,7 +124,7 @@ def test_rosa_che_non_basta_il_widget_risponde_senza_formazione(widget_vero, mon
         if consegnato:
             raise calcolo.InCalcolo()                    # chiesta di nuovo: ripartirebbe in coda
         consegnato.append(1)
-        raise ValueError("Non si riesce a formare una squadra: in qualche ruolo nessuno gioca questa giornata")
+        raise ValueError("Non si riesce a formare una squadra: in qualche ruolo nessuno gioca questa giornata.")
     monkeypatch.setattr(consigli, "formazione", formazione)
     monkeypatch.setattr(consigli, "valuta", lambda *x, **k: (_ for _ in ()).throw(calcolo.InCalcolo()))
     scelte.salva(ST, 10, TITOLARI, "4-4-2", a.tmp / "scelte.json", panchina=PANCHINA)

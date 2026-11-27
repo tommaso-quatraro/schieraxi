@@ -89,7 +89,7 @@ final class AccessoGooglePuraTests: XCTestCase {
     }
 
     func testIlCodiceDelServerFaDireLaFraseGiusta() {
-        let e = ErroreApi.codificato(codice: "serve_riconferma", messaggio: "Conferma prima con Google")
+        let e = ErroreApi.codificato(codice: "serve_riconferma", messaggio: "Conferma prima con Google.")
         XCTAssertTrue(e.localizedDescription.contains("conferma prima con Google"))
         // il percorso si scrive come sulla web, con «›» (#830): non «(Impostazioni, Il tuo account, Accessi)»
         XCTAssertTrue(e.localizedDescription.contains("Impostazioni › Il tuo account › Accessi"), e.localizedDescription)
@@ -419,12 +419,12 @@ final class SessioneGoogleTests: XCTestCase {
         finto.risposte["/api/account/social/scambio"] = #"{"stato": "riconfermato"}"#
         try await sessione(finto).riconfermaGoogle(avvio: AvvioFinto(codice: "c"))
         // errore del server
-        finto.errori = ["/api/account/social/google/inizia": "Non trovato"]
+        finto.errori = ["/api/account/social/google/inizia": "Non trovato."]
         do {
             _ = try await sessione(finto).accediConGoogle(avvio: AvvioFinto(codice: "c"))
             XCTFail("doveva fermarsi")
         } catch {
-            XCTAssertEqual(SchermataAccesso.testoErrore(error), "Non trovato")
+            XCTAssertEqual(SchermataAccesso.testoErrore(error), "Non trovato.")
         }
     }
 }

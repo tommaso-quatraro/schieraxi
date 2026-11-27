@@ -373,7 +373,7 @@ def test_il_ripristino_con_dati_di_forma_sbagliata_risponde_400_e_non_scrive_nie
     copia["file"][nome] = contenuto
     corpo = json.dumps(copia)                     # i caratteri fuori dall'ASCII come \uXXXX, anche quelli spezzati
     r = a.post("/api/backup/ripristina", content=corpo, headers={"Content-Type": "application/json"})
-    assert r.status_code == 400 and r.json()["detail"] == f"{nome} non è valido: controlla di aver scelto il file di backup giusto"
+    assert r.status_code == 400 and r.json()["detail"] == f"{nome} non è valido: controlla di aver scelto il file di backup giusto."
     assert _file_utente(cartella) == prima                                    # niente scritto, nemmeno la copia di prima
 
 

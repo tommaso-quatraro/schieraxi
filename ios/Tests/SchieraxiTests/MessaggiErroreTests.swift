@@ -47,7 +47,7 @@ final class MessaggiErroreTests: XCTestCase {
 
     func testIlMessaggioDelLimiteRestaUnaFraseIntera() {
         // il testo vero del server per l'accesso
-        XCTAssertEqual(ErroreApi.troppiTentativi("Troppi tentativi sbagliati: aspetta prima di riprovare", riprovaTra: 45).errorDescription,
+        XCTAssertEqual(ErroreApi.troppiTentativi("Troppi tentativi sbagliati: aspetta prima di riprovare.", riprovaTra: 45).errorDescription,
                        "Troppi tentativi sbagliati. Riprova tra 45 secondi.")
         XCTAssertEqual(ErroreApi.troppiTentativi("Per oggi basta. Riprova domani.", riprovaTra: 600).errorDescription,
                        "Per oggi basta. Riprova tra 10 minuti.")

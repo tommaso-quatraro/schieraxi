@@ -291,7 +291,7 @@ def test_giornate_rilegge_lo_stato_se_le_rose_arrivano_da_un_altro_dispositivo(w
 
 
 # ---------------------------------------------------------------- rose salvate, la tua squadra non ancora (collaudo del 26/11)
-INDICA_SQUADRA = {"detail": "Indica la tua squadra in «La mia squadra»"}
+INDICA_SQUADRA = {"detail": "Indica la tua squadra in «La mia squadra»."}
 
 
 def rose_senza_la_tua_squadra(web, lega: dict) -> list[str]:

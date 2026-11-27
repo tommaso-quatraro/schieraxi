@@ -42,7 +42,7 @@ class BloccoFile:
         while not self._prova():
             if time.monotonic() > fine:
                 self._file.close()
-                raise TimeoutError("Un'altra operazione sulle rose è ancora in corso: riprova fra qualche secondo")
+                raise TimeoutError("Un'altra operazione sulle rose è ancora in corso: riprova fra qualche secondo.")
             time.sleep(0.05)
         return self
 

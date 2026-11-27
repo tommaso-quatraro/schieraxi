@@ -376,7 +376,7 @@ def test_il_ripristino_rifiuta_rose_con_una_stagione_strana(dati_isolati, radice
     b["file"]["lega/rose.json"]["stagione"] = "../../altro"
     b["file"]["dati/osservati.json"] = [1, 2, 3]
     r = client.post("/api/backup/ripristina", json=b)
-    assert r.status_code == 400 and r.json()["detail"] == "lega/rose.json non è valido: controlla di aver scelto il file di backup giusto"
+    assert r.status_code == 400 and r.json()["detail"] == "lega/rose.json non è valido: controlla di aver scelto il file di backup giusto."
     assert backup.crea(radice)["file"] == prima and not (radice / backup.COPIA_PRIMA).exists()
 
 

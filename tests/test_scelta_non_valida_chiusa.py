@@ -31,11 +31,11 @@ NODE = shutil.which("node")
 # ---------------------------------------------------------------- la regola
 @pytest.mark.parametrize("titolari, regole, motivo", [
     (TITOLARI, REGOLE, None),
-    (CON_CEDUTO, REGOLE, "Servono 11 titolari diversi, tutti della rosa"),
-    (TITOLARI[:10] + [1], REGOLE, "Servono 11 titolari diversi, tutti della rosa"),            # un titolare ripetuto
-    (TITOLARI[:10], REGOLE, "Servono 11 titolari diversi, tutti della rosa"),                  # dieci soli
-    (DUE_PORTIERI, REGOLE, "Il modulo 3-4-2 con 2 portieri non è ammesso nella tua lega"),
-    (TITOLARI, Regole(moduli=["4-3-3"]), "Il modulo 4-4-2 con 1 portieri non è ammesso nella tua lega"),   # la lega l'ha tolto
+    (CON_CEDUTO, REGOLE, "Servono 11 titolari diversi, tutti della rosa."),
+    (TITOLARI[:10] + [1], REGOLE, "Servono 11 titolari diversi, tutti della rosa."),            # un titolare ripetuto
+    (TITOLARI[:10], REGOLE, "Servono 11 titolari diversi, tutti della rosa."),                  # dieci soli
+    (DUE_PORTIERI, REGOLE, "Il modulo 3-4-2 con 2 portieri non è ammesso nella tua lega."),
+    (TITOLARI, Regole(moduli=["4-3-3"]), "Il modulo 4-4-2 con 1 portieri non è ammesso nella tua lega."),   # la lega l'ha tolto
 ])
 def test_regola_unica_della_scelta(titolari, regole, motivo):
     assert scelte.motivo_non_valida(titolari, RUOLI, regole) == motivo
@@ -49,8 +49,8 @@ def test_stato_della_scelta():
 
 
 @pytest.mark.parametrize("titolari, motivo", [
-    (CON_CEDUTO, "Servono 11 titolari diversi, tutti della rosa"),
-    (DUE_PORTIERI, "Il modulo 3-4-2 con 2 portieri non è ammesso nella tua lega"),
+    (CON_CEDUTO, "Servono 11 titolari diversi, tutti della rosa."),
+    (DUE_PORTIERI, "Il modulo 3-4-2 con 2 portieri non è ammesso nella tua lega."),
 ])
 def test_la_formazione_controlla_con_le_stesse_frasi(ambiente, titolari, motivo):
     """`consigli.valuta` (la Formazione, 400 `formazione_non_valida`): stessi casi e stesse frasi della regola unica."""

@@ -253,6 +253,15 @@
       "stato": "fatto"
     },
     {
+      "id": 125,
+      "schermata": "Gestione: «Aggiorna i dati» finito senza nessun dato arrivato, e premuto di nuovo entro 10 minuti (collaudo del 27/11)",
+      "web": "con `nessun_dato_nuovo` vero in `GET /api/aggiorna` l'avviso dice «Nessun dato nuovo:» e sotto le frasi del server una per riga (`aggiorna.nessun_dato`), oppure, senza frasi, «Nessun dato nuovo: non c'era niente di più recente da scaricare.» (`aggiorna.nessun_dato_niente`), al posto di «Aggiornato, ma con problemi:» o «Dati aggiornati» (`aggiornaDati` in `app.js`); premuto di nuovo entro 10 minuti, il messaggio del server «Hai appena provato: riprova fra 9 minuti.» (`srv.aggiorna_pausa`, prima «I dati sono stati aggiornati da poco: …»)",
+      "iphone": "prima: «Aggiornato, ma con problemi:» anche senza nessun dato arrivato. Ora come la web: `AggiornaDatiViewModel.avvia` legge `nessunDatoNuovo` di `StatoAggiornamento` e mostra le stesse due frasi del catalogo; senza il campo (server di prima) come prima. Il secondo tocco mostra il messaggio del server così com'è",
+      "forma": "web (catalogo `fanta/testi/aggiorna.json`, `srv.json`)",
+      "chi": "**fatto** (ramo `aggiorna-niente-arrivato`): prove sul server `tests/test_server.py`, `tests/test_aggiorna_senza_rete.py`, nel browser `tests/browser/test_impostazioni.py`, sull'iPhone `LegaViewModelTests`",
+      "stato": "fatto"
+    },
+    {
       "id": 126,
       "schermata": "«Giocatori da sistemare»: rosa che non si legge e righe con lo stesso nome",
       "web": "prima: se una rosa non si leggeva l'errore si scartava e la sezione non compariva. Ora al suo posto, in un errore (role=\"alert\"), «Non ho potuto controllare i giocatori da sistemare.» con il motivo (`pav.da_sistemare_errore`, `paNonRiconosciuti`); abbinando un giocatore sparisce solo la riga toccata",

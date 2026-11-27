@@ -137,7 +137,7 @@ def test_push_senza_account_nessun_tetto_alle_iscrizioni(dati_isolati, monkeypat
 
 
 # ================================================================ nomi che non si risolvono
-@pytest.mark.parametrize("errore", [ValueError("Nome non risolto in tempo"), OSError("nessuna risposta")])
+@pytest.mark.parametrize("errore", [ValueError("Nome non risolto in tempo."), OSError("nessuna risposta")])
 def test_push_un_nome_che_non_si_risolve_si_ricorda_per_qualche_minuto(monkeypatch, errore):
     chiamate = []
 

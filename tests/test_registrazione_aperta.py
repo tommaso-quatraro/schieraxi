@@ -14,7 +14,7 @@ from fanta import account, account_email, posta, rotte_account
 from test_account_http import PASSWORD, cliente, invito
 from test_account_email import codice_di, ultimi
 
-AL_COMPLETO = "Iscrizioni chiuse: siamo al completo"
+AL_COMPLETO = "Iscrizioni chiuse: siamo al completo."
 # I domini di Google si scrivono a pezzi: nel repository pubblico niente indirizzi interi con il dominio di un fornitore vero (vedi
 # tests/test_profilo_email_nome.py). Le prove ne hanno bisogno: solo per Gmail i punti non contano.
 GMAIL, GOOGLEMAIL = "gmail" + ".com", "googlemail" + ".com"

@@ -47,9 +47,9 @@ PIATTAFORME = ("web", "ios")
 _FORMATO_SFIDA = re.compile(r"[A-Za-z0-9_-]{43}")
 _FORMATO_VERIFICATORE = re.compile(r"[A-Za-z0-9._~-]{43,128}")
 _FORMATO_SEGRETO = re.compile(r"[A-Za-z0-9_-]{20,100}")
-NON_ATTIVO = "L'accesso con Google non è attivo"
-SESSIONE_DIVERSA = "Questa operazione va fatta dal dispositivo in cui hai cominciato"
-CODICE_NON_VALIDO = "Il collegamento con Google è scaduto: riprova"
+NON_ATTIVO = "L'accesso con Google non è attivo."
+SESSIONE_DIVERSA = "Questa operazione va fatta dal dispositivo in cui hai cominciato."
+CODICE_NON_VALIDO = "Il collegamento con Google è scaduto: riprova."
 
 
 class ErroreSocial(ErroreAccount):
@@ -196,7 +196,7 @@ def inizia(db: sqlite3.Connection, provider: str, scopo: str, sfida: str, piatta
     if provider != "google" or not google_attivo():
         raise ErroreAccount(NON_ATTIVO, 404)
     if scopo not in SCOPI or piattaforma not in PIATTAFORME or not _FORMATO_SFIDA.fullmatch(sfida or ""):
-        raise ErroreAccount("Richiesta non valida")
+        raise ErroreAccount("Richiesta non valida.")
     if scopo in ("collega", "riconferma") and not utente_id:
         raise ErroreAccount("Accesso richiesto", 401)
     if scopo == "accedi":
@@ -394,7 +394,7 @@ def completa(db: sqlite3.Connection, iscrizione: str, nome_utente: str, invito: 
         raise ErroreAccount(NON_ATTIVO, 404)
     adesso = account._ora(adesso)
     if not accetto_termini:                          # prima dei tetti: un modulo scritto male non consuma tentativi
-        raise ErroreAccount("Per iscriverti devi accettare Privacy e Termini")
+        raise ErroreAccount("Per iscriverti devi accettare Privacy e Termini.")
     nome = account.valida_nome(nome_utente)
     account.troppi_account(db, ip)
     contate = account.conta_per_indirizzo(db, ip, ("social-completa-ip", *COMPLETAMENTI_PER_IP))     # tolte se l'account nasce
@@ -424,7 +424,7 @@ def completa(db: sqlite3.Connection, iscrizione: str, nome_utente: str, invito: 
             if modo == "aperta":
                 account.tetto_del_giorno(db, adesso)
             if db.execute("SELECT 1 FROM utenti WHERE nome_utente = ?", (nome,)).fetchone():
-                raise ErroreAccount("Questo nome utente è già preso: scegline un altro")
+                raise ErroreAccount("Questo nome utente è già preso: scegline un altro.")
             email = esito["email"] if esito["affidabile"] and not account_email._gia_di_un_account(db, esito["email"]) else None
             nuovo = account.crea_utente(db, nome, account.nome_da_mostrare(nome_utente, nome), password_hash, recupero_hash,
                                         inv["ruolo"] if inv else "utente", adesso, ip=ip, contate=contate, email=email,
@@ -440,7 +440,7 @@ def completa(db: sqlite3.Connection, iscrizione: str, nome_utente: str, invito: 
             db.commit()
         except sqlite3.IntegrityError:
             db.rollback()
-            raise ErroreAccount("Questo nome utente (o questo Google) è già in uso: riprova con un altro nome") from None
+            raise ErroreAccount("Questo nome utente (o questo Google) è già in uso: riprova con un altro nome.") from None
         except BaseException:
             if db.in_transaction:
                 db.rollback()
@@ -488,7 +488,7 @@ def scollega(db: sqlite3.Connection, utente_id: int, provider: str) -> dict:
         ha_password = bool(riga) and not riga["senza_password"]
         presente = db.execute("SELECT 1 FROM identita_esterne WHERE utente_id = ? AND provider = ?", (utente_id, provider)).fetchone()
         if presente is None:
-            raise ErroreAccount("Questo accesso non è collegato", 404)
+            raise ErroreAccount("Questo accesso non è collegato.", 404)
         if not ha_password and not altri:
             raise ErroreSocial("Prima aggiungi una password o un altro accesso.", 409, codice="ultimo_accesso")
         db.execute("DELETE FROM identita_esterne WHERE utente_id = ? AND provider = ?", (utente_id, provider))
@@ -505,9 +505,9 @@ def imposta_password(db: sqlite3.Connection, utente_id: int, password: str, sess
     """Per chi è entrato solo con Google: aggiunge una password (serve la riconferma recente con Google). Restituisce il codice di recupero."""
     riga = db.execute("SELECT * FROM utenti WHERE id = ?", (utente_id,)).fetchone()
     if riga is None or not riga["senza_password"]:
-        raise ErroreAccount("Hai già una password: usa «Cambia password»")
+        raise ErroreAccount("Hai già una password: usa «Cambia password».")
     if not riconfermato_di_recente(db, utente_id, sessione):
-        raise account.ErroreAccount("Conferma prima con Google", 403, codice="serve_riconferma")
+        raise account.ErroreAccount("Conferma prima con Google.", 403, codice="serve_riconferma")
     account.valida_password(password, riga["nome_utente"])
     recupero = account.nuovo_codice(20)
     db.execute("UPDATE utenti SET password_hash = ?, recupero_hash = ?, senza_password = 0 WHERE id = ?",

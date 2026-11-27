@@ -14,6 +14,14 @@ extension Catalogo {
             "Aggiornato, ma con problemi: \(errori)"
         }
 
+        /// `aggiorna.nessun_dato`
+        static func nessunDato(errori: String) -> String {
+            "Nessun dato nuovo: \(errori)"
+        }
+
+        /// `aggiorna.nessun_dato_niente`
+        static let nessunDatoNiente = "Nessun dato nuovo: non c'era niente di più recente da scaricare."
+
         /// `aggiorna.non_so`
         static let nonSo = "Non riesco a sapere come è andato l'aggiornamento: riapri l'app tra poco"
 

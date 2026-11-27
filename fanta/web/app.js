@@ -276,10 +276,14 @@ const senzaInvitoARiprovare = testo => {
   return p;
 };
 const attesaDa = e => e && e.status === 429 && e.riprova && !/\btra\b/i.test(e.originale || e.message || "") ? t("comune.riprova_tra", { attesa: attesaTesto(e.riprova) }) : "";
+// Un messaggio chiuso dal punto, per farlo seguire da un'altra frase (i messaggi del server lo hanno già, alcuni dell'app no).
+const conPunto = s => (/[.!?]$/.test(String(s).trim()) ? String(s).trim() : String(s).trim() + ".");
 // Un errore mostrato a chi usa l'app. `role="alert"`: il lettore di schermo lo dice subito, e i test del browser riconoscono una
 // schermata che si rompe (la web cattura i suoi errori e non scrive in console). Solo per gli errori veri: avvisi, stati vuoti e
-// promemoria non lo hanno.
-const errore = e => `<div class="errore" role="alert">${esc(e.message || e)}${attesaDa(e)}</div>`;
+// promemoria non lo hanno. Con l'attesa del 429, come l'iPhone (`ErroreApi.errorDescription`): la frase del server senza il suo
+// invito a riprovare e poi «Riprova tra 10 secondi.» (revisione della #968: «…riprova fra qualche secondo. (riprova tra 10 secondi)»).
+const errore = e => { const attesa = attesaDa(e), testo = e.message || e;
+  return `<div class="errore" role="alert">${esc(attesa ? senzaInvitoARiprovare(testo) : testo)}${attesa}</div>`; };
 // Errore a tutta pagina (una sezione che non si apre): c'è il pulsante «Riprova», senza dover cambiare sezione e tornare.
 // Senza rose (409 dal server) non è un errore: è un inizio. Stato vuoto che porta a «Importa le rose» (si apre il primo avvio guidato).
 const senzaRose = e => !!e && e.status === 409 && /nessuna rosa/i.test(e.originale || e.message || "");
@@ -411,7 +415,7 @@ async function caricaConCache(chiave, percorso, mostra, testo, { daSalvare = () 
         if (!b) return false;
         const ferma = !!vista && typeof vista.sola === "function" && vista.sola();
         const copia = new Date(salvata.quando), salvataIl = { giorno: fData(copia), ora: fOra(copia) };   // di quando è la copia (#845, #864)
-        const motivo = elidiGiorno(e.rete ? t("comune.cache_offline", salvataIl) : t("comune.cache_errore", { errore: esc(e.message), ...salvataIl }));
+        const motivo = elidiGiorno(e.rete ? t("comune.cache_offline", salvataIl) : t("comune.cache_errore", { errore: esc(conPunto(e.message)), ...salvataIl }));
         b.innerHTML = `<span>${motivo}${ferma ? ` ${t("formazione.copia_ferma")}` : ""}</span>
           <button class="azione-testo" type="button" data-riprova>${t("comune.riprova")}</button>`;
         if (e.rete && !daSola) alRitornoDellaRete(() => { if (ancoraValida(mia) && $("#nota-cache")) leggi(true); });
@@ -982,9 +986,14 @@ async function aggiornaDati() {
       }
       if (s.in_corso) { setTimeout(controlla, 2000); return; }
       segnaAggiornamento(false);
-      // le frasi del server (`errori`, tradotte da `errori_frasi`: collaudo d'insieme del 26/11), una per riga sotto la testa
-      const problemi = testiDi(s, "errori");
-      avviso(problemi.length ? t("aggiorna.problemi", { errori: "\n" + problemi.join("\n") }) : t("aggiorna.ok"), 6000);
+      // le frasi del server (`errori`, tradotte da `errori_frasi`: collaudo d'insieme del 26/11), una per riga sotto la testa;
+      // la testa dice «Nessun dato nuovo» se il server dice che non è arrivato niente (`nessun_dato_nuovo`, collaudo del 27/11:
+      // con tutte le fonti giù diceva «Aggiornato, ma con problemi»). Un server di prima non lo manda: testa di sempre.
+      const problemi = testiDi(s, "errori"), righe = { errori: "\n" + problemi.join("\n") };
+      const testo = s.nessun_dato_nuovo === true
+        ? (problemi.length ? t("aggiorna.nessun_dato", righe) : t("aggiorna.nessun_dato_niente"))
+        : (problemi.length ? t("aggiorna.problemi", righe) : t("aggiorna.ok"));
+      avviso(testo, 6000);
       stato.calendario = null;
       svuotaCache();
       await caricaInfo();

@@ -42,13 +42,13 @@ def eventi(tipo: str) -> list[dict]:
 def test_fuori_dal_cambio_password_niente_attuale(marco, rotta, corpo):
     r = marco.post(rotta, json=corpo)
     assert r.status_code == 403, r.text
-    assert r.json()["detail"] == "La password non è giusta"
+    assert r.json()["detail"] == "La password non è giusta."
 
 
 def test_nel_cambio_password_il_campo_e_la_password_attuale(marco):
     r = marco.post("/api/account/cambia-password", json={"attuale": SBAGLIATA, "nuova": "nuova-password-lunga"})
     assert r.status_code == 403, r.text
-    assert r.json()["detail"] == "La password attuale non è giusta"
+    assert r.json()["detail"] == "La password attuale non è giusta."
 
 
 # ---------------------------------------------------------------- prima la password, poi la conferma
