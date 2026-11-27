@@ -214,7 +214,7 @@ struct Fornitore: AppIntentTimelineProvider {
         let adesso = primo.date
         var voci = [primo]
         // Più spesso quando la scadenza è vicina (probabili, dubbi e formazioni cambiano), meno quando mancano giorni; ogni 15 minuti
-        // con una partita della rosa, fino a 3 ore dopo il calcio d'inizio, quando arrivano i voti (`RicaricaWidget`, provata nei test).
+        // con una partita della rosa, fino a 4 ore e 15 dopo il calcio d'inizio, voti compresi (`RicaricaWidget`, provata nei test).
         // iOS decide poi quando ricaricare davvero (ricariche contate al giorno): se rimanda, sotto i dati compare la loro ora
         // (`EtaDatiWidget`, con la voce in più qui sotto).
         let partite = primo.widget?.conPartite(adesso: adesso) == true

@@ -9,9 +9,11 @@ Tutti leggono UNA chiamata compatta, `GET /api/widget` (token `fw_` a scopo limi
 
 Ricariche (`RicaricaWidget`, usata dal `Fornitore`; test in `RicaricaWidgetTests`): ogni mezz'ora; a meno di un giorno dalla
 scadenza ogni 20 minuti, a meno di 3 ore ogni 10, nelle 3 ore dopo la scadenza ogni 15. Con una partita di un giocatore della rosa
-(`rosa[].data_partita`, `RiassuntoWidget.conPartite`), da 10 minuti prima del calcio d'inizio a 3 ore dopo, ogni 15 minuti, con una
-ricarica quando la finestra si apre (`prossimaFinestra`): le 3 ore coprono il giro dei risultati del server, 2 ore e 30 dopo
-l'inizio, quando arrivano voti, punti fatti e la fine della giornata. Fino al 27/11/2026 durante le partite erano ogni 2 minuti,
+(`rosa[].data_partita`, `RiassuntoWidget.conPartite`), da 10 minuti prima del calcio d'inizio a 4 ore e 15 minuti dopo, ogni 15
+minuti, con una ricarica quando la finestra si apre (`prossimaFinestra`): la finestra copre i due giri dei risultati del server,
+2 ore e 30 dopo l'inizio e, se mancano ancora i voti, 4 ore (`pianificatore.GIRI_RISULTATI`), più una ricarica; lì arrivano voti,
+punti fatti e la fine della giornata. L'app non legge il pianificatore: `tests/test_widget_ricariche.py` controlla che
+`RicaricaWidget.dopoIlCalcio` copra il suo ultimo giro. Fino al 27/11/2026 durante le partite erano ogni 2 minuti,
 con le partite del blocco `live` di `/api/widget`: nessun widget mostra più la diretta (#634), le ricariche che iOS concede al
 giorno finivano prima dei punti (la finestra della diretta finiva 130 minuti dopo l'inizio, prima dei voti) e il minuto della
 partita cambiava l'ETag, quindi ogni ricarica scaricava tutta la risposta invece di un 304. Il server non manda più `live`; un

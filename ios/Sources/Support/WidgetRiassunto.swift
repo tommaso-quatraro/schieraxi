@@ -888,11 +888,14 @@ enum RicaricaWidget {
     /// Con una partita della rosa nella sua finestra (`RiassuntoWidget.conPartite`): ogni 15 minuti. Fino al 27/11/2026 erano 2,
     /// per la diretta, che nessun widget mostra più (#634): le ricariche concesse da iOS finivano prima che arrivassero i punti.
     static let minutiPartite = 15.0
-    /// La finestra di una partita comincia 10 minuti prima del calcio d'inizio e finisce 3 ore dopo: il server legge risultati e
-    /// voti 2 ore e 30 dopo l'inizio (`pianificatore.giro_risultati`), e lì arrivano i punti fatti e, con l'ultima partita, la fine
-    /// della giornata. La finestra della diretta finiva 130 minuti dopo l'inizio, prima dei voti.
+    /// La finestra di una partita comincia 10 minuti prima del calcio d'inizio e finisce 4 ore e 15 minuti dopo: il server legge
+    /// risultati e voti 2 ore e 30 dopo l'inizio e, se mancano ancora, di nuovo a 4 ore (`pianificatore.GIRI_RISULTATI`), e lì
+    /// arrivano i punti fatti e, con l'ultima partita, la fine della giornata. I 15 minuti in più sono una ricarica, perché anche il
+    /// secondo giro si veda. La finestra della diretta finiva 130 minuti dopo l'inizio, prima dei voti. L'app non legge il
+    /// pianificatore: `tests/test_widget_ricariche.py` controlla che questo valore copra il suo ultimo giro (scritto come somma di
+    /// prodotti di interi, che quel test sa leggere).
     static let primaDelCalcio: TimeInterval = 10 * 60
-    static let dopoIlCalcio: TimeInterval = 3 * 3600
+    static let dopoIlCalcio: TimeInterval = 4 * 3600 + 15 * 60
 
     /// I minuti fino alla prossima ricarica. `scadenza`: quella della formazione (`RiassuntoOggi.inizio`); `partite`: una partita
     /// della rosa è nella sua finestra. Più spesso quando la scadenza è vicina (probabili, dubbi e formazioni cambiano), meno quando
