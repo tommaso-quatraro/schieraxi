@@ -1157,6 +1157,8 @@ const stessiIds = (a, b) => a.length === b.length && a.every(x => b.includes(x))
 const livelloBase = f => (f.livelli || []).find(x => x.rischio === 0) || { modulo: f.modulo, moduli: f.moduli };
 // Il modulo già calcolato dal server che ha proprio questi 11 (l'ordine non conta), o null: allora serve una valutazione a parte.
 const moduloDi = (f, ids) => livelloBase(f).moduli.find(m => stessiIds(m.titolari.map(Number), ids.map(Number))) || null;
+// Nel menu del modulo il valore della voce con la formazione cambiata a mano («4-3-3 · 71,0 punti · la tua»): non è un modulo.
+const VOCE_TUA = "tua";
 // Il perché di un titolare in una riga (campo `perche_scelta` del modulo, fanta/perche_scelta.py; se manca, il campo `incerti`: titolare
 // incerto con la riserva che gioca quasi di sicuro). Già pronto per l'HTML; vuoto se non c'è niente da dire. `altro` e `riserva`
 // possono mancare (null): la frase del server basta a sé, quella degli incerti senza riserva non si scrive.
@@ -1518,8 +1520,13 @@ function mostraFormazione(b, squadra, opz = {}) {
       const d = v.tipo === "dubbio" && v.alternativa ? Number(v.differenza) : NaN;
       return Number.isFinite(d) && d >= 0.05 ? t("formazione.decisione_punti", { d: segno(d, 1) }) : "";
     };
-    const moduli = l.moduli.some(x => x.modulo === m.modulo) ? l.moduli : [...l.moduli, m];
-    const opzione = x => `<option value="${esc(x.modulo)}" ${x.modulo === m.modulo ? "selected" : ""}>${t(x === consigliato ? "formazione.opzione_consigliato" : "formazione.opzione_modulo", { modulo: esc(x.modulo), punti: num(x.punteggio_atteso) })}</option>`;
+    // Il menu del modulo: le formazioni calcolate dal server e, se gli 11 in pagina non sono quelli di una di loro (un cambio a mano,
+    // anche nello stesso modulo), in cima una voce con la tua formazione e i suoi punti (del server), scelta. Prima restava scelta la
+    // voce del server con lo stesso modulo e altri punti, e sceglierla non faceva niente: alla consigliata non si tornava.
+    const tua = !l.moduli.includes(m);
+    const opzione = x => `<option value="${esc(x.modulo)}" ${!tua && x.modulo === m.modulo ? "selected" : ""}>${t(x === consigliato ? "formazione.opzione_consigliato" : "formazione.opzione_modulo", { modulo: esc(x.modulo), punti: num(x.punteggio_atteso) })}</option>`;
+    const voci = (tua ? `<option value="${VOCE_TUA}" selected>${t("formazione.opzione_tua", { modulo: esc(m.modulo), punti: num(m.punteggio_atteso) })}</option>` : "")
+      + l.moduli.map(opzione).join("");
     const diSolito = fraseDiSolito(m);
     const probabili = o && o.probabili && !chiusa ? `<p class="debole piccolo probabili-fresche" id="probabili-fresche">${esc(testoDi(o.probabili))} (${esc(o.probabili.eta_frase ? testoDi(o.probabili, "eta") : traduciDurata(o.probabili.eta))})</p>${o.probabili.vecchie && o.probabili.avviso ? `<div class="attenzione" role="status">${esc(testoDi(o.probabili, "avviso"))}</div>` : ""}` : "";
     const elenco = (righe, numerati) => `${intestazioneColonne({ partita: true, dalVivo: !!live })}<ul class="elenco">${righe.map((x, k) => voceGiocatore(x, numerati ? k + 1 : null, !!live)).join("")}</ul>`;
@@ -1533,7 +1540,7 @@ function mostraFormazione(b, squadra, opz = {}) {
       <div class="fz-campo"><div class="campo-fermo">
         ${live ? "" : `<div class="riga-modulo">
           ${chiusa ? `<span class="modulo-fisso">${esc(m.modulo)}</span>` : `<label class="menu-scelta menu-modulo"><span class="solo-lettori">${t("formazione.modulo")}</span>
-            <span class="menu-scelta-testo" aria-hidden="true">${esc(m.modulo)}</span><select id="modulo" data-scrive${spento}>${moduli.map(opzione).join("")}</select></label>`}
+            <span class="menu-scelta-testo" aria-hidden="true">${esc(m.modulo)}</span><select id="modulo" data-scrive${spento}>${voci}</select></label>`}
           <div class="punti-attesi"><span><b id="punti-attesi">${num(m.punteggio_atteso)}</b> ${t("formazione.punti_attesi")}</span>${diSolito ? `<span class="debole piccolo" id="di-solito">${esc(diSolito)}</span>` : ""}</div>
         </div>`}
         <div class="campo" id="campo-formazione"><i class="area-alta"></i><i class="cerchio"></i><i class="meta"></i>

@@ -314,6 +314,37 @@ def test_il_modulo_e_un_menu_e_un_altro_modulo_si_salva(web):
     assert stato(web) == "È la consigliata." and scritte[-1][:2] == ("DELETE", "/api/scelta?giornata=9")
 
 
+def _voce_scelta(menu) -> str:
+    """Il testo della voce scelta nel menu del modulo."""
+    return menu.evaluate("s => s.selectedOptions[0] ? s.selectedOptions[0].textContent : ''")
+
+
+def test_dopo_una_sostituzione_il_menu_del_modulo_ha_la_tua_formazione_e_riporta_alla_consigliata(web):
+    """Difetto del 27/11: dopo un «Sostituisci» nello stesso ruolo il menu teneva scelta la voce del server con lo stesso modulo
+    («4-3-3 · 73,8 punti · consigliato») e accanto c'erano i punti della tua (71,0); sceglierla non faceva niente, quindi alla
+    consigliata non si tornava. Ora la formazione cambiata a mano ha una voce sua, con i suoi punti (quelli del server), ed è
+    quella scelta; la consigliata si sceglie e ci si torna."""
+    solo(web, "prima")
+    web.risposta("/api/scelta?giornata=9", None)
+    f = web.registrata("/api/formazione")
+    web.risposta("/api/formazione/valuta", {**web.registrata("/api/formazione/valuta"), "modulo": f["modulo"], "punteggio_atteso": 71.0})
+    web.apri("/")
+    tocca(web, campo(web).nth(3))
+    tocca(web, scheda(web).get_by_role("button", name="Sostituisci"))
+    tocca(web, scheda(web).get_by_role("listitem").first.get_by_role("button"))
+    menu = principale(web).get_by_label("Modulo")
+    assert principale(web).locator("#punti-attesi").inner_text() == "71,0"
+    assert _voce_scelta(menu) == f"{f['modulo']} · 71,0 punti · la tua", _voce_scelta(menu)
+    assert menu.locator("option").count() == len(f["moduli"]) + 1
+    scritte = scritture(web)
+    menu.select_option(f["modulo"])                                    # la voce consigliata
+    web.aspetta()
+    assert stato(web) == "È la consigliata." and scritte and scritte[-1][:2] == ("DELETE", "/api/scelta?giornata=9")
+    menu = principale(web).get_by_label("Modulo")
+    assert _voce_scelta(menu).endswith("· consigliato") and menu.locator("option").count() == len(f["moduli"])
+    assert not web.errori_mostrati() and not web.errori_console
+
+
 def test_la_spunta_l_ho_messa_resta_dopo_una_ricarica(web):
     """La spunta si salva sul server (campo `messa` della scelta) e torna con la scelta: qui il test fa la parte del server."""
     solo(web, "prima")
