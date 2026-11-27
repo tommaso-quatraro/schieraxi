@@ -670,7 +670,7 @@ final class SessioneAccountTests: XCTestCase {
         XCTAssertNil(s.prendiAvvisoAccesso(), "prima dell'uscita nessuna frase")
         try await s.esciDaTutti()
         XCTAssertEqual(s.stato, .daAccedere)
-        XCTAssertEqual(s.prendiAvvisoAccesso(), Catalogo.Account.esciTuttiFatto)
+        XCTAssertEqual(s.prendiAvvisoAccesso(), AvvisoAccesso.conferma(Catalogo.Account.esciTuttiFatto), "una conferma, verde")
         XCTAssertNil(s.prendiAvvisoAccesso(), "una volta sola")
     }
 
@@ -717,7 +717,7 @@ final class SessioneAccountTests: XCTestCase {
         XCTAssertNil(s.prendiAvvisoAccesso())
         try await s.elimina(password: "Prova-Finta-Zero")
         XCTAssertEqual(s.stato, .daAccedere)
-        XCTAssertEqual(s.prendiAvvisoAccesso(), "Il tuo account e tutti i tuoi dati sono stati eliminati.")
+        XCTAssertEqual(s.prendiAvvisoAccesso(), AvvisoAccesso.conferma("Il tuo account e tutti i tuoi dati sono stati eliminati."))
         XCTAssertNil(s.prendiAvvisoAccesso(), "una volta sola")
     }
 
@@ -799,7 +799,8 @@ final class SessioneAccountTests: XCTestCase {
         let s = sessione(server)
         NotificationCenter.default.post(name: .accessoRichiesto, object: nil, userInfo: ["server": server.indirizzo])
         await aspetta { s.stato == .daAccedere }
-        XCTAssertEqual(s.prendiAvvisoAccesso(), Catalogo.Accesso.sessioneFinita)
+        XCTAssertEqual(s.prendiAvvisoAccesso(), AvvisoAccesso.attenzione(Catalogo.Accesso.sessioneFinita),
+                       "non è una conferma: lo stile «attenzione», come la web")
         XCTAssertNil(s.prendiAvvisoAccesso(), "una volta sola")
     }
 
@@ -814,7 +815,8 @@ final class SessioneAccountTests: XCTestCase {
         NotificationCenter.default.post(name: .accessoRichiesto, object: nil, userInfo: ["server": server.indirizzo, "impronta": "tok".hashValue])
         await aspetta { s.stato == .daAccedere }
         XCTAssertEqual(s.stato, .daAccedere)
-        XCTAssertEqual(s.prendiAvvisoAccesso(), Catalogo.Accesso.sessioneFinita)
+        XCTAssertEqual(s.prendiAvvisoAccesso(), AvvisoAccesso.attenzione(Catalogo.Accesso.sessioneFinita),
+                       "non è una conferma: lo stile «attenzione», come la web")
     }
 
     /// E quando se ne accorge all'apertura o al ritorno nell'app (`verifica`): il token c'era e il server risponde 401.
@@ -827,7 +829,8 @@ final class SessioneAccountTests: XCTestCase {
         let s = sessione(server)
         await s.verifica()
         XCTAssertEqual(s.stato, .daAccedere)
-        XCTAssertEqual(s.prendiAvvisoAccesso(), Catalogo.Accesso.sessioneFinita)
+        XCTAssertEqual(s.prendiAvvisoAccesso(), AvvisoAccesso.attenzione(Catalogo.Accesso.sessioneFinita),
+                       "non è una conferma: lo stile «attenzione», come la web")
     }
 
     /// Chi non era dentro (nessun token: prima apertura, server appena cambiato) non ha perso nessuna sessione: nessuna frase.

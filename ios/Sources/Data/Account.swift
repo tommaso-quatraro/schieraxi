@@ -527,7 +527,7 @@ final class SessioneAccount: ObservableObject {
     /// dal telefono e, se si era dentro davvero, la schermata di accesso lo dice una volta, come la web (`sessioneScaduta`,
     /// `accesso.sessione_finita`). Chi non era dentro (prima apertura, server appena cambiato) non ha perso niente: nessuna frase.
     private func chiudiPerSessioneFinita() {
-        if case .connesso = stato { avvisoAccesso = Catalogo.Accesso.sessioneFinita }
+        if case .connesso = stato { avvisoAccesso = .conferma(Catalogo.Accesso.sessioneFinita) }
         chiudiLocale()
     }
 
@@ -775,13 +775,14 @@ final class SessioneAccount: ObservableObject {
         chiudiLocale()
     }
 
-    /// La frase da mostrare una volta sulla schermata di accesso, come la web: dopo «Esci da tutti i dispositivi» riuscito
-    /// (`account.esci_tutti_fatto`, #788), dopo l'eliminazione dell'account (`account.eliminato_fatto`) e quando il server chiude la
-    /// sessione (`accesso.sessione_finita`). Non è un errore e non c'è dopo un «Esci» normale. Solo in memoria.
-    private var avvisoAccesso: String?
+    /// La frase da mostrare una volta sulla schermata di accesso, con il suo tipo, come la web: dopo «Esci da tutti i dispositivi»
+    /// riuscito (`account.esci_tutti_fatto`, #788) e dopo l'eliminazione dell'account (`account.eliminato_fatto`) una conferma;
+    /// quando il server chiude la sessione (`accesso.sessione_finita`) un avviso «attenzione». Non è un errore e non c'è dopo un
+    /// «Esci» normale. Solo in memoria.
+    private var avvisoAccesso: AvvisoAccesso?
 
     /// La frase per la schermata di accesso, una volta sola: chi la prende la toglie (`SchermataAccesso` quando compare).
-    func prendiAvvisoAccesso() -> String? {
+    func prendiAvvisoAccesso() -> AvvisoAccesso? {
         defer { avvisoAccesso = nil }
         return avvisoAccesso
     }
@@ -795,7 +796,7 @@ final class SessioneAccount: ObservableObject {
         try inizia()
         defer { inCorso = false }
         _ = try await server.corpoJSON("POST", "/api/account/esci-da-tutti", [String: String]())
-        avvisoAccesso = Catalogo.Account.esciTuttiFatto   // prima di chiudere: la schermata di accesso la legge appena compare
+        avvisoAccesso = .conferma(Catalogo.Account.esciTuttiFatto)   // prima di chiudere: la schermata di accesso la legge appena compare
         chiudiLocale()
     }
 
@@ -878,7 +879,7 @@ final class SessioneAccount: ObservableObject {
         try inizia()
         defer { inCorso = false }
         _ = try await server.corpoJSON("POST", "/api/account/elimina", CorpoSoloPassword(password: passwordPerServer(password)))
-        avvisoAccesso = Catalogo.Account.eliminatoFatto   // prima di chiudere: la schermata di accesso la legge appena compare
+        avvisoAccesso = .conferma(Catalogo.Account.eliminatoFatto)   // prima di chiudere: la schermata di accesso la legge appena compare
         chiudiLocale()
     }
 

@@ -28,7 +28,8 @@ struct SchermataAccesso: View {
     /// solo a zero).
     @State private var modulo: ModuloAccesso
     @State private var errore: String?
-    @State private var messaggio: String?
+    /// La frase sopra il pulsante che non è un errore: una conferma (verde) o un avviso «attenzione», come `mostraMessaggioAccesso`.
+    @State private var messaggio: AvvisoAccesso?
     /// Il nuovo codice di recupero dopo aver rimesso la password: va salvato prima di proseguire.
     @State private var codiceNuovo: CodiceDaSalvare?
     @State private var avanzate = false
@@ -71,8 +72,8 @@ struct SchermataAccesso: View {
                 Carta { campi }
                     .animation(Tema.molla, value: modulo.passo)
                 if let messaggio {
-                    Label(messaggio, systemImage: "checkmark.circle.fill")
-                        .font(.subheadline).foregroundStyle(Color.verde)
+                    Label(messaggio.testo, systemImage: messaggio.tipo.icona)
+                        .font(.subheadline).foregroundStyle(messaggio.tipo.colore)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityElement(children: .combine)
                 }
@@ -94,12 +95,13 @@ struct SchermataAccesso: View {
         .background(Sfondo())
         .animation(Tema.morbida, value: errore)
         .schermoProtetto()
-        // dopo «Esci da tutti i dispositivi» una volta «Sei fuori da tutti i dispositivi, anche da questo: accedi di nuovo.»,
-        // come la web (#788, lì `role="status"`): non è un errore, sta dove sta la conferma verde e VoiceOver la legge
+        // una volta la frase di come si è usciti, come la web (#788, lì `role="status"`): «Sei fuori da tutti i dispositivi, anche
+        // da questo: accedi di nuovo.» o l'account eliminato come conferma verde; «La sessione è finita: accedi di nuovo.» con lo
+        // stile «attenzione» (la sessione l'ha chiusa il server). Non è un errore, niente vibrazione; VoiceOver la legge
         .onAppear {
             if let avviso = sessione.prendiAvvisoAccesso() {
                 messaggio = avviso
-                AccessibilityNotification.Announcement(avviso).post()
+                AccessibilityNotification.Announcement(avviso.testo).post()
             }
         }
         .sheet(isPresented: $avanzate) { areaAvanzata }
@@ -334,7 +336,7 @@ struct SchermataAccesso: View {
                 let indirizzo = modulo.email.trimmingCharacters(in: .whitespacesAndNewlines)
                 try await sessione.chiediCodiceEmail(indirizzo)
                 // se nel frattempo si è cambiato passo (Torna all'accesso), il secondo passo non si apre da solo
-                if modulo.codiceInviato(a: indirizzo, daPasso: passoInvio) { messaggio = TestiAccesso.codiceInviato }
+                if modulo.codiceInviato(a: indirizzo, daPasso: passoInvio) { messaggio = .conferma(TestiAccesso.codiceInviato) }
             case .recuperoEmailCodice:
                 guard let indirizzo = modulo.emailRecupero else { return }
                 let nuovo = try await sessione.recuperaConEmail(email: indirizzo, codice: modulo.codiceEmail,
@@ -357,7 +359,7 @@ struct SchermataAccesso: View {
     /// Dopo il recupero, salvato il nuovo codice: di nuovo all'accesso (codici e passi del recupero si dimenticano in `vai`).
     private func tornaDopoIlCambio() {
         vai(.accedi)
-        messaggio = TestiAccesso.passwordCambiataAccedi
+        messaggio = .conferma(TestiAccesso.passwordCambiataAccedi)
     }
 
     /// «Continua con Google» sopra il modulo, come la web: solo se il server lo dichiara, e non nel recupero o mentre si
@@ -480,6 +482,23 @@ struct SchermataAccesso: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Fine") { avanzate = false } } }
         }
         .tint(Color.verde)
+    }
+}
+
+/// Come si vede una frase della schermata di accesso che non è un errore. Il colore non è l'unico segnale: cambia anche l'icona.
+extension AvvisoAccesso.Tipo {
+    var colore: Color {
+        switch self {
+        case .conferma: Color.verde
+        case .attenzione: Color.attenzione
+        }
+    }
+
+    var icona: String {
+        switch self {
+        case .conferma: "checkmark.circle.fill"
+        case .attenzione: "exclamationmark.circle.fill"
+        }
     }
 }
 
