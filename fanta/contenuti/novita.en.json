@@ -1,4 +1,13 @@
 {
+  "1.608": {
+    "titolo": "iPhone: the reminder shows even with the app open and tapping it opens the Lineup",
+    "voci": [
+      "On the iPhone the reminder before the deadline shows and plays a sound even with the app open, as on the web; tapping it opens the Lineup instead of the screen where you left the app.",
+      "The reminders of the iPhone app are always in Italian, like the rest of the app, even if you chose English on the web.",
+      "The “A new version is out” alert (“\u0001”) says the version as you find it in Settings › About (Impostazioni › Informazioni), without codes.",
+      "Settings › Alerts (Impostazioni › Avvisi): when you come back to the app, the “Alerts on this device” switch (“\u0001”) shows right away whether you removed or granted the permission in the iPhone settings. If a change is not saved, only the reason appears, as on the web."
+    ]
+  },
   "1.602": {
     "titolo": "The same decimal numbers on iPhone, web and in sentences",
     "voci": [
