@@ -586,7 +586,8 @@ private extension LegaDemo {
 
     /// Il campo `probabili` di Oggi come `freschezza_probabili` di fanta/gestione.py, con le frasi del server (`probabili.*` e
     /// `tempo.*` di fanta/frasi.py): l'ora della lettura, quanto tempo fa e, se sono lette da almeno 6 ore con la formazione che si
-    /// chiude entro un giorno, l'avviso. Tutto da `adesso`, così «alle 17:05 · 8 ore fa» torna con l'ora del telefono.
+    /// chiude entro un giorno, l'avviso (senza ore né scadenza: le dicono la riga sopra e la testata, #923). Tutto da `adesso`, così
+    /// «alle 17:05 · 8 ore fa» torna con l'ora del telefono.
     static func probabili(adesso: Date, scadenza: Date) -> [String: Any] {
         let lette = probabiliLette(adesso: adesso)
         let minuti = max(0, Int((adesso.timeIntervalSince(lette) / 60).rounded(.down)))
@@ -604,10 +605,7 @@ private extension LegaDemo {
         let eta = tempoFa(minuti)
         var d: [String: Any] = ["aggiornate_il": formatta(lette, "yyyy-MM-dd HH:mm"), "minuti_fa": minuti, "eta": eta, "testo": testo,
                                 "vecchie": vecchie, "avviso": NSNull()]
-        if vecchie {
-            let n = max(1, Int(oreMancanti.rounded(.toNearestOrEven)))
-            d["avviso"] = "Le ho lette \(eta) e la formazione si chiude tra \(n == 1 ? "1 ora" : "\(n) ore"): potrebbero essere cambiate, ricontrolla prima."
-        }
+        if vecchie { d["avviso"] = "Le probabili potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione." }
         return d
     }
 

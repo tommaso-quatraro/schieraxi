@@ -66,7 +66,7 @@ def test_i_lettori_di_schermo_sentono_la_partita_in_frase():
                                   ' partitaRiga({squadra: "milan", in_casa: false, avversario: "genoa"})]')
     assert voce(fuori) == "in trasferta contro Genoa" and voce(casa) == "in casa contro Lazio"
     assert _testo(doppio) == "MIL @ GEN in trasferta contro Genoa"          # «@ GEN» si vede, la frase si sente
-    assert voce(_esegui('vsAt({in_casa: false, avversario: "genoa"})', "en")) == "away against Genoa"
+    assert voce(_esegui('vsAt({in_casa: false, avversario: "genoa"})', "en")) == "away at Genoa"
 
 
 @pytest.mark.skipif(not NODE, reason="serve node")

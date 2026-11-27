@@ -65,6 +65,43 @@ def test_privacy_dice_dei_commenti_di_scrivici(lingua, voce, file, frasi):
         assert frase in t, frase
 
 
+# Gestione › Utenti (GET /api/admin/utenti): ogni dato della riga di un account, con le parole che lo nominano nella Privacy
+VISTO_NELL_ELENCO = {
+    "it": {"nome_utente": "nome utente", "nome_visualizzato": "nome mostrato", "ruolo": "ruolo", "creato": "data di iscrizione",
+           "ultimo_accesso": "ultimo accesso", "bloccato_il": "se l'ha bloccato, da quando"},
+    "en": {"nome_utente": "username", "nome_visualizzato": "displayed name", "ruolo": "role", "creato": "sign-up date",
+           "ultimo_accesso": "last sign-in", "bloccato_il": "if they blocked it, since when"},
+}
+# i campi della riga che non sono un dato in più: il numero interno e le frasi scritte con i campi qui sopra
+CAMPI_DERIVATI = {"id", "bloccato", "dettaglio", "dettaglio_frase", "blocco", "blocco_frase"}
+# il resto di Gestione: «Commenti degli utenti» e gli eventi di sicurezza di «Errori recenti»
+ALTRO_IN_GESTIONE = {
+    "it": ("i commenti mandati con «Scrivici», con il nome, la data, la versione e la piattaforma dell'app",
+           "gli ultimi eventi del registro di sicurezza, con il nome utente e l'indirizzo di rete accorciato", "Mai le password"),
+    "en": ("the comments sent with «Write to us», with the name, the date and the version and platform of the app",
+           "the latest events of the security log, with the username and the shortened network address", "Never passwords"),
+}
+
+
+@pytest.mark.parametrize("lingua", tl.LINGUE)
+def test_privacy_dice_tutto_quello_che_vede_chi_gestisce(lingua, multiutente, dati_isolati):
+    """La Privacy diceva che nell'elenco degli account chi gestisce vede solo nome, ruolo e data di iscrizione: Gestione mostra
+    anche l'ultimo accesso e il blocco (26/11/2026), e i commenti di «Scrivici» e gli eventi di sicurezza. Il paragrafo su chi
+    gestisce nomina ogni dato della riga dell'elenco: un campo nuovo nella rotta fa fallire questo test finché la Privacy non lo dice."""
+    import contextlib
+    from fanta import account
+    c = cliente()
+    with contextlib.closing(account.apri()) as db:
+        codice = account.crea_invito(db, "prova", True)
+    assert c.post("/api/account/registra", json={"nome_utente": "capo", "password": "una-password-lunga-9", "invito": codice}).status_code == 200
+    riga = c.get("/api/admin/utenti").json()["utenti"][0]
+    assert set(riga) - CAMPI_DERIVATI == set(VISTO_NELL_ELENCO[lingua]), set(riga) - CAMPI_DERIVATI
+    paragrafo = next(b[1] for b in tl.TESTI[lingua]["privacy"] if b[0] == "p" and ("Chi gestisce l'app, per amministrare" in b[1]
+                                                                                   or "Whoever runs the app can technically see" in b[1]))
+    for parole in (*VISTO_NELL_ELENCO[lingua].values(), *ALTRO_IN_GESTIONE[lingua]):
+        assert parole in paragrafo, parole
+
+
 AMBIENTE_LEGALE = ("FANTA_CONTATTO", "FANTA_TITOLARE", "FANTA_SORGENTE", "FANTA_BACKUP_GIORNI", "FANTA_REGISTRO_WEB_GIORNI",
                    "FANTA_HOSTING", "FANTA_POSTA_FORNITORE")
 # nomi di siti e di file citati nel testo (ntfy.sh, Fantacalcio.it, football-data.co.uk, THIRD-PARTY-NOTICES.md): lì il punto

@@ -45,7 +45,7 @@
   },
   "formazione.quest_ordine_entra": {
     "it": "Entra il primo che può sostituire chi resta senza voto.",
-    "en": "The first one who can replace a player without a vote comes on."
+    "en": "The first one who can replace a player without a grade comes on."
   },
   "formazione.sto_ancora_ricalcolando": {
     "it": "Sto ancora ricalcolando: un attimo",
@@ -73,11 +73,11 @@
   },
   "formazione.voce_casa": {
     "it": "in casa contro {avv}",
-    "en": "at home against {avv}"
+    "en": "at home to {avv}"
   },
   "formazione.voce_fuori": {
     "it": "in trasferta contro {avv}",
-    "en": "away against {avv}"
+    "en": "away at {avv}"
   },
   "formazione.stato_chiusa": {
     "it": "Giornata iniziata: la formazione è chiusa",
@@ -137,7 +137,7 @@
   },
   "formazione.circa_fine": {
     "it": "circa {n} a fine giornata",
-    "en": "about {n} at the end of the round"
+    "en": "about {n} at the end of the matchday"
   },
   "formazione.punti_e_attesi": {
     "it": "punti (attesi {n})",
@@ -221,11 +221,11 @@
   },
   "formazione.partita_casa": {
     "it": "In casa contro {avv} · {quando}",
-    "en": "At home against {avv} · {quando}"
+    "en": "At home to {avv} · {quando}"
   },
   "formazione.partita_fuori": {
     "it": "In trasferta contro {avv} · {quando}",
-    "en": "Away against {avv} · {quando}"
+    "en": "Away at {avv} · {quando}"
   },
   "formazione.se_gioca": {
     "it": "se gioca",
@@ -261,7 +261,7 @@
   },
   "formazione.sost_spiega": {
     "it": "Stesso ruolo, dalla tua rosa. Il numero grande sono i punti attesi della formazione in più o in meno se {nome} esce e gioca lui.",
-    "en": "Same role, from your roster. The big number is the lineup's expected points more or less if {nome} comes out and he plays."
+    "en": "Same role, from your roster. The big number is how many expected points the lineup gains or loses if {nome} comes off and that player plays."
   },
   "formazione.metti_in_campo": {
     "it": "Metti in campo",
@@ -273,7 +273,7 @@
   },
   "formazione.esce_spiega": {
     "it": "Stesso ruolo, oppure un altro modulo ammesso dalla tua lega. Il numero grande sono i punti attesi della formazione in più o in meno se {nome} gioca al suo posto.",
-    "en": "Same role, or another formation your league allows. The big number is the lineup's expected points more or less if {nome} plays instead."
+    "en": "Same role, or another formation your league allows. The big number is how many expected points the lineup gains or loses if {nome} plays in that player's place."
   },
   "formazione.passi_al": {
     "it": "Si passa al {modulo}",

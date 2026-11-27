@@ -200,6 +200,8 @@ def freschezza_probabili(rilevato: str | None, adesso: datetime, ore_mancanti: f
         testo = F("probabili.data", giorno=quando.day, mese=quando.month, ora=ora)
     vicina = ore_mancanti is not None and 0 < ore_mancanti <= FINESTRA_AVVISO_ORE
     vecchie = bool(vicina and minuti >= VECCHIE_DOPO_ORE * 60)
+    # l'avviso non ripete quando sono state lette (lo dice `eta`) né quando si chiude la formazione (la testata, #923). I due
+    # parametri restano per le pagine web in inglese rimaste in memoria: il loro testi.js traduce ancora con «{eta}» e «{tempo}»
     avviso = None
     if vecchie:
         avviso = F("probabili.vecchie", eta=_eta_testo(minuti), tempo=F("tempo.ore", n=max(1, round(ore_mancanti))))

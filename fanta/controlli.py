@@ -12,7 +12,7 @@ import sqlite3
 from datetime import datetime
 from typing import Callable
 
-from . import fonti_attive, squalifiche
+from . import fonti_attive, frasi, squalifiche
 
 PARTITE_PER_GIORNATA = 10
 SOGLIA_XG = 1.0                  # differenza massima tra l'xG della partita e la somma di quello dei giocatori
@@ -208,18 +208,11 @@ CONTROLLI: dict[str, Callable[[sqlite3.Connection, str], Esito | None]] = {
     "partite_senza_statistiche": partite_senza_statistiche,
     "squalificati_cartellini": squalificati_cartellini,
 }
-# Il nome di ogni controllo per chi legge «Stato dei dati» (campo `etichetta`: le etichette nascono qui, i client le mostrano)
-ETICHETTE = {
-    "partite_per_giornata": "10 partite per giornata",
-    "voti_per_giornata": "Voti nelle giornate finite",
-    "somma_xg": "Gol attesi dei giocatori e della partita",
-    "titolari_per_squadra": "11 titolari per squadra",
-    "gol_dei_voti": "Gol dei voti uguali al risultato",
-    "gol_subiti_portieri": "Gol presi dai portieri uguali al risultato",
-    "partite_senza_statistiche": "Statistiche delle partite giocate",
-    "squalificati_cartellini": "Squalificati: cartellini e probabili",
-    "sentinella": "Sentinella: risposte dell'app",
-}
+# Il nome di ogni controllo per chi legge «Stato dei dati» (campo `etichetta`: le etichette nascono qui, i client le mostrano).
+# Sono frasi (`controllo.<nome>` in fanta/frasi.py, #949): accanto al testo va `etichetta_frase`, e la web in inglese le traduce
+ETICHETTE = {nome: frasi.F("controllo." + nome) for nome in (
+    "partite_per_giornata", "voti_per_giornata", "somma_xg", "titolari_per_squadra", "gol_dei_voti", "gol_subiti_portieri",
+    "partite_senza_statistiche", "squalificati_cartellini", "sentinella")}
 
 
 def etichetta(nome: str) -> str:

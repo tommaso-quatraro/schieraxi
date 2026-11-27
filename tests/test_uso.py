@@ -46,7 +46,8 @@ def test_file_rovinato_non_rompe_niente():
     uso.conta("GET", "/api/oggi", 200)
     assert uso.riepilogo()["richieste"] == 1
     uso.FILE.write_text(json.dumps({"giorni": {_giorno(): {"rotte": "boh", "funzioni": {"a": "x", "b": True, "c": -1, "d": 2}}}}), encoding="utf-8")
-    assert uso.riepilogo(percorso=uso.FILE)["per_funzione"] == [{"funzione": "d", "etichetta": "d", "richieste": 2}]   # non è una funzione: resta col suo nome
+    assert uso.riepilogo(percorso=uso.FILE)["per_funzione"] == [{"funzione": "d", "etichetta": "d", "etichetta_frase": None,
+                                                                  "richieste": 2}]   # non è una funzione: resta col suo nome
 
 
 def test_tetto_di_rotte_diverse_al_giorno(monkeypatch):
@@ -102,7 +103,8 @@ def test_funzioni_e_parti_dell_app_hanno_un_nome_in_parole():
     uso.conta("GET", "/api/stato", 200)
     uso.conta("GET", "/api/nuova-di-zecca", 200)
     r = uso.riepilogo()
-    assert r["per_funzione"] == [{"funzione": "scambi_costruisci", "etichetta": "Scambi: costruisci", "richieste": 2}]
+    assert r["per_funzione"] == [{"funzione": "scambi_costruisci", "etichetta": "Scambi: costruisci", "richieste": 2,
+                                   "etichetta_frase": {"chiave": "uso.funzione_scambi_costruisci", "param": {}}}]
     parti = {p["parte"]: p for p in r["per_parte"]}
     assert parti["formazione"] == {"parte": "formazione", "etichetta": "Formazione", "richieste": 3,
                                    "etichetta_frase": {"chiave": "uso.parte_formazione", "param": {}}}
@@ -122,4 +124,4 @@ def test_il_vecchio_nome_di_valuta_un_offerta_si_somma_a_scambi_costruisci():
     uso.FILE.write_text(json.dumps({"giorni": {_giorno(1): {"rotte": {"GET /api/scambi/analizza": 3},
                                                             "funzioni": {"scambi_valuta_o_costruisci": 3}}}}), encoding="utf-8")
     uso.conta("GET", "/api/scambi/analizza", 200)
-    assert uso.riepilogo()["per_funzione"] == [{"funzione": "scambi_costruisci", "etichetta": "Scambi: costruisci", "richieste": 4}]
+    assert [(f["funzione"], f["etichetta"], f["richieste"]) for f in uso.riepilogo()["per_funzione"]] == [("scambi_costruisci", "Scambi: costruisci", 4)]

@@ -223,15 +223,13 @@ struct DemoGiornataCoerenteTests {
         #expect(p.testo == testo, "dopo \(dopoOre) ore: «\(p.testo ?? "")» invece di «\(testo)»")
 
         // l'avviso: lette da almeno 6 ore con la formazione che si chiude entro un giorno, come nella demo a ogni ora (la prima
-        // partita è fra 6 e 24 ore). Le ore alla scadenza scritte nell'avviso si provano con i casi noti, qui sotto.
+        // partita è fra 6 e 24 ore). La frase del server non ripete «8 ore fa» (sta nella riga sopra) né le ore alla scadenza (le
+        // dice la testata, «fra …»): #923.
         let scadenza = try #require(Quando.data(oggi.scadenza), "Oggi non ha la scadenza")
         try #require(scadenza > adesso && scadenza.timeIntervalSince(adesso) <= 24 * 3600, "dopo \(dopoOre) ore: la scadenza non è entro un giorno")
         #expect(minuti >= 6 * 60, "dopo \(dopoOre) ore: probabili lette da \(minuti) minuti, la demo mostra quelle vecchie")
         #expect(p.vecchie == true, "dopo \(dopoOre) ore: probabili lette da \(minuti) minuti con la scadenza entro un giorno, ma non vecchie")
-        let modello = try frasi.modello("probabili.vecchie").replacingOccurrences(of: "{eta}", with: eta).components(separatedBy: "{tempo}")
-        try #require(modello.count == 2, "«probabili.vecchie» non ha il segnaposto {tempo}")
-        let avviso = p.avviso ?? ""
-        #expect(avviso.hasPrefix(modello[0]) && avviso.hasSuffix(modello[1]), "dopo \(dopoOre) ore: «\(avviso)»")
+        #expect(p.avviso == (try frasi.frase("probabili.vecchie")), "dopo \(dopoOre) ore: «\(p.avviso ?? "")»")
 
         // Stato dei dati: le stesse probabili, lette alla stessa ora
         let stato = try await oggetto("/api/stato-dati", da: s)
@@ -242,29 +240,28 @@ struct DemoGiornataCoerenteTests {
     }
 
     /// Un momento della demo (ora italiana) con le probabili come le scriverebbe il server: lette otto ore prima (ai cinque minuti),
-    /// e le ore alla scadenza dell'avviso contate a mano dagli orari da partita.
+    /// con la formazione che si chiude entro un giorno (orari da partita contati a mano), quindi con l'avviso.
     struct CasoProbabili: Sendable, CustomTestStringConvertible {
         let adesso: String
         let ieri: Bool
         let ora: String
         let minuti: Int
-        let oreAllaScadenza: Int
         var testDescription: String { "adesso \(adesso)" }
     }
 
-    @Test("Probabili in casi noti, anche nel giorno del cambio dell'ora: ora, «8 ore fa» e ore alla scadenza", arguments: [
+    @Test("Probabili in casi noti, anche nel giorno del cambio dell'ora: ora, «8 ore fa» e l'avviso", arguments: [
         // La formazione si chiude 10 minuti prima della prima partita (#417).
-        // prima partita alle 12:30, scadenza alle 12:20: 10,5 ore, che il server scrive «10 ore» (round() di Python, metà al pari)
-        CasoProbabili(adesso: "2026-11-10 01:50", ieri: true, ora: "17:50", minuti: 480, oreAllaScadenza: 10),
+        // prima partita alle 12:30, scadenza alle 12:20: 10,5 ore
+        CasoProbabili(adesso: "2026-11-10 01:50", ieri: true, ora: "17:50", minuti: 480),
         // prima partita alle 18:00, scadenza alle 17:50: 7 ore e 43 minuti
-        CasoProbabili(adesso: "2026-11-10 10:07", ieri: false, ora: "02:05", minuti: 482, oreAllaScadenza: 8),
+        CasoProbabili(adesso: "2026-11-10 10:07", ieri: false, ora: "02:05", minuti: 482),
         // a mezzanotte: scadenza alle 12:20, 12 ore e 20 minuti
-        CasoProbabili(adesso: "2026-11-10 00:00", ieri: true, ora: "16:00", minuti: 480, oreAllaScadenza: 12),
+        CasoProbabili(adesso: "2026-11-10 00:00", ieri: true, ora: "16:00", minuti: 480),
         // fine dell'ora legale (domenica 25 ottobre 2026, alle 3 si torna alle 2): otto ore vere fa erano le 2:05 dell'ora legale;
         // scadenza alle 17:50, 8 ore e 43 minuti
-        CasoProbabili(adesso: "2026-10-25 09:07", ieri: false, ora: "02:05", minuti: 482, oreAllaScadenza: 9),
+        CasoProbabili(adesso: "2026-10-25 09:07", ieri: false, ora: "02:05", minuti: 482),
         // inizio dell'ora legale (domenica 28 marzo 2027, alle 2 si passa alle 3): otto ore vere fa era mezzanotte e cinque
-        CasoProbabili(adesso: "2027-03-28 09:07", ieri: false, ora: "00:05", minuti: 482, oreAllaScadenza: 9),
+        CasoProbabili(adesso: "2027-03-28 09:07", ieri: false, ora: "00:05", minuti: 482),
     ])
     func probabiliCasiNoti(_ caso: CasoProbabili) async throws {
         let frasi = try FrasiDelServer(prefissi: ["probabili.", "tempo."])
@@ -276,7 +273,6 @@ struct DemoGiornataCoerenteTests {
         #expect(p.eta == eta)
         #expect(p.testo == (try frasi.frase(caso.ieri ? "probabili.ieri" : "probabili.oggi", ["ora": caso.ora])))
         #expect(p.vecchie == true)
-        let tempo = try frasi.frase("tempo.ore.other", ["n": "\(caso.oreAllaScadenza)"])
-        #expect(p.avviso == (try frasi.frase("probabili.vecchie", ["eta": eta, "tempo": tempo])))
+        #expect(p.avviso == (try frasi.frase("probabili.vecchie")))
     }
 }

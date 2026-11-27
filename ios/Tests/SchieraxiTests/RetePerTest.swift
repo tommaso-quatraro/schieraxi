@@ -381,10 +381,10 @@ final class CertificatoTests: XCTestCase {
         func info(_ secondi: TimeInterval) -> Certificato.Info { Certificato.info(scadenza: adesso.addingTimeInterval(secondi), adesso: adesso) }
         XCTAssertEqual(Certificato.info(scadenza: nil, adesso: adesso), Certificato.Info(testo: "scadenza non leggibile", livello: .ignoto))
         XCTAssertEqual(info(-10), Certificato.Info(testo: "Scaduto", livello: .scaduto))
-        XCTAssertEqual(info(30 * 60), Certificato.Info(testo: "Scade tra meno di un'ora", livello: .attenzione))
-        XCTAssertEqual(info(3600 + 60), Certificato.Info(testo: "Scade tra 1 ora", livello: .attenzione))
-        XCTAssertEqual(info(30 * 3600), Certificato.Info(testo: "Scade tra 30 ore", livello: .attenzione))
-        XCTAssertEqual(info(2 * 86_400 + 10), Certificato.Info(testo: "Scade tra 2 giorni", livello: .ok), "da due giorni in su non è più arancio")
-        XCTAssertEqual(info(6.5 * 86_400), Certificato.Info(testo: "Scade tra 6 giorni", livello: .ok))
+        XCTAssertEqual(info(30 * 60), Certificato.Info(testo: "Scade fra meno di un'ora", livello: .attenzione))
+        XCTAssertEqual(info(3600 + 60), Certificato.Info(testo: "Scade fra 1 ora", livello: .attenzione))
+        XCTAssertEqual(info(30 * 3600), Certificato.Info(testo: "Scade fra 30 ore", livello: .attenzione))
+        XCTAssertEqual(info(2 * 86_400 + 10), Certificato.Info(testo: "Scade fra 2 giorni", livello: .ok), "da due giorni in su non è più arancio")
+        XCTAssertEqual(info(6.5 * 86_400), Certificato.Info(testo: "Scade fra 6 giorni", livello: .ok))
     }
 }

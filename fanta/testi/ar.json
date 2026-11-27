@@ -98,7 +98,7 @@
   },
   "ar.chi_e": {
     "it": "Chi è «{nome}» ({squadra})?",
-    "en": "Who is «{nome}» ({squadra})?"
+    "en": "Who is “{nome}” ({squadra})?"
   },
   "ar.scegli_chi": {
     "it": "Scegli chi è",
@@ -118,7 +118,7 @@
   },
   "ar.cerca_per": {
     "it": "Cerca il giocatore giusto per «{nome}»",
-    "en": "Search for the right player for «{nome}»"
+    "en": "Search for the right player for “{nome}”"
   },
   "ar.cerca_segnaposto": {
     "it": "Scrivi il cognome",
@@ -146,6 +146,6 @@
   },
   "ar.cerca_incompleta": {
     "it": "Per «{nome}» non hai ancora scelto il giocatore: tocca uno dei risultati oppure cambia la scelta nel menu.",
-    "en": "For «{nome}» you have not picked the player yet: tap one of the results or change the choice in the menu."
+    "en": "For “{nome}” you have not picked the player yet: tap one of the results or change the choice in the menu."
   }
 }
