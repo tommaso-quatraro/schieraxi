@@ -24,11 +24,12 @@ struct SchermataAccesso: View {
     @Environment(\.dynamicTypeSize) private var testo
     /// Un solo invio alla volta, anche con due tocchi ravvicinati (prima che la sessione faccia in tempo a dire «in corso»).
     @State private var inInvio = false
-    /// Dopo un «troppi tentativi» (429): fino a quando aspettare. Il pulsante si riaccende da solo a zero.
-    @State private var attesaFinoA: Date?
+    /// Passi, testi, controlli e l'attesa dopo un «troppi tentativi» (`ModuloAccesso.attesaFinoA`: il pulsante si riaccende da
+    /// solo a zero).
     @State private var modulo: ModuloAccesso
     @State private var errore: String?
-    @State private var messaggio: String?
+    /// La frase sopra il pulsante che non è un errore: una conferma (verde) o un avviso «attenzione», come `mostraMessaggioAccesso`.
+    @State private var messaggio: AvvisoAccesso?
     /// Il nuovo codice di recupero dopo aver rimesso la password: va salvato prima di proseguire.
     @State private var codiceNuovo: CodiceDaSalvare?
     @State private var avanzate = false
@@ -71,8 +72,8 @@ struct SchermataAccesso: View {
                 Carta { campi }
                     .animation(Tema.molla, value: modulo.passo)
                 if let messaggio {
-                    Label(messaggio, systemImage: "checkmark.circle.fill")
-                        .font(.subheadline).foregroundStyle(Color.verde)
+                    Label(messaggio.testo, systemImage: messaggio.tipo.icona)
+                        .font(.subheadline).foregroundStyle(messaggio.tipo.colore)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityElement(children: .combine)
                 }
@@ -94,12 +95,13 @@ struct SchermataAccesso: View {
         .background(Sfondo())
         .animation(Tema.morbida, value: errore)
         .schermoProtetto()
-        // dopo «Esci da tutti i dispositivi» una volta «Sei fuori da tutti i dispositivi, anche da questo: accedi di nuovo.»,
-        // come la web (#788, lì `role="status"`): non è un errore, sta dove sta la conferma verde e VoiceOver la legge
+        // una volta la frase di come si è usciti, come la web (#788, lì `role="status"`): «Sei fuori da tutti i dispositivi, anche
+        // da questo: accedi di nuovo.» o l'account eliminato come conferma verde; «La sessione è finita: accedi di nuovo.» con lo
+        // stile «attenzione» (la sessione l'ha chiusa il server). Non è un errore, niente vibrazione; VoiceOver la legge
         .onAppear {
             if let avviso = sessione.prendiAvvisoAccesso() {
                 messaggio = avviso
-                AccessibilityNotification.Announcement(avviso).post()
+                AccessibilityNotification.Announcement(avviso.testo).post()
             }
         }
         .sheet(isPresented: $avanzate) { areaAvanzata }
@@ -271,7 +273,7 @@ struct SchermataAccesso: View {
 
     private var pulsante: some View {
         TimelineView(.periodic(from: Date(), by: 1)) { contesto in
-            let resto = attesaFinoA.map { AttesaRiprova.secondiRimasti(fino: $0, adesso: contesto.date) } ?? 0
+            let resto = modulo.attesaFinoA.map { AttesaRiprova.secondiRimasti(fino: $0, adesso: contesto.date) } ?? 0
             Button {
                 Task { await invia() }
             } label: {
@@ -285,15 +287,16 @@ struct SchermataAccesso: View {
             .disabled(!modulo.pronto(modo, postaAccesa: postaAccesa) || inInvio || sessione.inCorso || resto > 0)
             .sensoryFeedback(trigger: errore) { _, nuovo in nuovo != nil ? .error : nil }
             .onChange(of: resto) { _, nuovo in
-                // a zero il conto alla rovescia si ferma e il messaggio di attesa sparisce
-                if nuovo == 0, attesaFinoA != nil { attesaFinoA = nil; errore = nil }
+                // a zero (tempo finito, o un altro passo: l'attesa vale solo nel suo, come la web) il conto si ferma e il
+                // messaggio di attesa sparisce; tornando a quel passo non riprende
+                if nuovo == 0, modulo.attesa != nil { modulo.attesa = nil; errore = nil }
             }
         }
     }
 
     private func invia() async {
         guard !inInvio, !sessione.inCorso else { return }
-        if let fine = attesaFinoA, AttesaRiprova.secondiRimasti(fino: fine) > 0 { return }
+        if let fine = modulo.attesaFinoA, AttesaRiprova.secondiRimasti(fino: fine) > 0 { return }
         switch modulo.primaDellInvio(modo, postaAccesa: postaAccesa) {
         case .manda: break
         case .avvisa(let problema):
@@ -333,7 +336,7 @@ struct SchermataAccesso: View {
                 let indirizzo = modulo.email.trimmingCharacters(in: .whitespacesAndNewlines)
                 try await sessione.chiediCodiceEmail(indirizzo)
                 // se nel frattempo si è cambiato passo (Torna all'accesso), il secondo passo non si apre da solo
-                if modulo.codiceInviato(a: indirizzo, daPasso: passoInvio) { messaggio = TestiAccesso.codiceInviato }
+                if modulo.codiceInviato(a: indirizzo, daPasso: passoInvio) { messaggio = .conferma(TestiAccesso.codiceInviato) }
             case .recuperoEmailCodice:
                 guard let indirizzo = modulo.emailRecupero else { return }
                 let nuovo = try await sessione.recuperaConEmail(email: indirizzo, codice: modulo.codiceEmail,
@@ -346,7 +349,7 @@ struct SchermataAccesso: View {
             // il pulsante conta solo un'attesa fino all'ora: oltre il tempo sta nella frase (`fraseDopoInvio`), e un pulsante che
             // contasse un'ora sola direbbe un tempo diverso da quello della frase (#940)
             if case ErroreApi.troppiTentativi(_, let attesa) = error, let attesa, attesa > 0, attesa <= AttesaRiprova.massimoConto {
-                attesaFinoA = Date().addingTimeInterval(TimeInterval(attesa))
+                modulo.aspetta(fino: Date().addingTimeInterval(TimeInterval(attesa)))
             }
             // con il pulsante che conta la frase non dice i secondi (#787)
             errore = Self.fraseDopoInvio(error)
@@ -356,7 +359,7 @@ struct SchermataAccesso: View {
     /// Dopo il recupero, salvato il nuovo codice: di nuovo all'accesso (codici e passi del recupero si dimenticano in `vai`).
     private func tornaDopoIlCambio() {
         vai(.accedi)
-        messaggio = TestiAccesso.passwordCambiataAccedi
+        messaggio = .conferma(TestiAccesso.passwordCambiataAccedi)
     }
 
     /// «Continua con Google» sopra il modulo, come la web: solo se il server lo dichiara, e non nel recupero o mentre si
@@ -365,7 +368,7 @@ struct SchermataAccesso: View {
     private var sezioneGoogle: some View {
         if googleAcceso, modulo.passo == .accedi || modulo.passo == .registra {
             VStack(spacing: 10) {
-                BottoneGoogle(titolo: Catalogo.Social.continua, occupato: inInvio || sessione.inCorso || attesaFinoA != nil) {
+                BottoneGoogle(titolo: Catalogo.Social.continua, occupato: inInvio || sessione.inCorso || modulo.attesaFinoA != nil) {
                     Task { await continuaConGoogle() }
                 }
                 Text(Catalogo.Social.oppure).font(.footnote).foregroundStyle(Color.testoSecondario).accessibilityHidden(true)
@@ -479,6 +482,23 @@ struct SchermataAccesso: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Fine") { avanzate = false } } }
         }
         .tint(Color.verde)
+    }
+}
+
+/// Come si vede una frase della schermata di accesso che non è un errore. Il colore non è l'unico segnale: cambia anche l'icona.
+extension AvvisoAccesso.Tipo {
+    var colore: Color {
+        switch self {
+        case .conferma: Color.verde
+        case .attenzione: Color.attenzione
+        }
+    }
+
+    var icona: String {
+        switch self {
+        case .conferma: "checkmark.circle.fill"
+        case .attenzione: "exclamationmark.circle.fill"
+        }
     }
 }
 

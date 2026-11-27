@@ -23,7 +23,7 @@ struct AccessoImpostazioniDalCatalogoTests {
         Catalogo.Accesso.invioRecuperoEmail, Catalogo.Accesso.serveInvito, Catalogo.Accesso.serveInvitoEmail,
         Catalogo.Accesso.registrazioneAperta, Catalogo.Accesso.recuperoSpiega, Catalogo.Accesso.recuperoEmailSpiega,
         Catalogo.Accesso.recuperoConEmail, Catalogo.Accesso.recuperoConCodice, Catalogo.Accesso.torna,
-        Catalogo.Accesso.codiceInviato, Catalogo.Accesso.passwordCambiata, Catalogo.Accesso.passwordCambiataAccedi,
+        Catalogo.Accesso.sessioneFinita, Catalogo.Accesso.codiceInviato, Catalogo.Accesso.passwordCambiata, Catalogo.Accesso.passwordCambiataAccedi,
         Catalogo.Accesso.vaiAccesso, Catalogo.Accesso.rispostaIncompleta,
         // account.*
         Catalogo.Account.ruoloAdmin, Catalogo.Account.ruoloUtente, Catalogo.Account.esci, Catalogo.Account.esciTutti,

@@ -182,6 +182,44 @@ final class ServerHTTPAccountTests: XCTestCase {
         XCTAssertEqual(ErroreApi.troppiTentativi("Calma.", riprovaTra: 600).errorDescription, "Calma. Riprova tra 10 minuti.")
     }
 
+    /// Il «dispositivo fidato» (docs/API.md, 1.4b), come il cookie della web che vale solo per /api/account/: il segreto dato dal
+    /// server dopo un accesso torna nell'intestazione `X-Fanta-Dispositivo` delle richieste di accesso, registrazione e recupero,
+    /// solo al server che l'ha dato. Così il titolare entra anche mentre qualcuno prova password sul suo nome da molti indirizzi.
+    func testIlDispositivoFidatoTornaSoloNelleRichiesteDiAccesso() async throws {
+        let dispositivi = MemoriaToken()
+        let configurazione = URLSessionConfiguration.ephemeral
+        configurazione.protocolClasses = [ProtocolloFinto.self]
+        let server = ServerHTTP(sessione: URLSession(configuration: configurazione), archivioToken: archivio, archivioDispositivo: dispositivi)
+        ProtocolloFinto.gestore = { [unowned self] r in (risposta(r, 200), Data("{}".utf8)) }
+        _ = try await server.richiesta("POST", "/api/account/accedi", corpo: Data("{}".utf8))
+        XCTAssertNil(ProtocolloFinto.ultimaRichiesta?.value(forHTTPHeaderField: "X-Fanta-Dispositivo"), "senza segreto niente intestazione")
+
+        let segreto = String(repeating: "A", count: 21) + "_-" + String(repeating: "b", count: 20)   // 43 caratteri, come quelli veri
+        dispositivi.salva(segreto, server: indirizzo)
+        dispositivi.salva(String(repeating: "Z", count: 43), server: "https://altro-server.invalid")
+        for percorso in ["/api/account/accedi", "/api/account/registra", "/api/account/recupero"] {
+            _ = try await server.richiesta("POST", percorso, corpo: Data("{}".utf8))
+            XCTAssertEqual(ProtocolloFinto.ultimaRichiesta?.value(forHTTPHeaderField: "X-Fanta-Dispositivo"), segreto, percorso)
+        }
+        for (metodo, percorso) in [("GET", "/api/oggi"), ("GET", "/api/account/me"), ("POST", "/api/account/esci")] {
+            _ = try await server.richiesta(metodo, percorso, corpo: nil)
+            XCTAssertNil(ProtocolloFinto.ultimaRichiesta?.value(forHTTPHeaderField: "X-Fanta-Dispositivo"), "\(percorso): non serve, non parte")
+        }
+    }
+
+    /// Un segreto rovinato (a capo, spazi) non finisce mai in un'intestazione.
+    func testUnDispositivoRovinatoNonParte() async throws {
+        let dispositivi = MemoriaToken()
+        let configurazione = URLSessionConfiguration.ephemeral
+        configurazione.protocolClasses = [ProtocolloFinto.self]
+        let server = ServerHTTP(sessione: URLSession(configuration: configurazione), archivioToken: archivio, archivioDispositivo: dispositivi)
+        ProtocolloFinto.gestore = { [unowned self] r in (risposta(r, 200), Data("{}".utf8)) }
+        dispositivi.salva("rotto\r\nX-Altro: 1", server: indirizzo)
+        _ = try await server.richiesta("POST", "/api/account/accedi", corpo: Data("{}".utf8))
+        XCTAssertNil(ProtocolloFinto.ultimaRichiesta?.value(forHTTPHeaderField: "X-Fanta-Dispositivo"))
+        XCTAssertNil(ProtocolloFinto.ultimaRichiesta?.value(forHTTPHeaderField: "X-Altro"))
+    }
+
     func test202SiRiprovaDaSoli() async throws {
         let conteggio = Scatola<Int>()
         conteggio.valore = 0
@@ -632,7 +670,7 @@ final class SessioneAccountTests: XCTestCase {
         XCTAssertNil(s.prendiAvvisoAccesso(), "prima dell'uscita nessuna frase")
         try await s.esciDaTutti()
         XCTAssertEqual(s.stato, .daAccedere)
-        XCTAssertEqual(s.prendiAvvisoAccesso(), Catalogo.Account.esciTuttiFatto)
+        XCTAssertEqual(s.prendiAvvisoAccesso(), AvvisoAccesso.conferma(Catalogo.Account.esciTuttiFatto), "una conferma, verde")
         XCTAssertNil(s.prendiAvvisoAccesso(), "una volta sola")
     }
 
@@ -679,7 +717,7 @@ final class SessioneAccountTests: XCTestCase {
         XCTAssertNil(s.prendiAvvisoAccesso())
         try await s.elimina(password: "Prova-Finta-Zero")
         XCTAssertEqual(s.stato, .daAccedere)
-        XCTAssertEqual(s.prendiAvvisoAccesso(), "Il tuo account e tutti i tuoi dati sono stati eliminati.")
+        XCTAssertEqual(s.prendiAvvisoAccesso(), AvvisoAccesso.conferma("Il tuo account e tutti i tuoi dati sono stati eliminati."))
         XCTAssertNil(s.prendiAvvisoAccesso(), "una volta sola")
     }
 
@@ -750,6 +788,103 @@ final class SessioneAccountTests: XCTestCase {
         try? await Task.sleep(nanoseconds: 200_000_000)
         XCTAssertNotNil(s.utente)
         XCTAssertEqual(pulizie, 0)
+    }
+
+    /// Come la web (`sessioneScaduta`, `accesso.sessione_finita`): quando è il server a chiudere la sessione (account bloccato o
+    /// eliminato da Gestione, password cambiata su un altro dispositivo) la schermata di accesso dice una volta «La sessione è
+    /// finita: accedi di nuovo.». Prima si tornava all'accesso senza una parola.
+    func testSessioneChiusaDalServerLoDiceUnaVoltaAllAccesso() async {
+        let server = serverAccount()
+        archivio.salva("tok", server: server.indirizzo)
+        let s = sessione(server)
+        NotificationCenter.default.post(name: .accessoRichiesto, object: nil, userInfo: ["server": server.indirizzo])
+        await aspetta { s.stato == .daAccedere }
+        XCTAssertEqual(s.prendiAvvisoAccesso(), AvvisoAccesso.attenzione(Catalogo.Accesso.sessioneFinita),
+                       "non è una conferma: lo stile «attenzione», come la web")
+        XCTAssertNil(s.prendiAvvisoAccesso(), "una volta sola")
+    }
+
+    /// Lo stesso quando il 401 arriva da una pagina qualsiasi e `/api/account/me` lo conferma.
+    func testSessioneChiusaConfermataDalServerLoDice() async {
+        let server = serverAccount(extra: { _, p in
+            if p == "/api/account/me" { throw ErroreApi.accessoRichiesto("Accesso richiesto") }
+            return nil
+        })
+        archivio.salva("tok", server: server.indirizzo)
+        let s = sessione(server)
+        NotificationCenter.default.post(name: .accessoRichiesto, object: nil, userInfo: ["server": server.indirizzo, "impronta": "tok".hashValue])
+        await aspetta { s.stato == .daAccedere }
+        XCTAssertEqual(s.stato, .daAccedere)
+        XCTAssertEqual(s.prendiAvvisoAccesso(), AvvisoAccesso.attenzione(Catalogo.Accesso.sessioneFinita),
+                       "non è una conferma: lo stile «attenzione», come la web")
+    }
+
+    /// E quando se ne accorge all'apertura o al ritorno nell'app (`verifica`): il token c'era e il server risponde 401.
+    func testSessioneChiusaVistaAllAperturaLoDice() async {
+        let server = serverAccount(extra: { _, p in
+            if p == "/api/account/me" { throw ErroreApi.accessoRichiesto("Accesso richiesto") }
+            return nil
+        })
+        archivio.salva("tok", server: server.indirizzo)
+        let s = sessione(server)
+        await s.verifica()
+        XCTAssertEqual(s.stato, .daAccedere)
+        XCTAssertEqual(s.prendiAvvisoAccesso(), AvvisoAccesso.attenzione(Catalogo.Accesso.sessioneFinita),
+                       "non è una conferma: lo stile «attenzione», come la web")
+    }
+
+    /// Chi non era dentro (nessun token: prima apertura, server appena cambiato) non ha perso nessuna sessione: nessuna frase.
+    func testSenzaSessioneNessunaFraseAllAccesso() async {
+        let server = serverAccount(extra: { _, p in
+            if p == "/api/account/me" { throw ErroreApi.accessoRichiesto("Accesso richiesto") }
+            return nil
+        })
+        let s = sessione(server)
+        await s.verifica()
+        XCTAssertEqual(s.stato, .daAccedere)
+        XCTAssertNil(s.prendiAvvisoAccesso())
+    }
+
+    // MARK: dispositivo fidato
+
+    /// Il segreto del «dispositivo fidato» che il server dà dopo un accesso (campo `dispositivo`, docs/API.md 1.4b) si tiene, per
+    /// quel server, nel posto sicuro dei segreti (Keychain; qui un archivio finto). «Esci» non lo toglie, come il cookie della
+    /// web: serve proprio a rientrare mentre qualcuno prova password sul tuo nome.
+    func testIlDispositivoFidatoSiTieneEResta() async throws {
+        let utente = utenteJSON
+        let segreto = String(repeating: "k", count: 40) + "_-9"
+        let server = serverAccount(extra: { _, p in
+            p == "/api/account/accedi"
+                ? Data("{\"multiutente\": true, \"utente\": \(utente), \"token\": \"tok-1\", \"dispositivo\": \"\(segreto)\"}".utf8) : nil
+        })
+        let dispositivi = MemoriaToken()
+        let s = SessioneAccount(server: server, archivio: archivio, memoria: memoria, pulisci: {}, dispositivi: dispositivi)
+        try await s.accedi(nomeUtente: "mister.rossi", password: "Prova-Finta-Zero")
+        XCTAssertEqual(dispositivi.leggi(server: server.indirizzo), segreto)
+        try await s.esci()
+        XCTAssertEqual(dispositivi.leggi(server: server.indirizzo), segreto, "«Esci» non lo toglie")
+        XCTAssertNil(dispositivi.leggi(server: "https://un-altro.invalid"), "solo per il server che l'ha dato")
+    }
+
+    /// Un segreto strano (spazi, a capo, troppo lungo) non si salva; l'accesso vale lo stesso. Senza il campo resta quello di prima.
+    func testUnDispositivoStranoNonSiSalva() async throws {
+        let utente = utenteJSON
+        let server = serverAccount(extra: { _, p in
+            p == "/api/account/accedi"
+                ? Data("{\"multiutente\": true, \"utente\": \(utente), \"token\": \"tok-1\", \"dispositivo\": \"a b\\r\\nc\"}".utf8) : nil
+        })
+        let dispositivi = MemoriaToken()
+        let s = SessioneAccount(server: server, archivio: archivio, memoria: memoria, pulisci: {}, dispositivi: dispositivi)
+        try await s.accedi(nomeUtente: "mister.rossi", password: "Prova-Finta-Zero")
+        XCTAssertNotNil(s.utente, "l'accesso vale lo stesso")
+        XCTAssertNil(dispositivi.leggi(server: server.indirizzo))
+
+        let normale = serverAccount()
+        let prima = String(repeating: "p", count: 43)
+        dispositivi.salva(prima, server: normale.indirizzo)
+        let senzaCampo = SessioneAccount(server: normale, archivio: archivio, memoria: memoria, pulisci: {}, dispositivi: dispositivi)
+        try await senzaCampo.accedi(nomeUtente: "mister.rossi", password: "Prova-Finta-Zero")
+        XCTAssertEqual(dispositivi.leggi(server: normale.indirizzo), prima, "un server che non lo manda non lo cancella")
     }
 
     func testCambiaServerRipartDallAccessoDiQuelServer() async {
