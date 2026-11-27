@@ -48,14 +48,14 @@ def indirizzo_pubblico(testo: str) -> bool:
 def _scomponi(url: str) -> tuple[str, int, str]:
     url = (url or "").strip()
     if not url or len(url) > MAX_URL or any(ord(c) < 33 or ord(c) == 127 for c in url):
-        raise ValueError("Indirizzo non valido: incolla un indirizzo web completo che inizia con https://.")
+        raise ValueError("Indirizzo non valido: incolla un indirizzo web completo che inizia con «https://».")
     try:
         parti = urlsplit(url)
         porta = parti.port
     except ValueError:
-        raise ValueError("Indirizzo non valido: incolla un indirizzo web completo che inizia con https://.") from None
+        raise ValueError("Indirizzo non valido: incolla un indirizzo web completo che inizia con «https://».") from None
     if parti.scheme.lower() != "https":
-        raise ValueError("Per sicurezza accetto solo indirizzi che iniziano con https://.")
+        raise ValueError("Per sicurezza accetto solo indirizzi che iniziano con «https://».")
     if parti.username is not None or parti.password is not None:
         raise ValueError("L'indirizzo non può contenere nome utente o password.")
     if not parti.hostname:
@@ -211,7 +211,7 @@ def scarica(url: str, *, risolvi=_risolvi, apri=_apri, orologio=time.monotonic) 
                 if not destinazione:
                     raise ValueError("Il sito ha mandato un reindirizzamento senza destinazione.")
                 if giro >= MAX_REDIRECT:
-                    raise ValueError("L'indirizzo rimanda ad altri indirizzi troppe volte")
+                    raise ValueError("L'indirizzo rimanda ad altri indirizzi troppe volte.")
                 url = urljoin(f"https://{host}{percorso}", destinazione.strip())
                 continue
             if risposta.status != 200:
@@ -221,7 +221,7 @@ def scarica(url: str, *, risolvi=_risolvi, apri=_apri, orologio=time.monotonic) 
             except ValueError:
                 dichiarata = 0
             if dichiarata > immagini.MAX_BYTE:
-                raise ValueError("Immagine troppo grande (massimo 4 MB)")
+                raise ValueError("Immagine troppo grande (massimo 4 MB).")
             pezzi, totale = [], 0
             while True:
                 if orologio() > fine:
@@ -239,7 +239,7 @@ def scarica(url: str, *, risolvi=_risolvi, apri=_apri, orologio=time.monotonic) 
                     break
                 totale += len(pezzo)
                 if totale > immagini.MAX_BYTE:
-                    raise ValueError("Immagine troppo grande (massimo 4 MB)")
+                    raise ValueError("Immagine troppo grande (massimo 4 MB).")
                 pezzi.append(pezzo)
             dati = b"".join(pezzi)
             estensione = immagini.estensione_da_contenuto(dati)
@@ -248,4 +248,4 @@ def scarica(url: str, *, risolvi=_risolvi, apri=_apri, orologio=time.monotonic) 
             return dati, estensione
         finally:
             risposta.close()
-    raise ValueError("L'indirizzo rimanda ad altri indirizzi troppe volte")
+    raise ValueError("L'indirizzo rimanda ad altri indirizzi troppe volte.")

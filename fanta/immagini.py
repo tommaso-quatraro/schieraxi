@@ -60,7 +60,7 @@ def salva(nome: str, tipo: str, dati: bytes, cartella: Path | None = None) -> Pa
     if tipo not in TIPI:
         raise ValueError("Tipo di immagine non valido: stemma o maglia.")
     if len(dati) > MAX_BYTE:
-        raise ValueError("Immagine troppo grande (massimo 4 MB)")
+        raise ValueError("Immagine troppo grande (massimo 4 MB).")
     estensione = estensione_da_contenuto(dati)
     if estensione is None:
         raise ValueError("Formato non supportato: usa PNG, JPEG o WebP.")
@@ -143,7 +143,7 @@ def in_attesa(cartella: Path | None = None) -> Path | None:
 
 def salva_in_attesa(dati: bytes, cartella: Path | None = None) -> Path:
     if len(dati) > MAX_BYTE:
-        raise ValueError("Immagine troppo grande (massimo 4 MB)")
+        raise ValueError("Immagine troppo grande (massimo 4 MB).")
     estensione = estensione_da_contenuto(dati)
     if estensione is None:
         raise ValueError("Formato non supportato: usa PNG, JPEG o WebP.")

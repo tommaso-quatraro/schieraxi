@@ -709,12 +709,12 @@
     "en": "Unsupported format: use PNG, JPEG or WebP."
   },
   "err.indirizzo_completo": {
-    "it": "Indirizzo non valido: incolla un indirizzo web completo che inizia con https://.",
-    "en": "Invalid address: paste a complete web address starting with https://."
+    "it": "Indirizzo non valido: incolla un indirizzo web completo che inizia con «https://».",
+    "en": "Invalid address: paste a complete web address starting with “https://”."
   },
   "err.indirizzo_https": {
-    "it": "Per sicurezza accetto solo indirizzi che iniziano con https://.",
-    "en": "For safety I only accept addresses that start with https://."
+    "it": "Per sicurezza accetto solo indirizzi che iniziano con «https://».",
+    "en": "For safety I only accept addresses that start with “https://”."
   },
   "err.indirizzo_credenziali": {
     "it": "L'indirizzo non può contenere nome utente o password.",

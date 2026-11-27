@@ -40,4 +40,4 @@ def test_la_nota_della_copia_mette_l_apostrofo_davanti_a_8(web):
     web.risposta("/api/diario", None, stato=502)
     web.apri(GIORNATE)
     testo = _testo(web)
-    assert "(dati salvati l'8 nov alle 10:05, potrebbero non essere aggiornati)." in testo, testo[:400]
+    assert "Dati salvati l'8 nov alle 10:05, potrebbero non essere aggiornati." in testo, testo[:400]

@@ -987,7 +987,7 @@ def prepara_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None,
     else:
         scelti = [int(i) for i in (titolari or [])]
         if len(set(scelti)) != 11:
-            raise SchierataNonValida("Servono 11 titolari diversi")
+            raise SchierataNonValida("Servono 11 titolari diversi.")
         if not set(scelti) <= set(ids):
             raise SchierataNonValida("Tra i titolari ci sono giocatori che non sono nella tua rosa.")
         motivo = scelte.motivo_non_valida(scelti, {g.id: g.ruolo for g in squadra.giocatori if g.id is not None}, regole)

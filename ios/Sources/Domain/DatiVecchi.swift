@@ -25,7 +25,9 @@ enum DatiVecchi {
         guard let m = motivo?.trimmingCharacters(in: .whitespacesAndNewlines), !m.isEmpty else {
             return elidiGiorno("Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il \(giorno) alle \(ora) e può essere vecchio.")
         }
-        return elidiGiorno(Catalogo.Comune.cacheErrore(errore: m, giorno: giorno, ora: ora))
+        // il motivo chiuso dal punto, poi la frase della copia (revisione della #968: prima la nota fra parentesi), come la web
+        let chiuso = m.last.map { ".!?".contains($0) } == true ? m : m + "."
+        return elidiGiorno(Catalogo.Comune.cacheErrore(errore: chiuso, giorno: giorno, ora: ora))
     }
 
     /// «il 8 nov» → «l'8 nov», «del 11 nov» → «dell'11 nov»: davanti a 8 e 11 (otto, undici) l'articolo perde la vocale, come
