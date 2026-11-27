@@ -28,10 +28,11 @@ final class OggiViewModel: ViewModelBase {
     var dopoLetturaNonRiuscita: @MainActor () async -> Void
 
     /// `conPromemoria: false` nei test: niente richiesta del permesso per le notifiche, promemoria, widget.
-    init(server: any ServerClient, conPromemoria: Bool = true) {
+    init(server: any ServerClient, conPromemoria: Bool = true,
+         percorso: @escaping @MainActor () -> String = { OggiRepository.percorso }) {
         self.server = server
         // Il comando «Aggiorna» lo gestisce questo ViewModel (deve anche riprogrammare i promemoria), non il Caricatore.
-        caricatore = Caricatore<Oggi>(OggiRepository.percorso, ascolta: false, server: server)
+        caricatore = Caricatore<Oggi>(percorso(), ascolta: false, server: server)
         squadra = SquadraDaScegliere(server: server)
         if conPromemoria {
             dopoLetturaFresca = { oggi, chiestaIl, chi in await OggiViewModel.passaAWidgetEPromemoria(oggi, chiestaIl: chiestaIl, di: chi) }
@@ -68,6 +69,11 @@ final class OggiViewModel: ViewModelBase {
             await caricatore.ricarica()
             guard oggi?.faseGiornata == .inCorso else { return }
         }
+    }
+
+    /// Rilegge solo la giornata, senza promemoria né permessi (la rilettura ogni 5 minuti a giornata in corso).
+    func rileggi() async {
+        await caricatore.ricarica()
     }
 
     /// Ricarica la giornata e, se i dati sono freschi, riprogramma i promemoria.

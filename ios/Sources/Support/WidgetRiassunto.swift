@@ -808,6 +808,16 @@ enum VociTimeline {
     }
 }
 
+enum EtaDatiWidget {
+    static func ora(scaricatoIl: Date, adesso: Date, copia: Bool, partite: Bool) -> Date? {
+        copia ? scaricatoIl : nil
+    }
+
+    static func istanti(scaricatoIl: Date, adesso: Date) -> [Date] {
+        []
+    }
+}
+
 struct LiveWidget: Decodable, Equatable {
     var aggiornatoIl: String?
     var fonte: String?

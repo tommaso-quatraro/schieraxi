@@ -57,6 +57,10 @@ enum DatiVecchi {
         return !calendario.isDate(uscitaIl, inSameDayAs: adesso)
     }
 
+    static func rileggiPerLaScadenza(_ scadenza: Date?, fuoriDal: Date?, inBackgroundDal: Date?, adesso: Date) -> Bool {
+        false
+    }
+
     private static let calendario: Calendar = {
         var c = Calendar(identifier: .gregorian)
         c.timeZone = TimeZone(identifier: "Europe/Rome") ?? .current
