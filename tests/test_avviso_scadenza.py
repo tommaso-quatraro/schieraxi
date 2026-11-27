@@ -134,6 +134,17 @@ def test_cambio_piccolo_sotto_soglia_non_disturba(m, tmp_path):
     assert len(mandati) == 1 and "Con le ultime probabili conviene Rovelli al posto di Sartano (+1,4 punti attesi)" in mandati[0][1]
 
 
+def test_un_punto_giusto_fra_i_numeri_scritti_basta_per_l_avviso(m, tmp_path):
+    """64,1 contro 63,1: un punto, la soglia. La differenza dei due numeri arrotondati vale 0,9999999999999929 e restava sotto la
+    soglia: `consigli.stabile`, che confronta i numeri non arrotondati, cambiava la consigliata e l'avviso non partiva."""
+    m.bonus = {1: -5.9}                                                     # la consigliata di partenza vale 64,1
+    _cambi_ha_visto(tmp_path / "cambi.json", BASE)
+    _giro(m, tmp_path, ore(17, 0))
+    m.cambia("v1", esce=8, entra=14, bonus={8: -1.0})                       # con Sartano 63,1, con Rovelli 64,1
+    righe, mandati = _giro(m, tmp_path, ore(17, 45))
+    assert len(mandati) == 1 and "conviene Rovelli al posto di Sartano (+1,0 punti attesi)" in mandati[0][1]
+
+
 def test_con_la_formazione_salvata_si_confronta_quella(m, tmp_path):
     scelte.salva(ST, 9, BASE, "4-3-3", tmp_path / "scelte.json", tipo="consigliata")      # «ho schierato la consigliata»
     m.cambia("v1", esce=11, entra=12, stato={11: "infortunato"}, bonus={11: -2.5})

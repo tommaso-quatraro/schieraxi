@@ -957,7 +957,11 @@ def stabile(migliore: dict, prima: dict | None, prev: pd.DataFrame, s: Squadra, 
     panchina_prima = _ids(prima, "panchina") or []
     per_id = {g.id: g for g in rosa}
     if scelte.motivo_non_valida(titolari, {g.id: g.ruolo for g in rosa}, regole):
-        return migliore                  # un titolare uscito dalla rosa o senza previsione, un modulo non più ammesso, un file rovinato
+        # un titolare uscito dalla rosa o senza previsione, un modulo non più ammesso, un file rovinato: vale la migliore, ma anche
+        # lei lascia dove sono i giocatori degli anticipi già cominciati (#368)
+        if fermi is not None and not fermi.rispettati(migliore):
+            return _calcola_formazione(s, prev, migliore["giornata"], migliore["con_probabili"], regole, simulazioni, fermi)
+        return migliore
     if fermi is not None and not fermi.rispettati(migliore):
         migliore = _calcola_formazione(s, prev, migliore["giornata"], migliore["con_probabili"], regole, simulazioni, fermi)
         if _stessa(prima, migliore, chiusa):

@@ -17,16 +17,24 @@ struct TuttiINumeri: View {
         taglia.isAccessibilitySize ? [GridItem(.flexible())] : [GridItem(.adaptive(minimum: 96), spacing: 10)]
     }
 
+    /// Sul telefono in verticale e con il testo molto grande una colonna sola; dove c'è spazio (iPad, telefono in orizzontale) al
+    /// massimo due colonne nell'ordine di lettura, anche nella pagina larga della ricerca (#944): a tutta larghezza le righe «nome …
+    /// valore» finivano lontane e le tessere in file lunghe; in tre i blocchi si dividevano male. «Dati fino al …», in fondo alle
+    /// statistiche avanzate, resta l'ultima riga.
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            PilloleEtichette(etichette: etichette)
-            questaPartita
-            prossimePartite
-            forma
-            grafico
-            rendimento
-            stagione
-            avanzate
+        Colonne(spazio: 14, massimo: 2) {
+            Group {
+                PilloleEtichette(etichette: etichette)
+                questaPartita
+                prossimePartite
+                forma
+                grafico
+                rendimento
+                stagione
+                avanzate
+            }
+            // ogni blocco parte dal bordo sinistro della sua colonna: `Colonne` mette al centro chi è più stretto della colonna
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

@@ -392,7 +392,8 @@ def _con_mostrata(voce: dict) -> bool:
 def _previsti_e_veri(d: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri, anche=frozenset()):
     """(previsioni ricostruite con i soli dati di prima, voti veri, {id: fantavoto vero} di chi ha preso voto) di una giornata
     finita, solo per le partite giocate e per quelle in `anche` (partite rinviate non ancora recuperate, che la regola della lega
-    conta senza voto o con il voto d'ufficio); None se mancano i dati."""
+    conta senza voto o con il voto d'ufficio); None se mancano i dati. Chi ha giocato una partita della giornata prima della
+    scadenza resta (servono i suoi punti veri), previsto con i dati di prima della sua partita (`modello.previsioni`)."""
     col = COLONNA_VOTO[regole.fonte_voto]
     prev = previsioni(d, stagione, giornata, regole, par)
     giocate = d.partite.loc[(d.partite["stagione"] == stagione) & (d.partite["giornata"] == giornata) & (d.partite["giocata"] == 1), "id"]

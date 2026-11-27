@@ -60,7 +60,7 @@ struct ImpostazioniView: View {
                     Section { RigaCollegamentoWidget() }
                     NuovaVersioneSezione()
                     Section {
-                        ForEach(VociImpostazioni.informazioni(gestisce: sessione.puoAmministrare, scrivici: nomeAccount != nil)) { voce in
+                        ForEach(vociInformazioni) { voce in
                             RigaVoceImpostazioni(voce: voce).id("imp-\(voce.id)")
                         }
                     }
@@ -73,9 +73,10 @@ struct ImpostazioniView: View {
                 // con il testo grande la barra è vuota: senza, le righe passavano nitide sotto l'ora (#848)
                 .bordoSottoLaBarraVuota()
                 // fotografia `impostazioni-fondo`: la fine della pagina, quando le righe della lega sono arrivate (con le righe che
-                // arrivano dopo, `demoInFondo` da solo restava in cima)
-                .demoScorriA("imp-informazioni", proxy: proxy, schermate: ["impostazioni"], inFondo: true, ancora: .bottom,
-                             pronto: vm.squadre.dato != nil)
+                // arrivano dopo, `demoInFondo` da solo restava in cima). L'ultima riga in fondo allo schermo: con la prima
+                // dell'ultima sezione (Informazioni) Gestione restava sotto la barra (#944)
+                .demoScorriA(Self.ancoraFondo(vociInformazioni), proxy: proxy, schermate: ["impostazioni"], inFondo: true,
+                             ancora: .bottom, pronto: vm.squadre.dato != nil)
                 // fotografia `impostazioni-aspetto`: `portaInVista` scorre dopo 400 ms, e le righe arrivate dopo sopra Aspetto («Ore
                 // tranquille» con gli avvisi, «La mia squadra» e «Le altre squadre» con le squadre) la spingevano giù, con «Animazioni
                 // ridotte» sotto la barra (#911). Solo per la foto, quando sono arrivate tutte, si scorre di nuovo: con il testo normale
@@ -97,7 +98,19 @@ struct ImpostazioniView: View {
             .task { await vm.carica() }
             .task { await avvisi.carica() }
         }
+        // sull'iPad il titolo grande di questa pagina e delle sue pagine va in cima alla colonna, non al bordo dello schermo (#930)
+        .titoliNellaColonna()
         .schermoProtetto()   // rose, nomi e dati dell'account non devono comparire nell'anteprima del selettore delle app
+    }
+
+    /// Le righe dell'ultima sezione: Informazioni, Scrivici (con un account) e Gestione (per chi gestisce il server).
+    private var vociInformazioni: [VoceImpostazioni] {
+        VociImpostazioni.informazioni(gestisce: sessione.puoAmministrare, scrivici: nomeAccount != nil)
+    }
+
+    /// L'ancora della foto `impostazioni-fondo`: l'ultima riga della pagina (#944).
+    nonisolated static func ancoraFondo(_ voci: [VoceImpostazioni]) -> String {
+        "imp-" + (voci.last?.id ?? "informazioni")
     }
 
     /// Il nome sotto «Il tuo account»: solo con gli account e un utente noto (senza, c'è `SessioneMinimaSezione`).
