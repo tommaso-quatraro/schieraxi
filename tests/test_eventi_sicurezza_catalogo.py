@@ -93,3 +93,17 @@ def test_il_controllo_legge_le_righe_scritte_a_mano():
     assert _nel_registro_di_sicurezza(riga) and _tipo_della_riga(riga.args[1]) == "fonte-cambiata"
     altro = ast.parse('scrivi(p / registro.FILE_ERRORI, f"{registro.adesso()} errore x")').body[0].value
     assert not _nel_registro_di_sicurezza(altro)
+
+
+def test_gli_eventi_importanti_sono_tipi_che_il_server_scrive():
+    """`account.EVENTI_IMPORTANTI` (copiati nel registro a parte che Gestione mostra anche dopo tanti accessi sbagliati) ha solo
+    tipi che il server scrive davvero: un nome scritto male non verrebbe mai copiato, senza che nessuno se ne accorga. E nessun
+    tentativo sbagliato o rifiutato, che chiunque può ripetere quante volte vuole."""
+    from fanta import account
+    tipi, _ = tipi_di_evento()
+    assert account.EVENTI_IMPORTANTI <= tipi, sorted(account.EVENTI_IMPORTANTI - tipi)
+    ripetibili = {p + s for p in ("accesso", "recupero", "iscrizione") for s in ("_fallito", "_bloccato", "_rallentamento_pieno")}
+    ripetibili |= {"accesso_negato_bloccato", "registrazione_invito_sbagliato", "registrazione_trappola", "email_codice_sbagliato",
+                   "social_rifiutato", "social_inizio", "iscrizione_richiesta", "recupero_email_richiesto", "email_verifica_richiesta"}
+    assert ripetibili <= tipi, sorted(ripetibili - tipi)
+    assert not account.EVENTI_IMPORTANTI & ripetibili, sorted(account.EVENTI_IMPORTANTI & ripetibili)

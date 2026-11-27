@@ -66,9 +66,9 @@ def test_file_sensibili_leggibili_solo_dal_proprietario(multiutente, monkeypatch
     try:
         account.apri().close()
         cartella = account.percorsi.cartella_account()
-        for nome in ("sicurezza.log", "posta.log", "errori.log"):
+        for nome in ("sicurezza.log", "sicurezza-importanti.log", "posta.log", "errori.log"):
             registro.scrivi(cartella / nome, "riga di prova")
-        for nome in ("account.sqlite", "sicurezza.log", "posta.log", "errori.log"):
+        for nome in ("account.sqlite", "sicurezza.log", "sicurezza-importanti.log", "posta.log", "errori.log"):
             modo = stat.S_IMODE((cartella / nome).stat().st_mode)
             assert modo & 0o077 == 0, (nome, oct(modo))
         assert stat.S_IMODE(cartella.stat().st_mode) & 0o077 == 0
