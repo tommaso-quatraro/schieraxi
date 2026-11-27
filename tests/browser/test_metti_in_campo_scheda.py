@@ -117,7 +117,9 @@ def test_con_un_cambio_di_modulo_il_campo_e_il_menu_passano_al_modulo_nuovo(web)
     tocca(web, _scelte(web).filter(has_text=attaccante["nome"]).first.get_by_role("button"))
     linee = principale(web).locator("#campo-formazione .linea")
     assert [linee.nth(k).get_by_role("button").count() for k in range(4)] == [1, 5, 3, 2]
-    assert principale(web).get_by_label("Modulo").input_value() == "5-3-2"
+    # gli 11 nuovi non sono il 5-3-2 calcolato dal server: nel menu è scelta la voce della tua formazione, con il modulo nuovo
+    voce = principale(web).get_by_label("Modulo").evaluate("s => s.selectedOptions[0].textContent")
+    assert voce.startswith("5-3-2 · ") and voce.endswith("· la tua"), voce
     assert stato(web).startswith("L'hai cambiata tu")
     salvate = [c for m, p, c in scritte if p == "/api/formazione/valuta"]
     assert len(salvate) == 1 and entra["id"] in salvate[0]["titolari"] and attaccante["id"] not in salvate[0]["titolari"]

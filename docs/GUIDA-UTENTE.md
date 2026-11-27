@@ -107,10 +107,10 @@ Con lo zoom del browser molto alto (per esempio 200% sul telefono) le schermate 
   - i passi del primo avvio che hai saltato.
 
   Un titolare incerto che resta titolare non è una decisione: lo vedi dal colore di «gioca N%» sul campo e, toccandolo, nella sua scheda;
-- il **modulo** e i **punti attesi**, con sotto dove cade di solito il punteggio vero («di solito fra 65 e 82»). Il modulo è un menu: accanto a ognuno ci sono i suoi punti attesi, e «consigliato» su quello proposto;
+- il **modulo** e i **punti attesi**, con sotto dove cade di solito il punteggio vero («di solito fra 65 e 82»). Il modulo è un menu: accanto a ognuno ci sono i suoi punti attesi, e «consigliato» su quello proposto. Se hai cambiato un titolare a mano, in cima c'è la tua formazione con i suoi punti («4-3-3 · 71,0 punti · la tua»): scegliendo «consigliato» torni alla consigliata. Con la tastiera le frecce scorrono i moduli e il cambio si fa con Invio (o uscendo dal menu);
 - il **campo** con gli 11 titolari. Ogni giocatore è un disco bianco con il suo fantavoto atteso e sotto il cognome (sull'iPhone c'è il suo volto, con sotto il numero bianco su fondo scuro). Nient'altro, se gioca quasi di sicuro: «gioca N%» compare solo sotto l'80% (arancione fra 50 e 79, rosso sotto 50, con un anello dello stesso colore attorno al disco), e lo stato a parole solo per chi è **in dubbio**, **infortunato** o **squalificato**. L'avversario e l'ora della partita sono nella sua scheda;
 - lo **stato della tua scelta**, in una riga: «È la consigliata.» oppure «L'hai cambiata tu: 1 titolare diverso dalla consigliata (−0,4 punti attesi).», con **Torna alla consigliata**. Non c'è un pulsante Salva: ogni cambio (una sostituzione, un altro modulo) si salva da solo e resta uguale anche ricaricando o su un altro dispositivo. Se un salvataggio non riesce (per esempio senza rete) un avviso lo dice. Finché non cambi niente vale la consigliata, che si aggiorna da sola fino alla scadenza;
-- **Copia per l'app della lega**: copia la formazione come testo (modulo, titolari per ruolo, panchina in ordine), da tenere sotto mano mentre la inserisci su Leghe;
+- **Copia per l'app della lega**: copia la formazione come testo (modulo, titolari per ruolo, panchina in ordine), da tenere sotto mano mentre la inserisci su Leghe. Se il browser non lascia copiare, il testo compare sotto il pulsante, già selezionato: lo copi a mano;
 - **L'ho messa**: la spunti quando hai inserito la formazione nell'app della lega. Da quel momento quegli 11 sono la tua scelta e non cambiano da soli: se dopo la consigliata cambia, la riga dello stato lo dice e decidi tu se prenderla. Se cambi gli 11, la spunta si toglie: la rimetti quando hai aggiornato anche l'app della lega.
 
 Sotto ci sono quanto sono fresche le **probabili formazioni** (se sono vecchie e la scadenza è vicina, un avviso ti dice di ricontrollare), la **Panchina** nell'ordine in cui entra, i **Non schierati** e gli **Infortunati e squalificati** (chiusi: si aprono con un tocco). Negli elenchi, sotto il nome di ogni giocatore c'è la sua partita, con la sua squadra davanti: «INT @ MIL · sab 31 20:45» (in trasferta) o «ATA vs PAR» (in casa). Chi è in dubbio, infortunato o squalificato ha sotto anche la nota che dice perché.
@@ -123,6 +123,8 @@ Altri due stati della riga sotto il campo:
 
 - «La formazione che avevi salvato non è più valida: vale la consigliata.»: per esempio un giocatore non è più nella rosa, o il modulo non è più ammesso nella tua lega. Vale la consigliata anche per Giornate e gli avvisi; **Torna alla consigliata** toglie quella vecchia;
 - «Giornata iniziata: la formazione è chiusa»: è passata la scadenza della tua lega e non si cambia più niente. Se avevi una formazione tua, la riga dice anche quale vale.
+
+Con la Formazione aperta non serve ricaricare: pochi secondi dopo la scadenza si aggiorna da sola e si chiude. Si aggiorna da sola anche quando torni sull'app dopo la scadenza o dopo più di 5 minuti, e quando un cambio non riesce perché una partita è già cominciata.
 
 **La scheda del giocatore.** Un tocco su un giocatore, sul campo o in un elenco, apre la sua scheda. Ha, in ordine:
 
