@@ -111,7 +111,7 @@ def test_aggregato_utenti_solo_con_abbastanza_utenti():
 @pytest.fixture
 def finto(monkeypatch, tmp_path):
     """Due giornate finite con giocatori finti (nomi riconoscibili, per controllare che non escano nel riassunto pubblico)."""
-    partite = pd.DataFrame([{"id": g, "stagione": ST, "giornata": g, "giocata": 1} for g in (1, 2)])
+    partite = pd.DataFrame([{"id": g, "stagione": ST, "giornata": g, "data": f"2026-09-0{g} 18:00", "giocata": 1} for g in (1, 2)])
     voti = pd.DataFrame([{"stagione": ST, "giornata": g, "calciatore_id": i, "voto_red": 7.0} for g in (1, 2) for i in range(1, 21)])
     dati = SimpleNamespace(partite=partite, voti=voti)
 

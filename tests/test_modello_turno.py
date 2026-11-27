@@ -1,13 +1,15 @@
 """Il modello usa i dati di prima della scadenza della formazione (`avvisi.prima_partita`: dall'inizio del turno), non di prima della
 PRIMA partita della giornata. Con una partita anticipata di settimane (Supercoppa, coppe: #659, #695) la previsione si fermava a
 quella partita e non vedeva la giornata prima. Le partite della giornata stessa (anticipi compresi) non entrano mai nella sua
-previsione: sono quello che si prevede. Valgono le stesse regole per gli avversari della misura (verifica, registro).
+previsione: sono quello che si prevede. Valgono le stesse regole per gli avversari della misura (verifica, registro), e la misura
+delle previsioni passate non conta chi ha giocato prima della scadenza (sarebbe previsto con dati di dopo la sua partita).
 Solo dati inventati: venti squadre finte in un archivio in una cartella temporanea."""
 from datetime import datetime, timedelta
 
+import pandas as pd
 import pytest
 
-from fanta import archivio, avvisi, modello, registro_giornate as rg, verifica, verifica_pacchetti as vp
+from fanta import archivio, avvisi, diario, modello, registro_giornate as rg, verifica, verifica_pacchetti as vp
 from fanta.regole import Regole
 
 ST = "2026-27"
@@ -152,3 +154,34 @@ def test_gli_avversari_della_misura_vedono_gli_stessi_dati_del_modello(tmp_path)
     assert registro[CENTROCAMPISTA_11] > registro[CENTROCAMPISTA_11 + 1]
     assert registro[DELL_ANTICIPO] == pytest.approx(registro[DELL_ANTICIPO + 1])
     assert CENTROCAMPISTA_11 in vp.squalificati(d, ST, 12)                     # espulso nella 11: squalificato nella 12
+
+
+# la 12 finita: la partita del 2/11 e le altre nel suo turno, tutte giocate
+TUTTA_GIOCATA = {10: _giocate(G10), 11: _giocate(G11), 12: [(ANTICIPO_LONTANO, 1)] + _giocate(G12[1:]),
+                 13: _da_giocare(_sposta(G12, 7))}
+GIOCANO_IL_2_11 = {DELL_ANTICIPO, DELL_ANTICIPO + 1}
+
+
+def test_la_misura_non_conta_chi_ha_giocato_prima_della_scadenza(tmp_path):
+    """Revisione della #966: il modello prevede la 12 con i dati fino alla scadenza (21/11). Per chi ha giocato il 2/11 sono dati dal
+    futuro: il giocatore 100 prende 9 nella 11 il 6/11 e il suo atteso per il 2/11 saliva da 6,0 a 6,82. La verifica (e con lei
+    l'Affidabilità) lo misurava: ora chi ha giocato una partita della giornata prima della scadenza non si misura, come il registro
+    delle giornate non salva chi ha la partita già cominciata."""
+    d = _dati(tmp_path, "a", TUTTA_GIOCATA, {(11, DELL_ANTICIPO): GRANDE})
+    esito = verifica.verifica_giornata(d, ST, 12, Regole(), modello.Parametri())
+    assert esito.n == 18                                                    # i 20 della 12 meno i due del 2/11
+    prev, _, fv_vero = diario._previsti_e_veri(d, ST, 12, Regole(), modello.Parametri())     # Diario e «Quanto ci abbiamo preso»
+    assert not GIOCANO_IL_2_11 & set(prev.index) and not GIOCANO_IL_2_11 & set(fv_vero) and len(fv_vero) == 18
+    raccolte: list = []                                                     # gol attesi contro veri della verifica dei pacchetti
+    vp._con_registro(vp._previsioni, raccolte)(d, ST, 12, Regole(), modello.Parametri())
+    assert not GIOCANO_IL_2_11 & set(raccolte[0]["id"]) and len(raccolte[0]) == 18
+
+
+def test_con_date_non_leggibili_vale_la_prima_come_e_scritta():
+    """Una giornata le cui date non si leggono come date tiene la regola di prima (la prima data come è scritta): non «9999», che
+    darebbe al modello tutti i dati, anche quelli di dopo, e toglierebbe tutta la giornata dalla misura."""
+    partite = pd.DataFrame([{"id": 1, "stagione": ST, "giornata": 5, "data": "2026-10-35 15:00", "giocata": 1},
+                            {"id": 2, "stagione": ST, "giornata": 5, "data": "2026-10-36 15:00", "giocata": 1}])
+    assert modello.inizio_giornata(partite, ST, 5) == "2026-10-35 15:00"
+    assert modello.giocate_prima(partite, ST, 5) == set()
+    assert modello.inizio_giornata(partite.assign(data=None), ST, 5) == "9999"

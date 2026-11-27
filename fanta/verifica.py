@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 from . import formazione as fz
-from .modello import Dati, Parametri, previsioni
+from .modello import Dati, Parametri, giocate_prima, previsioni
 from .punteggio import COLONNA_VOTO, fantavoto, modificatore_difesa
 from .regole import RUOLI, Regole, modulo_in_numeri
 
@@ -135,14 +135,15 @@ def verifica_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par
     else:
         prev = prevedi(dm, stagione, giornata, regole, par)
     # solo le partite già giocate e con i voti di tutte e due le squadre: una giornata in corso, o una partita giocata con i voti
-    # non ancora arrivati, non deve contare i suoi giocatori come «non hanno giocato» (#832, come `fasi.voti_arrivati`)
+    # non ancora arrivati, non deve contare i suoi giocatori come «non hanno giocato» (#832, come `fasi.voti_arrivati`). Niente
+    # partite giocate prima della scadenza (`giocate_prima`): i loro giocatori sono previsti con dati di dopo la loro partita
     v, p = d.voti, d.partite
     con_voti = set(v.loc[(v["stagione"] == stagione) & (v["giornata"] == giornata) & v[col].notna(), "squadra"])
-    giocate = p.loc[(p["stagione"] == stagione) & (p["giornata"] == giornata) & (p["giocata"] == 1)
-                    & p["casa"].isin(con_voti) & p["trasferta"].isin(con_voti), "id"]
-    if prev.empty or giocate.empty:
+    giocate = set(p.loc[(p["stagione"] == stagione) & (p["giornata"] == giornata) & (p["giocata"] == 1)
+                        & p["casa"].isin(con_voti) & p["trasferta"].isin(con_voti), "id"]) - giocate_prima(p, stagione, giornata)
+    if prev.empty or not giocate:
         return None
-    prev = prev[prev["partita"].isin(set(giocate))]
+    prev = prev[prev["partita"].isin(giocate)]
     reali = d.voti[(d.voti["stagione"] == stagione) & (d.voti["giornata"] == giornata)]
     reali = reali.drop_duplicates("calciatore_id").set_index("calciatore_id")
     fm = _fantamedia(d, stagione, giornata, regole)             # l'avversario di prima: resta come numero di confronto

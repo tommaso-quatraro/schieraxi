@@ -34,7 +34,7 @@ import numpy as np
 import pandas as pd
 
 from . import nostri, verifica
-from .modello import Dati, Parametri, _p_da_probabili, forza_squadre, previsioni, prima_di
+from .modello import Dati, Parametri, _p_da_probabili, forza_squadre, giocate_prima, previsioni, prima_di
 from .punteggio import COLONNA_VOTO
 from .regole import RUOLI, Regole
 
@@ -151,11 +151,13 @@ def _con_registro(prevedi, raccolte: list):
     quelle: i numeri della verifica non cambiano."""
     def f(dm: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri) -> pd.DataFrame:
         prev = prevedi(dm, stagione, giornata, regole, par)
-        if {"id", "e_gol", "e_rigori", "e_assist", "minuti"} <= set(prev.columns):
-            raccolte.append(pd.DataFrame({"stagione": stagione, "giornata": giornata, "id": prev["id"].astype(int),
-                                          "e_gol": prev["e_gol"], "e_rigori": prev["e_rigori"],
-                                          "e_assist": prev["e_assist"], "minuti": prev["minuti"],
-                                          "gol_attesi": nostri.gol_attesi(prev, par)}))
+        if {"id", "e_gol", "e_rigori", "e_assist", "minuti", "partita"} <= set(prev.columns):
+            # come la verifica: non chi ha giocato prima della scadenza, previsto con dati di dopo la sua partita (`giocate_prima`)
+            p = prev[~prev["partita"].isin(giocate_prima(dm.partite, stagione, giornata))]
+            raccolte.append(pd.DataFrame({"stagione": stagione, "giornata": giornata, "id": p["id"].astype(int),
+                                          "e_gol": p["e_gol"], "e_rigori": p["e_rigori"],
+                                          "e_assist": p["e_assist"], "minuti": p["minuti"],
+                                          "gol_attesi": nostri.gol_attesi(p, par)}))
         return prev
     return f
 

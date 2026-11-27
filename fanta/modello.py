@@ -125,6 +125,18 @@ class Dati:
         return prima_di(df, inizio_giornata(self.partite, stagione, giornata), (stagione, giornata))
 
 
+def giocate_prima(partite: pd.DataFrame, stagione: str, giornata: int) -> set[int]:
+    """Gli id delle partite della giornata già giocate prima che si chiuda la formazione (`inizio_giornata`): anticipi e partite
+    anticipate di settimane. Il modello prevede la giornata con i dati fino alla scadenza, che per chi ha giocato queste partite
+    vengono dopo la sua partita: la misura delle previsioni passate (verifica e Affidabilità, Diario, verifica del consiglio) non
+    conta i loro giocatori, che sarebbero misurati con dati dal futuro. Lo stesso fa il registro delle giornate, che non salva chi
+    ha la partita già cominciata."""
+    data0 = inizio_giornata(partite, stagione, giornata)
+    p = partite
+    righe = (p["stagione"] == stagione) & (p["giornata"] == giornata) & (p["giocata"] == 1) & p["data"].notna() & (p["data"] < data0)
+    return {int(i) for i in p.loc[righe, "id"]}
+
+
 def _date_giornata(partite: pd.DataFrame, stagione: str, giornata: int) -> list[tuple[datetime, bool, str]]:
     """[(data e ora, giocata, data come è scritta)] delle partite della giornata con una data leggibile (come `avvisi._date`)."""
     righe = partite.loc[(partite["stagione"] == stagione) & (partite["giornata"] == giornata) & partite["data"].notna()]
@@ -142,13 +154,15 @@ def inizio_giornata(partite: pd.DataFrame, stagione: str, giornata: int) -> str:
     scadenza, con la regola unica di `turno.prima_che_conta` (quella di `avvisi.prima_partita`). Prima era la prima partita della
     giornata: con una partita anticipata di settimane (Supercoppa, coppe: #659, #695) la previsione si fermava lì e non vedeva le
     giornate giocate nel frattempo; lo stesso con un anticipo di metà settimana e con una rinviata rimasta con la data vecchia.
-    (Filtrare per numero di giornata sbaglierebbe con i recuperi giocati settimane dopo.) «9999» se nessuna partita ha una data."""
+    (Filtrare per numero di giornata sbaglierebbe con i recuperi giocati settimane dopo.) Se nessuna data si legge come data, la
+    prima come è scritta (la regola di prima); «9999» se nessuna partita ha una data."""
     date = _date_giornata(partite, stagione, giornata)
     primo = turno.prima_che_conta(((d, giocata) for d, giocata, _ in date),
                                   (d for d, _, _ in _date_giornata(partite, stagione, giornata - 1)),
                                   (d for d, _, _ in _date_giornata(partite, stagione, giornata + 1)))
-    if primo is None:
-        return "9999"
+    if primo is None:          # nessuna data che si legge come data: la regola di prima, la prima come è scritta
+        scritte = partite.loc[(partite["stagione"] == stagione) & (partite["giornata"] == giornata), "data"].dropna()
+        return str(scritte.min()) if len(scritte) else "9999"
     return min(testo for d, _, testo in date if d == primo)
 
 
