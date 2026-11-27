@@ -150,7 +150,7 @@
       "web": "«Completa la rosa» (`formazione.rosa_incompleta`) con la frase del server «Non si riesce a formare una squadra: secondo le regole della lega, alla rosa di … mancano 1 portiere, 6 difensori, …» (`rosa_incompleta` di `GET /api/oggi`) e «Aggiorna le rose»: uno stato, non un errore; con `rosa_incompleta` di `GET /api/stato` la Formazione non si chiede (niente 400). La pagina d'errore ha «Riprova» e «Apri La mia lega» nella stessa fila",
       "iphone": "chiede `GET /api/formazione` a ogni apertura (400) e mostra `ErroreVista`: «Qualcosa non va» con l'icona del Wi-Fi, la frase del server (dal 27/11 quella giusta, con quanti mancano) e solo «Riprova», senza «Aggiorna le rose»",
       "forma": "server (`rosa_incompleta` di `GET /api/oggi` e di `GET /api/stato`, codice `rosa_incompleta` del 400 di `GET /api/formazione`)",
-      "chi": "differenza: web con la #986 (collaudo del 27/11); iPhone da allineare (lo stato al posto dell'errore, con «Aggiorna le rose»)",
+      "chi": "differenza: web con la #986 (collaudo del 27/11); iPhone da allineare con la #987 (lo stato al posto dell'errore, con «Aggiorna le rose»)",
       "stato": "da-fare"
     }
   ]
