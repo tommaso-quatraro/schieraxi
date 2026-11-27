@@ -120,11 +120,12 @@ struct VistaWidget: View {
             .widgetAccentable()
     }
 
-    /// Sotto i numeri: l'ora della copia salvata, con il giorno se non è di oggi (`RigaCopia`, #834).
+    /// Sotto i numeri: l'ora della copia salvata, o dei punti vecchi perché iOS ha rimandato gli aggiornamenti (`Voce.oraDeiDati`),
+    /// con il giorno se non è di oggi (`RigaCopia`, #834).
     @ViewBuilder
     private func statoDati(_ r: RiassuntoOggi) -> some View {
-        if voce.datiSalvati {
-            RigaCopia(scaricatoIl: r.scaricatoIl, adesso: voce.date)
+        if let ora = voce.oraDeiDati {
+            RigaCopia(scaricatoIl: ora, adesso: voce.date, salvata: voce.datiSalvati)
                 .font(.caption2).foregroundStyle(.white.opacity(0.75))
         }
     }
@@ -325,9 +326,10 @@ struct VistaWidget: View {
                 Spacer()
                 Text(puntiTesto(r)).font(.title3.bold()).monospacedDigit()
             }
-            if voce.datiSalvati {
-                // la copia salvata, con il giorno se non è di oggi (#834); con i dati freschi «punti attesi» sotto i punti
-                RigaCopia(scaricatoIl: r.scaricatoIl, adesso: voce.date).font(.caption2).foregroundStyle(.white.opacity(0.75))
+            if let ora = voce.oraDeiDati {
+                // la copia salvata o i dati vecchi, con il giorno se non è di oggi (#834); con i dati freschi «punti attesi» sotto
+                RigaCopia(scaricatoIl: ora, adesso: voce.date, salvata: voce.datiSalvati)
+                    .font(.caption2).foregroundStyle(.white.opacity(0.75))
             } else if r.daControllare == 0 && r.probabili != false {
                 Text("punti attesi").font(.caption2).foregroundStyle(.white.opacity(0.75))
             }
@@ -360,8 +362,9 @@ struct VistaWidget: View {
                 Text(r.inizio.map(allaScadenza) ?? "")
                     .font(.caption).foregroundStyle(.white.opacity(0.8)).multilineTextAlignment(.leading)
                 Spacer(minLength: 0)
-                if voce.datiSalvati {
-                    RigaCopia(scaricatoIl: r.scaricatoIl, adesso: voce.date).font(.caption2).foregroundStyle(.secondary)
+                if let ora = voce.oraDeiDati {
+                    RigaCopia(scaricatoIl: ora, adesso: voce.date, salvata: voce.datiSalvati)
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
             }
             }

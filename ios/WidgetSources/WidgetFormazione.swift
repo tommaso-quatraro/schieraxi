@@ -192,7 +192,7 @@ struct VistaFormazione: View {
     private func piccolo(_ w: RiassuntoWidget, _ f: FormazioneWidget) -> some View {
         let dubbi = w.contoDaControllare
         return conTestataPiccola(titolo: f.tuaScelta == true ? "La tua scelta" : "Formazione", giornata: w.nomeGiornata, spazio: 2,
-                                 conFascia: f.intervallo?.testo != nil, conCopia: voce.copiaDel != nil, dubbi: dubbi) { prova in
+                                 conFascia: f.intervallo?.testo != nil, conCopia: voce.oraDeiDati != nil, dubbi: dubbi) { prova in
             Text(f.modulo ?? "—").font(.system(.largeTitle, design: .rounded).weight(.bold)).minimumScaleFactor(0.5).lineLimit(1)
             righePunti(f, prova.punti)
             piede(prova.piede, dubbi: dubbi)
@@ -204,7 +204,7 @@ struct VistaFormazione: View {
         // la prima prova che entra in altezza: «da controllare» c'è sempre, prima cedono le righe dei punti attesi, per ultima
         // la data della copia salvata (#834, #959)
         let prove = DisposizioneWidget.proveFormazione(medio: true, conGiornata: false, conFascia: f.intervallo?.testo != nil,
-                                                       datiSalvati: voce.copiaDel != nil, daControllare: dubbi)
+                                                       datiSalvati: voce.oraDeiDati != nil, daControllare: dubbi)
         return HStack(alignment: .center, spacing: 12) {
             PrimaCheEntra(prove.count, in: .vertical) { i in
                 VStack(alignment: .leading, spacing: 2) {

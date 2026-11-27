@@ -96,7 +96,11 @@ prima della scadenza:
   «Sostituisci»; fra i sostituti chi gioca meno dell'80% lo dice; la nota che spiega «In dubbio» si legge nella riga e
   nella scheda; un account senza rose vede il benvenuto senza richieste fallite;
 - salvataggio automatico: dopo una sostituzione o un altro modulo lo stato dice «L'hai cambiata tu» e la scelta è
-  salvata; «Torna alla consigliata» la toglie; la spunta «L'ho messa» resta dopo una ricarica;
+  salvata; «Torna alla consigliata» la toglie; la spunta «L'ho messa» resta dopo una ricarica; dopo una sostituzione nello
+  stesso ruolo il menu del modulo ha scelta la voce della tua formazione con i suoi punti («… · la tua»), non quella
+  consigliata, e scegliendo la consigliata ci si torna; se la copia per l'app della lega non riesce, il testo compare in un
+  riquadro di sola lettura già selezionato, a 390 e 1440 px; con un salvataggio in volo (anche quello partito uscendo dal
+  menu del modulo per toccare «Copia») la copia non si fa e un avviso lo dice, poi copia la formazione nuova;
 - ciò che si salva è ciò che si vede: la copia mostrata subito all'apertura è di sola lettura finché non arrivano i dati
   nuovi; se non arrivano (rete caduta) la nota dice perché non si può cambiare e ha «Riprova», e quando il browser segnala
   che la rete è tornata la pagina riprova da sola, una volta; un salvataggio che torna a schermata già ridisegnata fa rileggere,
@@ -108,12 +112,14 @@ prima della scadenza:
   del server e scelta cambiata su un altro dispositivo lasciano in pagina ciò che è salvato e lo dicono; dopo un 412 i
   comandi restano spenti finché la pagina non ha riletto dal server (l'avviso dice prima «Sto ricaricando…», poi di rifare
   la modifica), e una scrittura sulla scelta porta sempre If-Match, anche dopo un 412 su altri dati;
-- tastiera: dopo il menu del modulo, la spunta, «Sostituisci» e «Torna alla consigliata» il fuoco resta su un comando;
+- tastiera: il menu del modulo salva solo alla conferma (Invio o il fuoco che esce dal menu), non a ogni freccia; dopo il
+  menu del modulo, la spunta, «Sostituisci» e «Torna alla consigliata» il fuoco resta su un comando;
 - al massimo due decisioni, solo quelle con un'azione: prima le urgenti (fra loro prima quelle con un'azione vera), poi
   le altre; il reparto scoperto non ne prende più di una; «Usa la consigliata» prende quella nuova;
 - quando il cambio non si può fare: chi gioca una partita già cominciata non ha «Sostituisci» e la scheda dice perché;
-  un ritorno alla consigliata rifiutato lascia la formazione com'è e lo dice un avviso (`role="status"`); se la scadenza
-  passa con la pagina aperta la schermata si rilegge;
+  un ritorno alla consigliata o una sostituzione rifiutati perché una partita è cominciata (`giocatore_bloccato`) lasciano
+  la formazione com'è, lo dice un avviso (`role="status"`) e la schermata si rilegge; se la scadenza passa con la pagina
+  aperta un salvataggio rifiutato fa rileggere la schermata;
 - a giornata in corso i punti finora e niente da cambiare; a giornata finita «Com'è andata», i recuperi che mancano e la
   scelta sul rinvio, con sotto la formazione della prossima;
 - tablet e PC: campo a sinistra e panchina a destra a 768, 1024 e 1440 px; sul PC la scheda nel pannello a fianco, che
@@ -127,7 +133,8 @@ formazione registrata (finché non li si registra di nuovo, la web la chiama sol
 - dalla scheda di un panchinaro «Metti in campo» chiede al server chi può uscire (con gli 11 in pagina), l'elenco ha la
   differenza dei punti attesi della formazione, «gioca N%» per chi gioca meno dell'80% e, se il modulo cambia, il modulo nuovo
   («Si passa al 5-3-2»); un tocco cambia il campo, lo stato dice «L'hai cambiata tu», la scelta è salvata e il fuoco va su chi è
-  entrato; con un cambio di modulo il campo e il menu del modulo passano a quello nuovo;
+  entrato; con un cambio di modulo il campo e il menu del modulo passano a quello nuovo (la voce scelta è quella della tua
+  formazione, con il modulo nuovo);
 - se la rotta non risponde la scheda ha un errore `role="alert"` e niente cambia; se il server dice che la sua partita è già
   cominciata (`giocatore_bloccato`) la scheda dice la sua frase come informazione (`role="status"`); se la scheda si chiude prima della risposta,
   resta chiusa; se il salvataggio trova la scelta cambiata da un altro dispositivo (412, con If-Match) la pagina rilegge, mostra
@@ -135,6 +142,18 @@ formazione registrata (finché non li si registra di nuovo, la web la chiama sol
 - il pulsante c'è dove c'è «Sostituisci» per la stessa formazione: anche a giornata finita (per la prossima) e per chi entra a
   giornata iniziata; anche per infortunati e squalificati, con il loro stato in cima all'elenco. Non c'è per i titolari (che
   hanno «Sostituisci»), per chi gioca un anticipo già cominciato (la scheda dice perché), né a giornata in corso.
+
+`test_formazione_si_rilegge.py`, la Formazione aperta che si rilegge da sola, una lettura per evento e mai a ciclo (orologio della
+pagina comandato dal test con `clock.install`, `fast_forward` e `set_system_time`), solo prima della scadenza:
+- a 25 secondi dalla scadenza la testa non dice ancora «Formazione chiusa» («fra 1 min»);
+- alla scadenza (qualche secondo dopo) la Formazione si rilegge una volta e, se il server la dice chiusa, il modulo e la spunta
+  non ci sono più; se il server la dice ancora aperta non si rilegge ogni 30 secondi;
+- tornando in primo piano si rilegge se i dati hanno più di 5 minuti o se la scadenza è passata (una volta per scadenza), non
+  a dati appena letti né a ogni ritorno; dopo un salvataggio riuscito i dati contano come appena letti;
+- la rilettura chiede prima al server con la pagina com'è (niente copia tenuta sul telefono né comandi spenti, e con i dati
+  uguali non ridisegna niente: il riquadro della copia a mano resta); la copia, con la nota e «Riprova», solo se il server non
+  risponde; i dati nuovi si confrontano con quelli disegnati, non con la copia che un'altra scheda può aver già aggiornato (due
+  schede nello stesso browser); a rilettura in corso (server che non risponde ancora) altri ritorni non ne fanno partire altre.
 
 `test_fasi_giornata.py`, la giornata in corso e quella finita ai bordi (#895), con la risposta registrata di /api/oggi (o di
 /api/giocatore) cambiata solo nel pezzo che serve:

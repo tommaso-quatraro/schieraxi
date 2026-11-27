@@ -854,7 +854,7 @@ def migliore(rosa: list[Giocatore], regole: Regole, simulazioni: int = 600, rice
                                     list(panchina), media, dev))
         risultati[-1].scelto = valore + inclinazione[0] * (d - MODULO_NEUTRO[0]) + inclinazione[1] * (a - MODULO_NEUTRO[1])
     if not risultati:
-        raise ValueError("Nessun modulo ammesso è compatibile con la rosa")
+        raise ValueError("Nessun modulo ammesso è compatibile con la rosa.")
     # Fra i moduli (#632): `_senza_improbabili` guarda solo dentro il ruolo, e un modulo con un improbabile titolare (un
     # attaccante al 10% che quando gioca fa molti punti) poteva vincere per pochi decimi su uno senza. Vince la migliore fra le
     # formazioni con meno titolari improbabili: conta quanti sono, non solo se ce n'è uno (con un portiere improbabile in ogni

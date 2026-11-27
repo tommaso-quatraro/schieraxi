@@ -134,7 +134,7 @@ def test_recupero_stessa_risposta_per_nome_inesistente_e_codice_sbagliato(db):
     nuovo(db)
     a = errore(account.recupera, db, "marco", "AAAAA-AAAAA-AAAAA-AAAAA", "nuova-password-lunga")
     b = errore(account.recupera, db, "nessuno", "AAAAA-AAAAA-AAAAA-AAAAA", "nuova-password-lunga")
-    assert (a.stato, a.messaggio) == (b.stato, b.messaggio) == (403, "Nome utente o codice non validi")
+    assert (a.stato, a.messaggio) == (b.stato, b.messaggio) == (403, "Nome utente o codice non validi.")
 
 
 # ================================================================ (b) forza bruta

@@ -232,10 +232,10 @@ def test_aggiorna_i_dati_con_il_server_gia_occupato_lo_dice(web):
     solo(web, "prima")
     da_utente(web, AMMINISTRATORE)
     stato_aggiornamento(web, False)
-    web.risposta("/api/aggiorna", {"avviato": False, "messaggio": "Aggiornamento già in corso"})
+    web.risposta("/api/aggiorna", {"avviato": False, "messaggio": "Aggiornamento già in corso."})
     web.apri("/?vista=impostazioni&gruppo=gestione")
     principale(web).get_by_role("button", name="Aggiorna i dati").click(timeout=10000)
-    web.pagina.get_by_role("status").filter(has_text="Aggiornamento già in corso").first.wait_for(timeout=5000)
+    web.pagina.get_by_role("status").filter(has_text="Aggiornamento già in corso.").first.wait_for(timeout=5000)
     assert principale(web).get_by_role("button", name="Aggiorna i dati").is_enabled()
     assert principale(web).get_by_text(FRASE_IN_CORSO).count() == 0
 
@@ -298,6 +298,62 @@ def test_aggiorna_i_dati_con_problemi_in_inglese(web):
     righe = [r.strip() for r in avviso.inner_text().split("\n") if r.strip()]
     assert righe == ["Updated, but with problems:", "Fantacalcio.it and Understat are not responding: try again later.",
                      "The data checks found a problem: the details are in Data status."], righe
+
+
+FRASE_TUTTE_GIU = ("Fantacalcio.it, Understat e football-data.co.uk non rispondono: riprova più tardi.",
+                   {"chiave": "aggiorna.non_rispondono", "param": {"fonti": {"chiave": "elenco_e", "param": {
+                       "parti": ["Fantacalcio.it", "Understat", "football-data.co.uk"], "sep": ", "}}}})
+
+
+def test_aggiorna_i_dati_senza_nessun_dato_arrivato_non_dice_aggiornato(web):
+    """Collaudo del 27/11: con tutte le fonti giù l'avviso diceva «Aggiornato, ma con problemi: …», ma non era arrivato niente.
+    Con `nessun_dato_nuovo` del server la testa dice «Nessun dato nuovo:», sotto le stesse frasi una per riga."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, False)
+    aggiorna_finito(web, {"errori": [FRASE_TUTTE_GIU[0]], "errori_frasi": [FRASE_TUTTE_GIU[1]], "nessun_dato_nuovo": True})
+    web.apri("/?vista=impostazioni&gruppo=gestione", larghezza=390)
+    avviso = premi_aggiorna(web, 390, "non rispondono")
+    righe = [r.strip() for r in avviso.inner_text().split("\n") if r.strip()]
+    assert righe == ["Nessun dato nuovo:", FRASE_TUTTE_GIU[0]], righe
+    assert "Aggiornato" not in avviso.inner_text()
+
+
+def test_aggiorna_i_dati_senza_dati_nuovi_e_senza_problemi(web):
+    """Niente da scaricare e nessun problema (copie di oggi, nessuna giornata nuova): non «Dati aggiornati», ma una frase vera."""
+    solo(web, "prima")
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, False)
+    aggiorna_finito(web, {"errori": [], "errori_frasi": [], "nessun_dato_nuovo": True})
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    avviso = premi_aggiorna(web, PC, "Nessun dato nuovo")
+    assert avviso.inner_text().strip() == "Nessun dato nuovo: non c'era niente di più recente da scaricare."
+
+
+def test_aggiorna_i_dati_senza_nessun_dato_arrivato_in_inglese(web):
+    solo(web, "prima")
+    web.memoria({"lingua": "en"})
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, False)
+    aggiorna_finito(web, {"errori": [FRASE_TUTTE_GIU[0]], "errori_frasi": [FRASE_TUTTE_GIU[1]], "nessun_dato_nuovo": True})
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    principale(web).get_by_role("button", name="Refresh the data").click(timeout=10000)
+    avviso = web.pagina.locator("#avviso").filter(has_text="not responding")
+    avviso.wait_for(timeout=10000)
+    righe = [r.strip() for r in avviso.inner_text().split("\n") if r.strip()]
+    assert righe == ["No new data:", "Fantacalcio.it, Understat and football-data.co.uk are not responding: try again later."], righe
+
+
+def test_aggiorna_i_dati_premuto_di_nuovo_dice_hai_appena_provato_anche_in_inglese(web):
+    """Il secondo tocco entro 10 minuti: la frase del server («Hai appena provato: …», non più «aggiornati da poco»), tradotta."""
+    solo(web, "prima")
+    web.memoria({"lingua": "en"})
+    da_utente(web, AMMINISTRATORE)
+    stato_aggiornamento(web, False)
+    web.risposta("/api/aggiorna", {"avviato": False, "messaggio": "Hai appena provato: riprova fra 9 minuti.", "riprova_tra": 539})
+    web.apri("/?vista=impostazioni&gruppo=gestione")
+    principale(web).get_by_role("button", name="Refresh the data").click(timeout=10000)
+    web.pagina.get_by_role("status").filter(has_text="You just tried: try again in 9 minutes.").first.wait_for(timeout=5000)
 
 
 def test_aggiorna_i_dati_con_un_errore_lungo_va_a_capo_e_non_esce_di_lato(web):
@@ -747,13 +803,13 @@ def test_la_mia_squadra_non_salvata_si_riprova_con_la_stessa_squadra(web):
         s["mia"] = False
     web.risposta("/api/squadre", squadre)
     web.risposta("/api/stato", {**web.registrata("/api/stato"), "mia_squadra": None})
-    web.risposta("/api/mia-squadra", {"detail": "Squadra non trovata"}, stato=400)
+    web.risposta("/api/mia-squadra", {"detail": "Squadra non trovata."}, stato=400)
     salvate = _scritture(web, "/api/mia-squadra")
     web.apri("/?vista=impostazioni&gruppo=squadra")
     menu = principale(web).get_by_role("combobox", name="La tua squadra")
     nome = squadre[0]["nome"]
     menu.select_option(nome)
-    web.pagina.get_by_role("status").filter(has_text="Squadra non trovata").first.wait_for(timeout=10000)
+    web.pagina.get_by_role("status").filter(has_text="Squadra non trovata.").first.wait_for(timeout=10000)
     web.aspetta()
     assert menu.input_value() == "", "dopo l'errore il menu resta sulla squadra non salvata"
     menu.select_option(nome)
@@ -2508,7 +2564,7 @@ def test_salva_del_nome_resta_spento_finche_la_richiesta_non_torna(web):
     """Doppio tocco su «Salva» del nome della squadra (#833): il secondo mandava il nome vecchio, già cambiato, e compariva «Squadra
     non trovata» anche se il nome era salvato. Finché la richiesta è in corso il pulsante è spento: parte una richiesta sola."""
     solo(web, "prima")
-    tenute, mandate = _rinomina(web, [(404, {"detail": "Squadra non trovata"})])
+    tenute, mandate = _rinomina(web, [(404, {"detail": "Squadra non trovata."})])
     salva = _salva_nome(web)
     salva.click(timeout=10000)
     assert len(tenute) == 1
@@ -2518,7 +2574,7 @@ def test_salva_del_nome_resta_spento_finche_la_richiesta_non_torna(web):
     web.pagina.locator("#avviso").filter(has_text="Nome salvato").wait_for(timeout=10000)
     web.aspetta()
     assert len(mandate) == 1, mandate
-    assert web.pagina.get_by_text("Squadra non trovata").count() == 0
+    assert web.pagina.get_by_text("Squadra non trovata.").count() == 0
 
 
 def test_salva_del_nome_si_riaccende_se_il_salvataggio_non_riesce(web):

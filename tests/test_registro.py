@@ -1,5 +1,6 @@
 """Registro del server: errori 5xx su file con rotazione, contatori, scheda per l'amministratore, niente dati personali."""
 import contextlib
+import logging
 
 import pytest
 from fastapi.testclient import TestClient
@@ -97,6 +98,23 @@ def test_un_evento_importante_si_vede_una_volta_sola(admin):
     account.evento("accesso_fallito", nome="luca", ip="203.0.113.7")
     tipi = [e["tipo"] for e in admin.get("/api/admin/registro").json()["sicurezza"]]
     assert tipi.count("ruolo_cambiato") == 1 and tipi.count("registrazione") == 1, tipi
+
+
+@pytest.mark.parametrize("nome", [registro.FILE_SICUREZZA, registro.FILE_ERRORI])
+def test_un_registro_che_non_si_legge_lo_dice(admin, caplog, nome):
+    """Revisione di Gestione (27/11): un file del registro che c'è ma non si legge (qui una cartella al suo posto, come un file
+    senza permessi) faceva vedere «Nessun evento». Ora «Errori recenti» riceve un errore che nomina il file, e la causa va nel log
+    del servizio. Un file che non c'è ancora resta «nessun evento»."""
+    f = percorsi.cartella_account() / nome
+    f.unlink(missing_ok=True)
+    assert admin.get("/api/admin/registro").status_code == 200           # non c'è ancora: niente da mostrare, nessun errore
+    f.mkdir()
+    with caplog.at_level(logging.ERROR, logger="fanta.registro"):
+        r = admin.get("/api/admin/registro")
+    assert r.status_code == 503, r.text
+    assert r.json()["detail"] == f"Non riesco a leggere il registro del server ({nome}): controlla i permessi del file sul server."
+    cause = [m for m in caplog.messages if nome in m]
+    assert cause and any(t in cause[0] for t in ("PermissionError", "IsADirectoryError")), caplog.messages
 
 
 def test_scheda_solo_per_l_amministratore(admin):

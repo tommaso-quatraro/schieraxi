@@ -26,6 +26,7 @@ from pathlib import Path
 
 from . import percorsi
 
+LOG = logging.getLogger(__name__)
 MAX_FILE, COPIE = 512 * 1024, 3
 FILE_ERRORI = "errori.log"
 FILE_SICUREZZA = "sicurezza.log"
@@ -173,15 +174,28 @@ def errore(metodo: str, rotta: str, stato: int, tipo: str | None = None) -> None
            " ".join([adesso(), "errore"] + [f"{k}={pulito(v)}" for k, v in campi.items() if v is not None]))
 
 
+class RegistroIlleggibile(Exception):
+    """Un file del registro c'è ma non si legge (permessi, una cartella al suo posto, disco rotto). Gestione lo dice con il nome
+    del file, invece di mostrare «Nessun evento»; la causa è già nel log del servizio."""
+
+    def __init__(self, nome: str):
+        super().__init__(nome)
+        self.nome = nome
+
+
 def ultimi(nome: str, quanti: int = 30, nascondi_indirizzi: bool = False) -> list[dict]:
-    """Le ultime righe di un registro (dalla più recente), già divise in campi. Gli indirizzi di rete si possono nascondere."""
+    """Le ultime righe di un registro (dalla più recente), già divise in campi. Gli indirizzi di rete si possono nascondere.
+    Un file che non c'è ancora non ha righe; uno che c'è ma non si legge è `RegistroIlleggibile`, con la causa nel log."""
     cartella = percorsi.cartella_account()
     righe: list[str] = []
     for file in (cartella / nome, cartella / f"{nome}.1"):
         try:
             righe = file.read_text(encoding="utf-8", errors="replace").splitlines()[-quanti:] + righe
-        except OSError:
+        except FileNotFoundError:
             continue
+        except OSError as e:
+            LOG.error("Registro %s non leggibile: %s (%s)", file.name, type(e).__name__, e.strerror or "senza dettagli")
+            raise RegistroIlleggibile(file.name) from e
         if len(righe) >= quanti:
             break
     risultato = []

@@ -77,7 +77,7 @@ def test_solo_il_titolare(titolare):
 def test_il_titolare_non_blocca_ne_elimina_se_stesso(titolare):
     io = titolare.get("/api/account/me").json()["utente"]["id"]
     r = titolare.post(f"/api/admin/utenti/{io}/blocca")
-    assert r.status_code == 400 and r.json()["detail"] == "Non puoi bloccare il tuo account", r.text
+    assert r.status_code == 400 and r.json()["detail"] == "Non puoi bloccare il tuo account.", r.text
     r = titolare.delete(f"/api/admin/utenti/{io}")
     assert r.status_code == 400 and "Il tuo account" in r.json()["detail"], r.text
     assert titolare.get("/api/account/me").status_code == 200
@@ -148,6 +148,36 @@ def test_gli_altri_amministratori_si_gestiscono_solo_dal_server(titolare):
         assert risposta.json()["detail"] == account.AMMINISTRATORE_DAL_SERVER
     assert c.get("/api/account/me").status_code == 200 and utenti(titolare)["vice"]["bloccato"] is False
     assert not eventi("account_bloccato") and not eventi("account_eliminato")
+
+
+def reset_attivi() -> int:
+    with contextlib.closing(account.apri()) as db:
+        return db.execute("SELECT COUNT(*) FROM reset_password WHERE usato = 0").fetchone()[0]
+
+
+def test_il_codice_per_la_password_di_un_altro_amministratore_non_si_crea(titolare):
+    """Permessi degli amministratori (27/11): come blocca ed elimina, «Genera il codice» di Gestione rifiuta l'account di un altro
+    amministratore (403 chiaro, anche con il nome scritto con altre maiuscole), senza codice né riga nel registro; la sessione di
+    quell'amministratore resta aperta."""
+    vice = cliente()
+    assert registra(vice, "vice", amministratore=True).status_code == 200
+    for nome in ("capo", " Capo "):
+        r = vice.post("/api/admin/reset-password", json={"nome_utente": nome})
+        assert r.status_code == 403, r.text
+        assert r.json()["detail"] == account.RESET_ALTRO_AMMINISTRATORE
+    assert reset_attivi() == 0 and not eventi("reset_creato")
+    assert titolare.get("/api/account/me").status_code == 200
+    assert vice.post("/api/admin/reset-password", json={"nome_utente": "nessuno"}).status_code == 404
+
+
+def test_il_codice_per_un_account_comune_o_per_se_stessi_dice_chi_l_ha_creato(titolare):
+    """Per un account comune e per il proprio il codice si crea, e la riga del registro dice chi l'ha creato (`da`), come per il blocco."""
+    amico("luca")
+    vice = cliente()
+    assert registra(vice, "vice", amministratore=True).status_code == 200
+    assert vice.post("/api/admin/reset-password", json={"nome_utente": "luca"}).status_code == 200
+    assert titolare.post("/api/admin/reset-password", json={"nome_utente": "capo"}).status_code == 200
+    assert [(e["nome"], e.get("da")) for e in reversed(eventi("reset_creato"))] == [("luca", "vice"), ("capo", "capo")]
 
 
 # ---------------------------------------------------------------- la migrazione

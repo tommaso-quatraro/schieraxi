@@ -1037,16 +1037,16 @@ def prepara_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None,
                       stagione: str | None = None) -> tuple[dict, list[int]]:
     """Il pezzo lento (simulazioni), senza scrivere niente: (voce del diario, titolari scelti). Alza SchierataNonValida."""
     if tipo not in ("consigliata", "manuale"):
-        raise SchierataNonValida("Il tipo deve essere «consigliata» o «manuale»")
+        raise SchierataNonValida("Il tipo deve essere «consigliata» o «manuale».")
     controlla_stagione(stagione)
     squadra = rose.squadra(rose.mia_squadra) if rose and rose.mia_squadra else None
     if not squadra:
-        raise SchierataNonValida("Indica prima la tua squadra in «La mia squadra»")
+        raise SchierataNonValida("Indica prima la tua squadra in «La mia squadra».")
     stagione = consigli.stagione_corrente()
     if giornata < regole.prima_giornata_lega:
-        raise SchierataNonValida("Quella giornata è precedente all'inizio della tua lega")
+        raise SchierataNonValida("Quella giornata è precedente all'inizio della tua lega.")
     if giornata not in rinvii.giornate_chiuse(db, stagione, regole):
-        raise SchierataNonValida("Si può dire cosa hai schierato solo per le giornate già finite")
+        raise SchierataNonValida("Si può dire cosa hai schierato solo per le giornate già finite.")
     ids = [g.id for g in squadra.giocatori if g.id is not None]
     dati = consigli.dati(db)
     diario = carica(file_diario)
@@ -1054,7 +1054,7 @@ def prepara_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None,
     if tipo == "consigliata":
         voce = diario["giornate"].get(chiave) or calcola_giornata(dati, stagione, giornata, regole, Parametri(), ids, None, simulazioni)
         if not voce:
-            raise SchierataNonValida("Per questa giornata non ho i dati per ricostruire la formazione consigliata")
+            raise SchierataNonValida("Per questa giornata non ho i dati per ricostruire la formazione consigliata.")
         scelti = [t["id"] for t in voce["consigliata"]["titolari"]]
         ist = (diario.get("istantanee") or {}).get(chiave)          # meglio quella davvero mostrata allora, se la rosa è ancora la stessa
         if isinstance(ist, dict):
@@ -1064,9 +1064,9 @@ def prepara_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None,
     else:
         scelti = [int(i) for i in (titolari or [])]
         if len(set(scelti)) != 11:
-            raise SchierataNonValida("Servono 11 titolari diversi")
+            raise SchierataNonValida("Servono 11 titolari diversi.")
         if not set(scelti) <= set(ids):
-            raise SchierataNonValida("Tra i titolari ci sono giocatori che non sono nella tua rosa")
+            raise SchierataNonValida("Tra i titolari ci sono giocatori che non sono nella tua rosa.")
         motivo = scelte.motivo_non_valida(scelti, {g.id: g.ruolo for g in squadra.giocatori if g.id is not None}, regole)
         if motivo:                                                   # la regola unica della scelta: qui resta il modulo
             raise SchierataNonValida(motivo)
@@ -1075,7 +1075,7 @@ def prepara_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None,
                             giocatori_rosa=_giocatori_rosa(squadra), numeri_scadenza=_numeri_rosa_di(diario, chiave),
                             **per_il_consiglio(db, regole, stagione, giornata, diario))
     if not voce or not voce["schierata"]:
-        raise SchierataNonValida("Non riesco a valutare questa formazione per quella giornata")
+        raise SchierataNonValida("Non riesco a valutare questa formazione per quella giornata.")
     return voce, scelti
 
 

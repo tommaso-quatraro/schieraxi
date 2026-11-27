@@ -57,12 +57,18 @@ poi `sudo systemctl restart fantacalcio`.
 Con le iscrizioni aperte il modulo non chiede codici: un amico che deve gestire l'app con te si registra come tutti e poi, sul server,
 `.venv/bin/python -m fanta utente-ruolo --utente <nome> --ruolo admin`.
 
+Se un altro amministratore ha perso password, codice di recupero ed email, dalla web non puoi creargli il codice: sul server
+riportalo a utente normale (`utente-ruolo --utente <nome> --ruolo normale`), crea il codice da Gestione, e dopo che è rientrato
+ridagli il ruolo di amministratore.
+
 ### Con gli inviti
 
 **Impostazioni › Gestione › Nuovo invito** crea il link da mandare (**Condividi l'invito** o **Copia il messaggio**): apre la
 registrazione con il codice già scritto e vale 7 giorni. Sotto c'è anche il codice, per chi usa l'app per iPhone. L'etichetta
 serve a ricordare per chi era; con la casella **Il nuovo account sarà amministratore** chi entra gestisce l'app anche lui (solo con
-**Quante persone** a 1).
+**Quante persone** a 1). Con la casella accesa **Crea l'invito** chiede prima conferma, e dopo ogni invito la casella si spegne da
+sola: l'invito dopo è di nuovo per un utente normale. Mentre l'invito si crea il pulsante resta spento (un doppio tocco non crea due
+inviti).
 
 Per far entrare tutta una chat di amici con un solo link crea un **invito di gruppo**: in **Quante persone** scrivi quanti
 sono (con **+** e **−**, da 1 a 30), poi **Crea l'invito**. L'esito dice per quante persone vale (per esempio «Invito per «Lega»,
@@ -87,7 +93,9 @@ Chi è già entrato con quell'invito tiene il suo account. Gli inviti usati, sca
 ## 2. Password dimenticata, utenti, errori
 
 - **Password dimenticata**: se qualcuno ha perso password e codice di recupero, **Genera il codice** crea un codice che vale
-  24 ore, una volta sola. Si dà di persona: con quel codice l'amico sceglie una nuova password.
+  24 ore, una volta sola. Si dà di persona: con quel codice l'amico sceglie una nuova password. Vale per gli utenti e per il proprio
+  account, non per un altro amministratore: l'app lo dice («Per un altro amministratore il codice non si crea dalla web: la password
+  si cambia con il suo codice di recupero.»). Nel registro di sicurezza del server la riga dice anche chi ha creato il codice.
 - **Utenti**: chi ha un account, con quando si è iscritto e l'ultimo accesso (per esempio «Iscrizione gio 1 ott, ultimo accesso
   mar 24 nov.»); chi gestisce ha accanto «amministratore», e sulla propria riga c'è «Sei tu». Sugli account degli utenti (non
   degli altri amministratori, che si gestiscono solo sul server) due pulsanti, ognuno dopo una conferma che dice il nome (solo
@@ -115,7 +123,11 @@ Chi è già entrato con quell'invito tiene il suo account. Gli inviti usati, sca
   tanti accessi sbagliati, le richieste più lente con accanto al percorso tecnico il nome della parte
   (per esempio «Formazione (/api/oggi)»). Ore nell'ora italiana. Le richieste senza nessun accesso verso le parti dell'app (di
   solito dalla pagina prima dell'ingresso) sono dette a parte; un accesso con un codice o una sessione che non vale, o una
-  richiesta a una parte riservata, resta fra le rifiutate. Nessuna password e nessun dato delle richieste.
+  richiesta a una parte riservata, resta fra le rifiutate. Nessuna password e nessun dato delle richieste. Si rilegge da solo
+  dopo ogni invito creato o annullato, dopo un codice per la password e dopo blocca, sblocca ed elimina. Se un file del registro
+  sul server c'è ma non si legge (per esempio per i permessi), al posto dell'elenco c'è un errore con il nome del file («Non riesco
+  a leggere il registro del server (sicurezza.log): controlla i permessi del file sul server.») e la causa è nel log del servizio
+  (`journalctl -u fantacalcio`).
 
 - **Commenti degli utenti** (solo sulla web): quello che gli amici scrivono da **Impostazioni › Scrivici** (web e iPhone), gli
   ultimi 100, il più recente in alto: chi, quando (ora italiana), da dove (web, iPhone, Android) con la versione dell'app, e il
@@ -138,11 +150,13 @@ di recupero e in **Il tuo account** non si può collegare un'email.
 - **Aggiorna i dati** scarica subito dalle fonti; di solito il server lo fa da solo. Se all'apertura dell'app il server è già
   occupato con un aggiornamento (dei dati o di una versione nuova), il pulsante è spento con una frase che lo dice e si riaccende
   da sé quando ha finito; se l'aggiornamento parte con l'app già aperta, il pulsante premuto risponde «Aggiornamento già in
-  corso». Con tutte le fonti spente lo dice e non parte. Fra un giro e il successivo passano almeno 10 minuti: premuto prima, dice
-  fra quanto riprovare («I dati sono stati aggiornati da poco: riprova fra 9 minuti.») e non parte. Finito con dei problemi,
-  l'avviso dice «Aggiornato, ma con problemi:» e sotto una frase per riga, per esempio «Fantacalcio.it non risponde: riprova più
-  tardi.»; il dettaglio tecnico sta nel registro del server e in **Stato dei dati**. Un giro in cui non arriva nessuna pagina non
-  cambia l'ora dei dati («dati del …»): l'avviso «I dati delle partite non si aggiornano da …» resta finché i dati non arrivano.
+  corso.». Con tutte le fonti spente lo dice e non parte. Fra un giro e il successivo passano almeno 10 minuti, per non chiedere
+  troppo alle fonti: premuto prima, dice fra quanto riprovare («Hai appena provato: riprova fra 9 minuti.») e non parte. Finito
+  con dei problemi, l'avviso dice «Aggiornato, ma con problemi:» e sotto una frase per riga, per esempio «Fantacalcio.it non
+  risponde: riprova più tardi.»; il dettaglio tecnico sta nel registro del server e in **Stato dei dati**. Un giro in cui non
+  arriva nessuna pagina non cambia l'ora dei dati («dati del …»): l'avviso «I dati delle partite non si aggiornano da …» resta
+  finché i dati non arrivano, e l'avviso di **Aggiorna i dati** dice «Nessun dato nuovo:» con sotto le stesse frasi (o, se non
+  c'era niente da scaricare, «Nessun dato nuovo: non c'era niente di più recente da scaricare.»).
 - **Stato dei dati** (**Apri lo stato dei dati**): da dove arrivano i dati, se qualche fonte ha dato errore e quanto è affidabile
   il modello. Le fonti si accendono e si spengono da qui: sotto ogni fonte spenta c'è cosa non arriva, e una volta sola sotto
   l'elenco cosa fa l'app senza e le condizioni d'uso. La scelta vale subito, anche per i risultati in diretta (ESPN e la

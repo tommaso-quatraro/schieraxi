@@ -431,6 +431,9 @@ details[open] > summary { margin-bottom: 8px; }
 .stato-scelta .azione-testo { margin-left: auto; margin-right: -8px; }      /* a destra, sul filo della colonna, anche quando va a capo sotto la frase */
 .azioni-formazione { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0 16px; }
 .azioni-formazione .bottone { min-height: 44px; padding: 8px 14px; }
+/* la copia non è riuscita: il testo della formazione da copiare a mano, sotto il pulsante */
+.da-copiare { display: grid; gap: 4px; margin: -8px 0 16px; }
+.da-copiare textarea { min-height: 0; resize: none; overflow: hidden; font-size: var(--t-corpo); line-height: 1.45; }
 /* sulla copia tenuta sul telefono (o con la scelta non letta) i comandi che scrivono restano al loro posto, spenti */
 .menu-scelta:has(select:disabled), .spunta:has(input:disabled) { opacity: .55; cursor: default; }
 .df-azione:disabled, #torna-consigliata:disabled { opacity: .55; cursor: default; }

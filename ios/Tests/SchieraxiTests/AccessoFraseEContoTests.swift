@@ -22,14 +22,17 @@ struct AccessoFraseEContoTests {
     func senzaConto() {
         let errore = ErroreApi.troppiTentativi("Troppi tentativi: riprova tra qualche secondo.", riprovaTra: nil)
         #expect(SchermataAccesso.fraseDopoInvio(errore) == SchermataAccesso.testoErrore(errore))
-        #expect(SchermataAccesso.fraseDopoInvio(ErroreApi.accessoRichiesto("Nome utente o password sbagliati"))
-                == "Nome utente o password sbagliati")
+        #expect(SchermataAccesso.fraseDopoInvio(ErroreApi.accessoRichiesto("Nome utente o password sbagliati."))
+                == "Nome utente o password sbagliati.")
         #expect(SchermataAccesso.fraseDopoInvio(ErroreApi.rete("x")) == SchermataAccesso.testoErrore(ErroreApi.rete("x")))
     }
 
     /// Revisione della #806: con due messaggi veri del server (`err.troppi_tentativi`, `err.molto_occupato`) la frase diventava
     /// «Troppi tentativi:.» e «Il server è molto occupato:.». Il segno prima dell'invito a riprovare se ne va con l'invito.
     @Test("Dalla frase del server si toglie anche il segno prima dell'invito: mai «:.»", arguments: [
+        ("Troppi tentativi: riprova più tardi.", "Troppi tentativi."),
+        ("Il server è molto occupato: riprova fra qualche secondo.", "Il server è molto occupato."),
+        // un server di prima del 27/11, con i messaggi senza il punto finale
         ("Troppi tentativi: riprova più tardi", "Troppi tentativi."),
         ("Il server è molto occupato: riprova fra qualche secondo", "Il server è molto occupato."),
     ])
@@ -43,7 +46,7 @@ struct AccessoFraseEContoTests {
     /// con le parole della web («Riprova tra circa 20 ore.», #940; prima «Riprova tra 20 h»).
     @Test("Attesa oltre l'ora: la frase tiene il tempo, come la web; fino all'ora no")
     func attesaLunga() {
-        let lunga = ErroreApi.troppiTentativi("Per oggi le iscrizioni sono chiuse: riprova domani", riprovaTra: 72_000)
+        let lunga = ErroreApi.troppiTentativi("Per oggi le iscrizioni sono chiuse: riprova domani.", riprovaTra: 72_000)
         #expect(SchermataAccesso.fraseDopoInvio(lunga) == "Per oggi le iscrizioni sono chiuse. Riprova tra circa 20 ore.")
         #expect(SchermataAccesso.fraseDopoInvio(ErroreApi.troppiTentativi("Calma.", riprovaTra: 3600)) == "Calma.",
                 "un'ora esatta la conta ancora il pulsante")

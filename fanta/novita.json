@@ -1,5 +1,90 @@
 [
   {
+    "versione": "1.607",
+    "data": "2026-11-27T15:13:36",
+    "titolo": "Aggiorna i dati dice quando non arriva niente, e i messaggi finiscono con il punto",
+    "voci": [
+      "Gestione, «Aggiorna i dati»: se non arriva nessun dato, per esempio perché nessuna fonte risponde, l'avviso dice «Nessun dato nuovo:» con sotto le frasi una per riga, non più «Aggiornato, ma con problemi».",
+      "Premuto di nuovo entro 10 minuti, «Aggiorna i dati» dice «Hai appena provato: riprova fra 9 minuti.» al posto di «I dati sono stati aggiornati da poco», che non era vero se non era arrivato niente.",
+      "I messaggi d'errore che arrivano dal server (accesso, iscrizione, rose, scambi, immagini e gli altri) finiscono con il punto, per esempio «La password non è giusta.».",
+      "Un errore con un'attesa finisce con una frase a sé, per esempio «Il server è molto occupato. Riprova tra 10 secondi.», e con i dati salvati la nota dice «Dati salvati il 17 nov alle 10:05, potrebbero non essere aggiornati.» dopo il motivo, non più fra parentesi."
+    ],
+    "tecnico": [
+      "GET /api/aggiorna: campo nuovo nessun_dato_nuovo (booleano), vero a giro finito se nessun passo ha scaricato niente, con la stessa regola che lascia ferma l'ora dei dati (aggiorna.Aggiornamento.dati_nuovi, da scaricati), e se il giro si ferma per un'eccezione; falso all'avvio e durante il giro (stato_aggiornamento_iniziale). aggiorna.esegui ha il parametro esito (esito[\"dati_nuovi\"]). Contratto in docs/API.md; i client che non conoscono il campo restano come prima.",
+      "POST /api/aggiorna: la pausa di 10 minuti risponde «Hai appena provato: riprova fra N minuti.» (srv.aggiorna_pausa); «Aggiornamento già in corso.» ha il punto e la sua chiave (srv.aggiorna_gia_in_corso). Stessi campi di prima.",
+      "Web e iPhone: con nessun_dato_nuovo vero la testa dell'avviso è aggiorna.nessun_dato («Nessun dato nuovo: {errori}», le frasi una per riga) o, senza frasi, aggiorna.nessun_dato_niente; AggiornaDatiViewModel legge il campo (StatoAggiornamento.nessunDatoNuovo, facoltativo).",
+      "Messaggi del server: 148 chiavi err.* che finivano senza punto lo hanno ora in italiano e in inglese, e lo stesso testo nel server (account, rotte_account, account_email, social, server, importa_sicuro, scarica_immagine, scambi, scambi_multi, diario, push, backup e altri); anche tre messaggi fuori dal catalogo («Immagine troppo grande (massimo 4 MB).», «L'indirizzo rimanda ad altri indirizzi troppe volte.», «Servono 11 titolari diversi.»). «https://» fra virgolette in err.indirizzo_completo ed err.indirizzo_https. Le righe di un elenco («il bonus per l'assist deve essere tra …», «“Crediti iniziali” deve essere un numero») e i pezzi err.p_* restano senza; restano come sono anche i messaggi tecnici fuori dal catalogo («Accesso richiesto» del 401, «Fonte sconosciuta», «Funzione sconosciuta»). Nuovo controllo tests/test_testi.py::test_i_messaggi_del_server_finiscono_con_il_punto. Un client che confrontava il testo esatto di uno di questi messaggi va aggiornato: web e iPhone non lo fanno (mostrano il testo del server; l'iPhone toglie l'invito a riprovare con o senza il punto).",
+      "Web: comune.riprova_tra è « Riprova tra {attesa}.» e errore() con l'attesa del 429 mostra la frase del server senza il suo invito a riprovare (senzaInvitoARiprovare), come ErroreApi.errorDescription dell'iPhone. comune.cache_errore è «{errore} Dati salvati il {giorno} alle {ora}, potrebbero non essere aggiornati.», con {errore} chiuso dal punto (conPunto in app.js, DatiVecchi.frase sull'iPhone)."
+    ],
+    "titolo_en": "Refresh the data says when nothing arrives, and messages end with a full stop",
+    "voci_en": [
+      "Management, “\u0001”: if no data arrives, for example because no source responds, the message says “\u0001” with the sentences below, one per line, instead of “\u0001”.",
+      "Pressed again within 10 minutes, “\u0001” says “\u0001” instead of “\u0001”, which was not true if nothing had arrived.",
+      "The error messages that come from the server (sign-in, sign-up, rosters, trades, images and the others) end with a full stop, for example “\u0001”.",
+      "An error with a waiting time ends with a sentence of its own, for example “\u0001”, and with saved data the note says “\u0001” after the reason, no longer in brackets."
+    ]
+  },
+  {
+    "versione": "1.606",
+    "data": "2026-11-27T14:30:51",
+    "titolo": "Formazione: si aggiorna da sola alla scadenza, e il menu del modulo dice la tua",
+    "voci": [
+      "Formazione sulla web aperta alla scadenza: pochi secondi dopo si aggiorna da sola e si chiude, senza ricaricare la pagina. Si aggiorna anche quando torni sull'app dopo la scadenza o dopo più di 5 minuti, e quando un cambio non riesce perché una partita è già cominciata. «Formazione chiusa» compare solo a scadenza passata, non più mezzo minuto prima.",
+      "Menu del modulo dopo un cambio fatto a mano: in cima c'è la tua formazione con i suoi punti («4-3-3 · 71,0 punti · la tua»), scelta; scegliendo il modulo «consigliato» torni alla consigliata. Prima restava scelta la voce consigliata e sceglierla non faceva niente.",
+      "Con la tastiera, nel menu del modulo le frecce scorrono le voci e il modulo si cambia con Invio (o uscendo dal menu), non a ogni freccia.",
+      "Se «Copia per l'app della lega» non riesce, il testo della formazione compare sotto il pulsante, già selezionato, da copiare a mano."
+    ],
+    "tecnico": [
+      "Web, `mostraFormazione`: una rilettura che chiede prima al server con la pagina com'è (`vistaFormazione(inPagina)`, opzione nuova `inPagina` di `caricaConCache`: con i dati uguali niente ridisegno, la copia salvata solo se il server non risponde) 5 secondi dopo la scadenza della formazione in pagina (`scadenzaDi`, una volta per scadenza, `scadenzaRiletta`) e al `visibilitychange` se la scadenza è passata o i dati hanno più di 5 minuti; dopo un rifiuto `giocatore_bloccato` di POST /api/formazione/valuta o DELETE /api/scelta si rilegge come dopo `formazione_chiusa`. `testoConto` arrotonda in su i minuti che mancano.",
+      "Menu del modulo: la voce `VOCE_TUA` (testo `formazione.opzione_tua`) quando gli 11 in pagina non sono quelli di un modulo calcolato; con la tastiera i `change` arrivati nello stesso giro di un tasto non salvano, si salva con Invio o `blur`. Copia non riuscita: riquadro `#da-copiare` (testo `formazione.da_copiare`). Nessuna rotta cambiata; l'iPhone non cambia in questo lavoro. Con un salvataggio in volo «Copia per l'app della lega» non copia (`libero()`); dopo un salvataggio riuscito i dati contano come appena letti (`sc.letta`)."
+    ],
+    "titolo_en": "Lineup: it updates by itself at the deadline, and the formation menu shows yours",
+    "voci_en": [
+      "Lineup on the web open at the deadline: a few seconds later it updates by itself and closes, without reloading the page. It also updates when you come back to the app after the deadline or after more than 5 minutes, and when a change fails because a match has already started. “Lineup closed” appears only once the deadline has passed, no longer half a minute early.",
+      "Formation menu after a change made by hand: at the top there is your lineup with its points (“4-3-3 · 71.0 points · yours”), selected; choosing the “recommended” formation takes you back to the recommended lineup. Before, the recommended entry stayed selected and choosing it did nothing.",
+      "With the keyboard, the arrows move through the formation menu and the formation changes with Enter (or when leaving the menu), not at every arrow.",
+      "If “Copy for the league app” fails, the lineup text appears below the button, already selected, to copy by hand."
+    ]
+  },
+  {
+    "versione": "1.605",
+    "data": "2026-11-27T13:46:30",
+    "titolo": "Gestione: permessi degli amministratori più stretti e inviti più sicuri",
+    "voci": [
+      "Gestione: il codice di «Password dimenticata» e l'importazione delle rose per conto di un altro non valgono più per un altro amministratore, come già Blocca ed Elimina.",
+      "Un invito da amministratore chiede conferma e la casella si spegne dopo ogni invito; un doppio tocco su «Crea l'invito», «Genera il codice» o «Aggiorna i dati» non fa più due richieste.",
+      "Errori recenti si aggiorna anche dopo inviti e codici, e se il server non legge il suo registro lo dice invece di «Nessun evento»."
+    ],
+    "tecnico": [
+      "account.crea_reset(..., chi=Utente): 403 account.RESET_ALTRO_AMMINISTRATORE (err.reset_altro_amministratore) per l'account di un altro amministratore, il proprio sì; l'evento reset_creato ha da=chi.nome_utente. POST /api/admin/reset-password passa chi (solo_amministratore come parametro).",
+      "server.importa_per_conto_di: dalla web (da_chi) 403 account.ROSE_ALTRO_AMMINISTRATORE (err.rose_altro_amministratore) sull'account di un altro amministratore, prima del tetto di frequenza; il proprio sì; dal comando importa-per-conto-di (da_chi None) sì.",
+      "registro.ultimi: salta solo FileNotFoundError; un altro OSError scrive la causa nel log del servizio (logger fanta.registro) e alza RegistroIlleggibile. GET /api/admin/registro risponde 503 «Non riesco a leggere il registro del server ({nome}): …» (err.registro_illeggibile); la web lo mostra con role=alert.",
+      "Web (collegaAmministratore): spentoMentre per #adm-invito e #adm-reset; confirm(admin.invito_admin_conferma) con #adm-admin accesa e spunta tolta dopo l'invito; caricaRegistro dopo invito, annullamento e codice; #adm-registro senza aria-live. aggiornaDati: chiedoAggiornamento e #aggiorna-dati spento durante il POST, riacceso nel finally se l'aggiornamento non è partito."
+    ],
+    "titolo_en": "Management: stricter administrator permissions and safer invitations",
+    "voci_en": [
+      "Management: the “\u0001” code and importing rosters on someone's behalf no longer work for another administrator, as already for Block and Delete.",
+      "An administrator invitation asks for confirmation and the box clears after each invitation; a double tap on “\u0001”, “\u0001” or “\u0001” no longer sends two requests.",
+      "Recent errors also refreshes after invitations and codes, and if the server cannot read its log it says so instead of “\u0001”."
+    ]
+  },
+  {
+    "versione": "1.604",
+    "data": "2026-11-27T13:31:14",
+    "titolo": "La web non resta più vuota se l'ultimo pezzo dell'app arriva in ritardo",
+    "voci": [
+      "Apertura della web con la rete lenta o assente: se Impostazioni (o una sua pagina) si apriva prima di aver ricevuto tutti i pezzi dell'app, la pagina restava bianca fino alla ricarica. Ora aspetta che ci siano tutti e poi si disegna, anche senza rete, con «La mia squadra» spenta e la frase che dice quando si apre."
+    ],
+    "tecnico": [
+      "app.js: l'avvio aspetta DOMContentLoaded (`scriptPronti`) prima di disegnare la prima schermata. impostazioni.js è l'ultimo degli script (dopo app.js): se i dati d'avvio arrivavano (o fallivano, senza rete) prima che fosse eseguito, `vai()` chiamava `vistaImpostazioni` non ancora definita e il <main> restava vuoto. La richiesta dei dati (stato, squadre, funzioni, volti) parte subito come prima: aspetta solo il disegno.",
+      "Test: tests/browser/test_copie_e_rete.py::test_l_ultimo_script_in_ritardo_non_lascia_vuota_la_prima_schermata (impostazioni.js trattenuto, con e senza rete). Spiega i fallimenti, ogni tanto, di test_senza_rete_impostazioni_tiene_la_mia_squadra_spenta_con_una_frase sui server di GitHub (pagina vuota dopo il ricaricamento senza rete): non visto in locale, nemmeno sotto carico, ma riprodotto trattenendo lo script."
+    ],
+    "titolo_en": "The web app no longer stays blank when the last piece of the app arrives late",
+    "voci_en": [
+      "Opening the web app with a slow or missing connection: if Settings (or one of its pages) was drawn before all the pieces of the app had arrived, the page stayed blank until a reload. It now waits for all of them and then draws, even offline, with “My team” switched off and the sentence saying when it opens."
+    ]
+  },
+  {
     "versione": "1.603",
     "data": "2026-11-27T12:54:39",
     "titolo": "Giornate più chiare: tutti i voti in tabella, le giornate in attesa del recupero e la stessa panchina di Oggi",
