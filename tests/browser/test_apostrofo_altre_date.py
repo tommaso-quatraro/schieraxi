@@ -48,6 +48,24 @@ def test_la_rosa_dice_quando_e_aggiornata_con_l_apostrofo(web, aggiornato, attes
     assert atteso in testo, testo[-300:]
 
 
+def test_in_inglese_le_stesse_date_con_il_mese_breve(web):
+    """In inglese il giorno con l'anno ha il mese breve, come le altre date della web inglese («27 Nov 2026», `fDataAnno`):
+    collaudo in inglese del 27/11/2026, dove queste due righe dicevano «8 October 2026». In italiano resta il mese per intero,
+    come sull'iPhone (test sopra)."""
+    _solo_prima(web)
+    web.memoria({"lingua": "en"})
+    web.risposta("/api/account/me", {**UTENTE, "utente": {**UTENTE["utente"], "creato": "2026-10-08T10:00:00"}})
+    web.apri("/?vista=impostazioni&gruppo=account")
+    testo = _testo(web.testo_principale())
+    assert "User · since 8 Oct 2026" in testo, testo[:300]
+    rosa = web.registrata("/api/rosa")
+    rosa["aggiornato"] = "2026-11-27T09:00:00"
+    web.risposta("/api/rosa", rosa)
+    web.apri("/?vista=impostazioni&gruppo=squadra")
+    testo = _testo(web.testo_principale())
+    assert "Rosters updated on 27 Nov 2026" in testo, testo[-300:]
+
+
 # La data breve del browser (`fData(d, {})`): «08/10/2026» in Chrome, con lo zero; «l'08/10» si legge comunque «l'otto».
 @pytest.mark.parametrize(("uso_dal", "coppe_fino", "attesi"), [
     ("2026-10-08", "2027-01-11", [r"ultime 4 settimane \(dall'0?8/10/2026\)", r"Inserite fino all'11/0?1/2027"]),

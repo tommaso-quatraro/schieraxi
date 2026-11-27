@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import sqlite3
 from datetime import datetime, timedelta
 
@@ -199,24 +200,70 @@ def etichetta_aggiornamento(cosa: str) -> str:
     return testo[:1].upper() + testo[1:]
 
 
-def _quando_breve(quando: str | None, formato: str) -> str:
-    try:
-        return datetime.fromisoformat(str(quando)[:19]).strftime(formato)
-    except ValueError:
-        return str(quando)
+def _motivo(passo: dict) -> frasi.Frase:
+    """Perché un passo non riesce, in parole semplici: la fonte che non risponde (`tipo` «rete», scritto da `aggiorna`), altrimenti
+    dove sta il dettaglio. Il messaggio tecnico (`errore`) non si mostra: resta nel registro del server e nell'archivio."""
+    if passo.get("tipo") != "rete":
+        return frasi.F("aggiornamento.motivo_registro")
+    fonte = passo.get("fonte")
+    if fonte in fonti_attive.FONTI:
+        return frasi.F("aggiornamento.motivo_rete", fonte=fonti_attive.FONTI[fonte][0])
+    return frasi.F("aggiornamento.motivo_rete_generico")
 
 
-def _errori_passo(passo: dict, adesso: datetime) -> list[str]:
-    """L'errore di un passo dell'aggiornamento per «Stato dei dati» (una riga, accanto all'ora del suo ultimo successo). Fermo da più
-    di `archivio.PASSO_FERMO`: «Fermo da 3 giorni (non riesce dal …)», come la salute; se no «Non riuscito alle … del …»."""
+def _durata(d: timedelta) -> frasi.Frase:
+    """«26 ore» fino a due giorni, poi «3 giorni»: come `archivio.durata_testo` (salute), con la frase per tradurla."""
+    ore = int(d.total_seconds() // 3600)
+    return frasi.F("tempo.ore", n=ore) if ore < 48 else frasi.F("tempo.giorni", n=ore // 24)
+
+
+def _errori_passo(passo: dict, adesso: datetime) -> list[frasi.Frase]:
+    """L'errore di un passo dell'aggiornamento per «Stato dei dati» (una riga, accanto all'ora del suo ultimo successo), con il giorno
+    come lo scrive l'app («ven 27 nov»). Fermo da più di `archivio.PASSO_FERMO`: «Fermo da 3 giorni, non riesce da …», come la
+    salute; se no «Non riuscito ven 27 nov alle 11:31: Fantacalcio.it non risponde.» (collaudo in inglese del 27/11/2026: prima
+    c'era il messaggio tecnico intero, in italiano anche con la web in inglese)."""
     if not passo.get("errore"):
         return []
     fermo = archivio.fermo_da(passo, adesso)
-    if fermo is not None and fermo > archivio.PASSO_FERMO:
-        testa = f"Fermo da {archivio.durata_testo(fermo)} (non riesce dal {_quando_breve(passo['dal'], '%d/%m alle %H:%M')})"
-    else:
-        testa = f"Non riuscito alle {_quando_breve(passo['ultimo'], '%H:%M del %d/%m')}"
-    return [f"{frasi.elidi_date(testa)}: {passo['errore']}"]               # «dall'08/11», «dell'11/11» (#859)
+    lungo = fermo is not None and fermo > archivio.PASSO_FERMO
+    try:
+        ora = datetime.fromisoformat(str(passo["dal"] if lungo else passo["ultimo"])[:19])
+    except ValueError:
+        return [frasi.F("aggiornamento.non_riuscito_breve", motivo=_motivo(passo))]
+    quando = {"quando": frasi.giorno_mese(ora), "ora": ora.strftime("%H:%M"), "motivo": _motivo(passo)}
+    if lungo:
+        return [frasi.F("aggiornamento.fermo", durata=_durata(fermo), **quando)]
+    return [frasi.F("aggiornamento.non_riuscito", **quando)]
+
+
+_STAGIONE = re.compile(r"\d{4}-\d{2}")
+# i passi che ci sono solo per le stagioni passate (`Aggiornamento.esegui` con lo storico): non hanno una riga in `aggiornamenti`
+NOMI_PASSI_STORICI = {"quotazioni": frasi.F("aggiornamento.quotazioni")}
+
+
+def _nome_passo(nome: str):
+    """Il nome leggibile di un passo come lo scrive `aggiorna` negli errori della corsa («listone», «Understat», «dati extra»,
+    «voti 2025-26» o «quotazioni 2025-26» per una stagione passata)."""
+    base, _, stagione = nome.rpartition(" ")
+    if base and _STAGIONE.fullmatch(stagione):
+        cosa = archivio.cosa_passo(base)
+        passo = NOMI_PASSI_STORICI.get(cosa) or etichetta_aggiornamento(cosa)
+        return frasi.F("aggiornamento.con_stagione", passo=passo, stagione=stagione) if isinstance(passo, frasi.Frase) else nome
+    return etichetta_aggiornamento(archivio.cosa_passo(nome))
+
+
+def _errori_corsa(righe: list) -> list[frasi.Frase]:
+    """Gli errori della corsa (riga «aggiornamento», `Aggiornamento.esegui`: «listone: ProxyError: …», «controlli: gol_dei_voti: …»)
+    per «Stato dei dati»: una frase sola con i passi non riusciti, una volta ciascuno. Il motivo di ogni passo seguito sta nella
+    sua riga; il messaggio tecnico resta nel registro del server."""
+    nomi: dict[str, object] = {}
+    for riga in righe:
+        if isinstance(riga, str) and riga.strip():
+            nome = _nome_passo(riga.split(": ", 1)[0].strip())
+            nomi.setdefault(str(nome), nome)
+    if not nomi:
+        return []
+    return [frasi.F("aggiornamento.non_riusciti", n=len(nomi), passi=frasi.elenco(list(nomi.values())))]
 
 
 GIRI_SENTINELLA = timedelta(days=7)      # in «Stato dei dati» i giri della sentinella dell'ultima settimana
@@ -249,11 +296,13 @@ def riepilogo(db: sqlite3.Connection, stagione: str, *, adesso: datetime | None 
             errori = _errori_passo(passi[cosa], adesso or datetime.now())
         else:
             try:
-                errori = json.loads(dettaglio) if dettaglio and dettaglio.startswith("[") else []
+                righe = json.loads(dettaglio) if dettaglio and dettaglio.startswith("[") else []
             except ValueError:
-                errori = []
+                righe = []
+            errori = _errori_corsa(righe if isinstance(righe, list) else [])
         etichetta = etichetta_aggiornamento(cosa)
-        agg.append({"cosa": cosa, "quando": quando, "errori": errori, "etichetta": str(etichetta), "etichetta_frase": frasi.di(etichetta)})
+        agg.append({"cosa": cosa, "quando": quando, "errori": [str(e) for e in errori], "errori_frasi": frasi.lista(errori),
+                    "etichetta": str(etichetta), "etichetta_frase": frasi.di(etichetta)})
     partite = db.execute("SELECT COUNT(*), COALESCE(SUM(giocata), 0) FROM partite WHERE stagione = ?", (stagione,)).fetchone()
     probabili = db.execute("SELECT giornata, COUNT(*), MAX(rilevato) FROM probabili WHERE stagione = ? AND fonte = 'fantacalcio' "
                            "GROUP BY giornata ORDER BY giornata", (stagione,)).fetchall()

@@ -89,7 +89,7 @@
   },
   "giornate.senza_voto": {
     "it": "senza voto",
-    "en": "no score"
+    "en": "no grade"
   },
   "giornate.al_posto": {
     "it": "Al posto di {fuori} hai messo {dentro}.",

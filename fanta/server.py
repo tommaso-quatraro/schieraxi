@@ -710,7 +710,8 @@ def _novita() -> list[dict]:
 
 
 def _novita_en() -> dict:
-    """Le novità tradotte per le versioni vecchie: {versione: {titolo, voci}} (fanta/contenuti/novita.en.json)."""
+    """Le novità tradotte per le versioni vecchie e le correzioni di quelle uscite: {versione: {titolo, voci}}
+    (fanta/contenuti/novita.en.json)."""
     try:
         dati = json.loads(FILE_NOVITA_EN.read_text(encoding="utf-8"))
         return dati if isinstance(dati, dict) else {}
@@ -726,10 +727,11 @@ NOVITA_EN_GRUPPO = "Versions {da} to {a} have no English description yet. Switch
 
 
 def _novita_tradotta(v: dict, en: dict) -> tuple[str, list[str]] | None:
-    """(titolo, voci) in inglese di una versione: `titolo_en`/`voci_en` (li mette il bot dai file di novita.d) oppure novita.en.json.
+    """(titolo, voci) in inglese di una versione: novita.en.json (traduzioni delle versioni vecchie e correzioni di quelle uscite:
+    novita.json lo scrive il rilascio e non si tocca a mano) oppure `titolo_en`/`voci_en` (li mette il bot dai file di novita.d).
     None senza un titolo inglese; voci in numero diverso dalle italiane si scartano (resta la voce generica NOVITA_EN_VOCE)."""
     e = en.get(str(v.get("versione"))) or {}
-    titolo, voci = v.get("titolo_en") or e.get("titolo"), v.get("voci_en") or e.get("voci")
+    titolo, voci = e.get("titolo") or v.get("titolo_en"), e.get("voci") or v.get("voci_en")
     if not (isinstance(titolo, str) and titolo.strip()):
         return None
     if not (isinstance(voci, list) and voci and len(voci) == len(v.get("voci") or []) and all(isinstance(x, str) for x in voci)):
@@ -921,8 +923,10 @@ def avvia_aggiornamento():
 
     # Chi ha premuto legge una frase del catalogo per fatto (`errori`, con `errori_frasi` per tradurla: aggiorna.Aggiornamento.per_utente),
     # mai l'errore tecnico (collaudo d'insieme del 26/11: «ProxyError: HTTPSConnectionPool…» copriva lo schermo). Il dettaglio resta per
-    # chi gestisce il server: nel registro, in `righe` della stessa risposta (rotta solo per l'amministratore, nessun client le mostra)
-    # e in Stato dei dati. Errori senza una loro frase: una frase generica, così l'avviso non dice «Dati aggiornati».
+    # chi gestisce il server: nel registro (accorciato e con gli indirizzi senza i parametri, `aggiorna.per_il_registro`) e in `righe`
+    # della stessa risposta (rotta solo per l'amministratore, nessun client le mostra); Stato dei dati dice quale passo non è
+    # riuscito e, se non è la rete, rimanda al registro. Errori senza una loro frase: una frase generica, così l'avviso non dice
+    # «Dati aggiornati».
     # `nessun_dato_nuovo` (collaudo del 27/11/2026): non è arrivato niente, la stessa regola che lascia ferma l'ora dei dati
     # (aggiorna.Aggiornamento.dati_nuovi); vero anche se il giro si ferma prima della fine, perché l'ora non è cambiata.
     def lavoro():
@@ -933,7 +937,7 @@ def avvia_aggiornamento():
         try:
             errori = aggiorna.esegui(scrivi=_aggiornamento["righe"].append, per_utente=per_utente, esito=esito)
             for e in errori:
-                registro.warning("Aggiorna i dati: %s", str(e)[:1000])
+                registro.warning("Aggiorna i dati: %s", aggiorna.per_il_registro(e, massimo=1000))
             if errori and not per_utente:
                 per_utente.append(frasi.F("aggiorna.parte_non_aggiornata_generica"))
             _scalda()

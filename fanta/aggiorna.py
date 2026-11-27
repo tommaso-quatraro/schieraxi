@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from dataclasses import asdict
 from datetime import date, datetime, timedelta
@@ -68,6 +69,19 @@ class StatisticheCalate(ValueError):
 
 def _ora() -> str:
     return datetime.now().isoformat(timespec="seconds")
+
+
+# Gli errori della corsa nel registro del server («Aggiorna i dati», giro dei risultati della sera): Stato dei dati, per un guasto che
+# non è la rete, rimanda lì. Senza quello che segue «?» o «#» negli indirizzi (può portare chiavi) e accorciati (revisione della #975):
+# negli indirizzi interi («https://…») e in quello che segue «url:», dove i proxy e le connessioni cadute di requests scrivono solo il
+# percorso («Max retries exceeded with url: /voti/12?…»)
+_PARAMETRI = re.compile(r"((?:https?://|\burl:\s*)[^\s?#'\"]+)[?#][^\s'\")]*", re.I)
+
+
+def per_il_registro(errore: str, massimo: int = 300) -> str:
+    """Un errore della corsa («voti: HTTPError: 404 … for url: https://…», «… with url: /voti/12?…») per il registro: gli indirizzi
+    senza i parametri, al massimo `massimo` caratteri."""
+    return _PARAMETRI.sub(lambda m: m.group(1), str(errore))[:massimo]
 
 
 def _ultimo(db: sqlite3.Connection, cosa: str) -> datetime | None:
@@ -157,9 +171,10 @@ class Aggiornamento:
         except Exception as e:  # noqa: BLE001 - una fonte rotta non deve fermare le altre
             self.db.rollback()
             errore = f"{type(e).__name__}: {e}"
-            prima = self._segna_esito(nome, errore=errore)
+            tipo = "controlli" if nome == "controlli" else "rete" if _non_risponde(e) else "dati"
+            prima = self._segna_esito(nome, errore=errore, tipo=tipo, fonte=fonte)
             self.errori.append(f"{nome}: {errore}{_da_quando(prima)}")
-            self._guasti.append((fonte, "controlli" if nome == "controlli" else "rete" if _non_risponde(e) else "dati"))
+            self._guasti.append((fonte, tipo))
             self.scrivi(f"  ! {nome}: non riuscito ({errore}){_da_quando(prima)}")
 
     def per_utente(self) -> list[frasi.Frase]:
@@ -190,15 +205,22 @@ class Aggiornamento:
             uscita.append(frasi.F("aggiorna.controlli"))
         return uscita
 
-    def _segna_esito(self, nome: str, errore: str | None = None, saltato: bool = False) -> dict | None:
-        """Esito del passo in `aggiornamenti` (`archivio.segna_passo`). Se l'archivio non lo accetta (occupato) si scrive nel registro
-        e si va avanti: il passo vero conta più del suo resoconto."""
+    @property
+    def solo_rete(self) -> bool:
+        """I passi non riusciti di questo giro sono tutti di una fonte che non ha risposto (`_non_risponde`): così il giro dei
+        risultati della sera (`pianificatore.aggiorna_risultati`) segna nel suo passo il tipo di guasto giusto."""
+        return bool(self._guasti) and all(tipo == "rete" for _, tipo in self._guasti)
+
+    def _segna_esito(self, nome: str, errore: str | None = None, saltato: bool = False, tipo: str | None = None,
+                     fonte: str | None = None) -> dict | None:
+        """Esito del passo in `aggiornamenti` (`archivio.segna_passo`, con il tipo di guasto e la fonte per «Stato dei dati»). Se
+        l'archivio non lo accetta (occupato) si scrive nel registro e si va avanti: il passo vero conta più del suo resoconto."""
         try:
             if saltato:
                 archivio.passo_saltato(self.db, nome)
                 self.db.commit()
                 return None
-            prima = archivio.segna_passo(self.db, nome, _ora(), errore)
+            prima = archivio.segna_passo(self.db, nome, _ora(), errore, tipo=tipo, fonte=fonte)
             if errore is not None:
                 self.db.commit()
             return prima

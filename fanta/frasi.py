@@ -36,6 +36,8 @@ CATALOGO: dict[str, str] = {
     "tempo.meno_di_un_ora": "meno di un'ora",
     "tempo.ore.one": "{n} ora",
     "tempo.ore.other": "{n} ore",
+    "tempo.giorni.one": "{n} giorno",
+    "tempo.giorni.other": "{n} giorni",
     "tempo.fa_meno_di_un_minuto": "meno di un minuto fa",
     "tempo.minuti_fa.one": "{n} minuto fa",
     "tempo.minuti_fa.other": "{n} minuti fa",
@@ -460,6 +462,22 @@ CATALOGO: dict[str, str] = {
     "aggiornamento.taratura_probabili": "Taratura di «gioca N%»",
     "aggiornamento.calendario_stagione": "Calendario completo {stagione}",
     "aggiornamento.dati_extra_stagione": "Statistiche di squadra {stagione}",
+    # Stato dei dati › Ultimi aggiornamenti (collaudo in inglese del 27/11/2026): l'errore di un passo in parole semplici, il
+    # messaggio tecnico resta nel registro del server e nell'archivio (`stato_dati._errori_passo`). {quando} = `data.giorno_mese`,
+    # {ora} = «11:31», {durata} = `tempo.ore` o `tempo.giorni`, {motivo} = una `aggiornamento.motivo_*`
+    "aggiornamento.non_riuscito": "Non riuscito {quando} alle {ora}: {motivo}.",
+    "aggiornamento.non_riuscito_breve": "Non riuscito: {motivo}.",
+    "aggiornamento.fermo": "Fermo da {durata}, non riesce da {quando} alle {ora}: {motivo}.",
+    "aggiornamento.motivo_rete": "{fonte} non risponde",
+    "aggiornamento.motivo_rete_generico": "la fonte non risponde",
+    "aggiornamento.motivo_registro": "il dettaglio è nel registro del server",
+    # la riga generale (`stato_dati._errori_corsa`): i passi dell'ultimo aggiornamento non riusciti, {passi} = elenco delle loro
+    # etichette (`aggiornamento.*`), {n} quanti sono; un passo di una stagione passata con `aggiornamento.con_stagione`
+    "aggiornamento.non_riusciti.one": "Non riuscito: {passi}.",
+    "aggiornamento.non_riusciti.other": "Non riusciti: {passi}.",
+    "aggiornamento.con_stagione": "{passo} {stagione}",
+    # un passo che c'è solo per le stagioni passate (aggiornamento con lo storico, lanciato a mano): «quotazioni 2025-26»
+    "aggiornamento.quotazioni": "Quotazioni",
     # i controlli sui dati (`controlli.etichetta`): la chiave è il nome del controllo
     "controllo.partite_per_giornata": "10 partite per giornata",
     "controllo.voti_per_giornata": "Voti nelle giornate finite",

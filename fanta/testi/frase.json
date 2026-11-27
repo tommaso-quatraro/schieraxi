@@ -12,6 +12,14 @@
     "it": "{n} ore",
     "en": "{n} hours"
   },
+  "frase.tempo.giorni.one": {
+    "it": "{n} giorno",
+    "en": "{n} day"
+  },
+  "frase.tempo.giorni.other": {
+    "it": "{n} giorni",
+    "en": "{n} days"
+  },
   "frase.tempo.fa_meno_di_un_minuto": {
     "it": "meno di un minuto fa",
     "en": "less than a minute ago"
@@ -1154,19 +1162,19 @@
   },
   "frase.diario.confronto_fuori_rosa.one": {
     "it": "{n} giornata non entra nel confronto: nella consigliata di allora c'è chi non è più nella tua rosa.",
-    "en": "{n} matchday is left out of the comparison: the recommended lineup of the time has a player who is no longer in your squad."
+    "en": "{n} matchday is left out of the comparison: the recommended lineup of the time has a player who is no longer in your roster."
   },
   "frase.diario.confronto_fuori_rosa.other": {
     "it": "{n} giornate non entrano nel confronto: nella consigliata di allora c'è chi non è più nella tua rosa.",
-    "en": "{n} matchdays are left out of the comparison: the recommended lineup of the time has a player who is no longer in your squad."
+    "en": "{n} matchdays are left out of the comparison: the recommended lineup of the time has a player who is no longer in your roster."
   },
   "frase.diario.confronto_non_valutabili.one": {
     "it": "{n} giornata non entra nel confronto: la consigliata di allora non si può più valutare con la rosa e le regole di oggi.",
-    "en": "{n} matchday is left out of the comparison: the recommended lineup of the time can no longer be scored with today's squad and rules."
+    "en": "{n} matchday is left out of the comparison: the recommended lineup of the time can no longer be scored with today's roster and rules."
   },
   "frase.diario.confronto_non_valutabili.other": {
     "it": "{n} giornate non entrano nel confronto: la consigliata di allora non si può più valutare con la rosa e le regole di oggi.",
-    "en": "{n} matchdays are left out of the comparison: the recommended lineup of the time can no longer be scored with today's squad and rules."
+    "en": "{n} matchdays are left out of the comparison: the recommended lineup of the time can no longer be scored with today's roster and rules."
   },
   "frase.diario.confronto_stessa_confrontabili": {
     "it": "Hai schierato gli stessi undici della consigliata in tutte le giornate che si possono confrontare. {fuori}",
@@ -1190,11 +1198,11 @@
   },
   "frase.diario.allora_fuori_rosa": {
     "it": "in quella mostrata prima della scadenza c'è chi non è più nella tua rosa",
-    "en": "the one shown before the deadline has a player who is no longer in your squad"
+    "en": "the one shown before the deadline has a player who is no longer in your roster"
   },
   "frase.diario.allora_non_valutabile": {
     "it": "quella mostrata prima della scadenza non si può più valutare con la rosa e le regole di oggi",
-    "en": "the one shown before the deadline can no longer be scored with today's squad and rules"
+    "en": "the one shown before the deadline can no longer be scored with today's roster and rules"
   },
   "frase.diario.scarto_giocatore": {
     "it": "{nome} ({d})",
@@ -1262,15 +1270,15 @@
   },
   "frase.registro.persa_previsioni": {
     "it": "previsioni vuote o incomplete",
-    "en": "predictions empty or incomplete"
+    "en": "forecasts empty or incomplete"
   },
   "frase.registro.persa_calcolo": {
     "it": "calcolo delle previsioni non riuscito",
-    "en": "the predictions could not be computed"
+    "en": "the forecasts could not be computed"
   },
   "frase.registro.persa_altra_giornata": {
     "it": "previsioni di un'altra giornata",
-    "en": "predictions for another matchday"
+    "en": "forecasts for another matchday"
   },
   "frase.registro.persa_nessun_giocatore": {
     "it": "nessun giocatore con i numeri da salvare",
@@ -1346,7 +1354,7 @@
   },
   "frase.fonte.spenta_fantacalcio": {
     "it": "Non scarico listone, quotazioni, calendario, voti e probabili formazioni.",
-    "en": "I don't download the player list, prices, fixtures, grades and probable lineups.",
+    "en": "I don't download the player list, prices, calendar, grades and probable lineups.",
     "nota": "Stato dei dati › Fonti dei dati, sotto una fonte spenta (#894): campo messaggio_frase"
   },
   "frase.fonte.spenta_understat": {
@@ -1395,7 +1403,7 @@
   },
   "frase.aggiornamento.calendario": {
     "it": "Calendario",
-    "en": "Fixtures"
+    "en": "Calendar"
   },
   "frase.aggiornamento.voti": {
     "it": "Voti e bonus",
@@ -1431,11 +1439,58 @@
   },
   "frase.aggiornamento.calendario_stagione": {
     "it": "Calendario completo {stagione}",
-    "en": "Full fixtures {stagione}"
+    "en": "Full calendar {stagione}"
   },
   "frase.aggiornamento.dati_extra_stagione": {
     "it": "Statistiche di squadra {stagione}",
     "en": "Team statistics {stagione}"
+  },
+  "frase.aggiornamento.non_riuscito": {
+    "it": "Non riuscito {quando} alle {ora}: {motivo}.",
+    "en": "Failed on {quando} at {ora}: {motivo}.",
+    "nota": "Stato dei dati › Ultimi aggiornamenti, sotto un passo che non riesce (collaudo in inglese del 27/11/2026, campo errori_frasi); {quando} = frase.data.giorno_mese, {ora} = «11:31», {motivo} = frase.aggiornamento.motivo_*"
+  },
+  "frase.aggiornamento.non_riuscito_breve": {
+    "it": "Non riuscito: {motivo}.",
+    "en": "Failed: {motivo}.",
+    "nota": "come frase.aggiornamento.non_riuscito, quando l'ora non si legge"
+  },
+  "frase.aggiornamento.fermo": {
+    "it": "Fermo da {durata}, non riesce da {quando} alle {ora}: {motivo}.",
+    "en": "Stuck for {durata}, failing since {quando} at {ora}: {motivo}.",
+    "nota": "Stato dei dati › Ultimi aggiornamenti, sotto un passo che non riesce (collaudo in inglese del 27/11/2026, campo errori_frasi); {quando} = frase.data.giorno_mese, {ora} = «11:31», {motivo} = frase.aggiornamento.motivo_*; {durata} = frase.tempo.ore o frase.tempo.giorni (fermo da più di un giorno)"
+  },
+  "frase.aggiornamento.motivo_rete": {
+    "it": "{fonte} non risponde",
+    "en": "{fonte} is not responding",
+    "nota": "{fonte} = nome della fonte (Fantacalcio.it, Understat...)"
+  },
+  "frase.aggiornamento.motivo_rete_generico": {
+    "it": "la fonte non risponde",
+    "en": "the source is not responding"
+  },
+  "frase.aggiornamento.motivo_registro": {
+    "it": "il dettaglio è nel registro del server",
+    "en": "the details are in the server log"
+  },
+  "frase.aggiornamento.non_riusciti.one": {
+    "it": "Non riuscito: {passi}.",
+    "en": "Failed: {passi}.",
+    "nota": "Stato dei dati › riga «Aggiornamento generale»: i passi dell'ultimo aggiornamento non riusciti, {passi} = elenco dei loro nomi (frase.aggiornamento.*)"
+  },
+  "frase.aggiornamento.non_riusciti.other": {
+    "it": "Non riusciti: {passi}.",
+    "en": "Failed: {passi}."
+  },
+  "frase.aggiornamento.con_stagione": {
+    "it": "{passo} {stagione}",
+    "en": "{passo} {stagione}",
+    "nota": "un passo di una stagione passata: «Voti e bonus 2025-26»"
+  },
+  "frase.aggiornamento.quotazioni": {
+    "it": "Quotazioni",
+    "en": "Prices",
+    "nota": "un passo solo delle stagioni passate (aggiornamento con lo storico): «Quotazioni 2025-26» con frase.aggiornamento.con_stagione"
   },
   "frase.controllo.partite_per_giornata": {
     "it": "10 partite per giornata",
