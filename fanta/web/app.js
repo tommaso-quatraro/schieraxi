@@ -4665,6 +4665,18 @@ function collegaAmministratore() {
     pulsante.disabled = true;
     try { await fai(); } finally { pulsante.disabled = false; }
   };
+  // Un invito da amministratore vale per una persona sola (il server rifiuta gli altri numeri, collaudo del 27/11 sera): con la spunta
+  // «Quante persone» torna a 1 e si spegne, e la frase sotto dice perché; senza la spunta torna libero, con la frase del tetto
+  const postiPerAmministratore = () => {
+    const campo = $("#adm-posti"), aiuto = $("#adm-posti-aiuto");
+    if (!campo) return;
+    const unaSola = !!($("#adm-admin") && $("#adm-admin").checked);
+    if (unaSola) campo.value = "1";
+    campo.disabled = unaSola;
+    campo.closest(".stepper").querySelectorAll("button").forEach(b => { b.disabled = unaSola; });
+    if (aiuto) aiuto.textContent = unaSola ? t("admin.posti_amministratore") : stato.maxUsiInvito ? t("admin.posti_aiuto", { n: stato.maxUsiInvito }) : "";
+  };
+  if ($("#adm-admin")) $("#adm-admin").addEventListener("change", postiPerAmministratore);
   // Dopo l'invito la spunta «amministratore» si toglie, e con la spunta accesa si chiede prima (revisione del 27/11: restava accesa
   // e anche l'invito dopo dava i poteri di chi gestisce il server). Dopo l'invito si rilegge anche «Errori recenti» (l'evento nuovo).
   if ($("#adm-invito")) $("#adm-invito").addEventListener("click", spentoMentre($("#adm-invito"), () => provaCosi(t("admin.crea_invito_no"), async () => {
@@ -4680,6 +4692,7 @@ function collegaAmministratore() {
     if ($("#adm-admin")) $("#adm-admin").checked = false;
     $("#adm-etichetta").value = "";
     $("#adm-posti").value = "1";
+    postiPerAmministratore();
     avvisoPosti(r);
     mostraInvito(r);
     caricaUtenti();
@@ -4755,9 +4768,9 @@ function collegaAmministratore() {
   // il tetto delle persone di un invito, dal server (#940): il «+» di «Quante persone» si ferma lì e la spiegazione lo dice
   const tettoPersone = n => {
     stato.maxUsiInvito = n;
-    const campo = $("#adm-posti"), aiuto = $("#adm-posti-aiuto");
+    const campo = $("#adm-posti");
     if (campo) campo.closest(".stepper").dataset.max = String(n);
-    if (aiuto) aiuto.textContent = t("admin.posti_aiuto", { n });
+    postiPerAmministratore();
   };
   // inviti aperti (#894): il nome, la frase del server (creato, scade, posti liberi) e «Annulla»; gli inviti chiusi (usati,
   // scaduti, annullati) non si mostrano. Annullare chiede prima (il link dell'amico smette di valere), toglie il link appena creato
@@ -4770,7 +4783,7 @@ function collegaAmministratore() {
       if (Number.isInteger(r.max_usi) && r.max_usi > 0) tettoPersone(r.max_usi);
       const aperti = r.inviti.filter(i => i.stato === "attivo");
       dove.innerHTML = aperti.length ? `<ul class="elenco adm-inviti" aria-labelledby="adm-inviti-titolo">${aperti.map(i => `<li class="riga">
-          <div><div>${esc(i.etichetta)}</div><div class="debole piccolo">${esc(testoDi(i, "dettaglio"))}</div></div>
+          <div><div>${esc(i.etichetta)}${i.ruolo === "amministratore" ? t("admin.admin_breve") : ""}</div><div class="debole piccolo">${esc(testoDi(i, "dettaglio"))}</div></div>
           <button class="azione-testo" type="button" data-annulla-invito="${Number(i.id)}" aria-label="${esc(t("admin.annulla_invito_per", { etichetta: i.etichetta }))}">${t("admin.annulla_invito")}</button></li>`).join("")}</ul>`
         : `<p class="debole piccolo">${t("admin.nessun_invito_aperto")}</p>`;
       for (const b of dove.querySelectorAll("[data-annulla-invito]"))

@@ -110,6 +110,46 @@ def test_l_invito_da_amministratore_chiede_conferma_e_la_spunta_si_toglie(web):
     assert not web.errori_console, web.errori_console
 
 
+def test_con_la_spunta_amministratore_le_persone_restano_una(web):
+    """Collaudo del 27/11 sera: con la spunta e «Quante persone» a 3 la pagina chiedeva conferma e poi il server rispondeva «Un invito
+    da amministratore si può usare una volta sola». Ora con la spunta il numero torna a 1 e non si cambia (campo e pulsanti spenti),
+    e la frase sotto dice perché; senza la spunta torna libero."""
+    azioni, _ = gestione(web)
+    conferma(web, True)
+    posti = principale(web).get_by_label("Quante persone")
+    riga = principale(web).locator(".riga-regola", has=web.pagina.get_by_label("Quante persone"))
+    piu = riga.get_by_role("button", name="Aumenta")
+    posti.fill("3")
+    spunta(web).check()
+    assert posti.input_value() == "1" and posti.is_disabled()
+    assert piu.is_disabled() and riga.get_by_role("button", name="Diminuisci").is_disabled()
+    assert "Un invito da amministratore vale per una persona sola." in riga.inner_text()
+    spunta(web).uncheck()
+    assert posti.is_enabled() and piu.is_enabled()
+    assert "Un invito da amministratore" not in riga.inner_text()
+    piu.click()
+    assert posti.input_value() == "2"
+    spunta(web).check()
+    crea_invito(web, "Vice")
+    principale(web).get_by_text(CODICE).first.wait_for(timeout=10000)
+    assert [c for _, _, c in azioni.corpi] == [{"etichetta": "Vice", "amministratore": True, "usi": 1}]
+    assert not spunta(web).is_checked() and posti.is_enabled() and piu.is_enabled()    # dopo l'invito la spunta è tolta: di nuovo libero
+    assert not web.errori_console, web.errori_console
+
+
+def test_un_invito_da_amministratore_si_riconosce_negli_inviti_aperti(web):
+    """Collaudo del 27/11 sera: negli inviti aperti un invito da amministratore era uguale a quello di un amico, anche se il server
+    manda il ruolo. Ora la riga lo dice con le parole di «Utenti»: «Vice (amministratore)»."""
+    da_amministratore = APERTO | {"id": 7, "etichetta": "Vice", "ruolo": "amministratore"}
+    gestione(web, aperti=[da_amministratore, APERTO])
+    elenco = principale(web).get_by_role("list", name="Inviti aperti")
+    elenco.wait_for(timeout=10000)
+    righe = [" ".join(r.split()) for r in elenco.get_by_role("listitem").all_inner_texts()]
+    assert len(righe) == 2, righe
+    assert righe[0].startswith("Vice (amministratore)"), righe
+    assert "amministratore" not in righe[1], righe
+
+
 def test_senza_conferma_l_invito_da_amministratore_non_parte(web):
     azioni, _ = gestione(web)
     domande = conferma(web, False)
