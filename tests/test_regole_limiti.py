@@ -383,4 +383,4 @@ def test_con_la_web_in_inglese_gli_errori_delle_regole_sono_in_inglese(client):
         assert inglese.startswith("Invalid rules:\n- "), (italiano, inglese)
         assert not ITALIANO.search(inglese), (italiano, inglese)
     assert tradotti[-1] == ("Invalid rules:\n- the assist bonus must be between 0 and 20\n"
-                            "- the own goal malus must be between −20 and 0"), tradotti[-1]
+                            "- the own goal deduction must be between −20 and 0"), tradotti[-1]

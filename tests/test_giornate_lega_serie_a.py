@@ -36,7 +36,7 @@ def test_nome_giornata_del_server():
     assert frasi.di(frasi.nome_giornata(11, 8)) == {"chiave": "giornata.lega", "param": {"n": 8, "a": 11}}
     assert frasi.di(frasi.nome_giornata(11, None)) == {"chiave": "giornata.serie_a", "param": {"a": 11}}
     avviso = frasi.nome_giornata(11, 8, avviso=True)
-    assert avviso == "Giornata 8 · 11ª di Serie A" and avviso.in_lingua("en") == "Matchday 8 · Serie A matchday 11"
+    assert avviso == "Giornata 8 · 11ª di Serie A" and avviso.in_lingua("en") == "Matchday 8 · Serie A 11"
     assert frasi.nome_giornata(11, None, avviso=True).in_lingua("en") == "Serie A matchday 11"
 
 
@@ -122,7 +122,7 @@ def test_promemoria_con_i_due_numeri(tmp_path, finto):
     (_, un_ora), (_, ultimi) = mandati
     assert un_ora.startswith("Giornata 6 · 9ª di Serie A: la formazione si chiude tra circa un'ora (scadenza alle 18:30).")
     assert ultimi == "Giornata 6 · 9ª di Serie A: la formazione si chiude alle 18:30. L'hai inserita su Leghe?"
-    assert frasi.testo(ultimi, "en") == "Matchday 6 · Serie A matchday 9: the lineup closes at 18:30. Have you entered it on Leghe?"
+    assert frasi.testo(ultimi, "en") == "Matchday 6 · Serie A 9: the lineup closes at 18:30. Have you entered it on Leghe?"
 
 
 def test_titolare_a_rischio_con_i_due_numeri(tmp_path, finto, monkeypatch):
@@ -162,8 +162,8 @@ def test_nome_giornata_della_web(lingua):
         attesi = ["Giornata 8 · 11ª di Serie A", "11ª giornata di Serie A", "11ª giornata di Serie A", "Giornata 8", "",
                   "Giornata 1 · 1ª di Serie A", "11ª giornata di Serie A"]
     else:
-        attesi = ["Matchday 8 · Serie A matchday 11", "Serie A matchday 11", "Serie A matchday 11", "Matchday 8", "",
-                  "Matchday 1 · Serie A matchday 1", "Serie A matchday 11"]
+        attesi = ["Matchday 8 · Serie A 11", "Serie A matchday 11", "Serie A matchday 11", "Matchday 8", "",
+                  "Matchday 1 · Serie A 1", "Serie A matchday 11"]
     assert json.loads(r.stdout) == attesi
 
 
@@ -210,7 +210,7 @@ def test_testi_con_la_giornata_intera():
         assert _testo(IT, chiave) == testo, chiave
         segnaposto = set(re.findall(r"\{(\w+)\}", testo))
         assert set(re.findall(r"\{(\w+)\}", _testo(EN, chiave))) == segnaposto, chiave
-    assert _testo(EN, "frase.giornata.lega") == "Matchday {n} · Serie A matchday {a}"
+    assert _testo(EN, "frase.giornata.lega") == "Matchday {n} · Serie A {a}"
     assert _testo(EN, "frase.giornata.serie_a") == "Serie A matchday {a}"
 
 
@@ -275,7 +275,7 @@ def test_errori_con_la_giornata_tradotti_in_inglese():
                 "Giocatore 12 senza previsione per la Giornata 6 · 9ª di Serie A (la sua squadra non gioca?).",
                 "Giocatore 12 senza previsione per l'8ª giornata di Serie A (la sua squadra non gioca?)."]
     codice = TESTI + f'LINGUA = "en"; console.log(JSON.stringify({json.dumps(messaggi)}.map(traduciErrore)))'
-    assert _node(codice) == ["There are no forecasts yet for Matchday 6 · Serie A matchday 9: try again later.",
+    assert _node(codice) == ["There are no forecasts yet for Matchday 6 · Serie A 9: try again later.",
                              "There are no forecasts yet for Serie A matchday 11: try again later.",
-                             "Player 12 has no forecast for Matchday 6 · Serie A matchday 9 (is their team not playing?).",
+                             "Player 12 has no forecast for Matchday 6 · Serie A 9 (is their team not playing?).",
                              "Player 12 has no forecast for Serie A matchday 8 (is their team not playing?)."]

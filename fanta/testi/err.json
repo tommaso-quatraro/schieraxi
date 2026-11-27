@@ -28,8 +28,8 @@
     "en": "Sending emails is turned off on this server: the code cannot arrive. For your password use the recovery code."
   },
   "err.iscrizione_posta_spenta": {
-    "it": "Su questo server l'iscrizione con l'email non è disponibile: l'invio delle email è spento e il codice non potrebbe arrivare. Chiedi un invito a chi gestisce il server.",
-    "en": "Signing up with an email is not available on this server: sending emails is turned off, so the code could not arrive. Ask whoever runs the server for an invite."
+    "it": "L'iscrizione adesso non si può fare perché su questo server le email sono spente: avvisa chi gestisce il server.",
+    "en": "Signing up is not possible right now because emails are turned off on this server: let whoever runs the server know."
   },
   "err.registrazioni_chiuse": {
     "it": "Iscrizioni chiuse: siamo al completo.",
@@ -121,7 +121,7 @@
   },
   "err.funzione_spenta": {
     "it": "«{1}» non è disponibile in questa versione dell'app.",
-    "en": "«{1}» is not available in this version of the app."
+    "en": "“{1}” is not available in this version of the app."
   },
   "err.rinvio_non_valido": {
     "it": "Scelta non valida per le partite rinviate.",
@@ -137,7 +137,7 @@
   },
   "err.nessuna_rosa": {
     "it": "Nessuna rosa importata: importale con «Aggiorna le rose».",
-    "en": "No roster imported: import them with «Update the rosters»."
+    "en": "No roster imported: import them with “Update the rosters”."
   },
   "err.gia_della_stagione": {
     "it": "Le rose sono già della stagione in corso: non c'è niente da archiviare.",
@@ -342,15 +342,15 @@
   },
   "err.squadra_non_trovata_indica": {
     "it": "Squadra non trovata: indica la tua squadra in «La mia squadra».",
-    "en": "Team not found: choose your team in «My team»."
+    "en": "Team not found: choose your team in “My team”."
   },
   "err.indica_prima_squadra": {
     "it": "Indica prima la tua squadra in «La mia squadra».",
-    "en": "First choose your team in «My team»."
+    "en": "First choose your team in “My team”."
   },
   "err.indica_squadra": {
     "it": "Indica la tua squadra in «La mia squadra».",
-    "en": "Choose your team in «My team»."
+    "en": "Choose your team in “My team”."
   },
   "err.squadra_non_trovata": {
     "it": "Squadra non trovata.",
@@ -366,7 +366,7 @@
   },
   "err.nome_squadra_simile": {
     "it": "Questo nome si confonde con «{1}»: aggiungi o cambia una lettera o un numero.",
-    "en": "This name gets mixed up with «{1}»: add or change a letter or a number."
+    "en": "This name gets mixed up with “{1}”: add or change a letter or a number."
   },
   "err.squadra_non_trovata_nome": {
     "it": "Squadra non trovata: {1}.",
@@ -534,7 +534,7 @@
   },
   "err.regolamento_lungo": {
     "it": "Il regolamento è troppo lungo (al massimo {1} mila caratteri): incolla solo la parte con bonus, malus, moduli e panchina.",
-    "en": "The rules text is too long (at most {1} thousand characters): paste only the part with bonuses, maluses, formations and bench."
+    "en": "The rules text is too long (at most {1} thousand characters): paste only the part with bonuses, deductions, formations and bench."
   },
   "err.regolamento_riga_lunga": {
     "it": "Una riga del regolamento è troppo lunga (al massimo {1} caratteri): vai a capo tra una regola e l'altra.",
@@ -966,23 +966,23 @@
   },
   "err.regole_rigore_sbagliato": {
     "it": "il malus per il rigore sbagliato deve essere tra {1} e {2}",
-    "en": "the penalty missed malus must be between {1} and {2}"
+    "en": "the missed penalty deduction must be between {1} and {2}"
   },
   "err.regole_autogol": {
     "it": "il malus per l'autogol deve essere tra {1} e {2}",
-    "en": "the own goal malus must be between {1} and {2}"
+    "en": "the own goal deduction must be between {1} and {2}"
   },
   "err.regole_gol_subito": {
     "it": "il malus per ogni gol subito dal portiere deve essere tra {1} e {2}",
-    "en": "the malus for each goal conceded by the goalkeeper must be between {1} and {2}"
+    "en": "the deduction for each goal conceded by the goalkeeper must be between {1} and {2}"
   },
   "err.regole_ammonizione": {
     "it": "il malus per l'ammonizione deve essere tra {1} e {2}",
-    "en": "the yellow card malus must be between {1} and {2}"
+    "en": "the yellow card deduction must be between {1} and {2}"
   },
   "err.regole_espulsione": {
     "it": "il malus per l'espulsione deve essere tra {1} e {2}",
-    "en": "the red card malus must be between {1} and {2}"
+    "en": "the red card deduction must be between {1} and {2}"
   },
   "err.regole_rosa_portieri": {
     "it": "i portieri della rosa devono essere tra {1} e {2}",

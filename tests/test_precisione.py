@@ -200,7 +200,7 @@ def test_web_disegna_la_carta_senza_buchi(lingua):
     assert "<svg" in pieno_html and ("10 su 10" in pieno_html or "10 of 10" in pieno_html)            # la consigliata ha sempre fatto meglio
     assert ("6 su 10" in pieno_html) if lingua == "it" else ("6 of 10" in pieno_html)                # diciamo 95%, giocano 6 su 10: si vede
     assert "qp-pochi" in poco_html and "qp-pochi" not in pieno_html
-    assert ("senza le probabili" in pieno_html) if lingua == "it" else ("without the predicted" in pieno_html)   # numeri ricostruiti: lo dice
+    assert ("senza le probabili" in pieno_html) if lingua == "it" else ("without the probable" in pieno_html)   # numeri ricostruiti: lo dice
 
 
 def test_cron_per_utente_errori_con_id_e_tempo_finito(monkeypatch, tmp_path, capsys):

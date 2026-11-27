@@ -21,6 +21,15 @@ except ImportError:
 
 LOG = logging.getLogger(__name__)
 GRUPPI = modello.GRUPPI_PROBABILI      # (nome del gruppo, stato nelle probabili, percentuale minima, percentuale massima esclusa)
+
+
+def nome_gruppo(nome: str) -> str:
+    """Il nome di un gruppo della calibrazione con la sua frase (`fascia.*`, #949): lo stesso testo italiano, che resta anche la
+    chiave dei fattori; un nome che non è fra i GRUPPI torna com'è."""
+    for n, stato, da, a in GRUPPI:
+        if n == nome:
+            return frasi.F(f"fascia.{stato}_sotto", a=a) if da == 0 else frasi.F(f"fascia.{stato}", da=da, a=min(a - 1, 100))
+    return nome
 MINIMO_PER_GRUPPO = 20      # sotto questo numero di giocatori il confronto è solo indicativo
 
 
@@ -170,30 +179,22 @@ def _registro_nostri(db: sqlite3.Connection) -> dict | None:
         return None
 
 
-# Il nome di ogni riga di `aggiornamenti` per chi legge «Stato dei dati» (campo `etichetta`: le etichette nascono qui)
-ETICHETTE_AGGIORNAMENTI = {
-    "aggiornamento": "Aggiornamento generale",
-    "listone": "Listone e quotazioni",
-    "calendario": "Calendario",
-    "voti": "Voti e bonus",
-    "probabili": "Probabili formazioni",
-    "understat": "Statistiche avanzate",
-    "dati-extra": "Statistiche di squadra",
-    "controlli": "Controlli sui dati",
-    "probabili-rapido": "Probabili vicino alla scadenza",
-    "risultati-rapido": "Risultati la sera stessa",
-    "taratura-probabili": "Taratura di «gioca N%»",
-}
-ETICHETTE_PER_STAGIONE = {"calendario": "Calendario completo", "dati-extra": "Statistiche di squadra"}   # «calendario 2026-27»
+# Il nome di ogni riga di `aggiornamenti` per chi legge «Stato dei dati» (campo `etichetta`: le etichette nascono qui). Sono frasi
+# (`aggiornamento.*` in fanta/frasi.py, #949): accanto al testo va `etichetta_frase`, e la web in inglese le traduce
+ETICHETTE_AGGIORNAMENTI = {cosa: frasi.F("aggiornamento." + cosa.replace("-", "_")) for cosa in (
+    "aggiornamento", "listone", "calendario", "voti", "probabili", "understat", "dati-extra", "controlli", "probabili-rapido",
+    "risultati-rapido", "taratura-probabili")}
+ETICHETTE_PER_STAGIONE = ("calendario", "dati-extra")      # «calendario 2026-27» → «Calendario completo 2026-27»
 
 
 def etichetta_aggiornamento(cosa: str) -> str:
-    """Il nome leggibile di una riga di `aggiornamenti`; una chiave sconosciuta almeno senza trattini e con la maiuscola."""
+    """Il nome leggibile di una riga di `aggiornamenti` (una `Frase`); una chiave sconosciuta almeno senza trattini e con la
+    maiuscola (testo semplice, senza traduzione)."""
     if cosa in ETICHETTE_AGGIORNAMENTI:
         return ETICHETTE_AGGIORNAMENTI[cosa]
     base, _, resto = cosa.partition(" ")
     if base in ETICHETTE_PER_STAGIONE and resto:
-        return f"{ETICHETTE_PER_STAGIONE[base]} {resto}"
+        return frasi.F(f"aggiornamento.{base.replace('-', '_')}_stagione", stagione=resto)
     testo = cosa.replace("-", " ").replace("_", " ").strip()
     return testo[:1].upper() + testo[1:]
 
@@ -251,7 +252,8 @@ def riepilogo(db: sqlite3.Connection, stagione: str, *, adesso: datetime | None 
                 errori = json.loads(dettaglio) if dettaglio and dettaglio.startswith("[") else []
             except ValueError:
                 errori = []
-        agg.append({"cosa": cosa, "quando": quando, "errori": errori, "etichetta": etichetta_aggiornamento(cosa)})
+        etichetta = etichetta_aggiornamento(cosa)
+        agg.append({"cosa": cosa, "quando": quando, "errori": errori, "etichetta": str(etichetta), "etichetta_frase": frasi.di(etichetta)})
     partite = db.execute("SELECT COUNT(*), COALESCE(SUM(giocata), 0) FROM partite WHERE stagione = ?", (stagione,)).fetchone()
     probabili = db.execute("SELECT giornata, COUNT(*), MAX(rilevato) FROM probabili WHERE stagione = ? AND fonte = 'fantacalcio' "
                            "GROUP BY giornata ORDER BY giornata", (stagione,)).fetchall()
@@ -261,13 +263,15 @@ def riepilogo(db: sqlite3.Connection, stagione: str, *, adesso: datetime | None 
         "partite": {"totali": partite[0], "giocate": partite[1]},
         "voti": db.execute("SELECT COUNT(*) FROM voti WHERE stagione = ?", (stagione,)).fetchone()[0],
         "probabili": [{"giornata": g, "giocatori": n, "rilevato": q} for g, n, q in probabili],
-        "controlli": [{**c, "etichetta": controlli.etichetta(c["nome"])} for c in controlli.leggi(db, stagione)],
+        "controlli": [{**c, "etichetta": str(e), "etichetta_frase": frasi.di(e)}
+                      for c in controlli.leggi(db, stagione) for e in [controlli.etichetta(c["nome"])]],
         "ombra": ombra(db),
         "foto": len(foto.disponibili()) if foto else 0,
         "fonti": fonti_attive.stato(),
         "uso": uso.riepilogo(),
         "coppe_fino": coppe.aggiornate_fino().isoformat(),
-        "calibrazione": {**(c := calibrazione(db, stagione)), "fattori": fattori_da(c), "taratura": _taratura(db)},
+        "calibrazione": {**(c := calibrazione(db, stagione)), "fattori": fattori_da(c), "taratura": _taratura(db),
+                         "gruppi": [g | {"gruppo_frase": frasi.di(nome_gruppo(g["gruppo"]))} for g in c["gruppi"]]},
         "registro": registro(db),
         "registro_nostri": _registro_nostri(db),
         "consiglio": indicatori_consiglio.riepilogo(),

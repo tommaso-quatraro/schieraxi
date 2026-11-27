@@ -171,6 +171,14 @@
     "it": "gol ({n} rig.)",
     "en": "goals ({n} pen.)"
   },
+  "mercato.n_gol_rig.one": {
+    "it": "gol ({r} rig.)",
+    "en": "goal ({r} pen.)"
+  },
+  "mercato.n_gol_rig.other": {
+    "it": "gol ({r} rig.)",
+    "en": "goals ({r} pen.)"
+  },
   "mercato.gialli_rossi": {
     "it": "gialli/rossi",
     "en": "yellows/reds"
@@ -222,6 +230,26 @@
   "mercato.stagione_prec": {
     "it": "Stagione {s}: {m}' · {g} gol ({xg} attesi) · {a} assist ({xa} attesi)",
     "en": "Season {s}: {m}' · {g} goals ({xg} expected) · {a} assists ({xa} expected)"
+  },
+  "mercato.stagione_prec_riga": {
+    "it": "Stagione {s}: {m}' · {gol} · {assist}",
+    "en": "Season {s}: {m}' · {gol} · {assist}"
+  },
+  "mercato.prec_gol.one": {
+    "it": "{n} gol ({xg} attesi)",
+    "en": "{n} goal ({xg} expected)"
+  },
+  "mercato.prec_gol.other": {
+    "it": "{n} gol ({xg} attesi)",
+    "en": "{n} goals ({xg} expected)"
+  },
+  "mercato.prec_assist.one": {
+    "it": "{n} assist ({xa} attesi)",
+    "en": "{n} assist ({xa} expected)"
+  },
+  "mercato.prec_assist.other": {
+    "it": "{n} assist ({xa} attesi)",
+    "en": "{n} assists ({xa} expected)"
   },
   "mercato.panchina_n": {
     "it": "Panchina {n}",
