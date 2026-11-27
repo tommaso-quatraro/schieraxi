@@ -541,6 +541,8 @@ details[open] > summary { margin-bottom: 8px; }
 .grafico polyline { stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: disegna 1.1s var(--uscita) .25s forwards; }
 .grafico polyline.fv { stroke: var(--verde); } .grafico polyline.voto { stroke: var(--blu); }
 .grafico circle { animation: compare .4s var(--molla) both; animation-delay: 1s; transform-box: fill-box; transform-origin: center; }
+/* ridisegnato alla larghezza nuova (adattaGrafico in app.js, la finestra che cambia): la linea c'è già, senza ripartire da capo */
+.grafico.ridisegnato polyline { animation: none; stroke-dashoffset: 0; } .grafico.ridisegnato circle { animation: none; }
 .grafico circle.fv { fill: var(--verde); } .grafico circle.voto { fill: var(--blu); }
 .grafico .rif { stroke: var(--testo-2); opacity: .45; stroke-dasharray: 4 4; }
 .grafico text { font-size: var(--t-eti); fill: var(--testo-2); } .grafico text.sv { font-weight: 600; }

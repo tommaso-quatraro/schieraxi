@@ -1825,26 +1825,57 @@ function formaGiocatore(voti, andamento) {
   return { pallini, freccia, testo: t(chiave), classe };
 }
 
-// Grafico a linee: fantavoto (verde) e voto (azzurro) giornata per giornata; "sv" dove non ha preso voto.
-function graficoVoti(voti, giornate) {
-  if (!voti.length) return "";
-  const L = 320, A = 120, m = 18;
+// I grafici SVG (i voti nella scheda, l'affidabilità in Stato dei dati, l'errore per giornata in Giornate) si disegnano alla larghezza
+// vera del loro posto: il viewBox è largo quanto il grafico in px, quindi un'unità del disegno è un px. Le scritte restano grandi
+// come il testo piccolo intorno, linee e punti della loro misura, e l'altezza cresce poco con la larghezza invece di raddoppiare
+// (collaudo tablet del 27/11: disegnato per 320 px e stirato fino a 680, con le etichette grandi il doppio e 260 px di altezza).
+// L'HTML porta un primo disegno largo quanto un telefono; `adattaGrafico` lo rifà quando conosce la larghezza e ogni volta che
+// cambia (finestra, pannello, «Tutti i numeri» che si apre: chiuso è largo 0). `disegna(L, A)` scrive il contenuto per L×A px.
+const altezzaGrafico = (L, rapporto, minimo, massimo) => Math.round(Math.min(massimo, Math.max(minimo, L * rapporto)));
+function adattaGrafico(svg, disegna, altezza) {
+  if (!svg || !disegna) return;
+  let fatta = 0;
+  const rifai = () => {
+    const L = Math.round(parseFloat(getComputedStyle(svg).width));
+    if (!(L > 0) || L === fatta) return;
+    if (fatta) svg.classList.add("ridisegnato");          // dopo il primo, la linea non si ridisegna da capo a ogni cambio di larghezza
+    fatta = L;
+    const A = altezza(L);
+    svg.setAttribute("viewBox", `0 0 ${L} ${A}`);
+    svg.innerHTML = disegna(L, A);
+  };
+  if (typeof ResizeObserver === "function") new ResizeObserver(rifai).observe(svg);
+  else rifai();
+}
+
+// Grafico a linee: fantavoto (verde) e voto (azzurro) giornata per giornata; "sv" dove non ha preso voto. Il margine di 18 px tiene
+// interi i punti sui bordi (come l'iPhone, #970). Sotto, il numero delle giornate: tutti quelli che ci stanno, uno ogni 22 px.
+const altezzaVoti = L => altezzaGrafico(L, 3 / 8, 110, 160);
+function disegnoVoti(voti, giornate) {
+  if (!voti.length) return null;
+  const m = 18;
   const g0 = Math.max(1, Math.min(...voti.map(v => v.giornata))), g1 = Math.max(giornate || 0, ...voti.map(v => v.giornata));
   const valori = voti.flatMap(v => [v.fv, v.voto]).filter(x => x != null);
   const basso = Math.floor(Math.min(4, ...valori)), alto = Math.ceil(Math.max(8, ...valori));
-  const x = g => m + (g1 === g0 ? (L - 2 * m) / 2 : (g - g0) / (g1 - g0) * (L - 2 * m));
-  const y = v => A - m - (v - basso) / (alto - basso) * (A - 2 * m);
-  const linea = (chiave, cl) => {
-    const punti = voti.filter(v => v[chiave] != null);
-    return `<polyline class="${cl}" pathLength="1" fill="none" points="${punti.map(v => `${x(v.giornata).toFixed(1)},${y(v[chiave]).toFixed(1)}`).join(" ")}"/>` +
-      punti.map(v => `<circle class="${cl}" r="3" cx="${x(v.giornata).toFixed(1)}" cy="${y(v[chiave]).toFixed(1)}"><title>${nomeGiornata(null, v.giornata)}: ${num(v[chiave])}</title></circle>`).join("");
+  return (L, A) => {
+    const x = g => m + (g1 === g0 ? (L - 2 * m) / 2 : (g - g0) / (g1 - g0) * (L - 2 * m));
+    const y = v => A - m - (v - basso) / (alto - basso) * (A - 2 * m);
+    const linea = (chiave, cl) => {
+      const punti = voti.filter(v => v[chiave] != null);
+      return `<polyline class="${cl}" pathLength="1" fill="none" points="${punti.map(v => `${x(v.giornata).toFixed(1)},${y(v[chiave]).toFixed(1)}`).join(" ")}"/>` +
+        punti.map(v => `<circle class="${cl}" r="3" cx="${x(v.giornata).toFixed(1)}" cy="${y(v[chiave]).toFixed(1)}"><title>${nomeGiornata(null, v.giornata)}: ${num(v[chiave])}</title></circle>`).join("");
+    };
+    const sv = voti.filter(v => v.voto == null).map(v => `<text class="sv" x="${x(v.giornata).toFixed(1)}" y="${A - m - 8}" text-anchor="middle">${t("mercato.sv")}</text>`).join("");
+    const passo = Math.ceil(voti.length / Math.max(2, Math.floor((L - 2 * m) / 22)));
+    const assi = voti.filter((v, k) => k % passo === 0 || k === voti.length - 1).map(v => `<text class="asse" x="${x(v.giornata).toFixed(1)}" y="${A - 2}" text-anchor="middle">${v.giornata}</text>`).join("");
+    return `<line class="rif" x1="${m}" x2="${L - m}" y1="${y(6).toFixed(1)}" y2="${y(6).toFixed(1)}"/>${linea("fv", "fv")}${linea("voto", "voto")}${sv}${assi}`;
   };
-  const sv = voti.filter(v => v.voto == null).map(v => `<text class="sv" x="${x(v.giornata).toFixed(1)}" y="${A - m - 8}" text-anchor="middle">${t("mercato.sv")}</text>`).join("");
-  const passo = Math.ceil(voti.length / 12);
-  const assi = voti.filter((v, k) => k % passo === 0 || k === voti.length - 1).map(v => `<text class="asse" x="${x(v.giornata).toFixed(1)}" y="${A - 2}" text-anchor="middle">${v.giornata}</text>`).join("");
+}
+function graficoVoti(disegna) {
+  if (!disegna) return "";
+  const L = 320, A = altezzaVoti(L);
   return `<h3>${t("mercato.voto_fantavoto_per")}</h3>
-    <svg class="grafico" viewBox="0 0 ${L} ${A}" role="img" aria-label="${t("mercato.voti_giornata_per")}">
-      <line class="rif" x1="${m}" x2="${L - m}" y1="${y(6).toFixed(1)}" y2="${y(6).toFixed(1)}"/>${linea("fv", "fv")}${linea("voto", "voto")}${sv}${assi}</svg>
+    <svg class="grafico" viewBox="0 0 ${L} ${A}" role="img" aria-label="${t("mercato.voti_giornata_per")}">${disegna(L, A)}</svg>
     <div class="debole piccolo"><span class="legenda fv"></span>${t("mercato.fantavoto")} <span class="legenda voto"></span>${t("mercato.voto_linea_tratteggiata")}</div>`;
 }
 
@@ -1919,7 +1950,8 @@ function riempiScheda(s, cal) {
   const forma = formaGiocatore(s.voti || [], s.andamento);
   voti.innerHTML = `<h3>${t("formazione.ultimi_voti")}</h3>${forma ? forma.pallini : `<div class="debole">${t("mercato.nessuna_presenza_questa")}</div>`}`;
   voti.removeAttribute("aria-busy");
-  const grafico = graficoVoti(s.voti || [], st.giornate_giocate_serie_a);
+  const disegnaVoti = disegnoVoti(s.voti || [], st.giornate_giocate_serie_a);
+  const grafico = graficoVoti(disegnaVoti);
   const prossime = cal && pr ? (cal.squadre.find(x => x.squadra === pr.squadra) || { partite: [] }).partite : [];
   const iniziataP = !!pr && PARTITA_INIZIATA.includes(pr.stato_partita);
   const nonGioca = !!pr && nonGiocaDiSicuro(parolaStato(pr));              // infortunato o squalificato: niente partita, gol o cartellini
@@ -1956,6 +1988,7 @@ function riempiScheda(s, cal) {
       ${tile(av.rigori_calciati, t("mercato.rigori_calciati"))}${tile(av.passaggi_chiave, t("mercato.passaggi_chiave"))}${tile(av.punizioni, t("mercato.punizioni"))}</div>
       ${(av.stagioni_precedenti || []).map(p => `<div class="debole piccolo" style="margin-top:8px">${t("mercato.stagione_prec_riga", { s: esc(p.stagione), m: p.minuti, gol: tp("mercato.prec_gol", p.gol, { xg: num(p.xg) }), assist: tp("mercato.prec_assist", p.assist, { xa: num(p.xa) }) })}</div>`).join("")}
       ${finoAl ? `<div class="debole piccolo" style="margin-top:12px">${finoAl}</div>` : ""}` : ""}`;
+  adattaGrafico(numeri.querySelector("svg.grafico"), disegnaVoti, altezzaVoti);
   numeri.removeAttribute("aria-busy");
 }
 
@@ -2774,6 +2807,27 @@ $("#campo-cerca").addEventListener("keydown", ev => {
 
 // Numeri con la virgola in italiano, con il punto nelle altre lingue.
 const virgola = x => (LINGUA === "it" ? String(x).replace(".", ",") : String(x));
+// Giornate > «Dettagli»: le barre dell'errore del fantavoto atteso, una per giornata (più bassa = meglio), le ultime 12. Disegnate
+// alla larghezza del loro posto come gli altri grafici (adattaGrafico; al massimo 460 px, .qp-grafico), con i numeri grandi come
+// il testo piccolo intorno. Sotto le barre lo spazio è poco: il numero della lega da solo; per una stagione passata «G11» di Serie A
+// (forma stretta). Numeri dal server, passati da Number.
+const altezzaErrori = L => altezzaGrafico(L, .32, 96, 120);
+function disegnoErrori(p) {
+  const n = x => (x == null || !isFinite(Number(x)) ? null : Number(x));
+  const conErr = ((p && p.per_giornata) || []).filter(g => n(g.errore_fantavoto) != null).slice(-12);
+  if (conErr.length < 2) return null;
+  const alto = Math.max(2.5, ...conErr.map(g => n(g.errore_fantavoto)));
+  const sottoBarra = g => (n(g.giornata_lega) != null ? n(g.giornata_lega) : `G${n(g.giornata)}`);
+  return (W, H) => {
+    const passo = W / conErr.length, larga = Math.min(22, passo * 0.6);
+    return conErr.map((g, i) => {
+      const e = n(g.errore_fantavoto), h = Math.max(2, e / alto * (H - 34)), x = i * passo + (passo - larga) / 2, y = H - 16 - h;
+      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${larga.toFixed(1)}" height="${h.toFixed(1)}" rx="3" class="qp-barra"/>
+        <text x="${(x + larga / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle" class="qp-val">${num(e)}</text>
+        <text x="${(x + larga / 2).toFixed(1)}" y="${H - 3}" text-anchor="middle" class="qp-g">${sottoBarra(g)}</text>`;
+    }).join("");
+  };
+}
 // Giornate > «Dettagli» della riga sulla precisione (campo `precisione` di /api/diario, fanta/precisione.py): i numeri con una frase,
 // l'andamento giornata per giornata e l'avviso se i dati sono pochi. Tutto viene dal server; si mostra anche quando va male.
 // Numeri dal server (passati da Number) e, per la riga su tutta la Serie A, una frase del server passata da esc(); niente innerHTML.
@@ -2791,9 +2845,7 @@ function dettagliPrecisione(p, conConfronto) {
   const suDieci = pct => Math.round((n(pct) || 0) / 10);
   const pg = p.per_giornata || [];
   const nomeG = g => nomeGiornata(g.giornata_lega, g.giornata);
-  // sotto le barre lo spazio è poco: il numero della lega da solo; per una stagione passata «G11» di Serie A (forma stretta)
-  const sottoBarra = g => (n(g.giornata_lega) != null ? n(g.giornata_lega) : `G${n(g.giornata)}`);
-  const voce = (numero, etichetta, frase, cls = "") => `<div class="qp-voce"><b class="qp-num ${cls}">${numero}</b><span class="qp-eti">${etichetta}</span><div class="qp-frase">${frase}</div></div>`;
+  const voce =(numero, etichetta, frase, cls = "") => `<div class="qp-voce"><b class="qp-num ${cls}">${numero}</b><span class="qp-eti">${etichetta}</span><div class="qp-frase">${frase}</div></div>`;
   // 1. fantavoto atteso dei tuoi giocatori
   const fv = p.fantavoto;
   const sc = fv ? n(fv.scostamento) : null;
@@ -2815,20 +2867,10 @@ function dettagliPrecisione(p, conConfronto) {
   // 4. punti della squadra (consigliata): previsti contro fatti
   const sq = p.squadra;
   const sqFrase = sq ? t("diario.qp_sq", { a: v(sq.punti_medi_attesi), f: v(sq.punti_medi_fatti), k: n(sq.dentro_fascia), n: n(sq.con_fascia ?? sq.giornate), d: Math.round((n(sq.fascia_dichiarata) || 80) / 10) }) : t("diario.qp_fv_vuoto");
-  // andamento: barre dell'errore del fantavoto atteso, una per giornata (più bassa = meglio), ultime 12
-  const conErr = pg.filter(g => n(g.errore_fantavoto) != null).slice(-12);
-  let grafico = "";
-  if (conErr.length >= 2) {
-    const W = 300, H = 96, alto = Math.max(2.5, ...conErr.map(g => n(g.errore_fantavoto))), passo = W / conErr.length, larga = Math.min(22, passo * 0.6);
-    const barre = conErr.map((g, i) => {
-      const e = n(g.errore_fantavoto), h = Math.max(2, e / alto * (H - 34)), x = i * passo + (passo - larga) / 2, y = H - 16 - h;
-      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${larga.toFixed(1)}" height="${h.toFixed(1)}" rx="3" class="qp-barra"/>
-        <text x="${(x + larga / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle" class="qp-val">${v(e)}</text>
-        <text x="${(x + larga / 2).toFixed(1)}" y="${H - 3}" text-anchor="middle" class="qp-g">${sottoBarra(g)}</text>`;
-    }).join("");
-    grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${t("diario.qp_grafico_aria")}" class="qp-grafico">${barre}</svg>
-      <div class="debole piccolo">${t("diario.qp_grafico_leg")}</div>`;
-  }
+  // andamento: barre dell'errore del fantavoto atteso, una per giornata (più bassa = meglio), ultime 12 (disegnoErrori)
+  const disegna = disegnoErrori(p), W = 300, H = altezzaErrori(W);
+  const grafico = disegna ? `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${t("diario.qp_grafico_aria")}" class="qp-grafico">${disegna(W, H)}</svg>
+      <div class="debole piccolo">${t("diario.qp_grafico_leg")}</div>` : "";
   // giornata per giornata solo l'errore e i punti della consigliata: quanto ha fatto la tua lo dice la riga di ogni giornata
   const righe = [...pg].reverse().map(g => `<li><b>${nomeG(g)}</b> · <span class="debole">${n(g.errore_fantavoto) != null ? t("diario.qp_riga_fv", { e: v(g.errore_fantavoto) }) + " · " : ""}${t("diario.qp_riga_sq", { a: v(g.attesi), f: v(g.fatti) })}</span></li>`).join("");
   const primo = pg.length ? nomeG(pg[0]) : null, ultimo = pg.length ? nomeG(pg[pg.length - 1]) : null;
@@ -2998,6 +3040,7 @@ function mostraGiornate(d, opz = {}) {
   // senza righe ma con una giornata che aspetta il recupero, la sua frase prende il posto di «ancora niente»
   pagina(voci.length ? `<div class="gn">${testa}<ul class="gn-elenco" aria-label="${t("giornate.elenco")}">${voci.map(riga).join("")}</ul>${lato}</div>`
     : attesa ? testa : `${testa}<p class="debole gn-vuoto">${vuoto}</p>`, opz);
+  adattaGrafico($(".qp-grafico", contenuto), disegnoErrori(p), altezzaErrori);
   if (dettagliAperti) { const x = $(".gn-dettagli", contenuto); if (x) x.open = true; }
   const radice = $(".gn", contenuto);
   if (radice) radice.addEventListener("click", ev => {
@@ -3101,6 +3144,7 @@ async function rileggiGiornate(g) {
 }
 
 // Prova del modello sulle ultime giornate giocate: errore sui fantavoti e punti delle formazioni, con il confronto "da fantamedia".
+const altezzaAffidabilita = L => altezzaGrafico(L, 11 / 30, 100, 160);
 async function mostraAffidabilita(numero) {
   const dove = $("#affidabilita");
   if (!dove) return;
@@ -3110,14 +3154,18 @@ async function mostraAffidabilita(numero) {
     const s = a.sintesi, righe = (a.righe || []).filter(r => r.punti_modello != null);
     if (!s || !s.giornate) { dove.innerHTML = `<h2>${t("scambio.quanto_affidabile_modello")}</h2><div class="debole piccolo">${t("avv.prova_sola_dopo")}</div>`; return; }
     const v = x => (x == null ? "–" : virgola(x));
-    let grafico = "";
+    let grafico = "", disegna = null;
     if (righe.length >= 2) {
-      const W = 300, H = 110, P = 8, tutti = righe.flatMap(r => [r.punti_modello, r.punti_fantamedia, r.punti_perfetta]).filter(x => x != null);
+      // alla larghezza del suo posto, come il grafico dei voti (adattaGrafico): le linee restano di 2 px, l'altezza al massimo 160
+      const P = 8, tutti = righe.flatMap(r => [r.punti_modello, r.punti_fantamedia, r.punti_perfetta]).filter(x => x != null);
       const min = Math.min(...tutti) - 2, max = Math.max(...tutti) + 2;
-      const xy = (i, y) => `${(P + i * (W - 2 * P) / (righe.length - 1)).toFixed(1)},${(H - P - (y - min) / (max - min) * (H - 2 * P)).toFixed(1)}`;
-      const linea = (k, col, tratteggio) => `<polyline fill="none" stroke="${col}" stroke-width="2.2" ${tratteggio ? 'stroke-dasharray="4 4"' : ""} stroke-linecap="round" stroke-linejoin="round" points="${righe.map((r, i) => xy(i, r[k])).join(" ")}"/>`;
-      grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${t("avv.punti_delle_formazioni")}" style="margin-top:10px">
-        ${linea("punti_perfetta", "var(--testo-2)", true)}${linea("punti_fantamedia", "var(--arancio)")}${linea("punti_modello", "var(--verde)")}</svg>
+      disegna = (W, H) => {
+        const xy = (i, y) => `${(P + i * (W - 2 * P) / (righe.length - 1)).toFixed(1)},${(H - P - (y - min) / (max - min) * (H - 2 * P)).toFixed(1)}`;
+        const linea = (k, col, tratteggio) => `<polyline fill="none" stroke="${col}" stroke-width="2.2" ${tratteggio ? 'stroke-dasharray="4 4"' : ""} stroke-linecap="round" stroke-linejoin="round" points="${righe.map((r, i) => xy(i, r[k])).join(" ")}"/>`;
+        return `${linea("punti_perfetta", "var(--testo-2)", true)}${linea("punti_fantamedia", "var(--arancio)")}${linea("punti_modello", "var(--verde)")}`;
+      };
+      const W = 300, H = altezzaAffidabilita(W);
+      grafico = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${t("avv.punti_delle_formazioni")}" style="margin-top:10px">${disegna(W, H)}</svg>
         <div class="debole piccolo"><b style="color:var(--verde)">—</b> ${t("avv.modello_nbsp")} <b style="color:var(--arancio)">—</b> ${t("avv.fantamedia_nbsp")} <b>- -</b> ${t("avv.max_possibile")} · ${elidiOrdinali(t("avv.giornate_da_a", { a: Number(righe[0].giornata), b: Number(righe[righe.length - 1].giornata) }))}</div>`;
     }
     dove.innerHTML = `<h2>${t("scambio.quanto_affidabile_modello")}</h2>
@@ -3126,6 +3174,7 @@ async function mostraAffidabilita(numero) {
         <div><b class="${s.punti_modello != null && s.punti_fantamedia != null && s.punti_modello >= s.punti_fantamedia ? "positivo" : ""}">${v(s.punti_modello)}</b><span>${t("avv.punti_formazione_modello")}</span></div></div>
       <div class="debole piccolo" style="margin-top:8px">${t("avv.punti_medi", { m: v(s.punti_modello), f: v(s.punti_fantamedia), p: v(s.punti_perfetta) })}
         ${t("avv.mancano_probabili")}</div>${grafico}`;
+    adattaGrafico(dove.querySelector("svg"), disegna, altezzaAffidabilita);
   } catch (e) { if (document.body.contains(dove)) dove.innerHTML = `<h2>${t("scambio.quanto_affidabile_modello")}</h2>${errore(e)}`; }
 }
 
