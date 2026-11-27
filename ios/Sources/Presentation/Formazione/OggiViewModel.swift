@@ -27,10 +27,16 @@ final class OggiViewModel: ViewModelBase {
     /// tornano in programma con la copia salvata e partono, mai tacere per un dato incerto. Nei test la sostituisce chi conta.
     var dopoLetturaNonRiuscita: @MainActor () async -> Void
 
+    /// L'indirizzo della giornata, calcolato a ogni lettura: porta i giorni che mancano alla scadenza del certificato dell'app
+    /// (`OggiRepository.percorso`), che il server usa per «Rinnova l'app» (da 3 giorni in giù). Calcolato una volta sola, con l'app
+    /// in memoria per giorni il numero era vecchio. Nei test lo sostituisce chi conta i giorni (`GiornataCertificatoTests`).
+    private let percorso: @MainActor () -> String
+
     /// `conPromemoria: false` nei test: niente richiesta del permesso per le notifiche, promemoria, widget.
     init(server: any ServerClient, conPromemoria: Bool = true,
          percorso: @escaping @MainActor () -> String = { OggiRepository.percorso }) {
         self.server = server
+        self.percorso = percorso
         // Il comando «Aggiorna» lo gestisce questo ViewModel (deve anche riprogrammare i promemoria), non il Caricatore.
         caricatore = Caricatore<Oggi>(percorso(), ascolta: false, server: server)
         squadra = SquadraDaScegliere(server: server)
@@ -66,14 +72,15 @@ final class OggiViewModel: ViewModelBase {
         while !Task.isCancelled {
             do { try await Task.sleep(nanoseconds: UInt64(Self.ripassoGiornata * 1_000_000_000)) } catch { return }
             guard !Task.isCancelled else { return }
-            await caricatore.ricarica()
+            await rileggi()
             guard oggi?.faseGiornata == .inCorso else { return }
         }
     }
 
-    /// Rilegge solo la giornata, senza promemoria né permessi (la rilettura ogni 5 minuti a giornata in corso).
+    /// Rilegge solo la giornata, senza promemoria né permessi (la rilettura ogni 5 minuti a giornata in corso), con l'indirizzo
+    /// di adesso.
     func rileggi() async {
-        await caricatore.ricarica()
+        await caricatore.ricarica(percorso())
     }
 
     /// Ricarica la giornata e, se i dati sono freschi, riprogramma i promemoria.
@@ -121,7 +128,7 @@ final class OggiViewModel: ViewModelBase {
         /// Nel frattempo è partita un'altra lettura: decide quella. Così una risposta vecchia arrivata per ultima non toglie i
         /// promemoria e non cancella la spunta appena toccata (#710).
         case superata
-        /// È rimasta la copia salvata (server irraggiungibile, o un errore).
+        /// È rimasta la copia salvata (server irraggiungibile, o un errore), o la lettura è stata annullata.
         case nonRiuscita
     }
 
@@ -131,9 +138,13 @@ final class OggiViewModel: ViewModelBase {
         let numero = letture
         let chiesta = Date()
         let chi = ChiLegge.adesso(indirizzo: server.indirizzo)
-        await caricatore.ricarica()
+        let risposte = caricatore.risposte
+        await rileggi()
         guard numero == letture else { return .superata }
-        guard let oggi = caricatore.dato, caricatore.datiSalvati == nil, !caricatore.dallaCache else { return .nonRiuscita }
+        // fresca solo se è arrivata una risposta: una lettura annullata rimette i dati di prima (`Caricatore`), che non lo sono
+        guard caricatore.risposte > risposte, let oggi = caricatore.dato, caricatore.datiSalvati == nil, !caricatore.dallaCache else {
+            return .nonRiuscita
+        }
         erroreRinvio = nil          // la giornata è arrivata: l'errore di una scelta sul rinvio di prima non vale più
         return .fresca(oggi, chiestaIl: chiesta, chi: chi)
     }

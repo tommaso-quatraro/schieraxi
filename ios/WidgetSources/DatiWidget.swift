@@ -219,7 +219,7 @@ struct Fornitore: AppIntentTimelineProvider {
             if manca > 0 && manca < 3 * 3600 { minuti = 10 } else if manca > 0 && manca < 24 * 3600 { minuti = 20 } else if manca < 0 && manca > -3 * 3600 { minuti = 15 }
         }
         // Partite in gioco (o che stanno per iniziare): ogni 2 minuti. iOS decide poi quando ricaricare davvero (budget giornaliero): se
-        // rimanda, il widget mostra l'ultimo punteggio con l'ora dell'aggiornamento.
+        // rimanda, il widget mostra l'ultimo punteggio e, dopo 15 minuti, la sua ora (`EtaDatiWidget`, con la voce in più qui sotto).
         var prossimoCalcio: Date?
         if let w = primo.widget {
             if w.finestraLive(adesso: adesso) { minuti = 2 }
@@ -236,7 +236,10 @@ struct Fornitore: AppIntentTimelineProvider {
         // iniziata il conto alla rovescia alla prossima c'è anche in Formazione consigliata e Da controllare (#752)
         var contoQui = conConto
         if case .senzaFormazione = primo.caso { contoQui = true }
-        voci += VociTimeline.istanti(adesso: adesso, scadenza: scadenza, conConto: contoQui).map { primo.spostata(a: $0) }
+        // e una voce quando i dati diventano vecchi: se iOS rimanda la ricarica, da lì sotto i dati c'è la loro ora (`Voce.oraDeiDati`)
+        let vecchi = primo.riassunto.map { EtaDatiWidget.istanti(scaricatoIl: $0.scaricatoIl, adesso: adesso) } ?? []
+        let istanti = Set(VociTimeline.istanti(adesso: adesso, scadenza: scadenza, conConto: contoQui) + vecchi).sorted()
+        voci += istanti.map { primo.spostata(a: $0) }
         return Timeline(entries: voci, policy: .after(prossimo))
     }
 

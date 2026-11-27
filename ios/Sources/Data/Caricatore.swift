@@ -50,12 +50,29 @@ final class Caricatore<T: Decodable>: ObservableObject {
     private var ascolto: AnyCancellable?
     /// true finché i dati mostrati vengono dalla cache e non da una risposta fresca del server.
     private(set) var dallaCache = false
-    /// Quante risposte del server sono arrivate. Cresce solo con una risposta nuova: non con la copia salvata, né quando un
-    /// caricamento annullato rimette i dati di prima come caricati. Chi deve usare solo dati appena arrivati confronta questo numero.
+    /// Quante risposte del server sono arrivate. Cresce solo con una risposta nuova: non con la copia salvata, né quando una
+    /// lettura annullata rimette lo stato di prima. Chi deve usare solo dati appena arrivati confronta questo numero.
     private(set) var risposte = 0
     /// Perché l'ultimo aggiornamento non è riuscito: nil se il server non era raggiungibile (rete, tempo scaduto) o se è andato bene;
     /// altrimenti il messaggio dell'errore (limite, guasto del server...), da mostrare nella striscia dei dati salvati.
     private(set) var motivoDatiSalvati: String?
+    /// Cresce a ogni lettura che parte: una lettura annullata rimette lo stato di prima solo se nel frattempo non ne è partita
+    /// un'altra (decide quella).
+    private var letture = 0
+    /// L'ultimo punto fermo: lo stato a cui è arrivata una lettura (risposta, errore), con la data e l'origine dei dati.
+    private var fermo = Fermo()
+
+    /// Uno stato a cui è arrivata una lettura, con quello che lo accompagna. Una lettura annullata dalla schermata lo rimette
+    /// com'era, anche un errore o la copia salvata con la sua data (`ricarica`).
+    private struct Fermo {
+        var stato: Stato<T> = .idle
+        /// La richiesta di quello stato: nil prima della prima lettura.
+        var richiesta: String?
+        var percorsoDelDato: String?
+        var scaricatoIl: Date?
+        var dallaCache = false
+        var motivo: String?
+    }
 
     var dato: T? { stato.dato }
     var errore: String? { stato.errore }
@@ -93,14 +110,19 @@ final class Caricatore<T: Decodable>: ObservableObject {
 
     func ricarica() async {
         let richiesto = percorso
-        // Dati già a video di questo stesso indirizzo (altrimenti niente: non si mostrano dati di un'altra richiesta).
-        var inAttesa: T? = percorsoDelDato == richiesto ? stato.dato : nil
+        letture += 1
+        let questa = letture
+        // Dati già a video della stessa risorsa (altrimenti niente: non si mostrano dati di un'altra richiesta). I giorni del
+        // certificato non contano: `/api/oggi?certificato_giorni=5` e `=4` sono la stessa giornata, come per la copia salvata.
+        var inAttesa: T? = stessaRisorsa(percorsoDelDato, richiesto) ? stato.dato : nil
+        var copiaLetta: (dato: T, data: Date)?
         stato = .loading(inAttesa)
         // Subito l'ultima copia salvata, se non c'è già qualcosa da mostrare.
         if inAttesa == nil, usaCache,
            let salvato = await Cache.leggi(richiesto, indirizzo: server.indirizzo), richiesto == percorso,
            let vecchio: T = try? Decodifica.decodifica(salvato.dati, snake: snake) {
             inAttesa = vecchio
+            copiaLetta = (vecchio, salvato.data)
             percorsoDelDato = richiesto
             scaricatoIl = salvato.data
             dallaCache = true
@@ -116,16 +138,54 @@ final class Caricatore<T: Decodable>: ObservableObject {
             motivoDatiSalvati = nil
             risposte += 1
             stato = .loaded(nuovo)
+            ricordaFermo(richiesto)
             if usaCache { Cache.salva(dati, richiesto, indirizzo: server.indirizzo) }
         } catch {
             guard richiesto == percorso else { return }
             if Task.isCancelled || error is CancellationError {
-                // Richiesta annullata dalla schermata: non è un errore, si torna a mostrare quello che c'era.
-                stato = inAttesa.map { Stato.loaded($0) } ?? .idle
+                // Annullata dalla schermata (per esempio il telefono bloccato durante un aggiornamento): non è una risposta né un
+                // errore. Se nel frattempo è partita un'altra lettura decide quella; altrimenti torna lo stato di prima, anche un
+                // errore o la copia salvata con la sua data e la sua striscia. Prima tornavano i dati di prima come appena
+                // arrivati, e la striscia «dati salvati» spariva.
+                guard questa == letture else { return }
+                rimettiFermo(richiesto, copiaLetta: copiaLetta)
                 return
             }
             motivoDatiSalvati = DatiVecchi.eDiRete(error) ? nil : error.localizedDescription
             stato = .failed(error.localizedDescription, inAttesa)   // restano gli ultimi dati, con la loro data
+            ricordaFermo(richiesto)
+            // senza rete resta la copia: quando il telefono ritrova la rete si riprova da soli, una volta, come la web
+            if inAttesa != nil, DatiVecchi.eDiRete(error) { RitornoRete.condiviso.aspetta() }
         }
     }
+
+    private func ricordaFermo(_ richiesta: String) {
+        fermo = Fermo(stato: stato, richiesta: richiesta, percorsoDelDato: percorsoDelDato, scaricatoIl: scaricatoIl,
+                      dallaCache: dallaCache, motivo: motivoDatiSalvati)
+    }
+
+    /// Dopo una lettura annullata: lo stato fermo di prima, se era della stessa risorsa (altrimenti niente, come all'inizio). Se
+    /// prima non c'era niente da mostrare e intanto si è letta la copia del telefono, resta quella, come copia (`dallaCache`):
+    /// accanto all'errore di prima, se c'era, con la data della copia.
+    private func rimettiFermo(_ richiesto: String, copiaLetta: (dato: T, data: Date)?) {
+        var prima = stessaRisorsa(fermo.richiesta, richiesto) ? fermo : Fermo()
+        if prima.stato.dato == nil, let copia = copiaLetta {
+            prima.percorsoDelDato = richiesto
+            prima.scaricatoIl = copia.data
+            prima.dallaCache = true
+            if let errore = prima.stato.errore { prima.stato = .failed(errore, copia.dato) } else { prima.stato = .loaded(copia.dato) }
+        }
+        percorsoDelDato = prima.percorsoDelDato
+        scaricatoIl = prima.scaricatoIl
+        dallaCache = prima.dallaCache
+        motivoDatiSalvati = prima.motivo
+        stato = prima.stato          // una volta sola: chi segue lo stato non vede passaggi in mezzo
+        ricordaFermo(richiesto)
+    }
+}
+
+/// Due indirizzi della stessa risorsa: uguali a meno dei giorni del certificato (`Cache.percorsoStabile`).
+private func stessaRisorsa(_ a: String?, _ b: String) -> Bool {
+    guard let a else { return false }
+    return Cache.percorsoStabile(a) == Cache.percorsoStabile(b)
 }

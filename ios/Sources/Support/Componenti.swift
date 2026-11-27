@@ -190,29 +190,63 @@ struct BadgeRuolo: View {
 
 /// Striscia in alto che avvisa quando si vedono dati salvati perché l'aggiornamento non è riuscito.
 /// `motivo` nil = server non raggiungibile; altrimenti il messaggio dell'errore (limite, guasto del server...): si dice quello.
+/// `riprova`: «Riprova» accanto alla frase, come la nota della web (`caricaConCache`). La Formazione non lo passa: ha già il suo
+/// «Riprova» sotto il campo.
 struct AvvisoSalvati: ViewModifier {
     let data: Date?
     var motivo: String? = nil
+    var riprova: (@MainActor () async -> Void)? = nil
+    @Environment(\.dynamicTypeSize) private var taglia
 
     func body(content: Content) -> some View {
         content
             .safeAreaInset(edge: .top, spacing: 0) {
                 if let data {
-                    Label(DatiVecchi.frase(salvatiIl: data, motivo: motivo),
-                          systemImage: motivo == nil ? "icloud.slash" : "exclamationmark.triangle")
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(.primary)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .vetro(in: Capsule(), tinta: Color.attenzione.opacity(0.35))
+                    striscia(DatiVecchi.frase(salvatiIl: data, motivo: motivo))
                         .padding(.horizontal, Tema.margine)
                         .padding(.bottom, 6)
                         .frame(maxWidth: .infinity)
-                        .accessibilityElement(children: .combine)
                         .transizione(.move(edge: .top).combined(with: .opacity))
                 }
             }
             .animation(Tema.molla, value: data != nil)
+    }
+
+    private func etichetta(_ frase: String) -> some View {
+        Label(frase, systemImage: motivo == nil ? "icloud.slash" : "exclamationmark.triangle")
+            .font(.footnote.weight(.medium))
+            .foregroundStyle(.primary)
+    }
+
+    @ViewBuilder
+    private func striscia(_ frase: String) -> some View {
+        if let riprova {
+            // con il testo molto grande «Riprova» va sotto la frase, che così resta larga; la frase va a capo, mai «…»
+            let grande = taglia.isAccessibilitySize
+            let disposizione = grande ? AnyLayout(VStackLayout(alignment: .leading, spacing: 0))
+                                      : AnyLayout(HStackLayout(alignment: .center, spacing: 10))
+            disposizione {
+                etichetta(frase)
+                    .fixedSize(horizontal: false, vertical: true)
+                // i 44 punti dentro l'etichetta del pulsante: fuori non allargano la zona da toccare (#882)
+                Button { Task { await riprova() } } label: {
+                    Text(Catalogo.Comune.riprova).frame(minHeight: Tema.areaTocco).contentShape(Rectangle())
+                }
+                .font(.footnote.weight(.semibold))
+            }
+            .padding(.leading, 14)
+            .padding(.trailing, 12)
+            .padding(.top, grande ? 10 : 4)
+            .padding(.bottom, 4)
+            .vetro(in: RoundedRectangle(cornerRadius: 18, style: .continuous), tinta: Color.attenzione.opacity(0.35))
+            .accessibilityElement(children: .contain)
+        } else {
+            etichetta(frase)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .vetro(in: Capsule(), tinta: Color.attenzione.opacity(0.35))
+                .accessibilityElement(children: .combine)
+        }
     }
 }
 
@@ -222,8 +256,12 @@ extension View {
         modifier(AvvisoSalvati(data: data, motivo: motivo))
     }
 
-    /// La striscia dei dati salvati di un `Caricatore`, con il motivo vero se il server ha risposto con un errore.
-    @MainActor func avvisoDatiSalvati<T: Decodable>(_ caricatore: Caricatore<T>) -> some View {
-        modifier(AvvisoSalvati(data: caricatore.datiSalvati, motivo: caricatore.motivoDatiSalvati))
+    /// La striscia dei dati salvati di un `Caricatore`, con il motivo vero se il server ha risposto con un errore, e «Riprova»
+    /// come la web: `riprova` rilegge la pagina come il «Riprova» del suo errore; se manca si rilegge il solo `caricatore`.
+    @MainActor func avvisoDatiSalvati<T: Decodable>(_ caricatore: Caricatore<T>,
+                                                    riprova: (@MainActor () async -> Void)? = nil) -> some View {
+        let azione: @MainActor () async -> Void
+        if let riprova { azione = riprova } else { azione = { await caricatore.ricarica() } }
+        return modifier(AvvisoSalvati(data: caricatore.datiSalvati, motivo: caricatore.motivoDatiSalvati, riprova: azione))
     }
 }

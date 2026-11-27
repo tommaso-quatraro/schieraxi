@@ -808,13 +808,26 @@ enum VociTimeline {
     }
 }
 
+/// Quando i widget dicono di quando sono i dati (`RigaCopia`): sempre con la copia salvata (il server non ha risposto); con i dati
+/// arrivati bene solo quando sono vecchi, perché iOS decide lui quando ricaricare un widget e può rimandare anche di ore. Prima l'ora
+/// si vedeva solo con la copia, e a partite in corso i punti di un'ora prima sembravano attuali.
 enum EtaDatiWidget {
+    /// Con una partita in gioco o che sta per iniziare (`RiassuntoWidget.finestraLive`) il widget chiede di ricaricare ogni 2 minuti:
+    /// dopo 15 i punti possono essere già cambiati.
+    static let sogliaPartite: TimeInterval = 15 * 60
+    /// Negli altri momenti chiede ogni 10-30 minuti (`Fornitore`): dopo un'ora iOS ha rimandato di sicuro.
+    static let soglia: TimeInterval = 60 * 60
+
+    /// L'ora da scrivere sotto i dati, o nil se non serve. `adesso`: l'istante della voce della timeline.
     static func ora(scaricatoIl: Date, adesso: Date, copia: Bool, partite: Bool) -> Date? {
-        copia ? scaricatoIl : nil
+        if copia { return scaricatoIl }
+        return adesso.timeIntervalSince(scaricatoIl) >= (partite ? sogliaPartite : soglia) ? scaricatoIl : nil
     }
 
+    /// Gli istanti in cui i dati passano le due soglie, se devono ancora arrivare: voci in più della timeline. Senza, se iOS rimanda
+    /// la ricarica resta a video l'ultima voce, senza l'ora. Ogni voce decide da sé, con le partite del suo istante.
     static func istanti(scaricatoIl: Date, adesso: Date) -> [Date] {
-        []
+        [sogliaPartite, soglia].map { scaricatoIl.addingTimeInterval($0) }.filter { $0 > adesso }
     }
 }
 

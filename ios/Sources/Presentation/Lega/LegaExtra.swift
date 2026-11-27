@@ -291,7 +291,8 @@ struct RosaView: View {
                 }
             }
             .scrollContentBackground(.hidden)
-            .avvisoDatiSalvati(vm.caricatore)
+            // «Riprova» come quello dell'errore: anche nome e crediti si riallineano alla rosa riletta
+            .avvisoDatiSalvati(vm.caricatore, riprova: { await vm.carica() })
             // fotografia `lega-rosa-fondo` (#425): la lista scorsa fino all'ultima riga, a dati arrivati
             .demoInFondo()
             .demoScorriA(FondoDemo.idRiga, proxy: proxy, schermate: ["lega-rosa"], inFondo: true, ancora: .bottom,
