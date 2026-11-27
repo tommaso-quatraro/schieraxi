@@ -47,6 +47,15 @@ def test_salvataggio_riuscito_toglie_le_altre_estensioni(tmp_path):
     assert immagini.salva(SQUADRA, "stemma", JPG, tmp_path) == nuovo and nuovo.read_bytes() == JPG     # stesso formato: resta
 
 
+def test_l_immagine_troppo_grande_lo_dice_con_il_punto(tmp_path):
+    """Revisione della #968: «Immagine troppo grande (massimo 4 MB)» era rimasta senza punto, fuori dal catalogo degli errori."""
+    grande = PNG + b"0" * immagini.MAX_BYTE
+    for salva in (lambda: immagini.salva(SQUADRA, "stemma", grande, tmp_path), lambda: immagini.salva_in_attesa(grande, tmp_path)):
+        with pytest.raises(ValueError, match=r"^Immagine troppo grande \(massimo 4 MB\)\.$"):
+            salva()
+    assert not list(tmp_path.iterdir())
+
+
 def test_disco_pieno_mentre_arriva_un_immagine_condivisa_quella_in_attesa_resta(tmp_path, monkeypatch):
     vecchia = immagini.salva_in_attesa(PNG, tmp_path)
     with monkeypatch.context() as m:

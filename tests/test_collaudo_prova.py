@@ -219,11 +219,11 @@ class _ServerFinto(BaseHTTPRequestHandler):
         corpo = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
         self.chiamate.append((self.path, corpo, self.headers.get("Authorization")))
         if self.headers.get("X-Fanta") != "1":          # come il server vero: le richieste che cambiano qualcosa la vogliono
-            return self._rispondi(403, {"detail": "Richiesta non permessa"})
+            return self._rispondi(403, {"detail": "Richiesta non permessa."})
         if self.path == "/api/account/accedi":
             if corpo.get("password") == "segreto-finto" and corpo.get("nativo") is True:
                 return self._rispondi(200, {"token": "tok-finto", "utente": {"nome_utente": corpo["nome_utente"]}})
-            return self._rispondi(401, {"detail": "Nome utente o password sbagliati"})
+            return self._rispondi(401, {"detail": "Nome utente o password sbagliati."})
         if self.path == "/api/account/esci":
             return self._rispondi(200, {"ok": True})
         self._rispondi(404, {})

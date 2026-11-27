@@ -52,9 +52,9 @@ def scrivi_primo_avvio(percorso: Path, fatti: list | None = None, saltati: list 
         if lista is None:
             continue
         if not isinstance(lista, list) or len(lista) > len(PASSI) or any(not isinstance(p, str) for p in lista):
-            raise ErroreStato("Elenco dei passi non valido")
+            raise ErroreStato("Elenco dei passi non valido.")
         if any(p not in PASSI for p in lista):
-            raise ErroreStato("Passo sconosciuto della configurazione")
+            raise ErroreStato("Passo sconosciuto della configurazione.")
     with notifiche.BLOCCO_FILE:
         tutto = notifiche._json(percorso)
         attuale = _pulisci(tutto.get("primo_avvio"))

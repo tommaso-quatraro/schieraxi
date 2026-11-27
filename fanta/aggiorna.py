@@ -128,6 +128,12 @@ class Aggiornamento:
         # aggiornamento e il riscaldamento ricalcola una volta. None = fuori da `esegui` (giri del pianificatore): subito.
         self._a_fine: list[tuple[str, str, str | None]] | None = None
 
+    @property
+    def dati_nuovi(self) -> bool:
+        """Almeno un passo ha scaricato qualcosa: solo allora l'ora dei dati cambia (`esegui`), e solo allora «Aggiorna i dati» può
+        dire di aver aggiornato (collaudo del 27/11/2026: con tutte le fonti giù diceva «Aggiornato, ma con problemi»)."""
+        return bool(self.scaricati)
+
     def _passo(self, nome: str, funzione, fonte: str | None = None) -> None:
         """Esegue un passo; se una fonte non risponde, gli altri passi continuano. Se la fonte è spenta il passo si salta.
         I passi seguiti (`archivio.PASSI`) scrivono il loro esito: ultimo successo (a fine giro, vedi `_a_fine`), o errore con l'ora
@@ -644,7 +650,7 @@ class Aggiornamento:
             # risultati e voti sono arrivati lo stesso: un giro della sera fallito prima non è più un guasto (#661, revisione #700)
             archivio.togli_errore(self.db, archivio.PASSO_SERA)
         errori = json.dumps(self.errori, ensure_ascii=False)
-        if self.scaricati:
+        if self.dati_nuovi:
             archivio.segna(self.db, "aggiornamento", _ora(), errori)
         else:
             # nessun passo ha scaricato niente (non riusciti, oppure riusciti senza niente da chiedere, come «voti» senza giornate
@@ -681,9 +687,10 @@ def fonti_accese() -> list[str]:
 
 
 def esegui(storico: bool = False, scrivi: Callable[[str], None] = print, stagioni_storiche: int = 1,
-           per_utente: list | None = None) -> list[str]:
+           per_utente: list | None = None, esito: dict | None = None) -> list[str]:
     """Un aggiornamento completo; restituisce gli errori della corsa (tecnici: registro, riga generale). `per_utente`: se c'è, ci
-    aggiunge le frasi per chi ha premuto «Aggiorna i dati» (`Aggiornamento.per_utente`)."""
+    aggiunge le frasi per chi ha premuto «Aggiorna i dati» (`Aggiornamento.per_utente`). `esito`: se c'è, ci scrive
+    `dati_nuovi` (`Aggiornamento.dati_nuovi`: è arrivato qualcosa e l'ora dei dati è cambiata)."""
     db = archivio.apri()
     try:
         st = Stagione.di(date.today())
@@ -694,6 +701,8 @@ def esegui(storico: bool = False, scrivi: Callable[[str], None] = print, stagion
         errori = agg.esegui(storico, stagioni_storiche)
         if per_utente is not None:
             per_utente.extend(agg.per_utente())
+        if esito is not None:
+            esito["dati_nuovi"] = agg.dati_nuovi
         scrivi(f"Fatto: {rete.contatore} richieste" + (f", {len(errori)} passi non riusciti" if errori else ""))
         return errori
     finally:

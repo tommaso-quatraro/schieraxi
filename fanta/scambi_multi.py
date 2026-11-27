@@ -122,15 +122,15 @@ def _taglia_eccesso(ids: list[int], v: scambi.Valori, regole: Regole) -> list[in
 # ---------------------------------------------------------------- analisi completa
 def _controlla_lista(v: scambi.Valori, rosa_ids: list[int], lista: list[int], chi: str, nome: str) -> None:
     if not lista:
-        raise ValueError(f"Scegli almeno un giocatore da {chi}")
+        raise ValueError(f"Scegli almeno un giocatore da {chi}.")
     if len(lista) > MAX_PER_LATO:
-        raise ValueError(f"Al massimo {MAX_PER_LATO} giocatori per parte")
+        raise ValueError(f"Al massimo {MAX_PER_LATO} giocatori per parte.")
     if len(set(lista)) != len(lista):
-        raise ValueError("Un giocatore è ripetuto: ogni giocatore può comparire una volta sola")
+        raise ValueError("Un giocatore è ripetuto: ogni giocatore può comparire una volta sola.")
     if any(i not in v.info.index for i in lista):
-        raise ValueError("Uno dei giocatori non è nel listone di Serie A: non si può valutare")
+        raise ValueError("Uno dei giocatori non è nel listone di Serie A: non si può valutare.")
     if not set(lista) <= set(rosa_ids):
-        raise ValueError(f"Non tutti i giocatori da {chi} sono in {nome}")
+        raise ValueError(f"Non tutti i giocatori da {chi} sono in {nome}.")
 
 
 def controlla_conguaglio(conguaglio: int, mia: Squadra, loro: Squadra, lingua: str = "it") -> dict:
@@ -138,9 +138,9 @@ def controlla_conguaglio(conguaglio: int, mia: Squadra, loro: Squadra, lingua: s
     Gli errori di input restano in italiano; `lingua` cambia solo il testo di `problema`."""
     en = lingua == EN
     if isinstance(conguaglio, bool) or not isinstance(conguaglio, int):
-        raise ValueError("Il conguaglio deve essere un numero intero di crediti")
+        raise ValueError("Il conguaglio deve essere un numero intero di crediti.")
     if abs(conguaglio) > LIMITE_CREDITI:
-        raise ValueError(f"Il conguaglio non può superare {LIMITE_CREDITI} crediti")
+        raise ValueError(f"Il conguaglio non può superare {LIMITE_CREDITI} crediti.")
     residui = {"mio": mia.crediti_residui, "loro": loro.crediti_residui}
     dopo = {"mio": None, "loro": None}
     problema = None
@@ -241,11 +241,11 @@ def analizza_completo(v: scambi.Valori, regole: Regole, rose: Rose, mia: str, al
     `lingua` ("it" o "en"): lingua di giudizio, spiegazione e motivi per cui lo scambio non si può fare (gli errori restano in italiano)."""
     sq_a, sq_b = rose.squadra(mia), rose.squadra(altra)
     if sq_a is None:
-        raise ValueError(f"Squadra non trovata: {mia}")
+        raise ValueError(f"Squadra non trovata: {mia}.")
     if sq_b is None:
-        raise ValueError(f"Squadra non trovata: {altra}")
+        raise ValueError(f"Squadra non trovata: {altra}.")
     if sq_a.nome == sq_b.nome:
-        raise ValueError("Scegli un'altra squadra: non puoi scambiare con te stesso")
+        raise ValueError("Scegli un'altra squadra: non puoi scambiare con te stesso.")
     a, b = scambi._ids(rose, mia), scambi._ids(rose, altra)
     do, ricevo = list(do), list(ricevo)
     _controlla_lista(v, a, do, "dare", sq_a.nome)

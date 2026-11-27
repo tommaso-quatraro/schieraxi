@@ -80,7 +80,7 @@ def test_errore_senza_previsioni_con_i_due_numeri(monkeypatch):
     assert prima == "Non ci sono ancora previsioni per l'11ª giornata di Serie A: riprova più tardi."
     # l'articolo sta nella parte variabile: il web lo riconosce e lo traduce insieme alla giornata
     assert _testo(IT, "err.nessuna_previsione") == "Non ci sono ancora previsioni per {1}: riprova più tardi."
-    assert _testo(IT, "err.senza_previsione") == "Giocatore {1} senza previsione per {2} (la sua squadra non gioca?)"
+    assert _testo(IT, "err.senza_previsione") == "Giocatore {1} senza previsione per {2} (la sua squadra non gioca?)."
 
 
 @pytest.mark.parametrize("testo, atteso", [
@@ -219,10 +219,10 @@ def test_errore_del_confronto_con_i_due_numeri(monkeypatch):
     monkeypatch.setattr(consigli, "previsioni", lambda db, regole, giornata=None, *a, **k: (pd.DataFrame(index=[5]), giornata or 9, True))
     with pytest.raises(ValueError) as e:
         consigli.confronto(None, LEGA_DA_4, 1, 2)
-    assert str(e.value) == "Giocatore 1 senza previsione per la Giornata 6 · 9ª di Serie A (la sua squadra non gioca?)"
+    assert str(e.value) == "Giocatore 1 senza previsione per la Giornata 6 · 9ª di Serie A (la sua squadra non gioca?)."
     with pytest.raises(ValueError) as e:
         consigli.confronto(None, Regole(prima_giornata_lega=12), 1, 2, giornata=8)
-    assert str(e.value) == "Giocatore 1 senza previsione per l'8ª giornata di Serie A (la sua squadra non gioca?)"
+    assert str(e.value) == "Giocatore 1 senza previsione per l'8ª giornata di Serie A (la sua squadra non gioca?)."
 
 
 def _node(codice: str):
@@ -272,10 +272,10 @@ def test_errori_con_la_giornata_tradotti_in_inglese():
     """La giornata dentro un messaggio d'errore del server (con il suo articolo) si traduce insieme al resto: «matchday …», niente italiano."""
     messaggi = ["Non ci sono ancora previsioni per la Giornata 6 · 9ª di Serie A: riprova più tardi.",
                 "Non ci sono ancora previsioni per l'11ª giornata di Serie A: riprova più tardi.",
-                "Giocatore 12 senza previsione per la Giornata 6 · 9ª di Serie A (la sua squadra non gioca?)",
-                "Giocatore 12 senza previsione per l'8ª giornata di Serie A (la sua squadra non gioca?)"]
+                "Giocatore 12 senza previsione per la Giornata 6 · 9ª di Serie A (la sua squadra non gioca?).",
+                "Giocatore 12 senza previsione per l'8ª giornata di Serie A (la sua squadra non gioca?)."]
     codice = TESTI + f'LINGUA = "en"; console.log(JSON.stringify({json.dumps(messaggi)}.map(traduciErrore)))'
     assert _node(codice) == ["There are no forecasts yet for Matchday 6 · Serie A 9: try again later.",
                              "There are no forecasts yet for Serie A matchday 11: try again later.",
-                             "Player 12 has no forecast for Matchday 6 · Serie A 9 (is their team not playing?)",
-                             "Player 12 has no forecast for Serie A matchday 8 (is their team not playing?)"]
+                             "Player 12 has no forecast for Matchday 6 · Serie A 9 (is their team not playing?).",
+                             "Player 12 has no forecast for Serie A matchday 8 (is their team not playing?)."]

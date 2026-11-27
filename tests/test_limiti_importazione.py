@@ -20,10 +20,10 @@ from fanta import importa_sicuro, limiti, nomi, rose, server
 
 from test_limiti import ambiente, nuovo_utente  # noqa: F401 (fixture e utente di prova)
 
-TESTO_LUNGO = f"Il testo è troppo lungo (massimo {importa_sicuro.MAX_TESTO // 1000} mila caratteri): incolla solo le rose"
-GRANDE_APERTO = "Il file Excel è troppo grande una volta aperto: carica solo il foglio con le rose"
+TESTO_LUNGO = f"Il testo è troppo lungo (massimo {importa_sicuro.MAX_TESTO // 1000} mila caratteri): incolla solo le rose."
+GRANDE_APERTO = "Il file Excel è troppo grande una volta aperto: carica solo il foglio con le rose."
 TEMPO_FINITO = ("Il riconoscimento dei giocatori ha richiesto troppo tempo: riprova fra qualche minuto e, se succede ancora, "
-                "lascia solo le rose")
+                "lascia solo le rose.")
 
 
 def excel(cartella, fogli: dict[str, list[list]], nome="rose.xlsx"):
@@ -167,7 +167,7 @@ def test_il_messaggio_del_tempo_finito_e_nel_catalogo():
     voce = catalogo["err.riconoscimento_lungo"]
     assert voce["it"] == TEMPO_FINITO
     assert voce["en"] == ("Recognising the players took too long: try again in a few minutes and, if it happens again, "
-                          "keep only the rosters")
+                          "keep only the rosters.")
 
 
 def test_senza_account_nessun_tempo_massimo(monkeypatch):

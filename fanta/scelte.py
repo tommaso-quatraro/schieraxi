@@ -31,10 +31,10 @@ def motivo_non_valida(titolari, ruoli: dict[int, str], regole) -> str | None:
     except (TypeError, ValueError):                              # file rovinato: non è una formazione
         scelti = []
     if len(scelti) != 11 or any(i not in ruoli for i in scelti):
-        return "Servono 11 titolari diversi, tutti della rosa"
+        return "Servono 11 titolari diversi, tutti della rosa."
     conta = {r: sum(1 for i in scelti if ruoli[i] == r) for r in "PDCA"}
     if conta["P"] != 1 or not modulo_valido(conta["D"], conta["C"], conta["A"], regole):
-        return f"Il modulo {conta['D']}-{conta['C']}-{conta['A']} con {conta['P']} portieri non è ammesso nella tua lega"
+        return f"Il modulo {conta['D']}-{conta['C']}-{conta['A']} con {conta['P']} portieri non è ammesso nella tua lega."
     return None
 
 
