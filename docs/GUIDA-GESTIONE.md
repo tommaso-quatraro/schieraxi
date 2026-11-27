@@ -209,15 +209,18 @@ Le misure dello **Stato dei dati**:
   e il tocco sulla notifica apre l'app per iPhone.
 - **L'ora prima della scadenza.** È l'ora in cui il server lavora di più: rilegge le probabili a 60, 30 e 15 minuti dalla
   chiusura e ricalcola le formazioni di tutti. Per non rifare gli stessi calcoli due volte:
-  - con gli account i **promemoria** della scadenza (un'ora e un quarto d'ora prima) li manda il servizio, ogni 10 minuti come
-    prima e con gli stessi orari. La riga di `promemoria.sh` nel crontab resta com'è: fa il controllo di salute e, se il servizio
-    non fa il giro da un quarto d'ora (per esempio perché è fermo), manda lui i promemoria e scrive in `dati/promemoria.log`
-    «promemoria: il servizio non fa il giro da N minuti, lo fa il cron». Gli avvisi partiti dal servizio si vedono con
-    `journalctl -u fantacalcio --since today | grep Promemoria` (solo il numero dell'utente). Con `FANTA_PIANIFICATORE=0` nelle
-    variabili del servizio i promemoria tornano tutti al cron;
-  - il **controllo automatico** di ogni ora (la sentinella, al minuto 37) in quell'ora fa un giro leggero: ricontrolla solo chi
-    ha già un problema aperto, più i controlli di tutti; gli altri utenti al giro dopo. In **Stato dei dati** la riga del
-    controllo lo dice: «giro leggero: scadenza della formazione alle 20:45».
+  - con gli account i **promemoria** della scadenza (un'ora prima e di nuovo un quarto d'ora prima) li manda il servizio, ogni
+    10 minuti come prima e con gli stessi orari. La riga di `promemoria.sh` nel crontab resta com'è: fa il controllo di salute
+    e, se il servizio non riesce a fare il giro da un quarto d'ora (per esempio perché è fermo), manda lui i promemoria e scrive
+    in `dati/promemoria.log` «promemoria: il servizio non fa il giro da N minuti, lo fa il cron». Gli avvisi partiti dal
+    servizio si vedono con `journalctl -u fantacalcio --since today | grep Promemoria` (solo il numero dell'utente). Quando il
+    servizio si riavvia (per esempio per un'installazione) prima finisce il promemoria che sta mandando, al massimo un minuto.
+    `FANTA_PIANIFICATORE=0` nelle variabili del servizio riporta i promemoria tutti al cron, ma spegne anche il resto del
+    pianificatore: i giri delle probabili a 60, 30 e 15 minuti dalla scadenza con gli avvisi sui cambi che li seguono (restano
+    quelli dell'aggiornamento programmato, `aggiorna.sh`), i risultati e i voti della sera e il registro delle giornate;
+  - il **controllo automatico** di ogni ora (la sentinella, al minuto 37) in quell'ora fa un giro leggero: ricontrolla chi ha
+    già un problema aperto e, a turno, i 3 utenti controllati meno di recente, più i controlli di tutti; gli altri utenti al
+    giro dopo. In **Stato dei dati** la riga del controllo lo dice: «giro leggero: scadenza della formazione alle 20:45».
 
   Non c'è niente da cambiare a mano: crontab e servizio restano quelli di prima, e la versione nuova arriva con
   l'aggiornamento automatico.
