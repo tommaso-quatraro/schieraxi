@@ -1652,13 +1652,6 @@ def _stati_live() -> dict:
         return {}
 
 
-def _live_per_widget() -> dict:
-    """Versione piccola per il widget: stato, minuto e punteggio di ogni partita, solo i marcatori (niente cartellini)."""
-    c = _risposta_live()
-    return {"aggiornato_il": c["aggiornato_il"], "fonte": c["fonte"], "in_corso": c["in_corso"],
-            "partite": [p | {"eventi": [e for e in p["eventi"] if e["tipo"] != "giallo"][:8]} for p in c["partite"]]}
-
-
 def _calendario_live() -> list[dict]:
     db = _db()
     try:
@@ -1715,7 +1708,8 @@ def widget(request: Request, ctx: Contesto = Depends(lega_corrente)):
                                             scambi_trova=funz["scambi_trova"])
     finally:
         db.close()
-    corpo["live"] = _live_per_widget()
+    # niente diretta (27/11/2026): nessun widget la mostra (#634), e il minuto della partita cambiava l'ETag a ogni ricarica, che
+    # scaricava tutta la risposta invece di un 304. I risultati in diretta restano in GET /api/live.
     corpo["funzioni"] = funz
     widget_riassunto.entro_il_peso(corpo)                 # rete di sicurezza sulla dimensione: i blocchi tolti vanno in `mancano`
     etag = widget_riassunto.etag(corpo)                   # senza i campi che cambiano solo con l'orologio (#651)

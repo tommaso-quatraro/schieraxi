@@ -1,0 +1,19 @@
+{
+  "titolo": "Widget dell'iPhone: aggiornamenti che servono durante le partite e frasi intere",
+  "voci": [
+    "Durante le partite i widget chiedono di aggiornarsi ogni quarto d'ora invece che ogni 2 minuti: la diretta non la mostrano più, e così l'iPhone non finisce gli aggiornamenti che concede ai widget. Restano attenti fino a 3 ore dopo il calcio d'inizio delle partite dei tuoi giocatori, quando arrivano i voti e i punti fatti.",
+    "Nel widget piccolo «Prossima giornata» la riga «probabili non uscite» non finisce più con i puntini con il testo grande o sull'iPhone SE: dove non entra resta senza il simbolo, poi il solo simbolo dell'orologio, e VoiceOver legge la frase intera.",
+    "Sulla schermata di blocco, nel rettangolo di «Prossima giornata», la riga «3-4-3 · 72,7 punti attesi» con il testo grande perde parole intere («72,7 attesi», poi «72,7») invece di andare a capo e uscire dal riquadro."
+  ],
+  "titolo_en": "iPhone widgets: useful refreshes during matches and whole sentences",
+  "voci_en": [
+    "During matches the widgets ask to refresh every quarter of an hour instead of every 2 minutes: they no longer show live scores, so the iPhone does not run out of the refreshes it allows widgets. They stay alert until 3 hours after the kick-off of your players' matches, when ratings and points scored arrive.",
+    "In the small «Next matchday» widget the line «probable line-ups not out» no longer ends with dots with large text or on the iPhone SE: where it does not fit it drops the symbol, then shows only the clock symbol, and VoiceOver reads the whole sentence.",
+    "On the Lock Screen, in the «Next matchday» rectangle, the line «3-4-3 · 72.7 expected points» with large text drops whole words («72.7 expected», then «72.7») instead of wrapping and spilling out of the box."
+  ],
+  "tecnico": [
+    "GET /api/widget senza il blocco `live` (tolto server._live_per_widget): minuto e aggiornato_il entravano nell'ETag (widget.etag), quindi durante le partite ogni ricarica era un 200 da circa 18 kB invece di un 304. GET /api/live resta com'è. Le app installate leggono `live` come facoltativo (RiassuntoWidget.liveLetto, provato da testIlLiveMancanteOStranoNonRompe): senza, finestraLive è falso e tornano a 10/20/15/30 minuti, senza la ricarica ogni 2 minuti. Test: tests/test_widget_senza_diretta.py.",
+    "iPhone: RicaricaWidget.minuti (usata dal Fornitore) e RiassuntoWidget.conPartite / prossimaFinestra: con una partita di un giocatore della rosa (rosa[].data_partita) da 10 minuti prima a 3 ore dopo il calcio d'inizio ogni 15 minuti, non più ogni 2; la finestra copre il giro dei risultati (pianificatore.giro_risultati, 2 h 30 dopo l'inizio), che la vecchia finestra di 130 minuti lasciava fuori. Tolte finestraLive e prossimaPartita. EtaDatiWidget.sogliaPartite da 15 a 30 minuti, il doppio dell'intervallo chiesto. Test: RicaricaWidgetTests, WidgetEtaDatiTests.",
+    "Widget piccolo «Prossima giornata»: ProbabiliNonUscite (PrimaCheEntra con simbolo e frase, la frase sola, il solo simbolo; VoiceOver la frase intera). Rettangolo: TestoCheEntra(ParoleWidget.moduloEPuntiAttesi), test in TestiCortiWidgetTests."
+  ]
+}
