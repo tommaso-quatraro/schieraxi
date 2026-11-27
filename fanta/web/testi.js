@@ -1204,6 +1204,12 @@ const TESTI = {
     "frase.uso.parte_widget": "Widget dell'iPhone",
     "frase.uso.parte_controllo": "Controllo del server",
     "frase.uso.parte_altro": "Altre richieste",
+    "frase.aggiorna.non_risponde": "{fonte} non risponde: riprova più tardi.",
+    "frase.aggiorna.non_rispondono": "{fonti} non rispondono: riprova più tardi.",
+    "frase.aggiorna.parte_non_aggiornata": "Una parte dei dati di {fonte} non si è aggiornata: il dettaglio è in Stato dei dati.",
+    "frase.aggiorna.parte_non_aggiornata_generica": "Una parte dei dati non si è aggiornata: il dettaglio è in Stato dei dati.",
+    "frase.aggiorna.controlli": "I controlli sui dati hanno trovato un problema: il dettaglio è in Stato dei dati.",
+    "frase.aggiorna.errore_server": "L'aggiornamento si è fermato per un errore del server: il dettaglio è nel registro.",
 
     "giocatore.gioca": "gioca {p}",
 
@@ -3158,6 +3164,12 @@ const TESTI = {
     "frase.uso.parte_widget": "iPhone widget",
     "frase.uso.parte_controllo": "Server check",
     "frase.uso.parte_altro": "Other requests",
+    "frase.aggiorna.non_risponde": "{fonte} is not responding: try again later.",
+    "frase.aggiorna.non_rispondono": "{fonti} are not responding: try again later.",
+    "frase.aggiorna.parte_non_aggiornata": "Part of the data from {fonte} was not refreshed: the details are in Data status.",
+    "frase.aggiorna.parte_non_aggiornata_generica": "Part of the data was not refreshed: the details are in Data status.",
+    "frase.aggiorna.controlli": "The data checks found a problem: the details are in Data status.",
+    "frase.aggiorna.errore_server": "The refresh stopped because of a server error: the details are in the log.",
 
     "giocatore.gioca": "plays {p}",
 

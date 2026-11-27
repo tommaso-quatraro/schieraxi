@@ -875,14 +875,25 @@ def avvia_aggiornamento():
         _blocco.release()
         return GIA_IN_CORSO
 
+    # Chi ha premuto legge una frase del catalogo per fatto (`errori`, con `errori_frasi` per tradurla: aggiorna.Aggiornamento.per_utente),
+    # mai l'errore tecnico, che va nel registro del server (collaudo d'insieme del 26/11: «ProxyError: HTTPSConnectionPool…» copriva
+    # lo schermo). Errori senza una loro frase: una frase generica, così l'avviso non dice «Dati aggiornati».
     def lavoro():
         global _aggiorna_finito_alle
+        registro = logging.getLogger("uvicorn.error")
+        per_utente: list = []
         try:
-            _aggiornamento["errori"] = aggiorna.esegui(scrivi=_aggiornamento["righe"].append)
+            errori = aggiorna.esegui(scrivi=_aggiornamento["righe"].append, per_utente=per_utente)
+            for e in errori:
+                registro.warning("Aggiorna i dati: %s", str(e)[:1000])
+            if errori and not per_utente:
+                per_utente.append(frasi.F("aggiorna.parte_non_aggiornata_generica"))
             _scalda()
-        except Exception as e:  # noqa: BLE001 - va riportato all'app, non deve far cadere il server
-            _aggiornamento["errori"].append(str(e))
+        except Exception:  # noqa: BLE001 - va riportato all'app, non deve far cadere il server
+            registro.exception("Aggiorna i dati: aggiornamento fermato")
+            per_utente.append(frasi.F("aggiorna.errore_server"))
         finally:
+            _aggiornamento.update(errori=[str(f) for f in per_utente], errori_frasi=frasi.lista(per_utente))
             _aggiorna_finito_alle = _orologio_aggiorna()       # prima di lasciare il lucchetto: la pausa parte da qui
             _aggiornamento["in_corso"] = False
             try:
@@ -890,7 +901,7 @@ def avvia_aggiornamento():
             finally:
                 _blocco.release()
 
-    _aggiornamento.update(in_corso=True, righe=[], errori=[])
+    _aggiornamento.update(in_corso=True, righe=[], errori=[], errori_frasi=[])
     threading.Thread(target=lavoro, daemon=True).start()
     return {"avviato": True}
 
