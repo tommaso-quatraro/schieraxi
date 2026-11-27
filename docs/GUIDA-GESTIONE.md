@@ -28,6 +28,10 @@ aprirle e sai come togliere un account che non vuoi.
 risponde con `"registrazione":"invito"`. Chi ha già un account non perde niente. Un valore scritto male (per esempio `chiusa`) vale
 come `invito`: le iscrizioni non si aprono mai per sbaglio.
 
+C'è anche `FANTA_REGISTRAZIONE=email`: serve l'invito **e** un'email, e l'account nasce solo dopo il codice a 6 cifre arrivato a
+quell'indirizzo. Funziona solo con l'invio delle email acceso (sezione 2, in fondo); se è spento, chi si registra legge «Su questo
+server l'iscrizione con l'email non è disponibile» e l'account non nasce.
+
 ### Iscrizioni aperte
 
 Con `FANTA_REGISTRAZIONE=aperta` chi vuole apre l'app, tocca **Registrati**, sceglie nome utente e password (l'email è facoltativa) ed
