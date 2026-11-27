@@ -85,7 +85,7 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
   - Varie: `backup.py`, `controlli.py` (coerenza dei dati), `sentinella.py` (ogni ora: rifà in sola lettura le risposte di Oggi,
     Formazione, Scelta, Diario, widget e Live per ogni utente e controlla le invarianti di `INVARIANTI`; esito nella tabella
     `controlli`, avviso al proprietario alla prima rottura confermata; `script/server/sentinella.sh`; nell'ora prima della scadenza
-    di una lega attiva, `libero.scadenza_vicina`, il giro del cron è leggero: chi ha una rottura aperta, i 3 controllati meno di recente (`A_ROTAZIONE`) e i controlli comuni,
+    di una lega attiva, `libero.scadenza_vicina`, il giro del cron è leggero: chi ha una rottura aperta, a turno i 3 fuori da un giro leggero da più tempo (`A_ROTAZIONE`, campo `leggeri` dello stato) e i controlli comuni,
     gli altri al giro dopo, «giro leggero» nel riassunto; storia dei giri nel campo
     `giri` di `dati/sentinella.json`, una voce `{quando, rotte, inviato}` per ogni giro del server tenuta 60 giorni, i giri a mano
     `--senza-invio` esclusi: `python -m fanta sentinella --giri --dal <ISO con fuso> --al <ISO con fuso>` la stampa, campo

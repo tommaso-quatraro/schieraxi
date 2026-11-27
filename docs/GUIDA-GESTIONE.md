@@ -219,7 +219,7 @@ Le misure dello **Stato dei dati**:
     pianificatore: i giri delle probabili a 60, 30 e 15 minuti dalla scadenza con gli avvisi sui cambi che li seguono (restano
     quelli dell'aggiornamento programmato, `aggiorna.sh`), i risultati e i voti della sera e il registro delle giornate;
   - il **controllo automatico** di ogni ora (la sentinella, al minuto 37) in quell'ora fa un giro leggero: ricontrolla chi ha
-    già un problema aperto e, a turno, i 3 utenti controllati meno di recente, più i controlli di tutti; gli altri utenti al
+    già un problema aperto e, a turno, 3 utenti (ogni giro leggero altri 3), più i controlli di tutti; gli altri utenti al
     giro dopo. In **Stato dei dati** la riga del controllo lo dice: «giro leggero: scadenza della formazione alle 20:45».
 
   Non c'è niente da cambiare a mano: crontab e servizio restano quelli di prima, e la versione nuova arriva con

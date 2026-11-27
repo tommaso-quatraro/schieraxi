@@ -104,7 +104,35 @@ def test_due_giri_leggeri_di_fila_controllano_utenti_diversi(db, tmp_path, monke
     monkeypatch.setattr(sentinella, "_prepara_live", lambda: None)
     stato: dict = {}
     primo = sentinella.esegui(db, PRIMA, contesti=list(ctx.items()), stato=stato, solo=set())
-    stato, _ = sentinella.aggiorna_stato(stato, primo, PRIMA)
+    stato, _ = sentinella.aggiorna_stato(stato, primo | {"leggero": "scadenza della formazione alle 15:00"}, PRIMA)
     secondo = sentinella.esegui(db, PRIMA + timedelta(hours=1), contesti=list(ctx.items()), stato=stato, solo=set())
     assert len(primo["controllati"]) == len(secondo["controllati"]) == 3
     assert set(primo["controllati"]) | set(secondo["controllati"]) == set(ctx)        # in due giri leggeri, tutti
+
+
+def test_la_rotazione_cambia_utenti_anche_con_un_giro_completo_in_mezzo(db, tmp_path, monkeypatch):  # noqa: F811
+    """Il caso di tutti i giorni: completo, leggero (ora prima di una scadenza), completo, leggero (la scadenza dopo). Dopo un
+    giro completo tutti hanno la stessa ora di controllo: la rotazione guarda l'ora dell'ultimo giro LEGGERO di ciascuno, così il
+    secondo giro leggero controlla altri 3 utenti e non di nuovo i primi della fila. Giri veri dal comando del cron, con il file
+    di stato fra un giro e l'altro; i giri a pochi minuti di distanza, così il «mondo» inventato resta coerente con l'ora."""
+    m = _mondo()
+    ctx = {u: _contesto(tmp_path, u.replace(" ", "")) for u in [f"utente {i}" for i in range(1, 7)]}
+    chi = {str(c.rose): u for u, c in ctx.items()}
+    visti: list[str] = []
+
+    def risposte(c, db):
+        visti.append(chi[str(c.rose)])
+        return copy.deepcopy(({k: v for k, v in m.items()}, {}, None))
+    monkeypatch.setattr(sentinella, "risposte_utente", risposte)
+    monkeypatch.setattr(sentinella, "_prepara_live", lambda: None)
+    monkeypatch.setattr(sentinella, "_contesti", lambda: list(ctx.items()))
+    leggero = iter([None, "scadenza della formazione alle 15:00", None, "scadenza della formazione alle 15:00"])
+    monkeypatch.setattr(sentinella, "_scadenza_vicina", lambda db, adesso, leghe, scrivi: next(leggero))
+    giri = []
+    for minuti in range(4):
+        visti.clear()
+        sentinella.giro(manda=lambda t, x: True, file_stato=tmp_path / "sentinella.json", adesso=PRIMA + timedelta(minutes=minuti),
+                        scrivi=lambda s: None, db_percorso=tmp_path / "fanta.sqlite")
+        giri.append(list(visti))
+    assert [len(g) for g in giri] == [6, 3, 6, 3]
+    assert set(giri[1]).isdisjoint(giri[3])                                # il secondo giro leggero: altri 3 utenti
