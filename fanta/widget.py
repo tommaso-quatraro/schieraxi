@@ -194,8 +194,9 @@ def _diario(file_diario, regole: Regole, db: sqlite3.Connection) -> list[dict]:
     """Punti attesi contro punti fatti nelle ultime giornate, dal diario, con la formazione che conta come nella pagina Giornate e
     nel riepilogo di Oggi (`diario.formazione_che_conta`: la tua, altrimenti la copia fatta alla scadenza, altrimenti la
     consigliata). `giornata_lega` e `stagione` come in /api/diario: il widget scrive lo stesso numero dell'app (null fuori dalla
-    stagione in corso), e non ha le voci che l'app non mostra (`diario.sospesa`)."""
-    voci = diario.elenco(file_diario, regole, db)["giornate"][:MAX_DIARIO]
+    stagione in corso), e non ha le voci che l'app non mostra (`diario.sospesa`). Le giornate che aspettano un recupero
+    (`in_attesa`) il widget non le mostra: il diario non legge il calendario per loro (`attese` falso)."""
+    voci = diario.elenco(file_diario, regole, db, attese=False)["giornate"][:MAX_DIARIO]
     out = []
     for v in voci:
         _, f = diario.formazione_che_conta(v)
