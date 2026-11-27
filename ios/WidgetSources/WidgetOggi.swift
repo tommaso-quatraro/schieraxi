@@ -336,7 +336,8 @@ struct VistaWidget: View {
             if r.daControllare > 0 {
                 EtichettaDaControllare(n: r.daControllare).font(.caption2).foregroundStyle(TintaWidget.attenzione).lineLimit(1)
             } else if r.probabili == false {
-                Label("probabili non uscite", systemImage: "clock").font(.caption2).foregroundStyle(TintaWidget.testo2).lineLimit(1)
+                // intera, senza simbolo o il solo simbolo: mai «probabili non usc…» (VoiceOver legge la frase intera)
+                ProbabiliNonUscite().font(.caption2).foregroundStyle(TintaWidget.testo2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

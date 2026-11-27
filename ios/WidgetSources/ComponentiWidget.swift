@@ -168,12 +168,13 @@ extension Voce {
     var completo: RiassuntoWidget? { widget }
 
     /// L'ora dei dati da scrivere sotto (`RigaCopia`): quella della copia salvata, o quella dei dati arrivati bene ma vecchi perché
-    /// iOS ha rimandato gli aggiornamenti (oltre 15 minuti con una partita in gioco, oltre un'ora negli altri momenti,
-    /// `EtaDatiWidget`); nil con i dati freschi o senza riassunto. Contata dall'istante della voce.
+    /// iOS ha rimandato gli aggiornamenti (oltre 30 minuti con una partita della rosa, oltre un'ora negli altri momenti,
+    /// `EtaDatiWidget`); nil con i dati freschi o senza riassunto. Contata dall'istante della voce, con la stessa finestra delle
+    /// partite che decide le ricariche (`RiassuntoWidget.conPartite`).
     var oraDeiDati: Date? {
         guard let r = riassunto else { return nil }
         return EtaDatiWidget.ora(scaricatoIl: r.scaricatoIl, adesso: date, copia: datiSalvati,
-                                 partite: widget?.finestraLive(adesso: date) == true)
+                                 partite: widget?.conPartite(adesso: date) == true)
     }
 
     /// Cosa mostrano i tre widget prima del loro contenuto di sempre, nello stesso ordine (`CasoWidget`, provato dai test): a

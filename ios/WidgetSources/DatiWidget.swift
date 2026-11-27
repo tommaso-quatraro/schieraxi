@@ -193,7 +193,8 @@ enum ScaricaOggi {
     }
 }
 
-/// Decide quando il widget si ricarica: ogni mezz'ora, e di nuovo al calcio d'inizio (per passare da conto alla rovescia a «Chiusa»).
+/// Decide quando il widget si ricarica (`RicaricaWidget`): ogni 10-30 minuti, ogni 15 con una partita della rosa, e di nuovo alla
+/// scadenza (per passare dal conto alla rovescia a «Chiusa»).
 struct Fornitore: AppIntentTimelineProvider {
     /// Per i widget con il conto alla rovescia («6 h 44 min», come la web): una voce in più per ogni minuto in cui il testo cambia,
     /// per l'ora che viene (`Quando.istantiDelConto`). Sono voci della stessa timeline, non ricariche: non toccano il limite di iOS.
@@ -212,21 +213,15 @@ struct Fornitore: AppIntentTimelineProvider {
         let primo = await voce(configuration)
         let adesso = primo.date
         var voci = [primo]
-        // Più spesso quando la partita è vicina (probabili, dubbi e formazioni cambiano), meno quando mancano giorni.
-        var minuti = 30.0
-        if let inizio = primo.riassunto?.inizio {
-            let manca = inizio.timeIntervalSince(adesso)
-            if manca > 0 && manca < 3 * 3600 { minuti = 10 } else if manca > 0 && manca < 24 * 3600 { minuti = 20 } else if manca < 0 && manca > -3 * 3600 { minuti = 15 }
-        }
-        // Partite in gioco (o che stanno per iniziare): ogni 2 minuti. iOS decide poi quando ricaricare davvero (budget giornaliero): se
-        // rimanda, il widget mostra l'ultimo punteggio e, dopo 15 minuti, la sua ora (`EtaDatiWidget`, con la voce in più qui sotto).
-        var prossimoCalcio: Date?
-        if let w = primo.widget {
-            if w.finestraLive(adesso: adesso) { minuti = 2 }
-            prossimoCalcio = w.prossimaPartita(dopo: adesso)?.quando?.addingTimeInterval(-10 * 60)
-        }
+        // Più spesso quando la scadenza è vicina (probabili, dubbi e formazioni cambiano), meno quando mancano giorni; ogni 15 minuti
+        // con una partita della rosa, fino a 3 ore dopo il calcio d'inizio, quando arrivano i voti (`RicaricaWidget`, provata nei test).
+        // iOS decide poi quando ricaricare davvero (ricariche contate al giorno): se rimanda, sotto i dati compare la loro ora
+        // (`EtaDatiWidget`, con la voce in più qui sotto).
+        let partite = primo.widget?.conPartite(adesso: adesso) == true
+        let minuti = RicaricaWidget.minuti(adesso: adesso, scadenza: primo.riassunto?.inizio, partite: partite)
         var prossimo = adesso.addingTimeInterval(minuti * 60)
-        if let c = prossimoCalcio, c > adesso, c < prossimo { prossimo = c }
+        // quando si apre la finestra della prossima partita della rosa: da lì ogni 15 minuti
+        if let finestra = primo.widget?.prossimaFinestra(dopo: adesso), finestra < prossimo { prossimo = finestra }
         if primo.indirizzoMancante { prossimo = adesso.addingTimeInterval(60 * 60) }
         // la scadenza del conto alla rovescia: `inizio`, o per chi è entrato a giornata iniziata quella della prossima (#687)
         let scadenza = primo.riassunto?.scadenzaDelConto

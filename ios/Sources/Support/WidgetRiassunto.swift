@@ -812,10 +812,11 @@ enum VociTimeline {
 /// arrivati bene solo quando sono vecchi, perché iOS decide lui quando ricaricare un widget e può rimandare anche di ore. Prima l'ora
 /// si vedeva solo con la copia, e a partite in corso i punti di un'ora prima sembravano attuali.
 enum EtaDatiWidget {
-    /// Con una partita in gioco o che sta per iniziare (`RiassuntoWidget.finestraLive`) il widget chiede di ricaricare ogni 2 minuti:
-    /// dopo 15 i punti possono essere già cambiati.
-    static let sogliaPartite: TimeInterval = 15 * 60
-    /// Negli altri momenti chiede ogni 10-30 minuti (`Fornitore`): dopo un'ora iOS ha rimandato di sicuro.
+    /// Con una partita della rosa nella sua finestra (`RiassuntoWidget.conPartite`) il widget chiede di ricaricare ogni 15 minuti
+    /// (`RicaricaWidget.minutiPartite`): oltre il doppio iOS ha rimandato, e i punti possono essere già cambiati. Fino al 27/11/2026
+    /// chiedeva ogni 2 minuti e la soglia era 15: con le ricariche ogni 15 l'ora sarebbe comparsa quasi a ogni voce.
+    static let sogliaPartite: TimeInterval = 2 * RicaricaWidget.minutiPartite * 60
+    /// Negli altri momenti chiede ogni 10-30 minuti (`RicaricaWidget.minuti`): dopo un'ora iOS ha rimandato di sicuro.
     static let soglia: TimeInterval = 60 * 60
 
     /// L'ora da scrivere sotto i dati, o nil se non serve. `adesso`: l'istante della voce della timeline.
