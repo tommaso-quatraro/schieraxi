@@ -610,7 +610,9 @@ arriva una lettura di Oggi partita dopo il tocco.
 
 Campo nuovo e facoltativo (i client vecchi lo ignorano; nessun campo tolto o rinominato): i due promemoria della scadenza della
 giornata di Oggi (`giornata`) già scritti, come li scriverebbe in quel momento il giro dei promemoria del server
-(`notifiche.testi_promemoria`), nella lingua degli avvisi dell'utente (`lingua` di `GET /api/avvisi`, non `Accept-Language`):
+(`notifiche.testi_promemoria`), nella lingua della richiesta come il resto della risposta (`?lingua=` o `Accept-Language`;
+dal 27/11/2026 non più nella `lingua` di `GET /api/avvisi`: l'app per iPhone chiede sempre l'italiano e il suo promemoria di
+riserva è in italiano, e con gli avvisi in inglese i due promemoria arrivavano in due lingue):
 
 ```json
 "testi_promemoria": [
