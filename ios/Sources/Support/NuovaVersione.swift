@@ -64,15 +64,23 @@ enum NuovaVersione {
         memoria.set(esito.build, forKey: chiaveAvvisata)
     }
 
+    /// La versione leggibile di una build. DA FARE: ancora la sigla, il test deve fallire.
+    static func versione(build: Int) -> String {
+        "build-\(build)"
+    }
+
+    /// Titolo e testo dell'avviso. DA FARE: ancora scritti qui, il test deve fallire.
+    static func avviso(per esito: Esito) -> (titolo: String, testo: String) {
+        ("SchieraXI · C'è una versione nuova", "Aggiorna SchieraXI dall'app con cui l'hai installata (\(esito.nome)).")
+    }
+
     /// Controlla e, se c'è una build mai segnalata, manda la notifica (una sola volta per build).
     @discardableResult
     static func controllaEAvvisa() async -> Esito? {
         guard let esito = await controlla() else { return nil }
         await avvisaSeServe(esito) { e in
-            await Notifiche.avviso(
-                id: "nuova-versione",
-                titolo: "SchieraXI · C'è una versione nuova",
-                corpo: "Aggiorna SchieraXI dall'app con cui l'hai installata (\(e.nome)).")
+            let testi = Self.avviso(per: e)
+            return await Notifiche.avviso(id: "nuova-versione", titolo: testi.titolo, corpo: testi.testo)
         }
         return esito
     }

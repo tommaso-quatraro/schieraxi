@@ -27,6 +27,11 @@ struct CertificatoSezione: View {
 
     private var info: Certificato.Info { Certificato.info(scadenza: scadenza) }
 
+    /// La riga sotto la scadenza. DA FARE: ancora il testo vecchio, il test deve fallire.
+    nonisolated static var aiuto: String {
+        "Con l'Apple ID gratuito il certificato dura 7 giorni. 24 ore e 6 ore prima della scadenza arriva un promemoria: «Rinnovala con SideStore»."
+    }
+
     private var colore: Color {
         switch info.livello {
         case .ok: return .testoSecondario
@@ -56,7 +61,7 @@ struct CertificatoSezione: View {
                 }
                 .accessibilityElement(children: .combine)
             }
-            Text("Con l'Apple ID gratuito il certificato dura 7 giorni. 24 ore e 6 ore prima della scadenza arriva un promemoria: «Rinnovala con SideStore».")
+            Text(Self.aiuto)
                 .font(.footnote).foregroundStyle(Color.testoSecondario)
         }
         .task {

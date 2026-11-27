@@ -23,6 +23,14 @@ enum Notifiche {
     /// I due promemoria della scadenza del certificato.
     static let identificativiCertificato = ["fanta-cert-24", "fanta-cert-6"]
 
+    /// Come si mostra un avviso che arriva con l'app aperta (`DelegatoAvvisi`). DA FARE: ancora vuoto, il test deve fallire.
+    static let conAppAperta: UNNotificationPresentationOptions = []
+
+    /// Dove porta il tocco su un avviso dell'app. DA FARE: ancora nessuna destinazione, il test deve fallire.
+    static func destinazione(identificativo: String) -> Destinazione? {
+        nil
+    }
+
     static func stato() async -> UNAuthorizationStatus {
         await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     }

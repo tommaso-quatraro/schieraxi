@@ -129,6 +129,16 @@
     "it": "Tra circa {n} ore l'app smette di aprirsi. Rinnovala dall'app con cui l'hai installata.",
     "en": "In about {n} hours the app will stop opening. Renew it from the app you installed it with."
   },
+  "avv.versione_nuova_titolo": {
+    "it": "SchieraXI · C'è una versione nuova",
+    "en": "SchieraXI · A new version is out",
+    "nota": "solo iPhone: titolo dell'avviso quando c'è una versione nuova dell'app (NuovaVersione)"
+  },
+  "avv.versione_nuova_testo": {
+    "it": "Aggiorna SchieraXI alla versione {versione} dall'app con cui l'hai installata.",
+    "en": "Update SchieraXI to version {versione} from the app you installed it with.",
+    "nota": "solo iPhone: testo dell'avviso della versione nuova; {versione} come la «Versione dell'app» di Informazioni (1.0.38)"
+  },
   "avv.ore_tranq": {
     "it": "Ore tranquille",
     "en": "Quiet hours"

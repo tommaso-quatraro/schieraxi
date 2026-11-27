@@ -187,6 +187,34 @@ struct AvvisiDispositivoTests {
         #expect(telefono.riprogrammati == 0)
     }
 
+    @Test("Salvataggio non riuscito: si legge solo il messaggio dell'errore, come la web (`avviso(e.message)`), niente frase scritta qui")
+    func erroreSoloIlMessaggio() async throws {
+        let vm = AvvisiDispositivoViewModel(server: server(rotto: true), telefono: Telefono().avvisi, memoria: try memoria())
+        await vm.carica()
+        await vm.cambiaOreTranquille(false)
+        #expect(vm.erroreSalvataggio == Catalogo.Comune.serverNonRisponde)
+    }
+
+    @Test("Tornando nell'app l'interruttore rilegge il permesso di iOS, tolto o ridato nelle Impostazioni di iOS")
+    func rileggePermesso() async throws {
+        let telefono = Telefono()
+        telefono.permesso = true
+        let m = try memoria()
+        let vm = AvvisiDispositivoViewModel(server: server(), telefono: telefono.avvisi, memoria: m)
+        await vm.carica()
+        #expect(vm.qui)
+        telefono.permesso = false   // tolto nelle Impostazioni di iOS, con l'app in secondo piano
+        await vm.rileggiPermesso()
+        #expect(!vm.qui)
+        telefono.permesso = true    // ridato
+        await vm.rileggiPermesso()
+        #expect(vm.qui)
+        ArchivioAvvisiQui.salva(false, m)
+        await vm.rileggiPermesso()
+        #expect(!vm.qui, "spento dall'utente nell'app: resta spento anche con il permesso")
+        #expect(telefono.richieste == 0, "rileggere non chiede mai il permesso")
+    }
+
     @Test("Avvisi anche per l'app nativa (Gestione): si manda solo `app_nativa`, poi i promemoria del telefono tornano in programma")
     func appNativa() async throws {
         let s = server()

@@ -29,6 +29,14 @@ extension Catalogo {
             n == 1 ? "Tra circa un'ora l'app smette di aprirsi. Rinnovala dall'app con cui l'hai installata." : "Tra circa \(n) ore l'app smette di aprirsi. Rinnovala dall'app con cui l'hai installata."
         }
 
+        /// `avv.versione_nuova_titolo`
+        static let versioneNuovaTitolo = "SchieraXI · C'è una versione nuova"
+
+        /// `avv.versione_nuova_testo`
+        static func versioneNuovaTesto(versione: String) -> String {
+            "Aggiorna SchieraXI alla versione \(versione) dall'app con cui l'hai installata."
+        }
+
         /// `avv.nome_del_giocatore`
         static let nomeDelGiocatore = "Nome del giocatore"
 

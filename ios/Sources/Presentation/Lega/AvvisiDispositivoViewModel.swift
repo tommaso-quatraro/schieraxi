@@ -65,6 +65,11 @@ final class AvvisiDispositivoViewModel: ViewModelBase {
         qui = await statoQui()
     }
 
+    /// Rilegge il permesso di iOS per «Avvisi su questo dispositivo» quando l'app torna in primo piano (`ImpostazioniView`).
+    func rileggiPermesso() async {
+        // DA FARE: ancora vuoto, il test deve fallire
+    }
+
     private func statoQui() async -> Bool {
         guard ArchivioAvvisiQui.acceso(memoria) else { return false }
         return await telefono.permesso()
