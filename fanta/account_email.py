@@ -377,8 +377,7 @@ def _invito_vivo(db: sqlite3.Connection, invito, adesso: datetime, ip: str | Non
 
 # Solo nel modo `email`, dove l'invito c'è sempre (27/11/2026: diceva «Chiedi un invito» a chi l'aveva già). Si controlla prima
 # dell'invito, che quindi non viene usato.
-ISCRIZIONE_POSTA_SPENTA = ("L'iscrizione non è possibile adesso: su questo server l'invio delle email è spento e il codice per confermare "
-                           "l'indirizzo non arriverebbe. Il tuo invito non è stato usato: avvisa chi gestisce il server.")
+ISCRIZIONE_POSTA_SPENTA = "L'iscrizione adesso non si può fare perché su questo server le email sono spente: avvisa chi gestisce il server."
 
 
 def iscrivi(db: sqlite3.Connection, nome_utente: str, password: str, email_grezza, invito: str | None, ip: str | None = None,

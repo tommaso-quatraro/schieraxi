@@ -3,7 +3,7 @@
 Ora il server lo dice (503 `posta_spenta`, `email_attiva: false`) e il web non propone moduli che non possono funzionare."""
 import pytest
 
-from fanta import posta, server
+from fanta import account_email, posta, server
 
 from test_account_http import PASSWORD, cliente, invito, registra
 from test_registrazione_modi import utenti
@@ -88,7 +88,7 @@ def test_iscrizione_con_email_a_posta_spenta_lo_dice_uguale_per_tutti(spenta, mo
 def test_iscrizione_con_email_a_posta_spenta_non_chiede_l_invito_a_chi_l_ha_gia(spenta, monkeypatch):
     """Nel modo `email` l'invito serve sempre: chi si iscrive l'ha già scritto nel modulo. Il messaggio diceva «Chiedi un invito a
     chi gestisce il server» (era per la vecchia registrazione aperta con email, senza invito). Ora dice cosa è successo (le email
-    sono spente, il codice non arriverebbe), che l'invito non è stato usato e cosa fare. E l'invito vale davvero ancora: con le
+    sono spente, il codice non arriverebbe), e cosa fare, senza dare per buono l'invito (può essere vuoto o scaduto). E l'invito vale davvero ancora: con le
     email accese lo stesso codice fa partire l'iscrizione."""
     monkeypatch.setenv("FANTA_REGISTRAZIONE", "email")
     codice = invito()
@@ -97,7 +97,7 @@ def test_iscrizione_con_email_a_posta_spenta_non_chiede_l_invito_a_chi_l_ha_gia(
     assert r.status_code == 503 and r.json()["codice"] == "iscrizione_posta_spenta"
     messaggio = r.json()["detail"]
     assert "chiedi un invito" not in messaggio.lower(), messaggio
-    assert "Il tuo invito non è stato usato" in messaggio and "avvisa chi gestisce il server" in messaggio, messaggio
+    assert messaggio == account_email.ISCRIZIONE_POSTA_SPENTA and "avvisa chi gestisce il server" in messaggio, messaggio
     monkeypatch.setenv("FANTA_MAIL", "log")
     r = cliente().post("/api/account/registra", json=corpo)
     assert r.status_code == 200 and r.json()["verifica_email"] is True, r.text

@@ -28,8 +28,8 @@
     "en": "Sending emails is turned off on this server: the code cannot arrive. For your password use the recovery code."
   },
   "err.iscrizione_posta_spenta": {
-    "it": "L'iscrizione non è possibile adesso: su questo server l'invio delle email è spento e il codice per confermare l'indirizzo non arriverebbe. Il tuo invito non è stato usato: avvisa chi gestisce il server.",
-    "en": "Signing up is not possible right now: sending emails is turned off on this server, so the code to confirm your address could not arrive. Your invitation has not been used: let whoever runs the server know."
+    "it": "L'iscrizione adesso non si può fare perché su questo server le email sono spente: avvisa chi gestisce il server.",
+    "en": "Signing up is not possible right now because emails are turned off on this server: let whoever runs the server know."
   },
   "err.registrazioni_chiuse": {
     "it": "Iscrizioni chiuse: siamo al completo",
