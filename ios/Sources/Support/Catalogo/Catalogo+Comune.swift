@@ -41,6 +41,11 @@ extension Catalogo {
             "\(errore) Dati salvati il \(giorno) alle \(ora), potrebbero non essere aggiornati."
         }
 
+        /// `comune.cache_offline`
+        static func cacheOffline(giorno: String, ora: String) -> String {
+            "Non riesco a collegarmi: questi sono i dati salvati il \(giorno) alle \(ora)."
+        }
+
         /// `comune.attesa_secondi.one`, `comune.attesa_secondi.other`
         static func attesaSecondi(_ n: Int) -> String {
             n == 1 ? "\(n) secondo" : "\(n) secondi"
