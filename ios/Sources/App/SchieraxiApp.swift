@@ -67,8 +67,12 @@ struct SchieraxiApp: App {
                 }
             }
             CommandMenu("Dati") {
-                Button("Aggiorna") { NotificationCenter.default.post(name: .aggiornaTutto, object: nil) }
-                    .keyboardShortcut("r", modifiers: .command)
+                // chiesto a mano, come «Riprova»: se una lettura resta senza rete, al ritorno della rete si riprova da soli (#980)
+                Button("Aggiorna") {
+                    RitornoRete.condiviso.riprovaAMano()
+                    NotificationCenter.default.post(name: .aggiornaTutto, object: nil)
+                }
+                .keyboardShortcut("r", modifiers: .command)
             }
         }
     }

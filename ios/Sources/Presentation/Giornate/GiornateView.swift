@@ -73,7 +73,7 @@ struct GiornateView: View {
                 // «Riprova» nella striscia come quello dell'errore: giornate e riga sotto il titolo insieme
                 .avvisoDatiSalvati(vm.caricatore, riprova: { await vm.carica() })
                 .titoloPagina(Catalogo.Nav.giornate)
-                .refreshable { await vm.carica() }
+                .refreshable { await rileggiAMano() }
                 .demoScorriAlConfronto(proxy: proxy, pronto: vm.cimaCompleta)   // foto `giornate-confronto` (#842)
             }
         }
@@ -140,7 +140,7 @@ struct GiornateView: View {
             }
         }
         .scrollContentBackground(.hidden)
-        .refreshable { await vm.carica() }
+        .refreshable { await rileggiAMano() }
     }
 
     /// Una riga dell'elenco dell'iPad che si sceglie con un tocco (una giornata o «Dettagli»). La scelta, cioè quella che sta a
@@ -287,6 +287,13 @@ struct GiornateView: View {
         if let riga = vm.rigaStato {
             Section {} header: { RigaStatoView(riga: riga) }
         }
+    }
+
+    /// «Tira giù per aggiornare»: rilegge giornate e riga sotto il titolo come `carica()` e, se anche questa lettura resta senza
+    /// rete, al ritorno della rete l'app riprova da sola, come dopo «Riprova» e come la web (#980).
+    private func rileggiAMano() async {
+        RitornoRete.condiviso.riprovaAMano()
+        await vm.carica()
     }
 
     /// «Com'è andata» della Formazione: la giornata chiesta passa alla pagina, che la apre appena c'è.

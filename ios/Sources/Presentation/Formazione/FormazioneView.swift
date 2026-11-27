@@ -65,7 +65,7 @@ struct FormazioneView: View {
                     }
                 }
                 .demoInFondo()
-                .refreshable { await ricarica() }
+                .refreshable { await ricaricaAMano() }
                 // la striscia vale per la Formazione e per la giornata (`/api/oggi`): anche una sola delle due può essere vecchia
                 .avvisoDatiSalvati(vm.striscia?.data, motivo: vm.striscia?.motivo)
                 // iPhone in orizzontale: la pagina (e la striscia dei dati salvati) parte sotto il titolo della barra, non dietro;
@@ -439,11 +439,16 @@ struct FormazioneView: View {
         }
     }
 
-    /// «Riprova» toccato a mano: rilegge come `ricarica()` e, se anche questa lettura resta senza rete, al ritorno della rete
-    /// l'app riprova da sola, come la web (#980).
+    /// «Riprova» toccato a mano (`ricaricaAMano`).
     private func riprovaAMano() {
+        Task { await ricaricaAMano() }
+    }
+
+    /// «Riprova» o «tira giù per aggiornare»: rilegge come `ricarica()` e, se anche questa lettura resta senza rete, al ritorno
+    /// della rete l'app riprova da sola, come la web (#980).
+    private func ricaricaAMano() async {
         RitornoRete.condiviso.riprovaAMano()
-        Task { await ricarica() }
+        await ricarica()
     }
 
     /// «Copia per l'app della lega» e la spunta «L'ho messa» (salva gli 11 in campo con `messa`).

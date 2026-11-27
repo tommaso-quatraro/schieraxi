@@ -9,8 +9,13 @@ import Network
 final class RitornoRete {
     static let condiviso = RitornoRete()
 
-    private var attesa = AttesaRete()
+    private var attesa: AttesaRete
     private var monitor: NWPathMonitor?
+
+    /// `attesa`: da dove si parte (nei test, per esempio, subito dopo un tentativo automatico).
+    init(attesa: AttesaRete = AttesaRete()) {
+        self.attesa = attesa
+    }
 
     /// Comincia ad ascoltare le notizie sulla rete (una volta sola). Arrivano sul thread principale, nell'ordine.
     func avvia() {
