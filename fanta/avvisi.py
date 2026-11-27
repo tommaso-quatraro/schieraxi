@@ -47,10 +47,9 @@ def prima_partita(db: sqlite3.Connection, stagione: str, giornata: int) -> datet
     # settimane prima, entro la giornata precedente, con il turno che comincia prima della giornata dopo, #659): regola in
     # turno.conta_per_scadenza. Il turno non comincia dopo la giornata dopo (#698): con 4 partite nel fine settimana e 6 recuperi già
     # in calendario settimane dopo, la scadenza è il fine settimana anche prima che le 4 partite si giochino.
-    precedente, prossimo = turni_vicini(db, stagione, giornata)
-    inizio_turno = turno.inizio((d for d, _ in date), prossimo)
-    valide = [d for d, giocata in date if turno.conta_per_scadenza(d, giocata, inizio_turno, precedente, prossimo)]
-    return min(valide)
+    # La regola è una sola, `turno.prima_che_conta`: la usa anche il modello (`modello.inizio_giornata`).
+    return turno.prima_che_conta(date, (d for d, _ in _date(db, stagione, giornata - 1)),
+                                 (d for d, _ in _date(db, stagione, giornata + 1)))
 
 
 def scadenza(inizio: datetime | None, regole) -> datetime | None:
