@@ -63,7 +63,7 @@ CATALOGO: dict[str, str] = {
     "dafare.incerto": "{nome}: {stato}, gioca {p}%.",
     "dafare.incerto_alt": "{nome}: {stato}, gioca {p}%. Meglio {alt}.",
     "dafare.incerto_tiene": "{nome} ({stato}, gioca {p}%) resta titolare: se non gioca entra {riserva} dalla panchina.",
-    "dafare.formazione_chiude": "La formazione si chiude tra {tempo} e non l'hai ancora salvata.",
+    "dafare.formazione_chiude": "La formazione si chiude fra {tempo} e non l'hai ancora salvata.",
     # hai salvato la consigliata e intanto è cambiata (#333): {entrano} e {escono} sono nomi o un elenco «A, B e C»
     "dafare.consigliata_cambiata": "La consigliata è cambiata da quando l'hai salvata: rivedila. Ora schiera {entrano} al posto di {escono}.",
     "dafare.consigliata_cambiata_molti": "La consigliata è cambiata da quando l'hai salvata: rivedila. Cambiano {n} titolari.",
@@ -92,14 +92,14 @@ CATALOGO: dict[str, str] = {
     "dafare.copertura_moduli": "Con i giocatori disponibili non riesci a schierare nessuno dei moduli ammessi dalla tua lega.",
     "dafare.copertura_altri": "{nomi} e altri {n}",
     # la scelta salvata non si può più schierare (giocatore ceduto, modulo tolto dalla lega...): non è «non salvata»
-    "dafare.formazione_non_valida": "La formazione si chiude tra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
+    "dafare.formazione_non_valida": "La formazione si chiude fra {tempo} e quella che hai salvato non è più valida: salvane un'altra.",
     # senza la giornata (#923), che sta già nella testata della Formazione. Il parametro `giornata` resta per le pagine web in
     # inglese rimaste in memoria: il loro testi.js traduce ancora con «{giornata}». L'iPhone mostra il testo già scritto qui
     "dafare.rose_mercato": "È il momento di aste e scambi: se le rose sono cambiate, aggiornale.",
     "dafare.cert_scaduto": "L'app sul telefono è scaduta: va reinstallata.",
     "dafare.cert_oggi": "L'app sul telefono scade oggi: rinnovala adesso.",
-    "dafare.cert.one": "L'app sul telefono scade tra {n} giorno: rinnovala.",
-    "dafare.cert.other": "L'app sul telefono scade tra {n} giorni: rinnovala.",
+    "dafare.cert.one": "L'app sul telefono scade fra {n} giorno: rinnovala.",
+    "dafare.cert.other": "L'app sul telefono scade fra {n} giorni: rinnovala.",
     "dafare.diario": "{giornata}: è finita, dimmi se hai schierato la consigliata.",
     "dafare.dati_vecchi": "I dati delle partite non si aggiornano da {giorni} giorni.",
     "dafare.primo_avvio.one": "Hai saltato {n} passo della configurazione iniziale.",
@@ -209,7 +209,9 @@ CATALOGO: dict[str, str] = {
     "probabili.oggi": "Probabili aggiornate alle {ora}",
     "probabili.ieri": "Probabili aggiornate ieri alle {ora}",
     "probabili.data": "Probabili aggiornate il {giorno}/{mese} alle {ora}",
-    "probabili.vecchie": "Le ho lette {eta} e la formazione si chiude tra {tempo}: potrebbero essere cambiate, ricontrolla prima.",
+    # sotto «Probabili aggiornate alle 08:00 (7 ore fa)» e sotto la testata «Si chiude … fra …» (#923): solo cosa fare. I parametri
+    # `eta` e `tempo` restano per le pagine web in inglese rimaste in memoria, che traducono ancora con il testo di prima
+    "probabili.vecchie": "Potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione.",
     "confronto.pari": "{a} e {b} sono quasi alla pari: la differenza è sotto 0,2 punti attesi.",
     "confronto.avanti_sparsi": "{primo} è avanti di {punti} punti attesi, con piccoli vantaggi sparsi.",
     "confronto.avanti": "{primo} è avanti di {punti} punti attesi su {secondo}: {motivi}.",

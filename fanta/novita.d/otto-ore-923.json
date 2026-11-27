@@ -1,0 +1,13 @@
+{
+  "titolo": "Formazione: l'avviso sulle probabili vecchie non ripete ore e scadenza",
+  "voci": [
+    "Formazione, probabili lette da più di sei ore con la scadenza vicina: l'avviso dice solo «Potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione.». Quando sono state lette lo dice la riga sopra, quando si chiude la testata. Le frasi con il tempo che manca dicono «fra», come la testata: «La formazione si chiude fra 3 ore e non l'hai ancora salvata.». Uguale sull'iPhone."
+  ],
+  "titolo_en": "Lineup: the old probable lineups warning no longer repeats hours and deadline",
+  "voci_en": [
+    "Lineup, probable lineups read more than six hours ago with the deadline close: the warning only says «They may have changed: check them again before the lineup closes.». The line above says when they were read, the header says when the lineup closes. Same on iPhone."
+  ],
+  "tecnico": [
+    "Frase `probabili.vecchie` senza segnaposto (prima `{eta}` e `{tempo}`): il campo `avviso` di `probabili` in /api/oggi resta una stringa, solo più corta. `dafare.formazione_chiude`, `dafare.formazione_non_valida` e `dafare.cert` dicono «fra», e così la scadenza dell'app in Impostazioni sull'iPhone (issue #923, punto 3)."
+  ]
+}

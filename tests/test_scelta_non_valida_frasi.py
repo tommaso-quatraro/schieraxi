@@ -79,5 +79,5 @@ def test_da_fare_formazione_salvata_non_valida_ha_la_sua_frase(mondo):
     scelte.salva(STAGIONE, 9, [1, 2, 3, 4, 7, 8, 9, 10, 11, 12, CEDUTO], "3-5-2", mondo.ctx.scelte)
     voce = [x for x in vai(mondo) if x["tipo"] == "formazione"]
     assert len(voce) == 1 and voce[0]["priorita"] == 1 and voce[0]["azione"] == "Apri la formazione"
-    assert voce[0]["testo"] == "La formazione si chiude tra 2 ore e quella che hai salvato non è più valida: salvane un'altra."
+    assert voce[0]["testo"] == "La formazione si chiude fra 2 ore e quella che hai salvato non è più valida: salvane un'altra."
     assert voce[0]["frase"] == F("dafare.formazione_non_valida", tempo=F("tempo.ore", n=2)).json()
