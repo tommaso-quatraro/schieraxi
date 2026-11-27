@@ -24,7 +24,8 @@ password; l'email è facoltativa (vedi `account_email.py`).
 - da fuori non si capisce se un nome esiste: stesso messaggio, stesso codice e stesso lavoro (un hash fittizio per i nomi
   che non esistono);
 - registro degli eventi di sicurezza (`sicurezza.log`, con rotazione e righe tenute al massimo 30 giorni): mai password né
-  codici; gli indirizzi si scrivono accorciati (IPv4 senza l'ultimo numero, IPv6 solo la rete /64).
+  codici; gli indirizzi si scrivono accorciati (IPv4 senza l'ultimo numero, IPv6 solo la rete /64). Gli eventi importanti
+  (`EVENTI_IMPORTANTI`) hanno una copia in `sicurezza-importanti.log`, che i tentativi sbagliati non riempiono.
 """
 from __future__ import annotations
 
@@ -388,7 +389,7 @@ MIGRAZIONI = [
 # superato il suo posto). L'ordine è fissato in tests/test_migrazioni.py (`ORDINE`).
 
 # Versione dei testi «Privacy» e «Termini d'uso» (la data di «Ultimo aggiornamento» delle pagine): si cambia quando cambiano i testi.
-VERSIONE_TERMINI = "2026-11-26"
+VERSIONE_TERMINI = "2026-11-27"
 TERMINI_RIFIUTATI = ("Per iscriverti devi accettare Privacy e Termini d'uso. / "
                      "To sign up you must accept the Privacy policy and the Terms of use.")
 
@@ -546,6 +547,15 @@ def apri(percorso: Path | None = None) -> sqlite3.Connection:
 # ---------------------------------------------------------------- registro degli eventi di sicurezza
 MAX_REGISTRO, COPIE_REGISTRO = 512 * 1024, 3
 _blocco_registro = threading.Lock()
+# Gli eventi che cambiano un account o chi può entrare: hanno una copia anche in `registro.FILE_IMPORTANTI`, che Gestione mostra
+# insieme agli ultimi eventi. Solo azioni fatte con un account o da chi gestisce (e la registrazione, che ha i suoi tetti): i
+# tentativi sbagliati, che chiunque può ripetere, restano solo nel registro di sicurezza e non fanno uscire questi dalle copie.
+EVENTI_IMPORTANTI = frozenset({
+    "registrazione", "social_registrazione", "account_eliminato", "ruolo_cambiato", "account_bloccato", "account_sbloccato",
+    "reset_creato", "recupero", "password_cambiata", "codice_recupero_rigenerato", "esci_da_tutti", "email_verificata",
+    "email_tolta", "social_collegato", "social_scollegato", "social_password_impostata", "invito_creato", "invito_revocato",
+    "importazione_per_conto_di",
+})
 
 
 def _pulito(v) -> str:
@@ -563,6 +573,8 @@ def evento(tipo: str, **campi) -> None:
     riga = " ".join([datetime.now(timezone.utc).isoformat(timespec="seconds"), _pulito(tipo)]
                     + [f"{k}={_pulito(v)}" for k, v in campi.items() if v is not None]) + "\n"
     registro.scrivi(percorsi.cartella_account() / registro.FILE_SICUREZZA, riga.rstrip("\n"), MAX_REGISTRO)     # con rotazione: .1, .2, .3
+    if tipo in EVENTI_IMPORTANTI:
+        registro.scrivi(percorsi.cartella_account() / registro.FILE_IMPORTANTI, riga.rstrip("\n"), MAX_REGISTRO)
 
 
 def _nome_per_registro(nome: str) -> str:

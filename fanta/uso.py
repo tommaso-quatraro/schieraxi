@@ -159,14 +159,18 @@ def nome_parte(rotta) -> frasi.Frase | None:
 
 
 def nome_funzione(funzione: str) -> str:
-    """Il nome per l'utente di una funzione contata (`funzioni.FUNZIONI`); una che non c'è più resta col suo nome, senza trattini."""
+    """Il nome per l'utente di una funzione contata (`funzioni.FUNZIONI`); una che non c'è più resta col suo nome, senza trattini.
+    Per le funzioni di FUNZIONE_DI_ROTTA è una `Frase` (`uso.funzione_<id>`, #949, stesso italiano), che la web in inglese traduce."""
+    if f"uso.funzione_{funzione}" in frasi.CATALOGO:
+        return frasi.F(f"uso.funzione_{funzione}")
     voce = funzioni.FUNZIONI.get(funzione)
     return voce[0] if voce else funzione.replace("_", " ")
 
 
 def riepilogo(percorso: Path | None = None, massimo_rotte: int = 40) -> dict:
     """Per l'amministratore: totali sulle ultime 4 settimane, per funzione, per parte dell'app e per rotta, e le richieste di ogni
-    giorno. Funzioni e parti hanno il nome da mostrare (`etichetta`; per le parti anche `etichetta_frase`, per tradurlo); `per_rotta`
+    giorno. Funzioni e parti hanno il nome da mostrare (`etichetta`) con `etichetta_frase`, per tradurlo (dal #949 anche le funzioni;
+    `null` per una funzione che non c'è più); `per_rotta`
     resta con le rotte di modello, per chi gestisce il server."""
     p = percorso or FILE
     salva(p)                                           # include anche quello che è ancora in memoria
@@ -190,8 +194,8 @@ def riepilogo(percorso: Path | None = None, massimo_rotte: int = 40) -> dict:
     nomi_parti = {k: frasi.F(f"uso.parte_{k}") for k in parti}
     return {"giorni": GIORNI, "dal": min(giorni) if giorni else None, "al": max(giorni) if giorni else None,
             "richieste": sum(rotte.values()),
-            "per_funzione": [{"funzione": n, "etichetta": nome_funzione(n), "richieste": c}
-                             for n, c in sorted(per_funz.items(), key=lambda kv: kv[1], reverse=True)],
+            "per_funzione": [{"funzione": n, "etichetta": str(e), "etichetta_frase": frasi.di(e), "richieste": c}
+                             for n, c in sorted(per_funz.items(), key=lambda kv: kv[1], reverse=True) for e in [nome_funzione(n)]],
             "per_parte": [{"parte": n, "etichetta": str(nomi_parti[n]), "etichetta_frase": frasi.di(nomi_parti[n]), "richieste": c}
                           for n, c in sorted(parti.items(), key=lambda kv: kv[1], reverse=True)],
             "per_rotta": [{"rotta": n, "richieste": c} for n, c in ordinate[:massimo_rotte]],

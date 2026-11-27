@@ -9,7 +9,7 @@
   },
   "pav.primo_avvio": {
     "it": "Primo avvio",
-    "en": "First run"
+    "en": "Getting started"
   },
   "pav.tutto_pronto_mister": {
     "it": "Tutto pronto, Mister",
@@ -42,7 +42,7 @@
   },
   "pav.prima_servono_rose": {
     "it": "Prima servono le rose: torna al passo «Le rose».",
-    "en": "The rosters come first: go back to the «Rosters» step."
+    "en": "The rosters come first: go back to the “Rosters” step."
   },
   "pav.quale_squadra_tua": {
     "it": "Quale squadra è la tua?",
@@ -54,7 +54,7 @@
   },
   "pav.avvisi_spiega": {
     "it": "Un promemoria prima della scadenza, se non hai spuntato «L'ho messa».",
-    "en": "A reminder before the deadline, if you haven't ticked «I've entered it».",
+    "en": "A reminder before the deadline, if you haven't ticked “I've entered it”.",
     "nota": "iPhone, passo «Gli avvisi» del primo avvio: cosa fanno i promemoria dell'app, come imp.avvisi_qui_aiuto_app (#906)"
   },
   "pav.passo_di": {
@@ -94,7 +94,7 @@
   },
   "pav.widget_spiega": {
     "it": "Tieni premuto sulla Home, tocca + e cerca SchieraXI. Il widget si collega da solo: se dice «Tocca per collegare», toccalo.",
-    "en": "Press and hold on the Home Screen, tap + and search for SchieraXI. The widget links by itself: if it says «Tap to link», tap it.",
+    "en": "Press and hold on the Home Screen, tap + and search for SchieraXI. The widget links by itself: if it says “Tap to link”, tap it.",
     "nota": "solo iPhone: passo «Il widget» del primo avvio (#931)"
   },
   "pav.collega_widget": {
@@ -149,11 +149,11 @@
   },
   "pav.prima_uno": {
     "it": "Dalla 1ª, con il campionato",
-    "en": "From Serie A matchday 1, with the championship"
+    "en": "From matchday 1 (season start)"
   },
   "pav.prima_n": {
     "it": "Dalla {n}ª",
-    "en": "From Serie A matchday {n}"
+    "en": "From matchday {n}"
   },
   "pav.tempi_dove": {
     "it": "Puoi cambiarle quando vuoi in Impostazioni › Regole e scadenza.",
@@ -178,7 +178,7 @@
   },
   "pav.regole_comuni": {
     "it": "I fantavoti attesi usano i punteggi più comuni delle leghe classic (gol 3, assist 1, ammonizione −0,5), finché non metti quelli della tua lega in {regole}.",
-    "en": "Expected fantasy scores use the most common scoring of classic leagues (goal 3, assist 1, yellow card −0.5) until you enter your league's in {regole}.",
+    "en": "Expected fantasy scores use the most common scoring of classic leagues (goal 3, assist 1, yellow card −0.5) until you enter your league's scoring in {regole}.",
     "nota": "«Tutto pronto» del primo avvio (#873): {regole} è il collegamento «Regole e scadenza» (imp.regole) che apre quella pagina"
   },
   "pav.fatto_par": {
@@ -199,7 +199,7 @@
   },
   "pav.hai_saltato_senza_rose": {
     "it": "Hai saltato {nomi}: li ritrovi toccando «Importa le rose» nella Formazione.",
-    "en": "You skipped {nomi}: you get them back by tapping «Import the rosters» in Lineup."
+    "en": "You skipped {nomi}: you get them back by tapping “Import the rosters” in Lineup."
   },
   "pav.hai_finito": {
     "it": "Hai finito la configurazione.",

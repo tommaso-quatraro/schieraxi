@@ -42,12 +42,23 @@ def test_apostrofo_davanti_all_8_e_all_11():
 
 def test_avviso_solo_se_vecchie_e_partita_vicina():
     vecchie = freschezza_probabili("2026-10-31T08:00:00", ADESSO, 1.0)
-    assert vecchie["vecchie"] and "7 ore fa" in vecchie["avviso"] and "tra 1 ora" in vecchie["avviso"]
-    assert freschezza_probabili("2026-10-31T08:00:00", ADESSO, 3.0)["avviso"].count("tra 3 ore") == 1
+    assert vecchie["vecchie"] and vecchie["avviso"]
     assert not freschezza_probabili("2026-10-31T08:00:00", ADESSO, 40)["vecchie"]       # la partita è lontana
     assert not freschezza_probabili("2026-10-31T08:00:00", ADESSO, -2)["vecchie"]       # già iniziata
     assert not freschezza_probabili("2026-10-31T08:00:00", ADESSO, None)["vecchie"]
     assert not freschezza_probabili("2026-10-31T10:00:00", ADESSO, 2)["vecchie"]        # 5 ore: ancora fresche
+
+
+def test_avviso_non_ripete_quando_sono_state_lette_ne_quando_si_chiude():
+    """#923: nella Formazione l'avviso sta sotto «Probabili aggiornate alle 08:00 (7 ore fa)», e la testata dice già «Si chiude
+    oggi 18:00 fra 3 h»: l'avviso dice solo cosa fare, senza un altro «7 ore fa» né le ore alla scadenza (prima «Le ho lette 7 ore
+    fa e la formazione si chiude tra 3 ore: …», con «tra» mentre la testata dice «fra»)."""
+    f = freschezza_probabili("2026-10-31T08:00:00", ADESSO, 3.0)
+    assert f["avviso"] == "Le probabili potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione."
+    assert f["eta"] not in f["avviso"] and "ore" not in f["avviso"]
+    # i parametri restano per le pagine web in inglese rimaste in memoria: il loro testi.js traduce ancora con «{eta}» e «{tempo}»
+    assert f["avviso_frase"] == {"chiave": "probabili.vecchie",
+                                 "param": {"eta": {"chiave": "tempo.ore_fa", "param": {"n": 7}}, "tempo": {"chiave": "tempo.ore", "param": {"n": 3}}}}
 
 
 def test_senza_ora_nessun_campo():

@@ -384,7 +384,7 @@ def test_al_massimo_due_decisioni_e_solo_quelle_con_un_azione(web):
          "alternativa": {"id": entra["id"], "nome": entra["nome"], "ruolo": "C", "punti_attesi": esce["punti_attesi"] + 0.9}, "differenza": 1.3},
         {"id": "dubbio:1", "tipo": "dubbio", "testo": "Esempio è in dubbio (55% di giocare) ma resta titolare: se non gioca entra Prova dalla panchina.",
          "priorita": 2, "azione": "Apri la formazione", "destinazione": {"scheda": "formazione", "sezione": None}},
-        {"id": "formazione:9", "tipo": "formazione", "testo": "La formazione si chiude tra 3 ore e non l'hai ancora salvata.", "priorita": 2,
+        {"id": "formazione:9", "tipo": "formazione", "testo": "La formazione si chiude fra 3 ore e non l'hai ancora salvata.", "priorita": 2,
          "azione": "Apri la formazione", "destinazione": {"scheda": "formazione", "sezione": None}},
         {"id": "rose-vecchie", "tipo": "rose", "testo": "È il momento di aste e scambi nella lega: se le rose sono cambiate, aggiornale.", "priorita": 2,
          "azione": "Aggiorna le rose", "destinazione": {"scheda": "lega", "sezione": "rose"}},

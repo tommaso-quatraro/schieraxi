@@ -747,12 +747,13 @@ def _con_parte(voci: list[dict]) -> list[dict]:
 
 @router.get("/api/admin/registro", dependencies=[Depends(solo_amministratore)])
 def registro_server():
-    """Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà).
-    Ogni errore e ogni richiesta lenta ha accanto il nome della parte dell'app (`parte`, `parte_frase`)."""
+    """Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà),
+    con in più gli ultimi eventi importanti (registrazioni, recuperi, eliminazioni, cambi di ruolo...) anche se tanti tentativi
+    sbagliati li hanno spinti più indietro. Ogni errore e ogni richiesta lenta ha accanto il nome della parte dell'app (`parte`, `parte_frase`)."""
     contatori = registro.contatori.riepilogo()
     return {"contatori": contatori | {"piu_lente": _con_parte(contatori["piu_lente"])},
             "errori": _con_parte(registro.ultimi(registro.FILE_ERRORI, 30)),
-            "sicurezza": registro.ultimi(registro.FILE_SICUREZZA, 30, nascondi_indirizzi=True)}
+            "sicurezza": registro.ultimi_sicurezza(30, nascondi_indirizzi=True)}
 
 
 class SceltaFonte(BaseModel):

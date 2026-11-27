@@ -581,7 +581,22 @@ def test_il_log_degli_accessi_non_ha_code_e_state():
                           ("1.2.3.4:5", "GET", "/api/account/social/google/ritorno?code=SEGRETO&state=ALTRO", "1.1", 302), None)
     assert filtro.filter(r) and "SEGRETO" not in r.getMessage() and "/ritorno" in r.getMessage()
     r2 = logging.LogRecord("uvicorn.access", logging.INFO, "", 0, '%s - "%s %s HTTP/%s" %d', ("1.2.3.4:5", "GET", "/api/oggi?x=1", "1.1", 200), None)
-    assert filtro.filter(r2) and "x=1" in r2.getMessage()
+    assert filtro.filter(r2) and "x=1" not in r2.getMessage() and '"GET /api/oggi HTTP/1.1"' in r2.getMessage()
+
+
+@pytest.mark.parametrize("percorso, atteso", [
+    ("/api/scambi/analizza?con=Squadra%20Inventata&da=1", "/api/scambi/analizza"),
+    ("/api/squadre/immagine?squadra=Squadra%20Inventata", "/api/squadre/immagine"),
+    ("/api/formazione?squadra=Squadra%20Inventata", "/api/formazione"),
+    ("/app.js?v=123", "/app.js"),
+    ("/api/oggi", "/api/oggi"),
+])
+def test_il_log_degli_accessi_non_ha_mai_i_parametri(percorso, atteso):
+    """I parametri dopo «?» portano nomi di squadre e altre scelte di chi chiede: nel registro degli accessi solo il percorso."""
+    import logging
+    r = logging.LogRecord("uvicorn.access", logging.INFO, "", 0, '%s - "%s %s HTTP/%s" %d', ("1.2.3.4:5", "GET", percorso, "1.1", 200), None)
+    assert social._SenzaQuery().filter(r)
+    assert f'"GET {atteso} HTTP/1.1"' in r.getMessage() and "Inventata" not in r.getMessage(), r.getMessage()
 
 
 # ---------------------------------------------------------------- correzioni della revisione
@@ -779,7 +794,7 @@ def test_registro_delle_richieste_vero_senza_parametri_della_pagina_principale()
     assert len(righe) == 3, righe
     assert not [r for r in righe if "invito=" in r or "CODICEPROVA" in r or "vista=" in r], righe
     assert '"GET / HTTP/1.1"' in righe[0] and '"GET / HTTP/1.1"' in righe[1]
-    assert '"GET /api/oggi?x=1 HTTP/1.1"' in righe[2]                    # le altre richieste restano come sono
+    assert '"GET /api/oggi HTTP/1.1"' in righe[2]                        # anche le altre richieste: solo il percorso
 
 
 def test_migrazione_gia_fatta_da_un_altro_processo(tmp_path):
