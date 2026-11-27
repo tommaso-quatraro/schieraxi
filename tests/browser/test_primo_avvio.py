@@ -179,3 +179,25 @@ def test_con_lo_zoom_al_200_i_menu_dei_tempi_si_leggono_interi(web):
     scadenza(web).select_option("60")
     visto = scadenza(web).evaluate(SCELTA_VISTA)
     assert {"testo": "60 minuti prima della prima partita", "intero": True} in visto["visti"], visto
+
+
+def test_giocatori_da_sistemare_se_le_rose_non_si_leggono_lo_dice(web):
+    """Passo «La tua squadra», «Giocatori da sistemare» (`paNonRiconosciuti`): se la lettura di una rosa non riesce l'errore si
+    scartava e la sezione non compariva, come se non ci fosse niente da sistemare. Ora c'è la frase del catalogo con il motivo,
+    come sull'iPhone, in un errore (role="alert")."""
+    solo_prima(web)
+    primo = dict(ALL_INIZIO["primo_avvio"])
+
+    def primo_avvio(route):
+        if route.request.method == "PUT":
+            primo.update(json.loads(route.request.post_data))
+        route.fulfill(status=200, content_type="application/json", body=json.dumps({"primo_avvio": primo}))
+
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/primo-avvio", primo_avvio)
+    web.apri("/")
+    web.risposta("/api/rosa", {"detail": "Squadra non trovata"}, stato=404)
+    web.pagina.evaluate("apriPrimoAvvio()")
+    guida(web).get_by_role("button", name=re.compile("^La tua squadra")).click(timeout=10000)
+    errore = guida(web).get_by_role("alert").filter(has_text="giocatori da sistemare")
+    errore.wait_for(timeout=10000)
+    assert errore.inner_text().strip() == "Non ho potuto controllare i giocatori da sistemare. Squadra non trovata"

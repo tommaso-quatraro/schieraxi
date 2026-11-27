@@ -481,7 +481,11 @@ importazione un giocatore non `sicuro` che nella rosa salvata della stessa squad
 "precedente"` e l'avviso «scelto da te l'ultima volta» (chiave `rose.scelta_precedente`): il client lo mostra già scelto e si può cambiare
 (non se il file gli dà un altro ruolo o se non è più nel listone). Le `correzioni` mandate vincono; senza correzioni si salva con
 `riconosciuto: "precedente"`. Testo con un nome per riga e squadre forse una sotto l'altra: in `avvisi` «Real Esempio: manca una riga vuota
-fra le squadre? «Pantere» non è nel listone: …» (chiave `rose.forse_manca_riga_vuota`).
+fra le squadre? «Pantere» non è nel listone: …» (chiave `rose.forse_manca_riga_vuota`). Dal 27/11/2026 una squadra che si chiama come un
+club di Serie A («Roma») è un titolo se è già salvata o se lo dice la struttura del file (riga vuota prima, in cima, dopo totale o crediti,
+club sulla riga dei giocatori); se resta dentro la squadra sopra, in `avvisi` «Lupi: manca una riga vuota fra le squadre? «Roma» si chiama
+come una squadra di Serie A …» (chiave `rose.club_forse_squadra`), e il `413` per troppi giocatori lo dice («… Forse «Roma» è una vostra
+squadra: …»). Nessun campo nuovo.
 Nel multipart il campo `correzioni` è lo stesso elenco scritto come testo JSON (JSON non valido: `422`). Una scelta che non corrisponde più al
 testo, o un `id` fuori listone: `400` con il messaggio, e niente si salva. `mia_squadra` che non c'è tra le rose: `400`.
 Si può cominciare con la sola propria rosa: una squadra sola non è un errore (solo un avviso, testo `lega.UNA_SQUADRA`: «Con una sola squadra funzionano formazione e consigli; le rose degli altri servono a guardare le altre squadre: puoi aggiungerle quando vuoi.»).
@@ -856,6 +860,30 @@ Dove si vede (tutti campi aggiunti, i client vecchi li ignorano):
   `[{stagione, giornata, giornata_lega, testo, frase}]`, con `testo` = «Giornata 9 · 12ª di Serie A: in attesa del recupero, i
   punti arrivano dopo.» (chiave `diario.in_attesa_recupero`, parametro `giornata`). Web e iPhone (pagina Giornate) mostrano
   `testo` così com'è, in cima sotto la precisione; senza altre giornate al posto della frase della pagina vuota.
+  Dal 27/11/2026 `in_attesa` ha anche le giornate della stagione in corso (dalla prima della lega) che con `aspetta` non sono
+  finite perché manca un recupero (giocate le partite del turno, da recuperare solo partite rinviate) e non hanno ancora una voce:
+  prima sparivano da Giornate per settimane senza spiegazione. Stessa forma e stessa frase, una volta sola per giornata. Senza la
+  tua squadra (`motivo_vuoto` `"squadra"`) `in_attesa` è vuoto, così la pagina dice dove sceglierla. Il `diario` di
+  `GET /api/widget` non cambia.
+
+**Diario: chi non ha una previsione, il widget e la panchina del sistema (dal 27/11/2026).** Nessun campo tolto né rinominato.
+- In `giornate[].giocatori` di `GET /api/diario` c'è anche chi non ha una previsione ricostruita per la giornata (mai sceso in
+  campo prima: alla prima giornata le neopromosse e chi arriva dall'estero, spesso il portiere di riserva). Il suo voto contava
+  già nei punti; ora sta nella tabella degli 11 con `p_voto: null`, `fv_atteso: null` e `fv` = il voto che la lega ha contato
+  (`null` senza voto; con `rinvio` come gli altri). I client mostrano l'atteso vuoto come «–» (web e iPhone lo fanno già: mai
+  «NaN» né «0,0»). Se però `istantanea` (la consigliata mostrata prima della scadenza) ha il suo `fv_atteso`, la tabella mostra
+  quello, come per tutti, e allora entra anche in `fatti_e_attesi.meglio`/`peggio` con quell'atteso: frase e tabella dicono gli
+  stessi numeri. Senza nessun atteso non entra nella frase. Nelle misure di `precisione` non entra mai (restano quelle di prima).
+  Le voci già scritte lo prendono quando se ne rifanno i punti.
+- `diario` di `GET /api/widget`: `attesi`, `fatti` e `intervallo` sono della formazione che conta, come la riga di Giornate e il
+  riepilogo di Oggi: la tua, altrimenti la copia fatta alla scadenza (`automatica`), altrimenti la consigliata. Prima il widget
+  saltava la copia alla scadenza e, senza l'istantanea, mostrava i numeri della consigliata rifatta.
+- Con 11 salvati senza panchina la panchina che sceglie il sistema è la stessa nel `riepilogo` di Oggi e nel Diario: quella dei
+  numeri della rosa alla scadenza, se ci sono (prima il Diario usava i numeri rifatti senza probabili, e il totale poteva cambiare
+  quando la giornata entrava nel Diario). I numeri della scadenza restano per le ultime 12 giornate, quante il Diario ne rifà a un
+  cambio di regole. Senza quei numeri (nessuna copia alla scadenza) i due lati restano diversi, come prima: il riepilogo di Oggi
+  non ha una panchina (legge solo dati già pronti e non può rifare le previsioni), il Diario la sceglie con i numeri rifatti; il
+  totale può cambiare quando la giornata entra nel Diario.
 
 Cosa devono fare iOS e Android: nel pannello delle regole, «Partite rinviate» con le tre scelte e il voto d'ufficio (solo se il
 server manda `partite_rinviate`); in Oggi, se `rinvio` non è `null`, un riquadro «Partita rinviata» con le partite, i tuoi

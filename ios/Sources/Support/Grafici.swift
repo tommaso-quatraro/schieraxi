@@ -37,6 +37,10 @@ struct GraficoVoti: View {
     /// La giornata toccata (o trascinata) con il dito: compare una linea con i numeri di quella giornata.
     @State private var scelta: Int?
     @Environment(\.accessibilityReduceMotion) private var ridotto
+    /// Il margine tra il bordo del grafico e i punti che ci arrivano vicino (la prima e l'ultima giornata, il valore più alto,
+    /// la «sv» in basso): senza, il punto sul bordo veniva tagliato a metà (#969). La web lo fa con 18 unità su 320 di larghezza.
+    /// Cresce con il testo come la «sv» e le etichette degli assi, così con il testo grande il punto resta intero.
+    @ScaledMetric(relativeTo: .caption2) private var margine: CGFloat = 10
 
     private var votoScelto: VotoGiornata? {
         guard let scelta else { return nil }
@@ -142,8 +146,9 @@ struct GraficoVoti: View {
                 }
             }
             .chartForegroundStyleScale(["Fantavoto": Color.verde, "Voto": Color.blue])
-            .chartYScale(domain: dominio)
-            .chartXScale(domain: dominioGiornate)
+            // I numeri e le giornate dell'asse restano quelli di prima: cambia solo lo spazio vuoto tra i bordi e i punti.
+            .chartYScale(domain: dominio, range: .plotDimension(padding: margine))
+            .chartXScale(domain: dominioGiornate, range: .plotDimension(padding: margine))
             .chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) }
             .chartXSelection(value: $scelta)
             .sensoryFeedback(.selection, trigger: scelta)
@@ -189,6 +194,9 @@ struct GraficoAffidabilita: View {
     let righe: [RigaAffidabilita]
 
     private static let massimo = "Massimo possibile"
+    /// Il margine tra il bordo del grafico e i punti che ci arrivano vicino, come nel grafico dei voti (#969): senza, il punto
+    /// della prima e dell'ultima giornata e la linea del massimo possibile venivano tagliati sul bordo.
+    @ScaledMetric(relativeTo: .caption2) private var margine: CGFloat = 10
 
     private var punti: [PuntoGrafico] {
         righe.sorted { $0.giornata < $1.giornata }.flatMap { r -> [PuntoGrafico] in
@@ -198,6 +206,13 @@ struct GraficoAffidabilita: View {
             if let v = r.puntiPerfetta { lista.append(PuntoGrafico(serie: Self.massimo, x: "\(r.giornata)", ordine: r.giornata, valore: v)) }
             return lista
         }
+    }
+
+    /// Dalla prima all'ultima giornata (con una sola giornata si allarga di una, altrimenti il grafico non ha larghezza).
+    private var dominioGiornate: ClosedRange<Int> {
+        let g = righe.map(\.giornata)
+        let primo = g.min() ?? 1
+        return primo...max(g.max() ?? 1, primo + 1)
     }
 
     static func descrizione(_ righe: [RigaAffidabilita]) -> [String] {
@@ -220,8 +235,8 @@ struct GraficoAffidabilita: View {
                     .symbolSize(p.serie == Self.massimo ? 0 : 24)
             }
             .chartForegroundStyleScale(["SchieraXI": Color.verde, "Da fantamedia": Color.attenzione, Self.massimo: Color.gray])
-            .chartYScale(domain: .automatic(includesZero: false))
-            .chartXScale(domain: (righe.map(\.giornata).min() ?? 1)...max((righe.map(\.giornata).max() ?? 1), (righe.map(\.giornata).min() ?? 1) + 1))
+            .chartYScale(domain: .automatic(includesZero: false), range: .plotDimension(padding: margine))
+            .chartXScale(domain: dominioGiornate, range: .plotDimension(padding: margine))
             .chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) }
             .frame(height: 190)
             .accessibilityElement(children: .ignore)
