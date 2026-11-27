@@ -74,6 +74,31 @@ def test_accanto_a_ogni_rotta_il_nome_della_parte_dell_app(admin, monkeypatch):
     assert lente["/api/oggi"]["parte"] == "Formazione" and lente["/api/oggi"]["parte_frase"]["chiave"] == "uso.parte_formazione"
 
 
+def test_gli_eventi_importanti_restano_in_gestione_dopo_tanti_accessi_sbagliati(admin, monkeypatch):
+    """Gli accessi sbagliati li può scrivere chiunque, quanti ne vuole: fanno ruotare il registro di sicurezza fino a farne uscire
+    tutto il resto. Le registrazioni, i cambi di ruolo, le eliminazioni... restano lo stesso fra gli eventi di Gestione, e in cima
+    ci sono sempre gli eventi più recenti."""
+    monkeypatch.setattr(account, "MAX_REGISTRO", 2000)
+    account.evento("ruolo_cambiato", nome="luca", ruolo="amministratore")
+    for i in range(400):
+        account.evento("accesso_fallito", nome="(non valido)", ip=f"203.0.113.{i % 250}")
+    assert "ruolo_cambiato" not in "".join(f.read_text(encoding="utf-8")
+                                           for f in percorsi.cartella_account().glob(registro.FILE_SICUREZZA + "*"))
+    sicurezza = admin.get("/api/admin/registro").json()["sicurezza"]
+    tipi = [e["tipo"] for e in sicurezza]
+    assert tipi[0] == "accesso_fallito" and tipi.count("accesso_fallito") == 30, tipi
+    assert tipi.count("ruolo_cambiato") == 1 and tipi.count("registrazione") == 1, tipi       # «capo» si è registrato all'inizio
+    ruolo = next(e for e in sicurezza if e["tipo"] == "ruolo_cambiato")
+    assert ruolo["nome"] == "luca" and ruolo["ruolo"] == "amministratore"
+
+
+def test_un_evento_importante_si_vede_una_volta_sola(admin):
+    account.evento("ruolo_cambiato", nome="luca", ruolo="amministratore")
+    account.evento("accesso_fallito", nome="luca", ip="203.0.113.7")
+    tipi = [e["tipo"] for e in admin.get("/api/admin/registro").json()["sicurezza"]]
+    assert tipi.count("ruolo_cambiato") == 1 and tipi.count("registrazione") == 1, tipi
+
+
 def test_scheda_solo_per_l_amministratore(admin):
     semplice = cliente()
     registra(semplice, "pippo")

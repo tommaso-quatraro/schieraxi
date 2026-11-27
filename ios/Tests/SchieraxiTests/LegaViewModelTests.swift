@@ -36,7 +36,23 @@ final class LegaViewModelTests: XCTestCase {
         vm.pausa = 0
         await vm.avvia()
         XCTAssertEqual(vm.errori, ["Understat non risponde"])
-        XCTAssertEqual(vm.messaggio, "Aggiornato, ma con problemi: Understat non risponde")
+        XCTAssertEqual(vm.messaggio, "Aggiornato, ma con problemi: \nUnderstat non risponde")
+    }
+
+    /// #958: le frasi del server finiscono col punto (#956) e la web le mostra una per riga sotto la testa
+    /// (`"\n" + errori.join("\n")`); prima l'iPhone le univa con «; » e si leggeva «…riprova più tardi.; I controlli…».
+    func testAggiornamentoConPiuProblemiUnaFrasePerRigaComeLaWeb() async {
+        let s = ServerDiProva { metodo, _, _ in
+            metodo == "POST" ? Data(#"{"avviato": true}"#.utf8)
+                : Data(#"{"in_corso": false, "errori": ["Sito Uno non risponde: riprova più tardi.", "I controlli sui dati hanno trovato un problema: 2 giocatori senza ruolo."]}"#.utf8)
+        }
+        let vm = AggiornaDatiViewModel(server: s)
+        vm.pausa = 0
+        await vm.avvia()
+        XCTAssertEqual(vm.errori.count, 2)
+        XCTAssertEqual(vm.messaggio, "Aggiornato, ma con problemi: \nSito Uno non risponde: riprova più tardi.\n"
+                       + "I controlli sui dati hanno trovato un problema: 2 giocatori senza ruolo.")
+        XCTAssertFalse(vm.messaggio?.contains("; ") ?? true, "mai più le frasi unite con «; »")
     }
 
     func testAggiornamentoGiaInCorsoSulServer() async {

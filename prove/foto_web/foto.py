@@ -50,11 +50,11 @@ PRIMO_GIOCATORE = "Number(document.querySelector('#contenuto [data-giocatore]').
 SCENE: dict[str, list[str]] = {
     "formazione": ["vai('formazione')"],
     "squadra": ["vai('squadra')"],
-    "rosa": ["vistaRosa()"],
+    "rosa": ["vai('impostazioni', 'squadra')"],
     "scheda": ["vai('formazione')", f"apriGiocatore({PRIMO_GIOCATORE})"],          # scheda del primo titolare
     "altro": ["vai('altro')"],
     "diario": ["vai('giornate')"],                                                   # la pagina Giornate, il Diario di prima (#617)
-    "regole": ["vistaRegole()"],
+    "regole": ["vai('impostazioni', 'regole')"],
     "impostazioni": ["vai('impostazioni')"],
 }
 PRONTA = """() => typeof vai === 'function' && !!document.querySelector('#contenuto')

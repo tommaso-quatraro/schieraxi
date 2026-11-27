@@ -1025,14 +1025,16 @@ enum DisposizioneWidget {
     }
 
     /// Le prove dei widget Formazione piccolo e medio, dalla più ricca: la vista tiene la prima che entra in altezza (#834). Ogni
-    /// prova toglie una riga alla precedente. Con una copia salvata la sua riga c'è in ogni prova, anche con giocatori da controllare
-    /// (prima «2 da controllare» la toglieva e una copia vecchia sembrava attuale): sopra la copia, sotto «2 da controllare».
+    /// prova toglie una riga alla precedente. Con una copia salvata la sua riga c'è anche con giocatori da controllare (prima
+    /// «2 da controllare» la toglieva e una copia vecchia sembrava attuale): sopra la copia, sotto «2 da controllare».
     /// Per fare posto cedono, in quest'ordine: il titolo del piccolo (resta il simbolo con la giornata accanto, come prima), nel
     /// medio «punti attesi» e la fascia su due righe («attesi · tra 65 e 81» su una, come nel piccolo), la fascia («72,7 attesi»
-    /// accanto ai punti), e per ultimo, solo con il testo molto grande, «da controllare»; la copia mai. Con il testo normale ci
-    /// stanno tutte e due anche nel piccolo e nel medio dell'iPad (foto della corsa 44731480155). `medio`: il medio, che parte da
-    /// «punti attesi» e fascia su due righe; `conGiornata`: la testata del piccolo, con la giornata sotto il titolo; `conFascia`:
-    /// c'è la fascia «tra 65 e 81» (senza, «punti attesi» sta già su una riga).
+    /// accanto ai punti), e per ultima, solo con il testo molto grande, la data della copia; «da controllare» mai (#959: prima
+    /// cedeva lui e restava la sola data, ma i titolari da controllare sono più utili). La data, prima di cedere, si accorcia da
+    /// sola in larghezza («dati di mer 25» → «mer 25», `RigaCopia`), «2 da controllare» diventa «2 da vedere»
+    /// (`EtichettaDaControllare`). Con il testo normale ci stanno tutte e due anche nel piccolo e nel medio dell'iPad (foto della
+    /// corsa 44731480155). `medio`: il medio, che parte da «punti attesi» e fascia su due righe; `conGiornata`: la testata del
+    /// piccolo, con la giornata sotto il titolo; `conFascia`: c'è la fascia «tra 65 e 81» (senza, «punti attesi» sta già su una riga).
     static func proveFormazione(medio: Bool, conGiornata: Bool, conFascia: Bool, datiSalvati: Bool,
                                 daControllare: Int) -> [ProvaFormazione] {
         var piede: [RigaPiedeFormazione] = datiSalvati ? [.copia] : []
@@ -1050,7 +1052,7 @@ enum DisposizioneWidget {
         prova.punti = .accanto
         prove.append(prova)
         if datiSalvati && daControllare > 0 {
-            prova.piede = [.copia]
+            prova.piede = [.daControllare]
             prove.append(prova)
         }
         return prove

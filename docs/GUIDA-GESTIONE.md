@@ -28,6 +28,10 @@ aprirle e sai come togliere un account che non vuoi.
 risponde con `"registrazione":"invito"`. Chi ha già un account non perde niente. Un valore scritto male (per esempio `chiusa`) vale
 come `invito`: le iscrizioni non si aprono mai per sbaglio.
 
+C'è anche `FANTA_REGISTRAZIONE=email`: serve l'invito **e** un'email, e l'account nasce solo dopo il codice a 6 cifre arrivato a
+quell'indirizzo. Funziona solo con l'invio delle email acceso (sezione 2, in fondo); se è spento, chi si registra legge «Su questo
+server l'iscrizione con l'email non è disponibile» e l'account non nasce.
+
 ### Iscrizioni aperte
 
 Con `FANTA_REGISTRAZIONE=aperta` chi vuole apre l'app, tocca **Registrati**, sceglie nome utente e password (l'email è facoltativa) ed
@@ -107,7 +111,8 @@ Chi è già entrato con quell'invito tiene il suo account. Gli inviti usati, sca
   `.venv/bin/python -m fanta utente-blocca <nome>`, `utente-sblocca <nome>` e `utente-elimina <nome>`.
 - **Errori recenti**: le richieste dall'ultimo riavvio con le rifiutate e gli errori del server, tempo medio e massimo, gli
   eventi di sicurezza con il loro nome in parole e, quando c'è, di chi sono (per esempio «Uscita da tutti i dispositivi · luca»),
-  le richieste più lente con accanto al percorso tecnico il nome della parte
+  con in più gli ultimi eventi importanti (registrazioni, recuperi, eliminazioni, cambi di ruolo, blocchi, inviti) anche dopo
+  tanti accessi sbagliati, le richieste più lente con accanto al percorso tecnico il nome della parte
   (per esempio «Formazione (/api/oggi)»). Ore nell'ora italiana. Le richieste senza nessun accesso verso le parti dell'app (di
   solito dalla pagina prima dell'ingresso) sono dette a parte; un accesso con un codice o una sessione che non vale, o una
   richiesta a una parte riservata, resta fra le rifiutate. Nessuna password e nessun dato delle richieste.
