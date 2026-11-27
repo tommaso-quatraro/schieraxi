@@ -6,7 +6,8 @@ import Testing
 /// «dati delle 18:30», sembrerebbe di oggi. Di oggi resta la sola ora; degli altri giorni il giorno scritto come `Quando.relativa`
 /// («dati di ieri 18:30», «dati di mar 17 21:05»), sempre in ora italiana e contato dall'istante della voce della timeline.
 /// Nei widget Formazione piccolo e medio la riga c'è anche con giocatori da controllare: prima «2 da controllare» la toglieva e
-/// una copia vecchia sembrava attuale. Dati inventati.
+/// una copia vecchia sembrava attuale. Solo dove non c'è posto per tutte e due (testo grande) cede la data, non «2 da controllare»
+/// (#959). Dati inventati.
 @Suite("Widget: l'ora della copia salvata")
 struct WidgetOraCopiaTests {
     /// Venerdì 20 novembre 2026 alle 10:00, ora italiana.
@@ -62,7 +63,7 @@ struct WidgetOraCopiaTests {
         #expect(aMano.isEmpty, "l'ora della copia scritta a mano (senza il giorno) in: \(aMano)")
     }
 
-    // MARK: Formazione piccolo e medio: la riga della copia c'è sempre
+    // MARK: Formazione piccolo e medio: la copia e «da controllare»
 
     private typealias Prova = DisposizioneWidget.ProvaFormazione
 
@@ -75,41 +76,44 @@ struct WidgetOraCopiaTests {
     }
 
     // Le foto della corsa 44731480155: con il testo normale il medio dell'iPhone, e piccolo e medio dell'iPad, perdevano
-    // «2 da controllare» per far posto alla copia. Prima si libera un'altra riga; «da controllare» cede per ultimo.
-    @Test("Copia e giocatori da controllare: la copia in ogni prova, sopra; «da controllare» in tutte tranne l'ultima",
+    // «2 da controllare» per far posto alla copia. Prima si libera un'altra riga. Le foto della corsa 45951751934 (#959): con il
+    // testo grande e i dati vecchi piccolo e medio tenevano la sola data e perdevano «2 da controllare», che è più utile: ora
+    // cede la data, per ultima.
+    @Test("Copia e giocatori da controllare: «da controllare» in ogni prova; la copia sopra, in tutte tranne l'ultima",
           arguments: [(false, true), (false, false), (true, true), (true, false)])
-    func daControllareCedePerUltimo(medio: Bool, fascia: Bool) throws {
+    func laCopiaCedePerUltima(medio: Bool, fascia: Bool) throws {
         let prove = medio ? Self.medio(salvati: true, dubbi: 2, fascia: fascia) : Self.piccolo(salvati: true, dubbi: 2, fascia: fascia)
         let ultima = try #require(prove.last)
-        #expect(ultima.piede == [DisposizioneWidget.RigaPiedeFormazione.copia])
+        #expect(ultima.piede == [DisposizioneWidget.RigaPiedeFormazione.daControllare])
         // con una chiusura, non con un percorso: dentro #expect il percorso come funzione fa credere che la chiamata lanci errori
         #expect(prove.dropLast().allSatisfy { $0.piede == [.copia, .daControllare] })
-        #expect(prove.count >= 3, "prima di «da controllare» deve cedere almeno un'altra riga")
+        #expect(prove.allSatisfy { $0.piede.contains(.daControllare) }, "«da controllare» non cede mai alla data")
+        #expect(prove.count >= 3, "prima della data deve cedere almeno un'altra riga")
     }
 
-    @Test("Piccolo: prima via il titolo (resta il simbolo con la giornata), poi la fascia («72,7 attesi»), per ultimo «da controllare»")
+    @Test("Piccolo: prima via il titolo (resta il simbolo con la giornata), poi la fascia («72,7 attesi»), per ultima la data")
     func piccoloConCopiaEDubbi() {
         #expect(Self.piccolo(salvati: true, dubbi: 2) == [
             Prova(conTitolo: true, punti: .unaRiga, piede: [.copia, .daControllare]),
             Prova(conTitolo: false, punti: .unaRiga, piede: [.copia, .daControllare]),
             Prova(conTitolo: false, punti: .accanto, piede: [.copia, .daControllare]),
-            Prova(conTitolo: false, punti: .accanto, piede: [.copia]),
+            Prova(conTitolo: false, punti: .accanto, piede: [.daControllare]),
         ])
     }
 
-    @Test("Medio: prima «attesi · tra 65 e 81» su una riga, poi «72,7 attesi», per ultimo «da controllare»")
+    @Test("Medio: prima «attesi · tra 65 e 81» su una riga, poi «72,7 attesi», per ultima la data")
     func medioConCopiaEDubbi() {
         #expect(Self.medio(salvati: true, dubbi: 1) == [
             Prova(conTitolo: true, punti: .dueRighe, piede: [.copia, .daControllare]),
             Prova(conTitolo: true, punti: .unaRiga, piede: [.copia, .daControllare]),
             Prova(conTitolo: true, punti: .accanto, piede: [.copia, .daControllare]),
-            Prova(conTitolo: true, punti: .accanto, piede: [.copia]),
+            Prova(conTitolo: true, punti: .accanto, piede: [.daControllare]),
         ])
         // senza fascia «punti attesi» sta già su una riga: si passa subito a «72,7 attesi»
         #expect(Self.medio(salvati: true, dubbi: 1, fascia: false) == [
             Prova(conTitolo: true, punti: .unaRiga, piede: [.copia, .daControllare]),
             Prova(conTitolo: true, punti: .accanto, piede: [.copia, .daControllare]),
-            Prova(conTitolo: true, punti: .accanto, piede: [.copia]),
+            Prova(conTitolo: true, punti: .accanto, piede: [.daControllare]),
         ])
     }
 
