@@ -50,7 +50,7 @@ TESTI: dict[str, dict] = {
         "titolo_termini": "Termini d'uso di SchieraXI",
         "titolo_crediti": "Crediti e fonti",
         "titolo_elimina": "Elimina il tuo account",
-        "aggiornato": "Ultimo aggiornamento: 26 novembre 2026",
+        "aggiornato": "Ultimo aggiornamento: 27 novembre 2026",
         "fonti_tue": "Le rose, le regole della lega, gli stemmi e le maglie che inserisci tu.",
         "sorgente_con": "Il codice sorgente di SchieraXI è pubblicato con licenza AGPL-3.0:",
         "sorgente_senza": "Il codice sorgente di SchieraXI è disponibile con licenza AGPL-3.0 dove indicato da chi gestisce questa copia dell'app.",
@@ -115,7 +115,9 @@ TESTI: dict[str, dict] = {
             ("p", "Gli avvisi tecnici dei controlli automatici arrivano a chi gestisce l'app tramite il servizio ntfy.sh: contengono al massimo il numero interno dell'account, "
                   "che fuori dal server non dice chi sei, mai nomi né dati della tua lega."),
             ("p", "Chi gestisce l'app, per amministrare il server, può tecnicamente vedere i dati salvati. Li guarda solo quando serve: per risolvere un problema "
-                  "che segnali tu, per la sicurezza o se lo chiede la legge. Nell'elenco degli account vede nome utente, nome mostrato, ruolo e data di iscrizione, mai le password."),
+                  "che segnali tu, per la sicurezza o se lo chiede la legge. In Gestione, dentro l'app, vede l'elenco degli account con nome utente, nome mostrato, ruolo, "
+                  "data di iscrizione, data dell'ultimo accesso e, se l'ha bloccato, da quando; i commenti mandati con «Scrivici», con il nome, la data, la versione "
+                  "e la piattaforma dell'app; gli ultimi eventi del registro di sicurezza, con il nome utente e l'indirizzo di rete accorciato. Mai le password."),
             ("p", "Il codice dell'app è pubblicato su GitHub: lì non finisce nessun dato tuo. Se installi l'app per iPhone fuori dall'App Store, il file arriva da GitHub, "
                   "che come ogni sito vede l'indirizzo di rete di chi scarica."),
             ("h", "Dove stanno i dati e per quanto tempo"),
@@ -252,7 +254,7 @@ TESTI: dict[str, dict] = {
         "titolo_termini": "SchieraXI terms of use",
         "titolo_crediti": "Credits and sources",
         "titolo_elimina": "Delete your account",
-        "aggiornato": "Last updated: 26 November 2026",
+        "aggiornato": "Last updated: 27 November 2026",
         "traduzione_nota": "This is an English translation provided for convenience. The Italian text is the one that applies and it is the reference in case of doubt.",
         "versione_italiana": "Read the Italian version",
         "fonti_tue": "The rosters, the league rules, the crests and the shirts that you enter yourself.",
@@ -319,7 +321,9 @@ TESTI: dict[str, dict] = {
             ("p", "The technical alerts of the automatic checks reach whoever runs the app through the ntfy.sh service: they contain at most the internal account number, "
                   "which outside the server does not say who you are, never names or data about your league."),
             ("p", "Whoever runs the app can technically see the stored data in order to administer the server. They look at it only when needed: to fix a problem "
-                  "you report, for security or if the law requires it. In the list of accounts they see username, displayed name, role and sign-up date, never passwords."),
+                  "you report, for security or if the law requires it. In Management, inside the app, they see the list of accounts with username, displayed name, role, "
+                  "sign-up date, date of the last sign-in and, if they blocked it, since when; the comments sent with «Write to us», with the name, the date and the version "
+                  "and platform of the app; the latest events of the security log, with the username and the shortened network address. Never passwords."),
             ("p", "The app's code is published on GitHub: none of your data ends up there. If you install the iPhone app outside the App Store, the file comes from GitHub, "
                   "which, like any website, sees the network address of whoever downloads it."),
             ("h", "Where the data is and for how long"),

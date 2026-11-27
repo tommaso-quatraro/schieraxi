@@ -388,7 +388,7 @@ MIGRAZIONI = [
 # superato il suo posto). L'ordine è fissato in tests/test_migrazioni.py (`ORDINE`).
 
 # Versione dei testi «Privacy» e «Termini d'uso» (la data di «Ultimo aggiornamento» delle pagine): si cambia quando cambiano i testi.
-VERSIONE_TERMINI = "2026-11-26"
+VERSIONE_TERMINI = "2026-11-27"
 TERMINI_RIFIUTATI = ("Per iscriverti devi accettare Privacy e Termini d'uso. / "
                      "To sign up you must accept the Privacy policy and the Terms of use.")
 
