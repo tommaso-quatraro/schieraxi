@@ -57,6 +57,10 @@ poi `sudo systemctl restart fantacalcio`.
 Con le iscrizioni aperte il modulo non chiede codici: un amico che deve gestire l'app con te si registra come tutti e poi, sul server,
 `.venv/bin/python -m fanta utente-ruolo --utente <nome> --ruolo admin`.
 
+Se un altro amministratore ha perso password, codice di recupero ed email, dalla web non puoi creargli il codice: sul server
+riportalo a utente normale (`utente-ruolo --utente <nome> --ruolo normale`), crea il codice da Gestione, e dopo che è rientrato
+ridagli il ruolo di amministratore.
+
 ### Con gli inviti
 
 **Impostazioni › Gestione › Nuovo invito** crea il link da mandare (**Condividi l'invito** o **Copia il messaggio**): apre la

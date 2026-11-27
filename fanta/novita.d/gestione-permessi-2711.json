@@ -7,9 +7,9 @@
   ],
   "titolo_en": "Management: stricter administrator permissions and safer invitations",
   "voci_en": [
-    "Management: the «Forgotten password» code and importing rosters on someone's behalf no longer work for another administrator, as already for Block and Delete.",
-    "An administrator invitation asks for confirmation and the box clears after each invitation; a double tap on «Create the invitation», «Generate the code» or «Refresh the data» no longer sends two requests.",
-    "Recent errors also refreshes after invitations and codes, and if the server cannot read its log it says so instead of «No events»."
+    "Management: the “\u0001” code and importing rosters on someone's behalf no longer work for another administrator, as already for Block and Delete.",
+    "An administrator invitation asks for confirmation and the box clears after each invitation; a double tap on “\u0001”, “\u0001” or “\u0001” no longer sends two requests.",
+    "Recent errors also refreshes after invitations and codes, and if the server cannot read its log it says so instead of “\u0001”."
   ],
   "tecnico": [
     "account.crea_reset(..., chi=Utente): 403 account.RESET_ALTRO_AMMINISTRATORE (err.reset_altro_amministratore) per l'account di un altro amministratore, il proprio sì; l'evento reset_creato ha da=chi.nome_utente. POST /api/admin/reset-password passa chi (solo_amministratore come parametro).",
