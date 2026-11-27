@@ -187,7 +187,9 @@ def aggiorna_risultati(giornate: list[int], scrivi: Callable[[str], None] = lamb
             for g in giornate:
                 agg._passo(f"risultati {g}", lambda g=g: agg.risultati_giornata(g))    # noqa: SLF001 - stesso passo dell'aggiornamento completo
             if agg.errori:
-                archivio.segna_passo(db, CHIAVE_RISULTATI, _ora(), "; ".join(agg.errori))   # l'ora dell'ultimo successo resta
+                # l'ora dell'ultimo successo resta; tipo e fonte servono a «Stato dei dati» per dirlo senza il messaggio tecnico
+                archivio.segna_passo(db, CHIAVE_RISULTATI, _ora(), "; ".join(agg.errori),
+                                     tipo="rete" if agg.solo_rete else "dati", fonte="fantacalcio")
                 db.commit()
                 # nel registro solo il passo e il tipo d'errore («risultati 12: ConnectionError»), mai il resto del messaggio
                 LOG.warning("pianificatore: risultati della sera non riusciti (%s)",

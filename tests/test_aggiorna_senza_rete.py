@@ -15,6 +15,9 @@ import pytest
 import requests
 
 from fanta import aggiorna, archivio, da_fare, fonti_attive, funzioni
+# `stato_dati.riepilogo` importa la sentinella solo quando serve: importata qui, la fixture di conftest ne sposta il file in una
+# cartella temporanea (lanciato da solo, il test aprirebbe `dati/sentinella.json` del repository)
+from fanta import sentinella  # noqa: F401
 
 ADESSO = "2026-11-26T18:38:00"
 UN_MESE_FA = "2026-10-27T21:03:00"
@@ -237,3 +240,25 @@ def test_esegui_riempie_le_frasi_per_chi_le_chiede(tmp_path, monkeypatch):
     errori = aggiorna.esegui(scrivi=lambda _: None, per_utente=frasi)
     assert errori and any("ProxyError" in e for e in errori)
     assert frasi == ["Fantacalcio.it, Understat e football-data.co.uk non rispondono: riprova più tardi."]
+
+
+# ---------------------------------------------------------------- 3. Stato dei dati dopo il giro
+def test_stato_dei_dati_dopo_un_giro_senza_rete_dice_frasi_semplici(db, monkeypatch):
+    """Collaudo della web in inglese del 27/11/2026: dopo «Aggiorna i dati» con il proxy giù, Stato dei dati mostrava «Non riuscito
+    alle 18:38 del 26/11: ProxyError: HTTPSConnectionPool(…)» per ogni passo e lo stesso muro di testo nella riga generale, con i
+    nomi «listone», «calendario» in italiano. Ora ogni passo dice quale fonte non risponde, la riga generale quali passi non sono
+    riusciti, tutto con la frase da tradurre (`errori_frasi`); il dettaglio tecnico resta negli errori della corsa."""
+    from fanta import stato_dati
+    _rete(monkeypatch, risponde=False)
+    _passi(monkeypatch)
+    a = _giro(db, monkeypatch)
+    assert any("ProxyError" in e for e in a.errori)
+    voci = {v["cosa"]: v for v in stato_dati.riepilogo(db, "2026-27", adesso=datetime.fromisoformat(ADESSO))["aggiornamenti"]}
+    assert voci["listone"]["errori"] == ["Non riuscito gio 26 nov alle 18:38: Fantacalcio.it non risponde."]
+    assert voci["understat"]["errori"] == ["Non riuscito gio 26 nov alle 18:38: Understat non risponde."]
+    assert voci["dati-extra"]["errori"] == ["Non riuscito gio 26 nov alle 18:38: football-data.co.uk non risponde."]
+    assert voci["aggiornamento"]["errori"] == [
+        "Non riusciti: Listone e quotazioni, Calendario, Probabili formazioni, Statistiche avanzate, Statistiche di squadra."]
+    for v in voci.values():
+        assert len(v["errori_frasi"]) == len(v["errori"]) and all(v["errori_frasi"]), v
+        assert not any(p in e for e in v["errori"] for p in ("Error", "HTTPS", "fonte.invalid", "mai riuscito")), v["errori"]

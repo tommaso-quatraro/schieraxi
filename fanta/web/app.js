@@ -2411,10 +2411,11 @@ async function apriStatoDati() {
     const s = await api("/api/stato-dati");
     if (numero !== ultimaScheda || $("#foglio").hidden) return;
     // il nome di ogni riga (aggiornamenti, controlli, fasce, funzioni) lo scrive il server, campo `etichetta` (fanta/stato_dati.py,
-    // fanta/controlli.py, fanta/uso.py) con la sua frase (`etichetta_frase`, #949): in inglese si traduce
+    // fanta/controlli.py, fanta/uso.py) con la sua frase (`etichetta_frase`, #949): in inglese si traduce. Anche gli errori di ogni
+    // riga sono frasi del server (`errori_frasi`, collaudo in inglese del 27/11/2026), senza il messaggio tecnico
     const agg = s.aggiornamenti.length ? s.aggiornamenti.map(a => `<div class="riga"><span>${esc(testoDi(a, "etichetta") || a.cosa)}</span>
       <span class="debole piccolo">${a.quando ? esc(quando(a.quando)) : t("sd.mai")}</span></div>
-      ${a.errori.map(e => `<div class="debole piccolo" style="color:var(--rosso)">${esc(e)}</div>`).join("")}`).join("") : `<div class="debole">${t("scambio.nessun_aggiornamento_registr")}</div>`;
+      ${testiDi(a, "errori").map(e => `<div class="debole piccolo" style="color:var(--rosso)">${esc(e)}</div>`).join("")}`).join("") : `<div class="debole">${t("scambio.nessun_aggiornamento_registr")}</div>`;
     const c = s.calibrazione;
     const usoDal = s.uso ? parseData(s.uso.dal) : null, coppeFino = parseData(s.coppe_fino);        // solo il giorno
     const gruppi = c.gruppi.map(g => `<div class="riga"><span>${esc(testoDi(g, "gruppo"))}</span>

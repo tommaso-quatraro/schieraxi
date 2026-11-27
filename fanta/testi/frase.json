@@ -12,6 +12,14 @@
     "it": "{n} ore",
     "en": "{n} hours"
   },
+  "frase.tempo.giorni.one": {
+    "it": "{n} giorno",
+    "en": "{n} day"
+  },
+  "frase.tempo.giorni.other": {
+    "it": "{n} giorni",
+    "en": "{n} days"
+  },
   "frase.tempo.fa_meno_di_un_minuto": {
     "it": "meno di un minuto fa",
     "en": "less than a minute ago"
@@ -1436,6 +1444,48 @@
   "frase.aggiornamento.dati_extra_stagione": {
     "it": "Statistiche di squadra {stagione}",
     "en": "Team statistics {stagione}"
+  },
+  "frase.aggiornamento.non_riuscito": {
+    "it": "Non riuscito {quando} alle {ora}: {motivo}.",
+    "en": "Failed on {quando} at {ora}: {motivo}.",
+    "nota": "Stato dei dati › Ultimi aggiornamenti, sotto un passo che non riesce (collaudo in inglese del 27/11/2026, campo errori_frasi); {quando} = frase.data.giorno_mese, {ora} = «11:31», {motivo} = frase.aggiornamento.motivo_*"
+  },
+  "frase.aggiornamento.non_riuscito_breve": {
+    "it": "Non riuscito: {motivo}.",
+    "en": "Failed: {motivo}.",
+    "nota": "come frase.aggiornamento.non_riuscito, quando l'ora non si legge"
+  },
+  "frase.aggiornamento.fermo": {
+    "it": "Fermo da {durata}, non riesce da {quando} alle {ora}: {motivo}.",
+    "en": "Stuck for {durata}, failing since {quando} at {ora}: {motivo}.",
+    "nota": "Stato dei dati › Ultimi aggiornamenti, sotto un passo che non riesce (collaudo in inglese del 27/11/2026, campo errori_frasi); {quando} = frase.data.giorno_mese, {ora} = «11:31», {motivo} = frase.aggiornamento.motivo_*; {durata} = frase.tempo.ore o frase.tempo.giorni (fermo da più di un giorno)"
+  },
+  "frase.aggiornamento.motivo_rete": {
+    "it": "{fonte} non risponde",
+    "en": "{fonte} is not responding",
+    "nota": "{fonte} = nome della fonte (Fantacalcio.it, Understat...)"
+  },
+  "frase.aggiornamento.motivo_rete_generico": {
+    "it": "la fonte non risponde",
+    "en": "the source is not responding"
+  },
+  "frase.aggiornamento.motivo_registro": {
+    "it": "il dettaglio è nel registro del server",
+    "en": "the details are in the server log"
+  },
+  "frase.aggiornamento.non_riusciti.one": {
+    "it": "Non riuscito: {passi}.",
+    "en": "Failed: {passi}.",
+    "nota": "Stato dei dati › riga «Aggiornamento generale»: i passi dell'ultimo aggiornamento non riusciti, {passi} = elenco dei loro nomi (frase.aggiornamento.*)"
+  },
+  "frase.aggiornamento.non_riusciti.other": {
+    "it": "Non riusciti: {passi}.",
+    "en": "Failed: {passi}."
+  },
+  "frase.aggiornamento.con_stagione": {
+    "it": "{passo} {stagione}",
+    "en": "{passo} {stagione}",
+    "nota": "un passo di una stagione passata: «Voti e bonus 2025-26»"
   },
   "frase.controllo.partite_per_giornata": {
     "it": "10 partite per giornata",
