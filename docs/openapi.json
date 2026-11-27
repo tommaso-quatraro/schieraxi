@@ -2620,6 +2620,7 @@
   },
   "/api/admin/reset-password": {
    "post": {
+    "description": "Il codice per chi ha perso la password. Per il proprio account o per un account comune; quello di un altro amministratore\nno (403), come blocca ed elimina.",
     "requestBody": {
      "content": {
       "application/json": {
