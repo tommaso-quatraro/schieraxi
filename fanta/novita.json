@@ -1,5 +1,20 @@
 [
   {
+    "versione": "1.612",
+    "data": "2026-11-27T16:46:33",
+    "titolo": "Novità in inglese più giuste",
+    "voci": [
+      "Con l'inglese scelto, le novità delle ultime due versioni usano le parole giuste, come nel resto dell'app."
+    ],
+    "tecnico": [
+      "fanta/contenuti/novita.en.json: traduzione corretta di 1.609 e 1.610 («light round» diventa «light check», «line-ups» diventa «lineups»), che ha la precedenza su titolo_en/voci_en di novita.json (#975); tests/test_novita_inglese.py torna verde su main."
+    ],
+    "titolo_en": "Better English in the what's new list",
+    "voci_en": [
+      "With English selected, the notes of the last two versions use the right words, as in the rest of the app."
+    ]
+  },
+  {
     "versione": "1.611",
     "data": "2026-11-27T16:32:32",
     "titolo": "Stato dei dati senza messaggi tecnici, e la web in inglese con le parole giuste",
