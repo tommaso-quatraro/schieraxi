@@ -8,10 +8,10 @@
   ],
   "titolo_en": "Lineup: it updates by itself at the deadline, and the formation menu shows yours",
   "voci_en": [
-    "Lineup on the web open at the deadline: a few seconds later it updates by itself and closes, without reloading the page. It also updates when you come back to the app after the deadline or after more than 5 minutes, and when a change fails because a match has already started. «Lineup closed» appears only once the deadline has passed, no longer half a minute early.",
-    "Formation menu after a change made by hand: at the top there is your lineup with its points («4-3-3 · 71.0 points · yours»), selected; choosing the «recommended» formation takes you back to the recommended lineup. Before, the recommended entry stayed selected and choosing it did nothing.",
+    "Lineup on the web open at the deadline: a few seconds later it updates by itself and closes, without reloading the page. It also updates when you come back to the app after the deadline or after more than 5 minutes, and when a change fails because a match has already started. “Lineup closed” appears only once the deadline has passed, no longer half a minute early.",
+    "Formation menu after a change made by hand: at the top there is your lineup with its points (“4-3-3 · 71.0 points · yours”), selected; choosing the “recommended” formation takes you back to the recommended lineup. Before, the recommended entry stayed selected and choosing it did nothing.",
     "With the keyboard, the arrows move through the formation menu and the formation changes with Enter (or when leaving the menu), not at every arrow.",
-    "If «Copy for the league app» fails, the lineup text appears below the button, already selected, to copy by hand."
+    "If “Copy for the league app” fails, the lineup text appears below the button, already selected, to copy by hand."
   ],
   "tecnico": [
     "Web, `mostraFormazione`: una rilettura (`rileggiFormazione`) 5 secondi dopo la scadenza della formazione in pagina (`scadenzaDi`, una volta per scadenza, `scadenzaRiletta`) e al `visibilitychange` se la scadenza è passata o i dati hanno più di 5 minuti; dopo un rifiuto `giocatore_bloccato` di POST /api/formazione/valuta o DELETE /api/scelta si rilegge come dopo `formazione_chiusa`. `testoConto` arrotonda in su i minuti che mancano.",
