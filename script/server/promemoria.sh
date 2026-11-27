@@ -20,7 +20,8 @@ permessi_registri dati
 # giro dei promemoria: al massimo 8 minuti (meno dei 10 fra un giro e l'altro), cosi' un servizio di notifica lento non lo tiene
 # fermo fino al giro dopo. Si cambia con FANTA_MAX_SECONDI_GIRO_PROMEMORIA nelle variabili del servizio (secondi; un valore non valido vale 480).
 # Con gli account il giro lo fa il servizio (fanta/avvisi_utenti.py, sorveglia_promemoria) con i calcoli che ha gia' in memoria: qui
-# il comando esce subito, e rifa' il giro solo se il servizio non lo fa da un quarto d'ora (servizio fermo), con una riga nel log.
+# il comando aspetta che il servizio finisca il giro dello stesso turno (al massimo 90 secondi dopo il minuto tondo) ed esce; se il
+# servizio salta il turno (fermo, bloccato, in errore) rifa' il giro, con una riga nel log.
 # Priorita' 19, la piu' bassa: quando ricalcola tutto in un processo a parte resta dietro al servizio (Nice=10).
 giro=${FANTA_MAX_SECONDI_GIRO_PROMEMORIA:-480}; [[ $giro =~ ^[1-9][0-9]{0,4}$ ]] || giro=480
 out=$(nice -n 19 timeout "$giro" .venv/bin/python -m fanta promemoria 2>&1)
