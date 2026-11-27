@@ -56,4 +56,19 @@ final class DubbiRoseTests: XCTestCase {
         XCTAssertEqual(vm.dubbi, [rimasto])
         XCTAssertEqual(vm.sistemati, 1)
     }
+
+    /// Se una rosa non si legge, «Giocatori da sistemare» lo dice con la frase del catalogo e il motivo, come la web
+    /// (`pav.da_sistemare_errore`); l'errore non si confonde con quelli della ricerca, che stanno nel foglio della ricerca.
+    @MainActor
+    func testSeUnaRosaNonSiLeggeLoDiceConLaFraseDellaWeb() async throws {
+        let server = ServerDiProva { _, percorso, _ in
+            if percorso.hasPrefix("/api/squadre") { return Data(#"[{"nome": "Squadra A"}]"#.utf8) }
+            throw ErroreApi.server("Squadra non trovata")
+        }
+        let vm = DubbiRoseViewModel(server: server)
+        await vm.carica()
+        XCTAssertTrue(vm.dubbi.isEmpty)
+        XCTAssertEqual(vm.erroreLettura, "Non ho potuto controllare i giocatori da sistemare. Squadra non trovata")
+        XCTAssertNil(vm.errore)
+    }
 }

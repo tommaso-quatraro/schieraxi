@@ -42,8 +42,10 @@ pav.saltato_par
 pav.hai_saltato
 pav.hai_saltato_senza_rose
 pav.il_resto
-# Aggiorna le rose, i giocatori rimasti senza codice (ImportaRoseView), come il passo «La tua squadra» della web
+# Aggiorna le rose, i giocatori rimasti senza codice (ImportaRoseView), come il passo «La tua squadra» della web; se le rose non
+# si leggono, la frase della web con il motivo (DubbiRoseViewModel.erroreLettura)
 pav.da_sistemare
+pav.da_sistemare_errore
 # Il pulsante del file di Importa le rose (ImportaRoseView), come il passo «Le rose» della web e Squadra › Aggiorna le rose.
 pav.scegli_file
 # Importa le rose al primo caricamento, senza rose salvate (ImportaExcelViewModel): la frase del passo «Le rose» della web (#880)
