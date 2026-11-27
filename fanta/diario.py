@@ -40,8 +40,11 @@ FILE = RADICE / "dati" / "diario.json"
 MASSIMO_GIORNATE = 12
 SIMULAZIONI = 300
 MAX_ISTANTANEE = 60
-# I numeri di tutta la rosa alla scadenza (`numeri_rosa`): servono solo al riepilogo di Oggi della giornata appena finita (#794)
-MAX_NUMERI_ROSA = 4
+# I numeri di tutta la rosa alla scadenza (`numeri_rosa`): con loro il riepilogo di Oggi della giornata appena finita (#794) e il
+# Diario scelgono la panchina del sistema (`panchina_alla_scadenza`). Restano per tutte le giornate che il Diario rifà a un cambio
+# di regole (MASSIMO_GIORNATE): con meno, la panchina di quelle più vecchie cambiava per un motivo che non è la regola cambiata.
+# Circa 2 KB a giornata, fuori dalle istantanee che l'app riceve
+MAX_NUMERI_ROSA = MASSIMO_GIORNATE
 # «L'ho messa» (#616): il campo della scelta salvata che dice «ho messo questi 11 nell'app della lega». `scelte.salva` lo scrive
 # solo quando è vero (`messa: true`, con `messa_il`) e lo fa cadere se gli 11 cambiano. È l'unico punto dove il Diario lo legge:
 # `schierata_confermata` dice se la scelta salvata è quella schierata davvero e ogni voce lo porta in `schierata.confermata`.
