@@ -126,7 +126,26 @@ def test_senza_il_campo_le_prossime_partite_sono_quelle_della_squadra_del_liston
     assert len(_prossime(parte)) == len(attese) > 0
 
 
-def test_un_giocatore_uscito_dal_listone_nella_rosa_lo_dice_al_tocco(web):
+def test_chi_e_uscito_dal_listone_lo_decide_il_server(web):
+    """`fuori_listone` di /api/rosa (revisione della #985): vale il campo del server, non la quotazione vuota."""
+    solo(web, "prima")
+    r = web.registrata("/api/rosa")
+    for x in r["giocatori"]:
+        x["fuori_listone"] = False
+    fuori, dentro = r["giocatori"][0], r["giocatori"][1]
+    fuori["fuori_listone"] = True                       # ha la quotazione, ma il server dice che è fuori
+    dentro["quotazione"] = None                         # nel listone senza quotazione: la scheda si apre
+    web.risposta("/api/rosa", r)
+    web.apri("/?vista=impostazioni&gruppo=squadra")
+    tocca(web, web.pagina.locator("main .riga-gioc button").filter(has_text=fuori["nome"]).first)
+    web.pagina.locator("#avviso").filter(has_text=FUORI_LISTONE).wait_for(timeout=5000)
+    assert f"/api/giocatore/{fuori['id']}" not in web.richieste
+    tocca(web, web.pagina.locator("main .riga-gioc button").filter(has_text=dentro["nome"]).first)
+    assert f"/api/giocatore/{dentro['id']}" in web.richieste
+
+
+def test_un_server_di_prima_senza_il_campo_si_regola_sulla_quotazione(web):
+    """Gli scenari registrati non hanno `fuori_listone`: senza il campo vale il ripiego, la quotazione vuota."""
     solo(web, "prima")
     r = web.registrata("/api/rosa")
     fuori = r["giocatori"][0]

@@ -52,7 +52,17 @@ struct SchedaNumeriDelServerTests {
         #expect(LetturaScheda.golConRigori(vecchio) == 5)
     }
 
-    @Test("Nella Rosa chi non ha la quotazione è uscito dal listone: il tocco dice la frase del catalogo, non apre la scheda")
+    @Test("Nella Rosa chi è uscito dal listone lo dice il server (`fuori_listone`), non la quotazione vuota")
+    func fuoriListoneDalServer() throws {
+        let fuori = try rosa(#"{"id": 7, "nome": "Paolo Esempio", "ruolo": "C", "quotazione": 14, "fuori_listone": true}"#)
+        let dentro = try rosa(#"{"id": 8, "nome": "Mauro Retalli", "ruolo": "A", "quotazione": null, "fuori_listone": false}"#)
+        let senzaCodice = try rosa(#"{"nome": "Sconosciuto", "ruolo": "A", "fuori_listone": true}"#)
+        #expect(RigaRosa.fuoriListone(fuori))
+        #expect(RigaRosa.fuoriListone(dentro) == false, "nel listone senza quotazione: la scheda si apre")
+        #expect(RigaRosa.fuoriListone(senzaCodice) == false, "senza codice la riga resta spenta")
+    }
+
+    @Test("Un server di prima, senza `fuori_listone`: chi non ha la quotazione è uscito dal listone, il tocco dice la frase")
     func fuoriListone() throws {
         let fuori = try rosa(#"{"id": 7, "nome": "Paolo Esempio", "ruolo": "C", "quotazione": null}"#)
         let dentro = try rosa(#"{"id": 8, "nome": "Mauro Retalli", "ruolo": "A", "quotazione": 14}"#)

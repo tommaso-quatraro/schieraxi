@@ -2366,9 +2366,10 @@ async function vistaRosa(nome) {
         const prezzi = [x.costo != null ? t("scambio.costo_n", { c: x.costo }) : "", x.quotazione != null ? t("scambio.quotazione_n", { q: x.quotazione }) : ""];
         const partita = pezziRiga([[[sigla(x.squadra), p ? vsAt(p) : ""].filter(Boolean).join(" "), p && p.data_partita ? quando(p.data_partita) : ""]
           .filter(Boolean).join(" · "), prezzi.filter(Boolean).join(" · ")]);
-        // senza quotazione è uscito dal listone (ceduto all'estero): non ha una scheda, il tocco lo dice (err.fuori_listone, la
-        // frase del 404 del server); come RigaRosa dell'iPhone
-        return `<li class="riga-gioc"><button class="voce voce-g" ${!x.id ? "disabled" : x.quotazione == null ? "data-fuori-listone" : `data-giocatore="${x.id}"`}>
+        // uscito dal listone (ceduto all'estero; lo decide il server, `fuori_listone`): non ha una scheda, il tocco lo dice
+        // (err.fuori_listone, la frase del 404 del server); come RigaRosa dell'iPhone. Un server di prima non lo manda: la quotazione vuota
+        const fuoriListone = typeof x.fuori_listone === "boolean" ? x.fuori_listone : x.quotazione == null;
+        return `<li class="riga-gioc"><button class="voce voce-g" ${!x.id ? "disabled" : fuoriListone ? "data-fuori-listone" : `data-giocatore="${x.id}"`}>
           ${volto(p || { id: x.id, nome: x.nome, ruolo: x.ruolo, squadra: slug })}
           <span class="testo-g"><span class="nome"><span class="ruolo-l">${esc(ruoloSigla(x.ruolo || "?"))}</span><span class="nome-t">${esc(x.nome)}</span></span>
             <span class="dettaglio">${lineetta(slug)}${partita}</span>

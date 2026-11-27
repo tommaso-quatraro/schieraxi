@@ -156,6 +156,26 @@ def test_un_giocatore_uscito_dal_listone_ha_una_frase_per_chi_usa_l_app(tmp_path
         scheda.scheda(archivio.apri(tmp_path / "fanta.sqlite"), 999, ST, LEGA)
 
 
+def test_la_rosa_dice_chi_e_uscito_dal_listone(tmp_path, monkeypatch):
+    """`fuori_listone` di GET /api/rosa lo decide il server (revisione della #985): prima web e iPhone lo deducevano da
+    `quotazione` vuota, ma un giocatore del listone può non avere la quotazione (qui Verdi) e non è fuori. Chi non è riconosciuto
+    (senza codice) non si sa; senza nessun listone nell'archivio nemmeno: nessuno è «fuori»."""
+    from fanta import lega
+    c = _client(tmp_path, monkeypatch)
+    lega.salva(lega.Rose([lega.Squadra("Mia", [lega.GiocatoreRosa(7, "Verdi", "D", "GEN"), lega.GiocatoreRosa(999, "Partito", "A", "GEN"),
+                                               lega.GiocatoreRosa(None, "Sconosciuto", "C", None, riconosciuto="non trovato")])],
+                         "Mia"), tmp_path / "rose.json")
+    g = {x["nome"]: x for x in c.get("/api/rosa").json()["giocatori"]}
+    assert g["Verdi"]["quotazione"] is None and g["Verdi"]["fuori_listone"] is False
+    assert g["Partito"]["fuori_listone"] is True
+    assert g["Sconosciuto"]["fuori_listone"] is False
+    db = archivio.apri(tmp_path / "fanta.sqlite")
+    db.execute("DELETE FROM calciatori")
+    db.commit()
+    db.close()
+    assert not any(x["fuori_listone"] for x in c.get("/api/rosa").json()["giocatori"])
+
+
 def _avanzate(gol, xg, assist=0, xa=0.0):
     return {"minuti": 900, "gol": gol, "xg": xg, "assist": assist, "xa": xa}
 

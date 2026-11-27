@@ -2088,7 +2088,9 @@ def rosa(response: Response, squadra: str | None = None, ctx: Contesto = Depends
     giocatori = []
     for g in s.giocatori:
         q, slug = quot.get(g.id, (None, None))
-        x = asdict(g) | {"quotazione": q, "squadra_slug": slug}
+        # uscito dal listone (ceduto all'estero): non ha una scheda (404 di /api/giocatore) e i client lo dicono al tocco. Lo decide il
+        # server: la quotazione vuota non basta (un giocatore del listone può non averla). Senza codice o senza listone non si sa
+        x = asdict(g) | {"quotazione": q, "squadra_slug": slug, "fuori_listone": bool(quot) and g.id is not None and g.id not in quot}
         if g.id in schede:
             x["previsione"] = schede[g.id]
         giocatori.append(x)

@@ -8,11 +8,12 @@ struct RigaRosa: View {
     /// Il tocco su un giocatore uscito dal listone: la frase al posto della scheda.
     @State private var avvisoFuoriListone = false
 
-    /// Senza quotazione il giocatore è uscito dal listone (ceduto all'estero): non ha una scheda (il server risponderebbe 404 con
-    /// la stessa frase), quindi il tocco dice «Questo giocatore non è più nel listone di Serie A.» (`err.fuori_listone`), come
-    /// `vistaRosa` della web. Senza codice la riga resta spenta, come prima.
+    /// Uscito dal listone (ceduto all'estero), lo dice il server (`fuori_listone` di `/api/rosa`): non ha una scheda (il server
+    /// risponderebbe 404 con la stessa frase), quindi il tocco dice «Questo giocatore non è più nel listone di Serie A.»
+    /// (`err.fuori_listone`), come `vistaRosa` della web. Un server di prima non lo manda: allora la quotazione vuota. Senza codice la
+    /// riga resta spenta, come prima.
     nonisolated static func fuoriListone(_ g: GiocatoreRosa) -> Bool {
-        g.id != nil && g.quotazione == nil
+        g.id != nil && (g.fuoriListone ?? (g.quotazione == nil))
     }
 
     nonisolated private static func sottotitolo(_ g: GiocatoreRosa) -> String {

@@ -241,6 +241,9 @@ struct GiocatoreRosa: Decodable, Identifiable {
     let costo: Double?
     let quotazione: Double?
     let previsione: Giocatore?
+    /// Uscito dal listone (ceduto all'estero), deciso dal server: niente scheda (vedi `RigaRosa.fuoriListone`). nil da un server di prima.
+    /// `var` con il valore iniziale: si legge dal JSON come gli altri campi e chi costruisce la riga a mano (i test) può non darlo.
+    var fuoriListone: Bool? = nil
     var ident: String { "\(id ?? -1)-\(nome)" }
 }
 
