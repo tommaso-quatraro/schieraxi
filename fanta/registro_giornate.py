@@ -124,9 +124,13 @@ def fantavoto_vero(riga: dict, ruolo: str, regole: Regole = REGOLE) -> float | N
 
 
 def _inizio(db: sqlite3.Connection, stagione: str, giornata: int) -> str:
-    """Data e ora della prima partita della giornata, come `modello.Dati.inizio` («9999» se nessuna partita ha la data)."""
-    r = db.execute("SELECT MIN(data) FROM partite WHERE stagione = ? AND giornata = ?", (stagione, giornata)).fetchone()
-    return str(r[0]) if r and r[0] is not None else "9999"
+    """Quando si chiude la formazione della giornata (`avvisi.prima_partita`) come è scritto nel calendario, come
+    `modello.Dati.inizio` («9999» se nessuna partita ha la data)."""
+    primo = avvisi.prima_partita(db, stagione, giornata)
+    if primo is None:
+        return "9999"
+    return min(str(t) for (t,) in db.execute("SELECT data FROM partite WHERE stagione = ? AND giornata = ? AND data IS NOT NULL",
+                                             (stagione, giornata)) if _data(t) == primo)
 
 
 # la data della partita di ogni voto, dalla giornata e dalla squadra (come `modello.carica`): una riga per stagione, giornata e squadra
@@ -140,15 +144,19 @@ def fantamedie_tirate(db: sqlite3.Connection, stagione: str, giornata: int,
     """L'avversario onesto del fantavoto atteso (come `verifica.avversari`, #614), con i voti di PRIMA di `giornata`, anche
     delle stagioni passate: ({id: fantamedia tirata verso il ruolo}, {ruolo: fantavoto medio}). Tirata = (somma dei suoi fantavoti
     + PRESENZE_FITTIZIE x media del suo ruolo) / (presenze + PRESENZE_FITTIZIE); il ruolo è quello dell'ultimo voto. Chi non ha
-    voti non c'è: per lui vale la media del ruolo (`avversario`). «Prima» vuol dire le partite giocate prima dell'inizio della
-    giornata, per data come il modello (`modello.prima_di`), non per numero di giornata: un recupero giocato dopo l'inizio non
-    conta (#840, come `verifica.avversari` dopo #832). Un voto senza la sua partita non ha data e non conta, come nel modello."""
+    voti non c'è: per lui vale la media del ruolo (`avversario`). «Prima» vuol dire le partite giocate prima che si chiuda la
+    formazione della giornata, senza quelle della giornata stessa, per data come il modello (`modello.Dati.prima`), non per numero
+    di giornata: un recupero giocato dopo l'inizio non conta (#840, come `verifica.avversari` dopo #832), la giornata prima sì
+    anche se una partita della giornata è stata anticipata di settimane. Un voto senza la sua partita non ha data e non conta,
+    come nel modello."""
     col = COLONNA_VOTO[regole.fonte_voto]
     del_ruolo: dict[str, list[float]] = {}
     suoi: dict[int, tuple[float, int, str]] = {}
     for r in _righe(db.execute(f"SELECT v.* FROM voti v JOIN ({_DATE_DEI_VOTI}) d ON d.stagione = v.stagione AND "
-                               f"d.giornata = v.giornata AND d.squadra = v.squadra WHERE d.data < ? AND v.{col} IS NOT NULL "
-                               "ORDER BY v.stagione, v.giornata", (_inizio(db, stagione, giornata),))):
+                               "d.giornata = v.giornata AND d.squadra = v.squadra "
+                               f"WHERE d.data < ? AND NOT (v.stagione = ? AND v.giornata = ?) AND v.{col} IS NOT NULL "
+                               "ORDER BY v.stagione, v.giornata",
+                               (_inizio(db, stagione, giornata), stagione, giornata))):
         fv = fantavoto_vero(r, r["ruolo"], regole)
         if fv is None:
             continue

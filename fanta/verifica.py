@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 from . import formazione as fz
-from .modello import Dati, Parametri, previsioni, prima_di
+from .modello import Dati, Parametri, previsioni
 from .punteggio import COLONNA_VOTO, fantavoto, modificatore_difesa
 from .regole import RUOLI, Regole, modulo_in_numeri
 
@@ -78,13 +78,14 @@ class EsitoGiornata:
 
 
 def _prima(d: Dati, stagione: str, giornata: int) -> pd.Series:
-    """Le righe dei voti di partite giocate prima dell'inizio della giornata (la sua prima partita): quello che vede il modello
-    (`modello.prima_di`). Con il numero di giornata un recupero giocato settimane dopo sarebbe già fra i dati (#832)."""
-    return prima_di(d.voti, Dati.inizio(d, stagione, giornata))
+    """Le righe dei voti di partite giocate prima che si chiuda la formazione della giornata, senza quelle della giornata stessa:
+    quello che vede il modello (`Dati.prima`). Con il numero di giornata un recupero giocato settimane dopo sarebbe già fra i dati
+    (#832)."""
+    return Dati.prima(d, d.voti, stagione, giornata)
 
 
 def _fantamedia(d: Dati, stagione: str, giornata: int, regole: Regole) -> pd.Series:
-    """Fantamedia (con le regole della lega) delle partite della stagione giocate prima dell'inizio della giornata (`_prima`);
+    """Fantamedia (con le regole della lega) delle partite della stagione che vede il modello per la giornata (`_prima`);
     6 se non ha voti. È quella che vede chi non ha l'app (la usa S2 di `verifica_consiglio`); come avversario del modello è
     debole: vedi `avversari`."""
     col = COLONNA_VOTO[regole.fonte_voto]
@@ -97,8 +98,8 @@ def avversari(d: Dati, stagione: str, giornata: int, regole: Regole) -> tuple[pd
     """Gli avversari onesti del fantavoto atteso, con i voti di PRIMA della giornata (anche delle stagioni passate) e le regole
     della lega: (fantamedia tirata verso il ruolo per giocatore, {ruolo: fantavoto medio}).
     Tirata = (somma dei suoi fantavoti + PRESENZE_FITTIZIE x media del suo ruolo) / (presenze + PRESENZE_FITTIZIE): chi ha pochi
-    voti sta vicino al ruolo. Chi non ne ha nessuno non c'è: per lui vale la media del ruolo. «Prima» vuol dire prima
-    dell'inizio della giornata, per data come il modello (`_prima`), non per numero di giornata."""
+    voti sta vicino al ruolo. Chi non ne ha nessuno non c'è: per lui vale la media del ruolo. «Prima» vuol dire prima che si
+    chiuda la formazione della giornata e senza le sue partite, per data come il modello (`_prima`), non per numero di giornata."""
     col = COLONNA_VOTO[regole.fonte_voto]
     v = d.voti
     prima = _prima(d, stagione, giornata) & v[col].notna()

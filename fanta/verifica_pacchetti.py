@@ -270,7 +270,7 @@ def prevedi_pacchetto_a(rette: dict):
         dd = senza_xg(d)
         forza = forza_squadre(dd, stagione, giornata, par)
         # chi prevedere: stessa popolazione della verifica normale (solo per confrontare; nessun suo dato entra nel calcolo)
-        V = d.voti[prima_di(d.voti, data0)]
+        V = d.voti[prima_di(d.voti, data0, (stagione, giornata))]
         ultime = V.sort_values("t").groupby("calciatore_id").tail(1)
         qi = d.quotazioni[d.quotazioni["stagione"] == stagione].drop_duplicates("calciatore_id").set_index("calciatore_id")["qi"]
         prossime = d.partite[(d.partite["stagione"] == stagione) & (d.partite["giornata"] == giornata)]
@@ -310,9 +310,9 @@ def _verita(d: Dati, stagione: str, giornata: int, col: str) -> tuple[set, set, 
 
 def squalificati(d: Dati, stagione: str, giornata: int) -> set:
     """Squalificati noti prima della giornata, dai cartellini: rosso nella giornata prima, o ammonizione che fa scattare la
-    squalifica (5ª, 10ª, 14ª, 17ª, poi ogni ammonizione). Solo le partite giocate prima dell'inizio della giornata, per data come
-    il modello (`modello.prima_di`): un recupero giocato dopo non si poteva sapere (#840, come `verifica.avversari` dopo #832)."""
-    v = d.voti[(d.voti["stagione"] == stagione) & prima_di(d.voti, Dati.inizio(d, stagione, giornata))]
+    squalifica (5ª, 10ª, 14ª, 17ª, poi ogni ammonizione). Solo le partite che vede il modello (`Dati.prima`: giocate prima che si
+    chiuda la formazione, per data): un recupero giocato dopo non si poteva sapere (#840, come `verifica.avversari` dopo #832)."""
+    v = d.voti[(d.voti["stagione"] == stagione) & Dati.prima(d, d.voti, stagione, giornata)]
     out = set(v.loc[(v["giornata"] == giornata - 1) & (v["espulsioni"] > 0), "calciatore_id"])
     amm = v[v["ammonizioni"] > 0].sort_values("giornata")
     amm = amm.assign(n=amm.groupby("calciatore_id").cumcount() + 1)

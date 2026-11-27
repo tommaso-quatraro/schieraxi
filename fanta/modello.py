@@ -20,12 +20,13 @@ import sqlite3
 import threading
 from collections import OrderedDict
 from dataclasses import dataclass, field, replace
+from datetime import datetime
 from typing import Mapping
 
 import numpy as np
 import pandas as pd
 
-from . import coppe
+from . import coppe, turno
 from .formazione import IMPROBABILE_SOTTO
 from .punteggio import COLONNA_VOTO
 from .regole import RUOLI, Regole
@@ -115,10 +116,42 @@ class Dati:
         return self.stagioni.index(stagione) * PASSO_STAGIONE + giornata
 
     def inizio(self, stagione: str, giornata: int) -> str:
-        """Data e ora della prima partita della giornata: il modello usa solo ciò che è successo prima.
-        (Filtrare per numero di giornata sbaglierebbe con i recuperi giocati settimane dopo.)"""
-        date = self.partite.loc[(self.partite["stagione"] == stagione) & (self.partite["giornata"] == giornata), "data"]
-        return str(date.min()) if len(date.dropna()) else "9999"
+        """Quando si chiude la formazione della giornata (`inizio_giornata`): il modello usa solo ciò che è successo prima."""
+        return inizio_giornata(self.partite, stagione, giornata)
+
+    def prima(self, df: pd.DataFrame, stagione: str, giornata: int) -> pd.Series:
+        """Le righe di `df` (partite, voti, prestazioni) che il modello vede per la giornata (`prima_di` con `inizio`).
+        Legge solo `partite`: si può chiamare come `Dati.prima(d, ...)` anche su dati finti con le sole tabelle che servono."""
+        return prima_di(df, inizio_giornata(self.partite, stagione, giornata), (stagione, giornata))
+
+
+def _date_giornata(partite: pd.DataFrame, stagione: str, giornata: int) -> list[tuple[datetime, bool, str]]:
+    """[(data e ora, giocata, data come è scritta)] delle partite della giornata con una data leggibile (come `avvisi._date`)."""
+    righe = partite.loc[(partite["stagione"] == stagione) & (partite["giornata"] == giornata) & partite["data"].notna()]
+    date = []
+    for testo, giocata in zip(righe["data"], righe["giocata"]):
+        try:
+            date.append((datetime.fromisoformat(str(testo)[:16].replace("T", " ")), bool(giocata == 1), str(testo)))
+        except ValueError:
+            continue
+    return date
+
+
+def inizio_giornata(partite: pd.DataFrame, stagione: str, giornata: int) -> str:
+    """Quando si chiude la formazione della giornata, come è scritto nel calendario `partite`: la prima partita che conta per la
+    scadenza, con la regola di `avvisi.prima_partita` (dall'inizio del turno, turno.py). Prima era la prima partita della giornata:
+    con una partita anticipata di settimane (Supercoppa, coppe: #659, #695) la previsione si fermava lì e non vedeva le giornate
+    giocate nel frattempo; lo stesso con un anticipo di metà settimana e con una rinviata rimasta con la data vecchia. (Filtrare
+    per numero di giornata sbaglierebbe con i recuperi giocati settimane dopo.) «9999» se nessuna partita della giornata ha una data."""
+    date = _date_giornata(partite, stagione, giornata)
+    if not date:
+        return "9999"
+    precedente = turno.inizio(d for d, _, _ in _date_giornata(partite, stagione, giornata - 1))
+    prossimo = turno.inizio(d for d, _, _ in _date_giornata(partite, stagione, giornata + 1))
+    inizio_turno = turno.inizio((d for d, _, _ in date), prossimo)
+    valide = [(d, testo) for d, giocata, testo in date if turno.conta_per_scadenza(d, giocata, inizio_turno, precedente, prossimo)]
+    primo = min(d for d, _ in valide)
+    return min(testo for d, testo in valide if d == primo)
 
 
 def carica(db: sqlite3.Connection) -> Dati:
@@ -283,9 +316,14 @@ LIVELLO_MIN = 0.8
 LIVELLO_MAX = 1.25
 
 
-def prima_di(df: pd.DataFrame, data0: str) -> pd.Series:
-    """Righe di partite giocate prima di data0 (le righe senza data non contano)."""
-    return df["data"].notna() & (df["data"] < data0)
+def prima_di(df: pd.DataFrame, data0: str, giornata: tuple[str, int] | None = None) -> pd.Series:
+    """Righe di partite giocate prima di data0 (le righe senza data non contano), tranne quelle della `giornata` (stagione, numero)
+    se c'è: una sua partita giocata prima della scadenza (anticipo, partita anticipata di settimane) è quello che si prevede, non
+    un dato, e i suoi giocatori restano fermi (turno.py)."""
+    righe = df["data"].notna() & (df["data"] < data0)
+    if giornata is not None:
+        righe &= ~((df["stagione"] == giornata[0]) & (df["giornata"] == giornata[1]))
+    return righe
 
 
 def forza_squadre(d: Dati, stagione: str, giornata: int, par: Parametri, iterazioni: int = 15) -> Forza:
@@ -296,7 +334,7 @@ def forza_squadre(d: Dati, stagione: str, giornata: int, par: Parametri, iterazi
     poche partite viene tirato verso la media. Si usa un misto di xG e gol veri."""
     t0 = d.t(stagione, giornata)
     data0 = d.inizio(stagione, giornata)
-    m = d.partite[prima_di(d.partite, data0) & (d.partite["giocata"] == 1)]
+    m = d.partite[prima_di(d.partite, data0, (stagione, giornata)) & (d.partite["giocata"] == 1)]
     if m.empty:
         return Forza(1.35, 1.1, {}, {}, 0.25)
     pp = replace(par, decadimento=par.decadimento_squadre, peso_stagione_prec=par.peso_stagione_prec_squadre)
@@ -321,7 +359,7 @@ def forza_squadre(d: Dati, stagione: str, giornata: int, par: Parametri, iterazi
         dif = (num + k) / (den + k)
         casa = math.sqrt(float(np.sum(w * gc) / np.sum(w * base * att[ic] * dif[it]))
                          / float(np.sum(w * gt) / np.sum(w * base * att[it] * dif[ic])))
-    p = d.prestazioni[prima_di(d.prestazioni, data0)]
+    p = d.prestazioni[prima_di(d.prestazioni, data0, (stagione, giornata))]
     partite_squadra = p.groupby(["understat_partita", "squadra"]).ngroups
     rigori = float(p["rigori_calciati"].sum() / partite_squadra) if partite_squadra else 0.25
     # livelli: dopo attacco e difesa, che altrimenti li riassorbirebbero (sono stimati intorno a `base`)
@@ -442,10 +480,10 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
     data0 = d.inizio(stagione, giornata)
     forza = forza_squadre(d, stagione, giornata, par)
 
-    V = d.voti[prima_di(d.voti, data0)].copy()
+    V = d.voti[prima_di(d.voti, data0, (stagione, giornata))].copy()
     V["w"] = _pesi(V["t"], V["stagione"], t0, stagione, par)
     Vv = V[V[col_voto].notna()].copy()
-    U = d.prestazioni[prima_di(d.prestazioni, data0) & d.prestazioni["calciatore_id"].notna()].copy()
+    U = d.prestazioni[prima_di(d.prestazioni, data0, (stagione, giornata)) & d.prestazioni["calciatore_id"].notna()].copy()
     U["w"] = _pesi(U["t"], U["stagione"], t0, stagione, par)
     U["calciatore_id"] = U["calciatore_id"].astype(int)
     if par.minuti_con_voto:     # solo le presenze con voto: i minuti attesi sono quelli di chi prende voto
@@ -511,7 +549,7 @@ def _pezzi(d: Dati, stagione: str, giornata: int, col_voto: str, par: Parametri,
     # e le stesse finestre contando solo le partite iniziate da titolare: servono a `p_senza_probabili`)
     g["p_storico"], g["p_lungo"], g["p_ultima"], g["p_tit"], _, _ = _presenze_recenti_varie(
         d, V, col_voto, g, data0, [par, replace(par, giornate_presenze=20, decadimento_presenze=0.93),
-                                   replace(par, giornate_presenze=1)], titolari=True)
+                                   replace(par, giornate_presenze=1)], titolari=True, della=(stagione, giornata))
     if par.rigori_squadra:
         g["quota_rig"] = _rigori_divisi(U, g, t0, stagione, par)
 
@@ -789,14 +827,16 @@ def _presenze_recenti(d: Dati, V: pd.DataFrame, col_voto: str, g: pd.DataFrame, 
 
 
 def _presenze_recenti_varie(d: Dati, V: pd.DataFrame, col_voto: str, g: pd.DataFrame, data0: str,
-                            pars: list[Parametri], titolari: bool = False) -> list[pd.Series]:
+                            pars: list[Parametri], titolari: bool = False,
+                            della: tuple[str, int] | None = None) -> list[pd.Series]:
     """Come `_presenze_recenti` per più parametri insieme (la parte comune si prepara una volta sola), con operazioni su tabelle
     intere invece di un ciclo per giocatore. Per ogni giocatore valgono le ultime partite della squadra (al massimo
     `giornate_presenze`) dal suo arrivo in quella squadra; la più recente pesa 1, le precedenti `decadimento_presenze` alla potenza
     della distanza (i pesi dipendono solo dalla posizione nella finestra della squadra, non dall'arrivo del giocatore).
     Una partita giocata in cui la squadra non ha ancora nessun voto (voti non ancora usciti, passo dei voti non riuscito) per lei
-    non conta finché i voti non arrivano: non è un'assenza di tutti i suoi giocatori (#658)."""
-    giocate = d.partite[prima_di(d.partite, data0) & (d.partite["giocata"] == 1)]
+    non conta finché i voti non arrivano: non è un'assenza di tutti i suoi giocatori (#658). Le partite della giornata `della`
+    (stagione, numero), la giornata da prevedere, non contano (`prima_di`)."""
+    giocate = d.partite[prima_di(d.partite, data0, della) & (d.partite["giocata"] == 1)]
     lungo = pd.concat([
         pd.DataFrame({"slug": giocate[c].to_numpy(), "st": giocate["stagione"].to_numpy(), "gi": giocate["giornata"].to_numpy(),
                       "da": giocate["data"].to_numpy()}) for c in ("casa", "trasferta")], ignore_index=True)
