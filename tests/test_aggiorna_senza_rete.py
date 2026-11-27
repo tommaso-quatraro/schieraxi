@@ -237,3 +237,23 @@ def test_esegui_riempie_le_frasi_per_chi_le_chiede(tmp_path, monkeypatch):
     errori = aggiorna.esegui(scrivi=lambda _: None, per_utente=frasi)
     assert errori and any("ProxyError" in e for e in errori)
     assert frasi == ["Fantacalcio.it, Understat e football-data.co.uk non rispondono: riprova più tardi."]
+
+
+@pytest.mark.parametrize("risponde, nuovi", [(False, False), (True, True)])
+def test_esegui_dice_se_sono_arrivati_dati_nuovi(tmp_path, monkeypatch, risponde, nuovi):
+    """Collaudo del 27/11: con tutte le fonti giù «Aggiorna i dati» diceva «Aggiornato, ma con problemi», ma non era arrivato
+    niente. `aggiorna.esegui` riempie `esito["dati_nuovi"]` con la stessa regola che decide se l'ora dei dati cambia (almeno un
+    passo ha scaricato qualcosa), così il server può dirlo."""
+    apri = archivio.apri
+    monkeypatch.setattr(archivio, "apri", lambda *a, **k: apri(tmp_path / "e.sqlite"))
+    monkeypatch.setattr(aggiorna, "_ora", lambda: ADESSO)
+    _rete(monkeypatch, risponde=risponde)
+    _passi(monkeypatch)
+    esito: dict = {}
+    aggiorna.esegui(scrivi=lambda _: None, esito=esito)
+    assert esito == {"dati_nuovi": nuovi}
+    d = apri(tmp_path / "e.sqlite")
+    try:
+        assert (_ultimo(d) == ADESSO) is nuovi, "`dati_nuovi` e l'ora dei dati devono dire la stessa cosa"
+    finally:
+        d.close()

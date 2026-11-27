@@ -141,7 +141,7 @@ def test_tetto_utenti(db, monkeypatch):
     nuovo(db, "uno")
     nuovo(db, "due")
     inv = account.crea_invito(db, "terzo", adesso=ADESSO)
-    assert errore(account.registra, db, "tre", PASSWORD, inv, adesso=ADESSO).messaggio == "Iscrizioni chiuse: siamo al completo"
+    assert errore(account.registra, db, "tre", PASSWORD, inv, adesso=ADESSO).messaggio == "Iscrizioni chiuse: siamo al completo."
     monkeypatch.setenv("MAX_UTENTI", "3")
     account.registra(db, "tre", PASSWORD, inv, adesso=ADESSO)
 

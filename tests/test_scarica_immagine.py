@@ -172,13 +172,13 @@ def test_al_massimo_tre_redirect():
     assert rete(siti).scarica("https://img.example.com/0")[0] == PNG        # 3 redirect: ancora ok
     siti[("img.example.com", "/3")] = Risposta(302, intestazioni={"Location": "/4"})
     siti[("img.example.com", "/4")] = Risposta(200, PNG)
-    with pytest.raises(ValueError, match="troppe volte"):
+    with pytest.raises(ValueError, match=r"troppe volte\.$"):                # con il punto (revisione della #968)
         rete(siti).scarica("https://img.example.com/0")                     # il quarto no
 
 
 def test_redirect_in_cerchio():
     siti = {("img.example.com", "/a"): Risposta(302, intestazioni={"Location": "/a"})}
-    with pytest.raises(ValueError, match="troppe volte"):
+    with pytest.raises(ValueError, match=r"troppe volte\.$"):
         rete(siti).scarica("https://img.example.com/a")
 
 
@@ -248,13 +248,13 @@ def test_richiesta_senza_cookie_ne_credenziali(monkeypatch):
 # ---------------------------------------------------------------- dimensioni, tempo, tipo
 def test_file_troppo_grande_dichiarato():
     r = rete({("img.example.com", "/g"): Risposta(200, PNG, {"Content-Length": str(immagini.MAX_BYTE + 1)})})
-    with pytest.raises(ValueError, match="troppo grande"):
+    with pytest.raises(ValueError, match=r"^Immagine troppo grande \(massimo 4 MB\)\.$"):        # con il punto (revisione della #968)
         r.scarica("https://img.example.com/g")
 
 
 def test_file_troppo_grande_senza_dichiararlo():
     r = rete({("img.example.com", "/g"): Risposta(200, PNG + b"0" * (immagini.MAX_BYTE + 10))})
-    with pytest.raises(ValueError, match="troppo grande"):
+    with pytest.raises(ValueError, match=r"^Immagine troppo grande \(massimo 4 MB\)\.$"):
         r.scarica("https://img.example.com/g")
 
 

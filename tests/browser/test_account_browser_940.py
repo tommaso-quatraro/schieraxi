@@ -63,10 +63,10 @@ def apri_elimina(web, controllo: tuple[int, dict]) -> dict[str, list]:
 
 def test_elimina_con_la_password_sbagliata_non_chiede_conferma(web):
     solo(web, "prima")
-    stato = apri_elimina(web, (403, {"detail": "La password non è giusta"}))
+    stato = apri_elimina(web, (403, {"detail": "La password non è giusta."}))
     web.pagina.on("dialog", lambda d: (stato["domande"].append(d.message), d.dismiss()))
     principale(web).get_by_role("button", name="Elimina il mio account").click(timeout=10000)
-    web.pagina.locator("#avviso").filter(has_text="La password non è giusta").wait_for(timeout=10000)
+    web.pagina.locator("#avviso").filter(has_text="La password non è giusta.").wait_for(timeout=10000)
     web.aspetta()
     assert stato["domande"] == [], f"la conferma è arrivata prima del controllo della password: {stato['domande']}"
     assert stato["richieste"] == [("controlla", {"password": "Password-Finta-1"})], stato["richieste"]
@@ -130,7 +130,7 @@ def test_troppi_tentativi_la_frase_una_volta_e_il_conto_scende(web):
     solo(web, "prima")
     apri_accesso(web)
     web.pagina.route(lambda u: urlsplit(u).path == "/api/account/accedi", lambda route: json_risposta(
-        route, {"detail": "Troppi tentativi: riprova più tardi", "riprova_tra": 3}, 429, {"Retry-After": "3"}))
+        route, {"detail": "Troppi tentativi: riprova più tardi.", "riprova_tra": 3}, 429, {"Retry-After": "3"}))
     web.pagina.locator("#ac-nome").fill("amico")
     web.pagina.locator("#ac-pw").fill("Password-Finta-1")
     web.pagina.locator("#accesso-invia").click()

@@ -106,7 +106,7 @@ final class ValidazioneAvversariaTests: XCTestCase {
         XCTAssertEqual(SchermataAccesso.testoErrore(ErroreApi.risposta(502)), Catalogo.Comune.serverNonRisponde, "la pagina del proxy")
         XCTAssertTrue(SchermataAccesso.testoErrore(ErroreApi.risposta(500)).contains("Riprova"), "dice cosa fare (senza il codice tecnico)")
         XCTAssertTrue(SchermataAccesso.testoErrore(ErroreApi.indirizzoNonValido).contains("https://"))
-        XCTAssertEqual(SchermataAccesso.testoErrore(ErroreApi.accessoRichiesto("Nome utente o password sbagliati")), "Nome utente o password sbagliati")
+        XCTAssertEqual(SchermataAccesso.testoErrore(ErroreApi.accessoRichiesto("Nome utente o password sbagliati.")), "Nome utente o password sbagliati.")
         XCTAssertTrue(SchermataAccesso.testoErrore(ErroreApi.troppiTentativi("Calma.", riprovaTra: 30)).contains("30 secondi"))
         XCTAssertTrue(SchermataAccesso.testoErrore(SessioneAccount.Errore.serverNonValido).contains("server di SchieraXI"))
     }

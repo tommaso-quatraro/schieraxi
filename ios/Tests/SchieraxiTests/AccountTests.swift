@@ -685,7 +685,7 @@ final class SessioneAccountTests: XCTestCase {
 
     func testControlloConPasswordSbagliataNonChiudeNiente() async {
         let server = serverAccount(extra: { _, p in
-            if p == "/api/account/elimina/controlla" { throw ErroreApi.server("La password non è giusta") }
+            if p == "/api/account/elimina/controlla" { throw ErroreApi.server("La password non è giusta.") }
             return nil
         })
         archivio.salva("tok", server: server.indirizzo)
@@ -694,7 +694,7 @@ final class SessioneAccountTests: XCTestCase {
             try await s.controllaPerEliminare(password: "no")
             XCTFail("doveva lanciare")
         } catch {
-            XCTAssertEqual(SchermataAccesso.testoErrore(error), "La password non è giusta")
+            XCTAssertEqual(SchermataAccesso.testoErrore(error), "La password non è giusta.")
         }
         XCTAssertNotNil(archivio.leggi(server: server.indirizzo))
         XCTAssertNil(s.prendiAvvisoAccesso())
