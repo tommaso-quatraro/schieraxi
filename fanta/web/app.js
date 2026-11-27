@@ -992,17 +992,6 @@ function testoConto(o) {
   return { chiude: t("formazione.si_chiude", { quando: quando(quandoChiude) }), manca: t("formazione.fra", { tempo }) };
 }
 
-// La Formazione aperta si rilegge da sola, una lettura per evento e mai a ciclo (mostraFormazione): quando arriva la scadenza della
-// formazione in pagina (RILEGGI_DOPO_SCADENZA_MS dopo, per dare tempo al server, come l'iPhone) e, tornando in primo piano, se la
-// scadenza è passata (con il telefono in tasca i timer della pagina si fermano) o se l'ultima lettura è più vecchia di
-// DATI_VECCHI_MS. Per ogni scadenza una lettura sola (`scadenzaRiletta`): se il server la dice ancora aperta (orologio del telefono
-// avanti) non si rilegge di nuovo; un salvataggio arrivato tardi lo rifiuta con «formazione chiusa» e la pagina si rilegge.
-const RILEGGI_DOPO_SCADENZA_MS = 5000, DATI_VECCHI_MS = 5 * 60000, TIMER_MASSIMO_MS = 2 ** 31 - 1;
-let timerScadenza = null, scadenzaRiletta = null, formazioneAlRitorno = null;
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && formazioneAlRitorno) formazioneAlRitorno();
-});
-
 // Rose importate, la tua squadra non ancora scelta (primo avvio lasciato al passo «La tua squadra», collaudo del 26/11): al posto
 // dell'errore «Indica la tua squadra…» con un «Riprova» che non serviva, la domanda della guida, con le stesse parole e lo stesso
 // pulsante (un menu che salva al cambio non farebbe scegliere la prima squadra, già in vista). Scelta, la Formazione si ricarica.
@@ -1339,10 +1328,26 @@ function cambiInCorso(c) {
   return cambi ? `<div class="carta" id="cambi-panchina"><h2>${t("oggi.cambi_panchina")}</h2><ul class="cambi-live">${cambi}</ul></div>` : "";
 }
 
+// La Formazione aperta si rilegge da sola, una lettura per evento e mai a ciclo (mostraFormazione): quando arriva la scadenza della
+// formazione in pagina (RILEGGI_DOPO_SCADENZA_MS dopo, per dare tempo al server, come l'iPhone) e, tornando in primo piano, se la
+// scadenza è passata (con il telefono in tasca i timer della pagina si fermano) o se l'ultima lettura è più vecchia di
+// DATI_VECCHI_MS. Per ogni scadenza una lettura sola (`scadenzaRiletta`): se il server la dice ancora aperta (orologio del telefono
+// avanti) non si rilegge di nuovo; un salvataggio arrivato tardi lo rifiuta con «formazione chiusa» e la pagina si rilegge.
+const RILEGGI_DOPO_SCADENZA_MS = 5000, DATI_VECCHI_MS = 5 * 60000, TIMER_MASSIMO_MS = 2 ** 31 - 1;
+let timerScadenza = null, scadenzaRiletta = null, formazioneAlRitorno = null, ascoltoRitorno = false;
+function seguiRitornoInPrimoPiano() {                       // una volta sola, alla prima Formazione disegnata
+  if (ascoltoRitorno) return;
+  ascoltoRitorno = true;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && formazioneAlRitorno) formazioneAlRitorno();
+  });
+}
+
 // `b`: ciò che caricaGiornata ha letto ({o, f, scelta, valutata, non_valida}); per un'altra squadra solo {f}.
 function mostraFormazione(b, squadra, opz = {}) {
   const { o, f } = b;
   clearTimeout(timerScadenza); formazioneAlRitorno = null;  // le riletture da sole preparate da una Formazione disegnata prima
+  seguiRitornoInPrimoPiano();
   if (b.senza_squadra) { mostraSenzaSquadra(opz); return; }
   if (o && o.senza_rose) { mostraSenzaRose(opz); return; }
   if (o && o.campionato_finito) { mostraCampionatoFinito(o, opz); return; }
