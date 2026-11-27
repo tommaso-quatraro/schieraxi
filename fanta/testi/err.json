@@ -303,6 +303,21 @@
     "en": "An administrator can be blocked, unblocked or deleted only on the server, from the command line.",
     "nota": "Gestione › Utenti: blocca, sblocca o elimina un altro amministratore (403); la web non mostra i pulsanti su quelle righe"
   },
+  "err.reset_altro_amministratore": {
+    "it": "Per un altro amministratore il codice non si crea dalla web: la password si cambia con il suo codice di recupero.",
+    "en": "You cannot create the code for another administrator from the web: they change the password with their own recovery code.",
+    "nota": "Gestione › «Genera il codice» con il nome di un altro amministratore (403), come blocca ed elimina"
+  },
+  "err.rose_altro_amministratore": {
+    "it": "Le rose di un altro amministratore si importano solo sul server, dalla riga di comando.",
+    "en": "Another administrator's rosters can be imported only on the server, from the command line.",
+    "nota": "POST /api/admin/utenti/{id}/rose sull'account di un altro amministratore (403), come blocca ed elimina"
+  },
+  "err.registro_illeggibile": {
+    "it": "Non riesco a leggere il registro del server ({1}): controlla i permessi del file sul server.",
+    "en": "I cannot read the server log ({1}): check the file permissions on the server.",
+    "nota": "Gestione › Errori recenti: un file del registro c'è ma non si legge (503); {1} è il nome del file, per esempio sicurezza.log"
+  },
   "err.problema_file": {
     "it": "Il server ha un problema con i suoi file: riprova più tardi. Se succede ancora, avvisa chi gestisce l'app.",
     "en": "The server has a problem with its files: try again later. If it keeps happening, tell whoever runs the app."

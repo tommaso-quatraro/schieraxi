@@ -2464,12 +2464,16 @@ def _copia_datata_delle_rose(ctx: Contesto) -> None:
 def importa_per_conto_di(utente_id: int, griglie, sostituisci_tutto: bool, da_chi: int | None) -> dict:
     """Importa delle rose nell'archivio di un altro utente (lo chiede lui, lo fa il proprietario dell'app). Stessi controlli
     dell'importazione normale (dimensioni, formato, tetti di squadre e giocatori); non consuma le importazioni al giorno
-    dell'amico; lascia una riga nel registro di sicurezza (chi, per chi, quante squadre: mai il testo)."""
+    dell'amico; lascia una riga nel registro di sicurezza (chi, per chi, quante squadre: mai il testo). Dalla web (`da_chi` = chi
+    gestisce) mai nelle rose di un altro amministratore (403, come blocca ed elimina); dalla riga di comando (`da_chi` None) sì."""
     if not account.multiutente():
         raise HTTPException(409, "Questa funzione serve solo con gli account attivi: accendi FANTA_MULTIUTENTE=1 sul server")
     with contextlib.closing(account.apri()) as db:
-        if account.trova(db, utente_id) is None:
+        destinatario = account.trova(db, utente_id)
+        if destinatario is None:
             raise HTTPException(404, "Utente non trovato.")
+        if da_chi is not None and destinatario.amministratore and destinatario.id != da_chi:
+            raise account.ErroreAccount(account.ROSE_ALTRO_AMMINISTRATORE, 403)
         account.limite.consuma(db, account._chiave("importa-per-conto-di"), *IMPORTAZIONI_PER_CONTO_DI)
     importa_sicuro.controlla_griglie(griglie)
     ctx = Contesto.per_utente(utente_id)
@@ -2484,7 +2488,8 @@ def importa_per_conto_di(utente_id: int, griglie, sostituisci_tutto: bool, da_ch
 
 @app.post("/api/admin/utenti/{utente_id}/rose")
 def importa_rose_di_un_amico(dati: RoseDiUnAmico, utente_id: int = FPath(ge=1, le=rotte_account.MAX_ID), admin: account.Utente = Depends(rotte_account.solo_amministratore)):
-    """Solo l'amministratore dell'app: importa le rose di un utente che l'ha chiesto. Risponde come l'importazione normale."""
+    """Solo l'amministratore dell'app: importa le rose di un utente che l'ha chiesto. Risponde come l'importazione normale.
+    Le proprie sì; quelle di un altro amministratore no (403, come blocca ed elimina): solo dalla riga di comando."""
     importa_sicuro.controlla_testo(dati.testo)
     return importa_per_conto_di(utente_id, [("testo", rose.griglia_da_testo(dati.testo))], dati.sostituisci_tutto, admin.id)
 

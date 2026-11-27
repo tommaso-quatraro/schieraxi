@@ -44,6 +44,11 @@
     "it": "Il nuovo account sarà amministratore",
     "en": "The new account will be an administrator"
   },
+  "admin.invito_admin_conferma": {
+    "it": "Chi entra con questo invito sarà amministratore: potrà creare inviti e bloccare o eliminare gli account degli altri. Confermi?",
+    "en": "Whoever signs up with this invitation will be an administrator: they can create invitations and block or delete other accounts. Continue?",
+    "nota": "domanda del browser prima di creare un invito con la spunta admin.nuovo_admin accesa (pulsanti OK e Annulla del sistema, come admin.annulla_conferma)"
+  },
   "admin.crea_invito": {
     "it": "Crea l'invito",
     "en": "Create the invitation"
