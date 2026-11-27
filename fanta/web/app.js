@@ -3089,6 +3089,13 @@ async function rileggiGiornate(g) {
   if (riga) focusPrima = riga;
 }
 
+// I punti del modello in verde: lo dice il server (`modello_batte_fantamedia`, #982); un server di prima non lo manda e si
+// confrontano i due numeri come prima.
+function modelloBatteFantamedia(s) {
+  if (typeof s.modello_batte_fantamedia === "boolean") return s.modello_batte_fantamedia;
+  return s.punti_modello != null && s.punti_fantamedia != null && s.punti_modello >= s.punti_fantamedia;
+}
+
 // Prova del modello sulle ultime giornate giocate: errore sui fantavoti e punti delle formazioni, con il confronto "da fantamedia".
 async function mostraAffidabilita(numero) {
   const dove = $("#affidabilita");
@@ -3112,7 +3119,7 @@ async function mostraAffidabilita(numero) {
     dove.innerHTML = `<h2>${t("scambio.quanto_affidabile_modello")}</h2>
       <div class="debole piccolo">${tp("avv.prova_su", s.giornate)}</div>
       <div class="stat-fila" style="margin-top:12px"><div><b>${v(s.errore_modello)}</b><span>${t("avv.errore_sui_fantavoti")}</span></div><div><b>${v(s.errore_fantamedia)}</b><span>${t("avv.errore_fantamedia")}</span></div>
-        <div><b class="${s.punti_modello != null && s.punti_fantamedia != null && s.punti_modello >= s.punti_fantamedia ? "positivo" : ""}">${v(s.punti_modello)}</b><span>${t("avv.punti_formazione_modello")}</span></div></div>
+        <div><b class="${modelloBatteFantamedia(s) ? "positivo" : ""}">${v(s.punti_modello)}</b><span>${t("avv.punti_formazione_modello")}</span></div></div>
       <div class="debole piccolo" style="margin-top:8px">${t("avv.punti_medi", { m: v(s.punti_modello), f: v(s.punti_fantamedia), p: v(s.punti_perfetta) })}
         ${t("avv.mancano_probabili")}</div>${grafico}`;
   } catch (e) { if (document.body.contains(dove)) dove.innerHTML = `<h2>${t("scambio.quanto_affidabile_modello")}</h2>${errore(e)}`; }
