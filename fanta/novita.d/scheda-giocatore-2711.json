@@ -1,0 +1,22 @@
+{
+  "titolo": "Scheda del giocatore più chiara e Rosa senza errori per chi ha lasciato la Serie A",
+  "voci": [
+    "Nella rosa, un giocatore uscito dal listone di Serie A (per esempio ceduto all'estero) al tocco dice «Questo giocatore non è più nel listone di Serie A.» invece di un errore tecnico.",
+    "Scheda del giocatore, «Tutti i numeri»: le prossime partite della sua squadra ci sono anche quando per la giornata non c'è una previsione, sulla web come sull'iPhone.",
+    "«Gol e assist rispetto alle occasioni» e i gol con i rigori arrivano già decisi dal server: web e iPhone dicono sempre la stessa cosa.",
+    "iPhone: se la ricerca di un giocatore non riesce per la rete, sotto il messaggio non restano i risultati della ricerca di prima."
+  ],
+  "titolo_en": "Clearer player card and no errors in the roster for players who left Serie A",
+  "voci_en": [
+    "In the roster, a player who left the Serie A player list (for example sold abroad) now says “This player is no longer in the Serie A player list.” when tapped, instead of a technical error.",
+    "Player card, “All the numbers”: his team's next matches are there even when there is no forecast for the matchday, on the web as on the iPhone.",
+    "“Goals and assists against chances” and goals including penalties now come from the server: web and iPhone always say the same thing.",
+    "iPhone: if a player search fails because of the network, the results of the previous search no longer stay under the message."
+  ],
+  "tecnico": [
+    "GET /api/giocatore/{id} per un id che non è in calciatori: 404 con scheda.FUORI_DAL_LISTONE (err.fuori_listone), da scheda.FuoriDalListone; prima 400 «calciatore N non nel listone» (il testo dell'eccezione arrivava all'utente). Tolto da MESSAGGI_SENZA_TRADUZIONE.",
+    "scheda.rendimento: campi nuovi tendenza (cala/sblocca/in_linea, soglia SOGLIA_RENDIMENTO 0,3 sul numero arrotondato a due decimali), testo e frase (frasi.F rendimento.*, frase.rendimento.* nel catalogo). stagione.gol_con_rigori. prossime_partite da scheda.prossime_partite(gestione.calendario, previsione, calciatore): squadra della previsione o squadra_slug del listone; [] con CampionatoFinito o SenzaCalendario.",
+    "Web: riempiScheda usa tendenza, testo (testoDi), gol_con_rigori e prossime_partite, con il ripiego di prima per un server senza i campi (soglia, somma, calendario anche per squadra_slug). vistaRosa: riga senza quotazione con data-fuori-listone e avviso(err.fuori_listone).",
+    "iPhone: Rendimento.tendenza e testo, StagioneGiocatore.golConRigori, SchedaGiocatore.prossimePartite; LetturaScheda.tendenza, fraseRendimento, golConRigori; SchedaGiocatoreViewModel.prossime preferisce il campo del server; RicercaViewModel svuota i risultati all'errore; RigaRosa.fuoriListone con un avviso al posto della scheda. Registro di coerenza: righe 145-149."
+  ]
+}

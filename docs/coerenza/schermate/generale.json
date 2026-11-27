@@ -80,6 +80,15 @@
       "forma": "web",
       "chi": "**fatto** (#931): prove `CalcoloLungoTests`, `AttesaCalcoloContaTests`, `ServerHTTPOstileTests`",
       "stato": "fatto"
+    },
+    {
+      "id": 149,
+      "schermata": "Ricerca di un giocatore, errore di rete",
+      "web": "il messaggio d'errore prende il posto dei risultati (`scriviRisultati` in `app.js`)",
+      "iphone": "prima: il messaggio sopra i risultati della ricerca precedente, che sembravano quelli del testo nuovo. Ora come la web: i risultati si tolgono (`RicercaViewModel.cerca`)",
+      "forma": "web",
+      "chi": "**fatto** (27/11/2026): prova `RicercaESchedaViewModelTests.testUnErroreTogliIRisultatiDellaRicercaDiPrima`",
+      "stato": "fatto"
     }
   ]
 }
