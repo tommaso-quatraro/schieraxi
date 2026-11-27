@@ -4672,12 +4672,16 @@ function collegaAmministratore() {
     try { await fai(); } finally { pulsante.disabled = false; }
   };
   // Un invito da amministratore vale per una persona sola (il server rifiuta gli altri numeri, collaudo del 27/11 sera): con la spunta
-  // «Quante persone» torna a 1 e si spegne, e la frase sotto dice perché; senza la spunta torna libero, con la frase del tetto
+  // «Quante persone» torna a 1 e si spegne, e la frase sotto dice perché; senza la spunta torna libero, con il numero scritto prima
+  // (`postiPrima`, che dopo un invito si dimentica: si riparte da 1) e la frase del tetto
+  let postiPrima = null;
   const postiPerAmministratore = () => {
     const campo = $("#adm-posti"), aiuto = $("#adm-posti-aiuto");
     if (!campo) return;
     const unaSola = !!($("#adm-admin") && $("#adm-admin").checked);
-    if (unaSola) campo.value = "1";
+    if (unaSola && !campo.disabled) { postiPrima = campo.value; campo.value = "1"; }
+    else if (!unaSola && campo.disabled && postiPrima !== null) campo.value = postiPrima;
+    if (!unaSola) postiPrima = null;
     campo.disabled = unaSola;
     campo.closest(".stepper").querySelectorAll("button").forEach(b => { b.disabled = unaSola; });
     if (aiuto) aiuto.textContent = unaSola ? t("admin.posti_amministratore") : stato.maxUsiInvito ? t("admin.posti_aiuto", { n: stato.maxUsiInvito }) : "";
@@ -4698,6 +4702,7 @@ function collegaAmministratore() {
     if ($("#adm-admin")) $("#adm-admin").checked = false;
     $("#adm-etichetta").value = "";
     $("#adm-posti").value = "1";
+    postiPrima = null;                                   // il numero di prima della spunta non torna: il modulo riparte da capo
     postiPerAmministratore();
     avvisoPosti(r);
     mostraInvito(r);

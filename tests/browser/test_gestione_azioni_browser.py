@@ -113,7 +113,7 @@ def test_l_invito_da_amministratore_chiede_conferma_e_la_spunta_si_toglie(web):
 def test_con_la_spunta_amministratore_le_persone_restano_una(web):
     """Collaudo del 27/11 sera: con la spunta e «Quante persone» a 3 la pagina chiedeva conferma e poi il server rispondeva «Un invito
     da amministratore si può usare una volta sola». Ora con la spunta il numero torna a 1 e non si cambia (campo e pulsanti spenti),
-    e la frase sotto dice perché; senza la spunta torna libero."""
+    e la frase sotto dice perché; togliendo la spunta torna libero, con il numero scelto prima. Dopo l'invito si riparte da 1."""
     azioni, _ = gestione(web)
     conferma(web, True)
     posti = principale(web).get_by_label("Quante persone")
@@ -126,14 +126,17 @@ def test_con_la_spunta_amministratore_le_persone_restano_una(web):
     assert "Un invito da amministratore vale per una persona sola." in riga.inner_text()
     spunta(web).uncheck()
     assert posti.is_enabled() and piu.is_enabled()
+    assert posti.input_value() == "3", "togliendo la spunta torna il numero scelto prima"
     assert "Un invito da amministratore" not in riga.inner_text()
     piu.click()
-    assert posti.input_value() == "2"
+    assert posti.input_value() == "4"
     spunta(web).check()
+    assert posti.input_value() == "1"
     crea_invito(web, "Vice")
     principale(web).get_by_text(CODICE).first.wait_for(timeout=10000)
     assert [c for _, _, c in azioni.corpi] == [{"etichetta": "Vice", "amministratore": True, "usi": 1}]
     assert not spunta(web).is_checked() and posti.is_enabled() and piu.is_enabled()    # dopo l'invito la spunta è tolta: di nuovo libero
+    assert posti.input_value() == "1", "dopo l'invito si riparte da 1, non dal numero di prima della spunta"
     assert not web.errori_console, web.errori_console
 
 
