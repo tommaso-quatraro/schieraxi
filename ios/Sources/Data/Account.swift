@@ -525,9 +525,10 @@ final class SessioneAccount: ObservableObject {
 
     /// Il server ha chiuso la sessione (account bloccato o eliminato da Gestione, password cambiata altrove, sessione scaduta): via
     /// dal telefono e, se si era dentro davvero, la schermata di accesso lo dice una volta, come la web (`sessioneScaduta`,
-    /// `accesso.sessione_finita`). Chi non era dentro (prima apertura, server appena cambiato) non ha perso niente: nessuna frase.
+    /// `accesso.sessione_finita`), con lo stile «attenzione» e non come una conferma: l'utente non l'ha chiesto. Chi non era dentro
+    /// (prima apertura, server appena cambiato) non ha perso niente: nessuna frase.
     private func chiudiPerSessioneFinita() {
-        if case .connesso = stato { avvisoAccesso = .conferma(Catalogo.Accesso.sessioneFinita) }
+        if case .connesso = stato { avvisoAccesso = .attenzione(Catalogo.Accesso.sessioneFinita) }
         chiudiLocale()
     }
 
