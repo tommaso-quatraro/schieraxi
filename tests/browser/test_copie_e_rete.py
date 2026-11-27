@@ -265,7 +265,8 @@ def test_senza_rete_impostazioni_tiene_la_mia_squadra_spenta_con_una_frase(web, 
     try:
         riga.wait_for(timeout=10000)
     except Exception:                        # noqa: BLE001 - si dice cosa manca
-        pytest.fail(f"senza rete Impostazioni non ha «La mia squadra»: {_testo(web)[:300]!r}")
+        pytest.fail(f"senza rete Impostazioni non ha «La mia squadra»: {_testo(web)[:300]!r}; "
+                    f"errori del codice: {[e for e in web.errori_console if e.startswith('errore nel codice')]}")
     assert riga.is_disabled(), "senza rete la riga si tocca, ma la pagina non si aprirebbe"
     assert "Si apre quando il server torna raggiungibile" in riga.inner_text(), riga.inner_text()
     voci = web.pagina.locator("#imp-lega li").all_inner_texts()
@@ -284,8 +285,10 @@ def test_senza_rete_impostazioni_tiene_la_mia_squadra_spenta_con_una_frase(web, 
 def test_l_ultimo_script_in_ritardo_non_lascia_vuota_la_prima_schermata(web, senza_rete):
     """`impostazioni.js` è l'ultimo degli script (si carica dopo `app.js`, che è grosso). Se arriva dopo i dati d'avvio, la prima
     schermata (qui Impostazioni, aperta dall'indirizzo) si disegnava prima che esistesse il suo codice e la pagina restava vuota
-    per sempre. Senza rete i dati «arrivano» subito, con un errore: era la causa del test sulla «La mia squadra» spenta che
-    falliva ogni tanto sui server di GitHub. Qui lo script si tiene fermo finché i dati d'avvio non sono arrivati (o falliti)."""
+    per sempre. Senza rete i dati «arrivano» subito, con un errore: è ciò che faceva fallire ogni tanto, sui server di GitHub, il
+    test sulla «La mia squadra» spenta (pagina vuota dopo il ricaricamento senza rete, con le richieste fino a /api/squadre e
+    nessuna di quelle che chiede il disegno d'Impostazioni). Qui lo script si tiene fermo finché i dati d'avvio non sono
+    arrivati (o falliti), e poi si lascia andare."""
     solo_prima(web)
     rete = Rete(web.pagina)
     if senza_rete:
