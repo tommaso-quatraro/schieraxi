@@ -2290,15 +2290,18 @@ def riga_di_stato(web) -> str:
 
 
 def test_lo_stato_d_avvio_si_rilegge_quando_torna_la_rete(web):
-    """Aperta senza rete, l'app non sa delle rose: Impostazioni non ha «La mia squadra» né «Le altre squadre». Quando il browser dice
-    che la rete è tornata lo stato d'avvio si rilegge e la pagina in vista si ridisegna con le voci giuste (#801)."""
+    """Aperta senza rete, l'app non sa delle rose: Impostazioni non ha «Le altre squadre» e ha «La mia squadra» spenta (dal collaudo
+    d'insieme del 26/11; prima mancava anche lei). Quando il browser dice che la rete è tornata lo stato d'avvio si rilegge e la
+    pagina in vista si ridisegna con le voci giuste (#801)."""
     solo(web, "prima")
     giu = server_giu(web, "rete")
     web.apri("/?vista=impostazioni")
-    assert voce(web, "La mia squadra").count() == 0, "la prova vuole l'avvio senza le rose"
+    assert voce(web, "Le altre squadre").count() == 0, "la prova vuole l'avvio senza le rose"
+    assert voce(web, "La mia squadra").count() == 1 and voce(web, "La mia squadra").is_disabled()
     giu.clear()
     web.pagina.evaluate("window.dispatchEvent(new Event('online'))")
-    voce(web, "La mia squadra").wait_for(timeout=10000)
+    web.pagina.wait_for_function("""() => [...document.querySelectorAll('main button')].some(b =>
+      b.innerText.trim().startsWith('La mia squadra') && !b.disabled)""", timeout=10000)
     web.aspetta()
     assert voce(web, "Le altre squadre").count() == 1
 

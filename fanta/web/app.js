@@ -787,8 +787,8 @@ async function caricaSquadre(seServono = false) {
   aggiornaRigaStato();                                                     // lo stemma della mia squadra nella riga di stato
 }
 // Lo stato d'avvio (#801): /api/stato e /api/squadre si leggono all'avvio (e dopo un cambio di rose o regole). Se una lettura non
-// riesce (aperta senza rete o mentre il server riparte) la riga di stato dice «Server non raggiungibile», Impostazioni nasconde «La
-// mia squadra» e «Le altre squadre», La mia squadra chiede di importare le rose. Si rileggono quando il browser dice che la rete è
+// riesce (aperta senza rete o mentre il server riparte) la riga di stato dice «Server non raggiungibile», Impostazioni nasconde «Le
+// altre squadre» e mostra «La mia squadra» spenta (`stato.squadreNonArrivate`, collaudo d'insieme del 26/11). Si rileggono quando il browser dice che la rete è
 // tornata e alla prima risposta buona del server (api(): con il server che riparte il browser non dice niente), una lettura alla
 // volta; riuscite, la pagina di Impostazioni che ne dipende si ridisegna. Una lettura che non riesce ancora aspetta il segnale dopo.
 // Solo dopo un guasto della rete o del server (5xx): un rifiuto (4xx) rileggendo non cambia, e ripartirebbe a ogni risposta buona.
