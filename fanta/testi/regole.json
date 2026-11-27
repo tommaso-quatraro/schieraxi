@@ -26,7 +26,7 @@
   },
   "regole.controlla_valori_qui": {
     "it": "Controlla i valori qui sotto e tocca «Salva le regole» in fondo.",
-    "en": "Check the values below and tap «Save the rules» at the bottom."
+    "en": "Check the values below and tap “Save the rules” at the bottom."
   },
   "regole.divisa_per_per": {
     "it": "divisa per 4. Per ogni fascia raggiunta si prende il bonus più alto raggiunto.",
@@ -58,11 +58,11 @@
   },
   "regole.leghe_apri_regolamento": {
     "it": "Su Leghe apri il regolamento della competizione, copia il testo e incollalo qui: l'app riconosce i valori e te li mostra prima di applicarli. Non cambia nulla finché non tocchi «Salva le regole».",
-    "en": "On Leghe open the competition rules, copy the text and paste it here: the app recognises the values and shows them before applying them. Nothing changes until you tap «Save the rules»."
+    "en": "On Leghe open the competition rules, copy the text and paste it here: the app recognises the values and shows them before applying them. Nothing changes until you tap “Save the rules”."
   },
   "regole.malus": {
     "it": "Malus",
-    "en": "Maluses"
+    "en": "Deductions"
   },
   "regole.media_almeno": {
     "it": "Media almeno",
@@ -110,7 +110,7 @@
   },
   "regole.quale_voto_somma": {
     "it": "Quale voto si somma a bonus e malus: quello che usa la tua lega su Leghe.",
-    "en": "Which grade bonuses and maluses are added to: the one your league uses on Leghe."
+    "en": "Which grade bonuses and deductions are added to: the one your league uses on Leghe."
   },
   "regole.quelli_che_puoi": {
     "it": "Quelli che puoi schierare nella tua lega.",
@@ -171,7 +171,7 @@
   },
   "regole.valori_applicati_controlla": {
     "it": "Valori applicati: controlla e tocca «Salva le regole»",
-    "en": "Values applied: check them and tap «Save the rules»"
+    "en": "Values applied: check them and tap “Save the rules”"
   },
   "regole.voti_portiere_difensori": {
     "it": "Voti: portiere e 3 difensori",
@@ -328,7 +328,7 @@
   },
   "regole.rv_aiuto_voto_ufficio": {
     "it": "Tutti prendono lo stesso voto, senza bonus né malus.",
-    "en": "Everyone gets the same grade, with no bonus or malus."
+    "en": "Everyone gets the same grade, with no bonus or deduction."
   },
   "regole.rv_voto": {
     "it": "Voto d'ufficio",
@@ -383,7 +383,7 @@
   },
   "regole.da_riga": {
     "it": "da: «{r}»",
-    "en": "from: «{r}»"
+    "en": "from: “{r}”"
   },
   "regole.mia_lega": {
     "it": "La mia lega",
@@ -391,7 +391,7 @@
   },
   "regole.rinviate_aiuto_formazione": {
     "it": "Cosa fa la lega con i giocatori di una partita rinviata, anche a settimane dopo. Per una sola giornata puoi cambiarlo dalla Formazione.",
-    "en": "What your league does with the players of a postponed match, even weeks later. You can change it for a single round from Lineup."
+    "en": "What your league does with the players of a postponed match, even weeks later. You can change it for a single matchday from Lineup."
   },
   "regole.incolla_titolo": {
     "it": "Incolla il regolamento",
@@ -399,7 +399,7 @@
   },
   "regole.incolla_spiega": {
     "it": "Su Leghe apri il regolamento della competizione, copia il testo e incollalo qui: prima di salvare ti mostro cosa ho riconosciuto.",
-    "en": "On Leghe open the competition rulebook, copy the text and paste it here: before saving I show you what I recognized."
+    "en": "On Leghe open the competition rulebook, copy the text and paste it here: before saving I show you what I recognised."
   },
   "regole.salva_queste": {
     "it": "Salva queste regole",

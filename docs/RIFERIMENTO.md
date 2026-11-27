@@ -203,8 +203,10 @@ La mappa corta è `MAPPA.md`; le regole sono in `CLAUDE.md` e in `.claude/rules/
 - Chiavi e segreti: solo in `.env` o in `dati/`, mai in git. `.env.example` mostra i nomi delle variabili, senza valori.
 
 ## Versioni e rilascio
-- Pull request che tocca `fanta/`, `script/server/` o `requirements.txt`: serve `fanta/novita.d/<nome-breve>.json` senza numero.
-  Il job `versione` blocca la pull request se manca. Regole in `CLAUDE.md`.
+- Pull request che tocca `fanta/`, `script/server/` o `requirements.txt`: serve `fanta/novita.d/<nome-breve>.json` senza numero,
+  con titolo e voci in italiano e in inglese (dal #949):
+  `{"titolo": "...", "voci": ["..."], "titolo_en": "...", "voci_en": ["..."], "tecnico": ["..."]}` (tante `voci_en` quante `voci`;
+  `tecnico` facoltativo). Il job `versione` blocca la pull request se manca il file o l'inglese. Regole in `CLAUDE.md`.
 - Unione: il job `unisci` fa lo «squash» e cancella il ramo, solo per le pull request del proprietario non in bozza e con i
   controlli verdi. Una pull request in bozza non si unisce. Titolo e corpo del commit li scrive `unisci`, letti subito prima
   dell'unione: titolo della pull request con `(#N)`; nel corpo le righe di chiusura della descrizione (a inizio riga) delle

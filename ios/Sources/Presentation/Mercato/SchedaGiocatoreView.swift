@@ -64,45 +64,62 @@ struct GiocatoreCorpo: View {
         return vm.caricatore.dato.map { TestaScheda(scheda: $0) }
     }
 
+    /// L'ancora del fondo della scheda: la carta «Tutti i numeri», che finisce con «Dati fino al …» (foto `giocatore-fondo`).
+    private static let fondo = "scheda-fondo"
+
     var body: some View {
         ZStack {
             Sfondo()
-            ScrollView {
-                Colonne(spazio: 14) {
-                    if let t = testa {
-                        cartaTesta(t)
-                        if let perche = contesto?.perche {
-                            Carta(Catalogo.Formazione.percheTitolare) {
-                                Text(perche).font(.subheadline).fixedSize(horizontal: false, vertical: true)
-                            }
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 14) {
+                        if let t = testa {
+                            Colonne(spazio: 14) { carteInAlto(t) }
+                            // «Tutti i numeri» sotto, a tutta larghezza (#944): è il blocco più lungo e, in una delle colonne
+                            // dell'iPad, lasciava l'altra vuota per tutta la sua altezza
+                            cartaTuttiINumeri.id(Self.fondo)
+                        } else if let e = vm.caricatore.errore {
+                            ErroreVista(messaggio: e) { Task { await vm.carica() } }
+                        } else {
+                            Scheletro(schede: 3, righe: 2, testo: Catalogo.Mercato.caricoScheda)
                         }
-                        if let p = t.previsione, let motivi = LetturaScheda.perche(p) {
-                            Carta(PercheNumero.titolo) { BloccoPercheNumero(perche: motivi) }
-                        }
-                        cartaUltimiVoti
-                        azioneFormazione
-                        cartaTuttiINumeri
-                    } else if let e = vm.caricatore.errore {
-                        ErroreVista(messaggio: e) { Task { await vm.carica() } }
-                    } else {
-                        Scheletro(schede: 3, righe: 2, testo: Catalogo.Mercato.caricoScheda)
                     }
+                    .padding(16)
+                    .animation(Tema.morbida, value: vm.caricatore.dato != nil)
                 }
-                .padding(16)
-                .animation(Tema.morbida, value: vm.caricatore.dato != nil)
+                // foto `giocatore-fondo`: la scheda parte scorsa in fondo, dove sta «Dati fino al …», l'ultima riga di «Tutti i
+                // numeri» (#911), anche col testo grande. Dal #862 la foto scorreva al titolo «Statistiche avanzate», dove la riga
+                // stava allora: con la riga in fondo, scorrere al fondo del blocco col testo al massimo si fermava più in alto
+                .demoInFondo()
+                // sull'iPad col testo al massimo l'ancora in fondo non bastava: con la scheda e le partite arrivate dopo la foto
+                // restava ferma in cima (#944). Quando sono arrivate tutte e due si scorre davvero al fondo di «Tutti i numeri»
+                .demoScorriA(Self.fondo, proxy: proxy, schermate: ["giocatore"], inFondo: true, ancora: .bottom,
+                             pronto: vm.caricatore.dato != nil && (vm.calendario.dato != nil || vm.calendario.errore != nil))
+                .refreshable { await vm.carica() }
+                .avvisoDatiSalvati(vm.caricatore)
+                .bordiMorbidi()
             }
-            // foto `giocatore-fondo`: la scheda parte scorsa in fondo, dove sta «Dati fino al …», l'ultima riga di «Tutti i
-            // numeri» (#911), anche col testo grande. Dal #862 la foto scorreva al titolo «Statistiche avanzate», dove la riga
-            // stava allora: con la riga in fondo, scorrere al fondo del blocco col testo al massimo si fermava più in alto
-            .demoInFondo()
-            .refreshable { await vm.carica() }
-            .avvisoDatiSalvati(vm.caricatore)
-            .bordiMorbidi()
         }
         // Il nome si legge una volta sola, grande, nell'intestazione.
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .task { await vm.carica() }
+    }
+
+    /// Le carte in alto, quelle per decidere: una sotto l'altra sul telefono in verticale, affiancate dove c'è spazio (`Colonne`).
+    @ViewBuilder
+    private func carteInAlto(_ t: TestaScheda) -> some View {
+        cartaTesta(t)
+        if let perche = contesto?.perche {
+            Carta(Catalogo.Formazione.percheTitolare) {
+                Text(perche).font(.subheadline).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        if let p = t.previsione, let motivi = LetturaScheda.perche(p) {
+            Carta(PercheNumero.titolo) { BloccoPercheNumero(perche: motivi) }
+        }
+        cartaUltimiVoti
+        azioneFormazione
     }
 
     // MARK: intestazione e cifre

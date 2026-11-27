@@ -21,9 +21,8 @@ const cdp = (method, params = {}) => new Promise(r => { const n = ++id; attese.s
 const valuta = async expr => { const r = await cdp("Runtime.evaluate", { expression: expr, awaitPromise: true, returnByValue: true }); if (r.result?.exceptionDetails) console.error("ERR", expr.slice(0, 60), JSON.stringify(r.result.exceptionDetails).slice(0, 200)); return r.result?.result?.value; };
 
 const SCENE = {
-  oggi: "vai('oggi')",
   formazione: "vai('formazione')",
-  rosa: "vistaRosa()",
+  rosa: "vai('impostazioni', 'squadra')",
   diario: "vai('giornate')",
   impostazioni: "vai('impostazioni')",
 };

@@ -47,3 +47,6 @@ accesso.password_cambiata
 accesso.password_cambiata_accedi
 accesso.vai_accesso
 accesso.risposta_incompleta
+
+# Primo avvio: l'indirizzo del server, solo dell'app (#955: «questo dispositivo», anche sull'iPad)
+accesso.indirizzo_spiega

@@ -121,6 +121,8 @@ DIMENSIONE=accessibility-extra-large giro "$UDID_IPAD" ipad_senza_formazione_tes
 DIMENSIONE=accessibility-extra-large giro "$UDID_IPAD" ipad_testo_grande dark 800 formazione oggi
 # Copia salvata (#834), di due giorni prima e di oggi: piccolo e medio più bassi dell'iPhone, e l'extra large, che c'è solo su iPad.
 giro "$UDID_IPAD" ipad_salvati dark 800 formazione:salvati formazione:salvati_oggi
+# Con il testo molto grande, dove copia e «2 da controllare» non stanno tutte e due, resta «2 da controllare» (#959).
+DIMENSIONE=accessibility-extra-large giro "$UDID_IPAD" ipad_salvati_testo_grande dark 800 formazione:salvati
 
 # Orizzontale: si ruota il simulatore con la tastiera (puo' non funzionare sul Mac di GitHub: in quel caso le foto restano verticali).
 open -a Simulator --args -CurrentDeviceUDID "$UDID_IPAD" >/dev/null 2>&1

@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 
 from . import formazione as fz
-from .modello import Dati, Parametri, previsioni, prima_di
+from .modello import Dati, Parametri, data_delle_anticipate, giocate_prima, previsioni, prima_di
 from .punteggio import COLONNA_VOTO, fantavoto, modificatore_difesa
 from .regole import RUOLI, Regole, modulo_in_numeri
 
@@ -78,17 +78,27 @@ class EsitoGiornata:
 
 
 def _prima(d: Dati, stagione: str, giornata: int) -> pd.Series:
-    """Le righe dei voti di partite giocate prima dell'inizio della giornata (la sua prima partita): quello che vede il modello
-    (`modello.prima_di`). Con il numero di giornata un recupero giocato settimane dopo sarebbe già fra i dati (#832)."""
-    return prima_di(d.voti, Dati.inizio(d, stagione, giornata))
+    """Le righe dei voti di partite giocate prima che si chiuda la formazione della giornata, senza quelle della giornata stessa:
+    quello che vede il modello (`Dati.prima`). Con il numero di giornata un recupero giocato settimane dopo sarebbe già fra i dati
+    (#832)."""
+    return Dati.prima(d, d.voti, stagione, giornata)
 
 
 def _fantamedia(d: Dati, stagione: str, giornata: int, regole: Regole) -> pd.Series:
-    """Fantamedia (con le regole della lega) delle partite della stagione giocate prima dell'inizio della giornata (`_prima`);
+    """Fantamedia (con le regole della lega) delle partite della stagione che vede il modello per la giornata (`_prima`);
     6 se non ha voti. È quella che vede chi non ha l'app (la usa S2 di `verifica_consiglio`); come avversario del modello è
-    debole: vedi `avversari`."""
+    debole: vedi `avversari`. Chi ha giocato una partita della giornata prima della scadenza ha i voti di prima di quella partita,
+    con lo stesso limite del modello (`modello.data_delle_anticipate`): con quelli fino alla scadenza S2 vedrebbe il futuro."""
     col = COLONNA_VOTO[regole.fonte_voto]
-    V = d.voti[(d.voti["stagione"] == stagione) & _prima(d, stagione, giornata) & d.voti[col].notna()]
+    v = d.voti
+    della_stagione = (v["stagione"] == stagione) & v[col].notna()
+    V = v[della_stagione & _prima(d, stagione, giornata)]
+    fino_a = data_delle_anticipate(d.partite, stagione, giornata)
+    if fino_a is not None:
+        della = v[(v["stagione"] == stagione) & (v["giornata"] == giornata)]
+        anticipati = set(della.loc[della["data"].notna() & (della["data"] < Dati.inizio(d, stagione, giornata)), "calciatore_id"])
+        V = pd.concat([V[~V["calciatore_id"].isin(anticipati)],
+                       v[della_stagione & prima_di(v, fino_a, (stagione, giornata)) & v["calciatore_id"].isin(anticipati)]])
     fv = V.apply(lambda r: fantavoto(r.to_dict(), r["ruolo"], regole), axis=1)
     return fv.groupby(V["calciatore_id"]).mean() if len(V) else pd.Series(dtype=float)
 
@@ -97,8 +107,8 @@ def avversari(d: Dati, stagione: str, giornata: int, regole: Regole) -> tuple[pd
     """Gli avversari onesti del fantavoto atteso, con i voti di PRIMA della giornata (anche delle stagioni passate) e le regole
     della lega: (fantamedia tirata verso il ruolo per giocatore, {ruolo: fantavoto medio}).
     Tirata = (somma dei suoi fantavoti + PRESENZE_FITTIZIE x media del suo ruolo) / (presenze + PRESENZE_FITTIZIE): chi ha pochi
-    voti sta vicino al ruolo. Chi non ne ha nessuno non c'è: per lui vale la media del ruolo. «Prima» vuol dire prima
-    dell'inizio della giornata, per data come il modello (`_prima`), non per numero di giornata."""
+    voti sta vicino al ruolo. Chi non ne ha nessuno non c'è: per lui vale la media del ruolo. «Prima» vuol dire prima che si
+    chiuda la formazione della giornata e senza le sue partite, per data come il modello (`_prima`), non per numero di giornata."""
     col = COLONNA_VOTO[regole.fonte_voto]
     v = d.voti
     prima = _prima(d, stagione, giornata) & v[col].notna()
@@ -134,14 +144,15 @@ def verifica_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par
     else:
         prev = prevedi(dm, stagione, giornata, regole, par)
     # solo le partite già giocate e con i voti di tutte e due le squadre: una giornata in corso, o una partita giocata con i voti
-    # non ancora arrivati, non deve contare i suoi giocatori come «non hanno giocato» (#832, come `fasi.voti_arrivati`)
+    # non ancora arrivati, non deve contare i suoi giocatori come «non hanno giocato» (#832, come `fasi.voti_arrivati`). Niente
+    # partite giocate prima della scadenza (`giocate_prima`): i loro giocatori sono previsti con dati di dopo la loro partita
     v, p = d.voti, d.partite
     con_voti = set(v.loc[(v["stagione"] == stagione) & (v["giornata"] == giornata) & v[col].notna(), "squadra"])
-    giocate = p.loc[(p["stagione"] == stagione) & (p["giornata"] == giornata) & (p["giocata"] == 1)
-                    & p["casa"].isin(con_voti) & p["trasferta"].isin(con_voti), "id"]
-    if prev.empty or giocate.empty:
+    giocate = set(p.loc[(p["stagione"] == stagione) & (p["giornata"] == giornata) & (p["giocata"] == 1)
+                        & p["casa"].isin(con_voti) & p["trasferta"].isin(con_voti), "id"]) - giocate_prima(p, stagione, giornata)
+    if prev.empty or not giocate:
         return None
-    prev = prev[prev["partita"].isin(set(giocate))]
+    prev = prev[prev["partita"].isin(giocate)]
     reali = d.voti[(d.voti["stagione"] == stagione) & (d.voti["giornata"] == giornata)]
     reali = reali.drop_duplicates("calciatore_id").set_index("calciatore_id")
     fm = _fantamedia(d, stagione, giornata, regole)             # l'avversario di prima: resta come numero di confronto

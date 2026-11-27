@@ -8,8 +8,10 @@ paths:
 # Server (`fanta/`, `script/server/`)
 
 - **Novità.** Una pull request che tocca `fanta/`, `script/server/` o `requirements.txt` aggiunge un solo file
-  `fanta/novita.d/<nome-breve>.json` (minuscole, cifre, trattini), senza numero di versione:
-  `{"titolo": "...", "voci": ["..."], "tecnico": ["..."]}`. `voci` dice cosa vede l'utente e dove, in italiano semplice, senza
+  `fanta/novita.d/<nome-breve>.json` (minuscole, cifre, trattini), senza numero di versione, con titolo e voci anche in
+  inglese (obbligatori dal #949, tante `voci_en` quante `voci`):
+  `{"titolo": "...", "voci": ["..."], "titolo_en": "...", "voci_en": ["..."], "tecnico": ["..."]}`. `voci` (e `voci_en`)
+  dice cosa vede l'utente e dove, in parole semplici, senza
   sigle, percorsi, metodi o codici; i dettagli vanno in `tecnico`. `fanta/novita.json` e `VERSIONE` di `fanta/web/sw.js` li
   scrive il job `rilascia`. Solo documenti, test o `ios/`: nessuna voce.
 - **Calcolo.** Se cambi `modello.py`, `formazione.py`, `consigli.py` o ciò che li alimenta: `python -m fanta verifica` prima e

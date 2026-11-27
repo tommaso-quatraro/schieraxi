@@ -11,7 +11,8 @@ e da lì ricava gli 11 titolari, il modulo e l'ordine della panchina. Le statist
 
 > **In English:** SchieraXI is free software (AGPL-3.0) that suggests the lineup for a classic Serie A fantasy league,
 > based on each player's expected fantasy score (*fantavoto atteso*). The web app is live at <https://app.schieraxi.it>
-> (invitation only for now); the iPhone app is a work in progress and Android is planned. Screens and docs are in Italian.
+> (invitation only for now); the iPhone app is a work in progress and Android is planned. The web app can be switched to
+> English (Settings › Appearance); the iPhone app and the docs are in Italian.
 
 ## Come si usa
 La web app è su **<https://app.schieraxi.it>**. Per ora si entra su invito.
@@ -27,10 +28,11 @@ Si usa dal browser, su telefono e computer, e si può aggiungere alla schermata 
 Tutti i passi, schermata per schermata: [`docs/GUIDA-UTENTE.md`](docs/GUIDA-UTENTE.md).
 
 ## Cosa fa
-- Ogni giornata propone gli 11 titolari, il modulo e la panchina, con il motivo di ogni scelta in una riga.
-- Mostra per ogni giocatore il fantavoto atteso e la probabilità che giochi, con una fascia di incertezza.
-- Avvisa se cambia qualcosa (infortuni, probabili formazioni, scadenza).
-- Nel Diario confronta la formazione schierata con quella consigliata, a giornata finita.
+- Ogni giornata propone gli 11 titolari, il modulo e la panchina; quando una scelta può sembrare strana, il motivo in una riga.
+- Mostra per ogni giocatore il fantavoto atteso e, quando conta, la probabilità che giochi; per la formazione, i punti attesi
+  con la fascia in cui cade di solito il punteggio vero.
+- Avvisa prima della scadenza e quando cambia la formazione da schierare (infortuni, squalifiche, probabili formazioni).
+- Nella pagina Giornate confronta la formazione schierata con quella consigliata, a giornata finita.
 - Durante la giornata mostra i punti fatti finora e quelli attesi a fine giornata.
 
 È una guida, non una garanzia: sono stime. Non fa l'asta e non schiera la squadra al posto tuo.

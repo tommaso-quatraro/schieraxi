@@ -119,9 +119,9 @@ struct VistaFormazione: View {
     /// grande, `ParoleWidget.formeGiornata`). Accanto al titolo non entra: prima il titolo con la giornata sulla riga sotto; se
     /// in altezza non c'è posto (testo grande, iPad), il solo simbolo con la giornata accanto: si perde il titolo, non la giornata.
     /// VoiceOver legge sempre la giornata intera («Giornata 8, 11ª di Serie A»). `corpo`: il resto del widget, sotto la testata,
-    /// nella forma della prova che entra (`DisposizioneWidget.proveFormazione`: punti attesi e righe in basso; la copia salvata
-    /// c'è sempre, «da controllare» cede per ultimo, #834). Una sola scelta per testata, punti e righe in basso: due
-    /// `PrimaCheEntra` in altezza uno dentro l'altro non misurano il vero.
+    /// nella forma della prova che entra (`DisposizioneWidget.proveFormazione`: punti attesi e righe in basso; «da controllare»
+    /// c'è sempre, la data della copia salvata cede per ultima, #834, #959). Una sola scelta per testata, punti e righe in basso:
+    /// due `PrimaCheEntra` in altezza uno dentro l'altro non misurano il vero.
     private func conTestataPiccola<Corpo: View>(titolo: String, giornata: NomeGiornata?, spazio: CGFloat, conFascia: Bool = false,
                                                 conCopia: Bool = false, dubbi: Int = 0,
                                                 @ViewBuilder corpo: @escaping (DisposizioneWidget.ProvaFormazione) -> Corpo) -> some View {
@@ -174,7 +174,8 @@ struct VistaFormazione: View {
     }
 
     /// Le righe sotto i punti del piccolo e del medio, quelle della prova che entra: sopra l'ora della copia salvata, sotto
-    /// «2 da controllare» (#834: prima con giocatori da controllare la copia non si vedeva e sembrava attuale).
+    /// «2 da controllare» (#834: prima con giocatori da controllare la copia non si vedeva e sembrava attuale). Dove non c'è
+    /// posto per tutte e due (testo molto grande) resta «2 da controllare», o «2 da vedere» (#959).
     @ViewBuilder
     private func piede(_ righe: [DisposizioneWidget.RigaPiedeFormazione], dubbi: Int) -> some View {
         if righe.contains(.copia) {
@@ -200,8 +201,8 @@ struct VistaFormazione: View {
 
     private func medio(_ w: RiassuntoWidget, _ f: FormazioneWidget, _ tit: [GiocatoreWidget]) -> some View {
         let dubbi = w.contoDaControllare
-        // la prima prova che entra in altezza: la copia salvata c'è sempre, prima cedono le righe dei punti attesi, per ultimo
-        // «da controllare» (#834)
+        // la prima prova che entra in altezza: «da controllare» c'è sempre, prima cedono le righe dei punti attesi, per ultima
+        // la data della copia salvata (#834, #959)
         let prove = DisposizioneWidget.proveFormazione(medio: true, conGiornata: false, conFascia: f.intervallo?.testo != nil,
                                                        datiSalvati: voce.copiaDel != nil, daControllare: dubbi)
         return HStack(alignment: .center, spacing: 12) {

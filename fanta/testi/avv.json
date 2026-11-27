@@ -86,11 +86,11 @@
   },
   "avv.prova_su.one": {
     "it": "Prova sull'ultima giornata giocata, usando solo i dati che c'erano prima. «Da fantamedia» è la formazione scelta con la fantamedia dei giocatori e la loro probabilità di giocare; per chi ha pochi voti la fantamedia si avvicina a quella del suo ruolo.",
-    "en": "Test on the last matchday played, using only the data available beforehand. «Fantasy-average pick» is the lineup chosen with the players' fantasy averages and their chance of playing; for players with few ratings the average moves toward that of their role."
+    "en": "Test on the last matchday played, using only the data available beforehand. “Fantasy-average pick” is the lineup chosen with the players' fantasy averages and their chance of playing; for players with few grades the average moves toward that of their role."
   },
   "avv.prova_su.other": {
     "it": "Prova sulle ultime {n} giornate giocate, usando per ognuna solo i dati che c'erano prima. «Da fantamedia» è la formazione scelta con la fantamedia dei giocatori e la loro probabilità di giocare; per chi ha pochi voti la fantamedia si avvicina a quella del suo ruolo.",
-    "en": "Test on the last {n} matchdays played, using for each only the data available beforehand. «Fantasy-average pick» is the lineup chosen with the players' fantasy averages and their chance of playing; for players with few ratings the average moves toward that of their role."
+    "en": "Test on the last {n} matchdays played, using for each only the data available beforehand. “Fantasy-average pick” is the lineup chosen with the players' fantasy averages and their chance of playing; for players with few grades the average moves toward that of their role."
   },
   "avv.punti_medi": {
     "it": "Punti medi per giornata: modello {m}, da fantamedia {f}, massimo possibile {p}. Errore più basso e punti più alti sono meglio.",
@@ -114,7 +114,7 @@
   },
   "avv.nativa_aiuto": {
     "it": "Arrivano con l'app ntfy e il tocco apre l'app iOS nativa. Con «Avvisi su questo dispositivo» acceso potresti riceverli doppi",
-    "en": "They arrive with the ntfy app and tapping opens the native iOS app. With «Alerts on this device» turned on you may get them twice"
+    "en": "They arrive with the ntfy app and tapping opens the native iOS app. With “Alerts on this device” turned on you may get them twice"
   },
   "avv.certificato_titolo": {
     "it": "SchieraXI · Da rinnovare",

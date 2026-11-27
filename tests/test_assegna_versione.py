@@ -4,6 +4,7 @@ Il server installa le versioni nuove al massimo una volta ogni intervallo (scrip
 nuovi c'è la riga «Rilascio: urgente». La scrive il job rilascia con `--commit --urgente` quando una delle PR delle novità in attesa,
 o una issue che chiudono, ha l'etichetta P1 o urgente (`--pr-e-issue-in-attesa`, dal commit di unione).
 Si prova lo script vero, come lo lancia il job, in un repository git in una cartella temporanea."""
+import importlib.util
 import json
 import subprocess
 import sys
@@ -99,3 +100,35 @@ def test_versione_del_service_worker_non_sale_due_volte_ne_senza_la_web(repo):
     r = _lancia(repo, "--commit")
     assert r.returncode == 0, r.stderr
     assert _versione_sw(repo) == 'const VERSIONE = "fanta-42";', _versione_sw(repo)
+
+
+def _modulo(nome):
+    spec = importlib.util.spec_from_file_location(nome, SCRIPT.with_name(f"{nome}.py"))
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+SOLO_ITALIANO = {"titolo": "Novità", "voci": ["Una frase.", "Un'altra frase."]}
+CON_INGLESE = SOLO_ITALIANO | {"titolo_en": "What's new", "voci_en": ["A sentence.", "Another sentence."]}
+
+
+def test_nella_pull_request_la_voce_di_novita_vuole_anche_l_inglese():
+    """Dalla #949 ogni voce nuova ha titolo e voci anche in inglese (la web in inglese mostra quelli): il controllo della PR
+    (`controlla_versione.controlla_d`) la rifiuta senza, o con le voci inglesi in numero diverso dalle italiane."""
+    controlla = _modulo("controlla_versione")
+    assert controlla.controlla_d({"voce.json": CON_INGLESE}, [], []) == []
+    errori = controlla.controlla_d({"voce.json": SOLO_ITALIANO}, [], [])
+    assert any("titolo_en" in e for e in errori) and any("voci_en" in e for e in errori), errori
+    storta = CON_INGLESE | {"voci_en": ["Only one."]}
+    assert any("voci_en" in e for e in controlla.controlla_d({"voce.json": storta}, [], []))
+
+
+def test_al_rilascio_una_voce_senza_inglese_passa_ancora():
+    """Le voci già unite prima della #949 (o passate dal controllo di prima) non fermano il rilascio: `errori_file` senza
+    `inglese` accetta ancora le voci solo in italiano, e `con_versioni` copia l'inglese solo se c'è."""
+    assegna = _modulo("assegna_versione")
+    assert assegna.errori_file("voce.json", SOLO_ITALIANO) == []
+    assert assegna.errori_file("voce.json", CON_INGLESE, inglese=True) == []
+    elenco, _ = assegna.con_versioni([], [(SOLO_ITALIANO, "2026-11-26T10:00:00"), (CON_INGLESE, "2026-11-26T11:00:00")])
+    assert "titolo_en" not in elenco[1] and elenco[0]["titolo_en"] == "What's new" and elenco[0]["voci_en"] == CON_INGLESE["voci_en"]

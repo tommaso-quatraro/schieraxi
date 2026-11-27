@@ -3,6 +3,8 @@
 - `errori.log`: una riga per ogni risposta 5xx (quando, metodo, rotta, stato, tipo di errore). Mai indirizzi, nomi, password, valori
   ricevuti né tracce: la rotta è quella «di modello» (`/api/giocatore/{id}`), non l'indirizzo scritto da chi chiede.
 - `sicurezza.log`: gli eventi di sicurezza (vedi `account.evento`); qui c'è solo la scrittura con rotazione, in comune.
+  `sicurezza-importanti.log`: una copia dei soli eventi importanti (registrazioni, recuperi, eliminazioni, cambi di ruolo...),
+  che i tentativi sbagliati non fanno uscire dalle copie tenute; Gestione li mostra insieme agli ultimi (`ultimi_sicurezza`).
 - Contatori semplici in memoria (richieste, errori, tempi) dall'ultimo riavvio: li vede solo l'amministratore. Le richieste
   fermate senza nessun cookie né token verso una rotta dell'app non riservata (di solito la pagina prima dell'ingresso) si
   contano a parte, in `senza_accesso`; ogni altro 401 resta fra le `rifiutate` (#894, `rotte_account._senza_nessun_accesso`).
@@ -27,6 +29,7 @@ from . import percorsi
 MAX_FILE, COPIE = 512 * 1024, 3
 FILE_ERRORI = "errori.log"
 FILE_SICUREZZA = "sicurezza.log"
+FILE_IMPORTANTI = "sicurezza-importanti.log"     # copia degli eventi importanti (`account.EVENTI_IMPORTANTI`)
 GIORNI_REGISTRI = 30                 # dopo, una riga del registro si cancella
 POTA_OGNI = 3600                     # secondi tra due controlli delle righe vecchie dello stesso file
 _blocco_file = threading.Lock()
@@ -118,7 +121,7 @@ def scrivi(file: Path, riga: str, massimo: int | None = None) -> None:
 
 
 FILE_POSTA = "posta.log"
-REGISTRI = (FILE_ERRORI, FILE_SICUREZZA, FILE_POSTA)
+REGISTRI = (FILE_ERRORI, FILE_SICUREZZA, FILE_IMPORTANTI, FILE_POSTA)
 POTA_REGISTRI_OGNI = 24 * 3600       # secondi tra due pulizie di tutti i registri fatte dal servizio
 
 
@@ -191,6 +194,15 @@ def ultimi(nome: str, quanti: int = 30, nascondi_indirizzi: bool = False) -> lis
             campi["ip"] = _mascherato(campi["ip"])
         risultato.append({"quando": parti[0], "tipo": parti[1], **campi})
     return risultato
+
+
+def ultimi_sicurezza(quanti: int = 30, nascondi_indirizzi: bool = False) -> list[dict]:
+    """Gli ultimi `quanti` eventi di sicurezza più gli ultimi `quanti` eventi importanti che non sono già fra questi, dal più
+    recente. Gli eventi importanti hanno una copia in un registro a parte (`FILE_IMPORTANTI`) che i tentativi sbagliati, scritti
+    da chiunque, non riempiono: una raffica di quelli non li fa sparire da Gestione."""
+    recenti = ultimi(FILE_SICUREZZA, quanti, nascondi_indirizzi)
+    importanti = [e for e in ultimi(FILE_IMPORTANTI, quanti, nascondi_indirizzi) if e not in recenti]
+    return sorted(recenti + importanti, key=lambda e: e["quando"], reverse=True)     # stabile: a parità d'ora resta l'ordine
 
 
 def _mascherato(ip: str) -> str:
