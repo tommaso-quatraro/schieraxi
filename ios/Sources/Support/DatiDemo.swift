@@ -529,7 +529,7 @@ private extension LegaDemo {
         let eta = tempoFa(minuti)
         var d: [String: Any] = ["aggiornate_il": formatta(lette, "yyyy-MM-dd HH:mm"), "minuti_fa": minuti, "eta": eta, "testo": testo,
                                 "vecchie": vecchie, "avviso": NSNull()]
-        if vecchie { d["avviso"] = "Potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione." }
+        if vecchie { d["avviso"] = "Le probabili potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione." }
         return d
     }
 

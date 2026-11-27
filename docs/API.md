@@ -638,7 +638,7 @@ Campo nuovo e facoltativo (i client vecchi lo ignorano): `null` se mancano le pr
 Altrimenti `{aggiornate_il, minuti_fa, eta, testo, vecchie, avviso}`:
 - `aggiornate_il`: ora italiana dell'ultima lettura, `"2026-10-31 13:05"`;
 - `minuti_fa`: intero; `eta`: «2 ore fa» (plurali già giusti); `testo`: «Probabili aggiornate alle 13:05» (anche «ieri alle ...», «il 28/10 alle ...»);
-- `vecchie`: `true` se hanno almeno 6 ore e la formazione si chiude entro 24 ore (mai a giornata iniziata); `avviso`: frase pronta da mostrare quando `vecchie` è `true`, altrimenti `null`. Dal 27/11/2026 (#923) non ripete quando sono state lette né quando si chiude la formazione («Potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione.»): lo dicono `eta` nella riga sopra e la testata; `avviso_frase` tiene i parametri `eta` e `tempo` per le pagine web in inglese rimaste in memoria.
+- `vecchie`: `true` se hanno almeno 6 ore e la formazione si chiude entro 24 ore (mai a giornata iniziata); `avviso`: frase pronta da mostrare quando `vecchie` è `true`, altrimenti `null`. Dal 27/11/2026 (#923) non ripete quando sono state lette né quando si chiude la formazione («Le probabili potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione.»): lo dicono `eta` nella riga sopra e la testata; `avviso_frase` tiene i parametri `eta` e `tempo` per le pagine web in inglese rimaste in memoria.
 I client mostrano `testo` + `eta` in una riga piccola e, se `vecchie`, `avviso` in evidenza. Lo stesso campo (`null`) c'è in `/api/oggi` senza rose.
 
 ## Tempi della lega: scadenza della formazione e prima giornata

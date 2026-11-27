@@ -647,8 +647,8 @@
     "en": "Probable lineups updated on {giorno}/{mese} at {ora}"
   },
   "frase.probabili.vecchie": {
-    "it": "Potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione.",
-    "en": "They may have changed: check them again before the lineup closes."
+    "it": "Le probabili potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione.",
+    "en": "The probable lineups may have changed: check them again before the lineup closes."
   },
   "frase.confronto.pari": {
     "it": "{a} e {b} sono quasi alla pari: la differenza è sotto 0,2 punti attesi.",

@@ -54,7 +54,7 @@ def test_avviso_non_ripete_quando_sono_state_lette_ne_quando_si_chiude():
     oggi 18:00 fra 3 h»: l'avviso dice solo cosa fare, senza un altro «7 ore fa» né le ore alla scadenza (prima «Le ho lette 7 ore
     fa e la formazione si chiude tra 3 ore: …», con «tra» mentre la testata dice «fra»)."""
     f = freschezza_probabili("2026-10-31T08:00:00", ADESSO, 3.0)
-    assert f["avviso"] == "Potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione."
+    assert f["avviso"] == "Le probabili potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione."
     assert f["eta"] not in f["avviso"] and "ore" not in f["avviso"]
     # i parametri restano per le pagine web in inglese rimaste in memoria: il loro testi.js traduce ancora con «{eta}» e «{tempo}»
     assert f["avviso_frase"] == {"chiave": "probabili.vecchie",

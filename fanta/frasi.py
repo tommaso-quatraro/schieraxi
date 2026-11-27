@@ -211,7 +211,7 @@ CATALOGO: dict[str, str] = {
     "probabili.data": "Probabili aggiornate il {giorno}/{mese} alle {ora}",
     # sotto «Probabili aggiornate alle 08:00 (7 ore fa)» e sotto la testata «Si chiude … fra …» (#923): solo cosa fare. I parametri
     # `eta` e `tempo` restano per le pagine web in inglese rimaste in memoria, che traducono ancora con il testo di prima
-    "probabili.vecchie": "Potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione.",
+    "probabili.vecchie": "Le probabili potrebbero essere cambiate: ricontrollale prima che si chiuda la formazione.",
     "confronto.pari": "{a} e {b} sono quasi alla pari: la differenza è sotto 0,2 punti attesi.",
     "confronto.avanti_sparsi": "{primo} è avanti di {punti} punti attesi, con piccoli vantaggi sparsi.",
     "confronto.avanti": "{primo} è avanti di {punti} punti attesi su {secondo}: {motivi}.",

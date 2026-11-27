@@ -194,7 +194,7 @@ def test_frasi_vere_in_inglese_con_nomi_numeri_e_frasi_dentro():
         "Bianchi (free agent) instead of Rossi: Verdi is a regular starter (Milan), about 1.2 more points over the next 3 matchdays.",
         "Bianchi (free agent) instead of Rossi: about 4 more points.",
         "The app on your phone expires in 1 day: renew it.", "The app on your phone expires in 2 days: renew it.",
-        "They may have changed: check them again before the lineup closes.",
+        "The probable lineups may have changed: check them again before the lineup closes.",
         "Probable lineups updated on 3/11 at 14:05",
         "Rossi is ahead of Bianchi by 0.7 expected points: plays more often (85% vs 60%: +0.4); higher expected match rating (+0.3).",
         "The system fields Rossi as a starter. If Rossi gets no rating (15% chance), Bianchi (bench 1) can come on in their place. "
