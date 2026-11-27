@@ -76,7 +76,7 @@ Il rinnovo richiede il Wi-Fi: con la sola rete mobile dà l'errore «No wifi int
 
 ### Promemoria dentro l'app
 
-Se gli avvisi dell'app sono permessi, 24 ore e 6 ore prima della scadenza arriva il promemoria «SchieraXI · Da rinnovare». Chi gestisce l'app vede anche quanti giorni mancano in **Impostazioni › Gestione › Certificato dell'app** («Scade tra N giorni») e, in cima alla Formazione, la decisione «L'app sul telefono scade tra N giorni: rinnovala.» con **Rinnova**.
+Se gli avvisi dell'app sono permessi, 24 ore e 6 ore prima della scadenza arriva il promemoria «SchieraXI · Da rinnovare». Chi gestisce l'app vede anche quanti giorni mancano in **Impostazioni › Gestione › Certificato dell'app** («Scade fra N giorni») e, in cima alla Formazione, la decisione «L'app sul telefono scade fra N giorni: rinnovala.» con **Rinnova**.
 
 Se il rinnovo non è partito e la scadenza si avvicina:
 
