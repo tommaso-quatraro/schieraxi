@@ -1,5 +1,28 @@
 [
   {
+    "versione": "1.608",
+    "data": "2026-11-27T15:46:58",
+    "titolo": "iPhone: il promemoria si vede anche con l'app aperta e il tocco apre la Formazione",
+    "voci": [
+      "Sull'iPhone il promemoria prima della scadenza si vede e suona anche con l'app aperta, come sulla web; toccandolo si apre la Formazione invece della schermata dove avevi lasciato l'app.",
+      "I promemoria dell'app per iPhone sono sempre in italiano, come il resto dell'app, anche se sulla web hai scelto l'inglese.",
+      "L'avviso «C'è una versione nuova» dice la versione come la trovi in Impostazioni › Informazioni, senza sigle.",
+      "Impostazioni › Avvisi: tornando nell'app, l'interruttore «Avvisi su questo dispositivo» dice subito se hai tolto o ridato il permesso nelle impostazioni dell'iPhone. Se una modifica non si salva, compare solo il motivo, come sulla web."
+    ],
+    "tecnico": [
+      "GET /api/oggi: `testi_promemoria` nella lingua della richiesta (`?lingua=` o `Accept-Language`, `lingua.della_richiesta`) e non più nella `lingua` di /api/avvisi; l'iPhone manda sempre `Accept-Language: it` e il suo promemoria di riserva (`oggi.prossima_chiude`) è in italiano. Nessun campo tolto o rinominato; docs/API.md aggiornato.",
+      "iPhone: `DelegatoAvvisi` (UNUserNotificationCenterDelegate) messo in `SchieraxiApp.init`: con l'app aperta banner, elenco e suono; il tocco su `fanta-60`/`fanta-15` porta dove porta `schieraxi://formazione` (`Notifiche.destinazione`, `AvvisiToccati`, `Navigazione.vai`).",
+      "iPhone: catalogo `avv.versione_nuova_titolo` e `avv.versione_nuova_testo` (solo app) con la versione «1.0.N» al posto di «(build-N)»; `AvvisiDispositivoViewModel.rileggiPermesso` al ritorno in primo piano; `erroreSalvataggio` è il solo messaggio dell'errore; la riga del certificato in Gestione viene dal catalogo (`avv.certificato_aiuto`, solo app), cita `avv.certificato_ore` (prima «Rinnovala con SideStore») e dice cosa fa il promemoria con le ore tranquille (`Notifiche.promemoriaCertificato`); in Gestione la riga di chi gestisce dice le versioni «1.0.N». Nuovo `tests/test_versione_app_ios.py`: «1.0.» uguale in ipa.yml, genera_sorgente.py e `NuovaVersione.versione`."
+    ],
+    "titolo_en": "iPhone: the reminder shows even with the app open and tapping it opens the Lineup",
+    "voci_en": [
+      "On the iPhone the reminder before the deadline shows and plays a sound even with the app open, as on the web; tapping it opens the Lineup instead of the screen where you left the app.",
+      "The reminders of the iPhone app are always in Italian, like the rest of the app, even if you chose English on the web.",
+      "The “A new version is out” alert («C'è una versione nuova») says the version as you find it in Settings › About (Impostazioni › Informazioni), without codes.",
+      "Settings › Alerts (Impostazioni › Avvisi): when you come back to the app, the “Alerts on this device” switch («Avvisi su questo dispositivo») shows right away whether you removed or granted the permission in the iPhone settings. If a change is not saved, only the reason appears, as on the web."
+    ]
+  },
+  {
     "versione": "1.607",
     "data": "2026-11-27T15:13:36",
     "titolo": "Aggiorna i dati dice quando non arriva niente, e i messaggi finiscono con il punto",

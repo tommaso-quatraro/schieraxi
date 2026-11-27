@@ -1635,11 +1635,12 @@ def oggi(request: Request, certificato_giorni: int | None = Query(None, ge=-3650
                                    live_partite=_stati_live(), dal=dal))
         if isinstance(corpo.get("giornata"), int):        # la regola dei promemoria del server, per quelli locali dell'iPhone (#710)
             corpo["serve_promemoria"] = notifiche.serve_promemoria(db, r, rose_, consigli.stagione_corrente(), corpo["giornata"], ctx.scelte)
-            # e i loro testi già scritti, con l'ora della scadenza che Oggi mostra e nella lingua degli avvisi: l'iPhone non compone
-            # frasi sue (#906)
+            # e i loro testi già scritti, con l'ora della scadenza che Oggi mostra: l'iPhone non compone frasi sue (#906). Nella
+            # lingua della richiesta, come il resto della risposta, non in quella degli avvisi: l'iPhone chiede sempre l'italiano e il
+            # suo promemoria di riserva è in italiano (con gli avvisi in inglese arrivavano due lingue)
             scadenza = datetime.fromisoformat(corpo["scadenza"]) if isinstance(corpo.get("scadenza"), str) else None
             corpo["testi_promemoria"] = notifiche.testi_promemoria(db, r, rose_, consigli.stagione_corrente(), corpo["giornata"], scadenza,
-                                                                   ctx.scelte, lingua=notifiche.impostazioni(ctx.impostazioni_avvisi)["lingua"])
+                                                                   ctx.scelte, lingua=lingua_testi.della_richiesta(request))
         admin = admin and not getattr(request.state, "solo_widget", False)     # il token del widget non vede le voci da admin
         corpo["da_fare"] = da_fare.costruisci(db, r, rose_, corpo, ctx, certificato_giorni, amministratore=admin,
                                               dal=dal,
