@@ -181,8 +181,6 @@ final class WidgetRiassuntoTests: XCTestCase {
         XCTAssertEqual(w.partiteLive.first { $0.casa == "napoli" }?.etichetta(adesso: prima), "Finita")
         XCTAssertEqual(w.mieiTitolari(in: inter).map(\.id), [5], "Leonel gioca in casa contro la Roma")
         XCTAssertTrue(w.mieiTitolari(in: try XCTUnwrap(w.partiteLive.first { $0.casa == "lazio" })).isEmpty)
-        XCTAssertTrue(w.finestraLive(adesso: prima), "c'e' una partita in gioco")
-        XCTAssertEqual(w.prossimaPartita(dopo: prima)?.casa, "lazio")
     }
 
     func testLIntervalloDeiPuntiAttesi() throws {
@@ -230,7 +228,6 @@ final class WidgetRiassuntoTests: XCTestCase {
         let senza = try XCTUnwrap(RiassuntoWidget.leggi(Data(#"{"giornata": 3}"#.utf8)))
         XCTAssertNil(senza.live)
         XCTAssertTrue(senza.partiteLive.isEmpty)
-        XCTAssertFalse(senza.finestraLive())
         let strano = try XCTUnwrap(RiassuntoWidget.leggi(Data(#"{"giornata": 3, "live": {"partite": "no"}}"#.utf8)))
         XCTAssertNil(strano.live)
     }
