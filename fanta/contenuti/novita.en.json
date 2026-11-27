@@ -1,4 +1,14 @@
 {
+  "1.601": {
+    "titolo": "Import rosters: teams named like a club and trades seen correctly",
+    "voci": [
+      "Import rosters: one of your teams with the same name as a Serie A club (“Roma”, “AS Roma”, “Inter”) is now recognised as a team in the Excel file with teams side by side, in pasted text after a blank line and when it is already saved in the league. Where it is not clear, the preview says so and explains what to do.",
+      "If a team ends up with too many players because the name of a league team was taken for a club, the message says which name and what to do, instead of just “has 50 players”.",
+      "When you re-import only your own roster after a trade, “What changes” and the history show the right move even if the saved roster of the other team is old.",
+      "In text with one name per line, “Crediti residui: 37” is read even when the players have no club and cost next to them.",
+      "“Players to fix”: if the rosters cannot be read, the web app and the iPhone say so in place of the list. On the iPhone, with two identical rows in the same team, matching one removes only that one."
+    ]
+  },
   "1.599": {
     "titolo": "Predictions updated even with a match brought forward by weeks, and a more precise deadline alert",
     "voci": [
