@@ -1107,12 +1107,19 @@ body.senza-accesso .salta { display: none; }
 .regola-sez[open] > summary { margin-bottom: 8px; }
 
 
-/* Giornate > «Dettagli» della precisione: i numeri con la loro frase (2 colonne da 560 px in su), barre dell'andamento */
+/* Giornate > «Dettagli» della precisione: i numeri con la loro frase (2 colonne da 560 px in su), barre dell'andamento. Nessun
+   riquadro resta da solo con una colonna vuota accanto (collaudo tablet del 27/11): con un numero dispari l'ultimo prende la riga
+   intera, e da 768 px tre riquadri stanno in fila (quattro restano due e due). */
 .qp { margin-top: 12px; }
 .qp-pochi { margin: 10px 0 0; }
 .qp-griglia { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px 24px; margin: 12px 0; }
 @media (min-width: 560px) {
   .qp-griglia { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .qp-griglia > .qp-voce:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+@media (min-width: 768px) {
+  .qp-griglia:has(> .qp-voce:nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .qp-griglia > .qp-voce:nth-child(3):last-child { grid-column: auto; }
 }
 .qp-voce { min-width: 0; padding: 12px 0 4px; border-top: 1px solid var(--filo); }          /* righe, non carte dentro la carta (STILE-SENZA-AI) */
 .qp-num { display: block; font-family: var(--font-numeri); font-size: var(--t-titolo); font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; line-height: 1.1; }
