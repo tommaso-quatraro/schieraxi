@@ -125,23 +125,36 @@ def ha_fuori_turno(db: sqlite3.Connection, stagione: str, giornata: int) -> bool
     return bool(fuori_turno(_della_giornata_db(db, stagione, giornata), *vicini))
 
 
-def giornate_chiuse(db: sqlite3.Connection, stagione: str, regole: Regole) -> list[int]:
-    """Le giornate finite per la lega, in ordine: tutte le partite giocate oppure, se per la giornata la regola non è «aspetta»
-    (senza voto o voto d'ufficio: il recupero non cambia i punti), giocate tutte quelle del turno e da recuperare solo partite
-    rinviate. Con «aspetta» la giornata si chiude solo a recupero giocato (i punti possono ancora cambiare)."""
+def _partite_per_giornata(db: sqlite3.Connection, stagione: str) -> dict[int, list[dict]]:
+    """{giornata: [{data, giocata}]} della stagione, in ordine di giornata: una lettura sola del calendario."""
     per_giornata: dict[int, list[dict]] = {}
     for g, data, giocata in db.execute("SELECT giornata, data, giocata FROM partite WHERE stagione = ? ORDER BY giornata",
                                        (stagione,)):
         per_giornata.setdefault(int(g), []).append({"data": data, "giocata": giocata})
-    out = []
-    for g, partite in per_giornata.items():
-        aperte = [p for p in partite if not p["giocata"]]
-        if not aperte:
-            out.append(g)
-        elif (regola(regole, stagione, g)["modo"] != "aspetta"
-              and len(rinviate(partite, _inizio(per_giornata.get(g + 1, [])))) == len(aperte)):
-            out.append(g)
-    return out
+    return per_giornata
+
+
+def _solo_recuperi(g: int, per_giornata: dict[int, list[dict]]) -> bool:
+    """Vero se della giornata `g` restano da giocare solo partite rinviate: il turno è giocato, mancano i recuperi."""
+    aperte = [p for p in per_giornata[g] if not p["giocata"]]
+    return bool(aperte) and len(rinviate(per_giornata[g], _inizio(per_giornata.get(g + 1, [])))) == len(aperte)
+
+
+def giornate_chiuse(db: sqlite3.Connection, stagione: str, regole: Regole) -> list[int]:
+    """Le giornate finite per la lega, in ordine: tutte le partite giocate oppure, se per la giornata la regola non è «aspetta»
+    (senza voto o voto d'ufficio: il recupero non cambia i punti), giocate tutte quelle del turno e da recuperare solo partite
+    rinviate. Con «aspetta» la giornata si chiude solo a recupero giocato (i punti possono ancora cambiare)."""
+    per_giornata = _partite_per_giornata(db, stagione)
+    return [g for g, partite in per_giornata.items() if all(p["giocata"] for p in partite)
+            or (regola(regole, stagione, g)["modo"] != "aspetta" and _solo_recuperi(g, per_giornata))]
+
+
+def giornate_in_attesa(db: sqlite3.Connection, stagione: str, regole: Regole) -> list[int]:
+    """Le giornate che aspettano un recupero, in ordine: giocate tutte le partite del turno, da recuperare solo partite rinviate e
+    per la giornata la regola è «aspetta» (con le altre regole la giornata è già finita, `giornate_chiuse`). Il Diario le dice
+    «in attesa del recupero» (`diario.elenco`, campo `in_attesa`): non sono finite e non hanno ancora una voce."""
+    per_giornata = _partite_per_giornata(db, stagione)
+    return [g for g in per_giornata if regola(regole, stagione, g)["modo"] == "aspetta" and _solo_recuperi(g, per_giornata)]
 
 
 def voti_lega(gioca: dict[int, bool], fv: dict[int, float], voto: dict[int, float], coinvolti: Iterable[int], r: dict) -> None:

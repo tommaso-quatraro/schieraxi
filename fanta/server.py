@@ -1473,6 +1473,9 @@ def leggi_diario(ctx: Contesto = Depends(lega_corrente)):
             r["precisione"]["serie_a"] = None
         if not r["giornate"]:
             r["motivo_vuoto"] = diario.motivo_vuoto(db, _regole(ctx), _rose(ctx))          # campo facoltativo: i client vecchi lo ignorano
+            if r["motivo_vuoto"] == "squadra":
+                # senza la tua squadra non arriva nessun punto: la pagina dice dove sceglierla, non che una giornata aspetta il recupero
+                r["in_attesa"] = []
     finally:
         if db is not None:
             db.close()

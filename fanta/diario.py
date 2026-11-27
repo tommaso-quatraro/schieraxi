@@ -1340,12 +1340,22 @@ def _sospesa_senza_archivio(regole: Regole, voce: dict) -> bool | None:
     return None
 
 
+def _in_attesa(stagione: str, giornata: int, regole: Regole) -> dict:
+    """Una giornata che aspetta il recupero, per `in_attesa` di `elenco`: {stagione, giornata, giornata_lega, testo, frase}."""
+    lega = serie_a_a_lega(giornata, regole)
+    frase = F("diario.in_attesa_recupero", giornata=nome_giornata(giornata, lega))
+    return {"stagione": stagione, "giornata": giornata, "giornata_lega": lega, "testo": str(frase), "frase": frase.json()}
+
+
 def elenco(percorso: Path | None = None, regole: Regole | None = None, db: sqlite3.Connection | None = None) -> dict:
     """Le voci dalla più recente, con la sintesi: quello che mostra l'app. Con le regole della lega, la stagione in corso conta solo
     dalla prima giornata della lega e ogni voce porta anche `giornata_lega` (il numero nel calendario della lega). Con le regole e
     l'archivio `db` non ci sono le voci sospese (`sospesa`), nemmeno nei conti in cima: le loro giornate stanno in `in_attesa`
     (dalla più recente, {stagione, giornata, giornata_lega, testo, frase}, «Giornata 5 · 8ª di Serie A: in attesa del recupero, i
-    punti arrivano dopo.»), che web e iPhone mostrano così com'è (revisione di #947: prima la giornata spariva senza spiegazione)."""
+    punti arrivano dopo.»), che web e iPhone mostrano così com'è (revisione di #947: prima la giornata spariva senza spiegazione).
+    In `in_attesa` anche le giornate della stagione in corso che con la regola «aspetta» non sono finite perché manca un recupero
+    (`rinvii.giornate_in_attesa`) e non hanno una voce: prima sparivano per settimane senza spiegazione. Per questo, con le regole
+    e l'archivio, il calendario si legge una volta a ogni chiamata."""
     d = carica(percorso)
     istantanee = d["istantanee"] if isinstance(d.get("istantanee"), dict) else {}
     voci = [per_i_client(v) for v in sorted(d["giornate"].values(), key=lambda v: (v["stagione"], v["giornata"]), reverse=True)]
@@ -1358,12 +1368,11 @@ def elenco(percorso: Path | None = None, regole: Regole | None = None, db: sqlit
             serve = any(_sospesa_senza_archivio(regole, v) is None for v in voci)
             chiuse = set(rinvii.giornate_chiuse(db, corrente, regole)) if serve else set()
             sospese = [v for v in voci if sospesa(db, regole, v, chiuse)]
+            con_voce = {v["giornata"] for v in voci if v["stagione"] == corrente}
             voci = [v for v in voci if v not in sospese]
-            for v in sospese:
-                lega = serie_a_a_lega(v["giornata"], regole)
-                frase = F("diario.in_attesa_recupero", giornata=nome_giornata(v["giornata"], lega))
-                in_attesa.append({"stagione": v["stagione"], "giornata": v["giornata"], "giornata_lega": lega, "testo": str(frase),
-                                  "frase": frase.json()})
+            attese = {v["giornata"] for v in sospese} | {g for g in rinvii.giornate_in_attesa(db, corrente, regole)
+                                                         if g >= regole.prima_giornata_lega and g not in con_voce}
+            in_attesa = [_in_attesa(corrente, g, regole) for g in sorted(attese, reverse=True)]
         for v in voci:
             v["giornata_lega"] = serie_a_a_lega(v["giornata"], regole) if v["stagione"] == corrente else None
     for v in voci:

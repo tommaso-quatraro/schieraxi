@@ -26,6 +26,8 @@ def test_diario_del_widget_con_giornata_della_lega_e_stagione(monkeypatch, tmp_p
     elenco_vero = diario.elenco
     db, rose = _prepara(monkeypatch)                       # stagione in corso: 2026-27
     monkeypatch.setattr(w.diario, "elenco", elenco_vero)   # qui il diario vero, sul file finto
+    # il diario vero legge il calendario (le giornate che aspettano un recupero): qui vuoto
+    db.execute("CREATE TABLE partite (id INTEGER, stagione TEXT, giornata INTEGER, data TEXT, casa TEXT, trasferta TEXT, giocata INTEGER)")
     regole = Regole(prima_giornata_lega=4)                 # giornata 10 di Serie A = giornata 7 della lega
     f = _diario_finto(tmp_path)
 
