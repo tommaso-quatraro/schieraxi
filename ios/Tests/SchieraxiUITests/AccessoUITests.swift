@@ -71,12 +71,16 @@ final class AccessoUITests: XCTestCase {
         tocca(app.buttons["Password dimenticata"], finchéCompare: app.buttons["Scegli la nuova password"],
               "«Password dimenticata» apre il recupero con il codice")
         XCTAssertTrue(app.textFields["Codice"].waitForExistence(timeout: 10))
+        // al posto delle due schede il titolo della pagina, come la web (collaudo del 27/11 sera)
+        XCTAssertTrue(app.staticTexts["Password dimenticata"].exists, "il recupero ha il suo titolo")
+        XCTAssertFalse(app.buttons["scheda-accedi"].exists || app.buttons["scheda-registrati"].exists, "niente schede non scelte")
         tocca(app.buttons["Con l'email"], finchéCompare: app.buttons["Mandami il codice"], "«Con l'email» passa al recupero con l'email")
         XCTAssertTrue(app.textFields["Email"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Torna all'accesso"].exists)
 
         // di nuovo Accedi, con nome e password: si entra
-        tocca(app.buttons["scheda-accedi"], finchéCompare: app.buttons["Password dimenticata"], "la scheda Accedi mostra «Password dimenticata»")
+        tocca(app.buttons["Torna all'accesso"], finchéCompare: app.buttons["scheda-accedi"], "«Torna all'accesso» riporta le schede")
+        XCTAssertTrue(app.buttons["Password dimenticata"].waitForExistence(timeout: 10), "si torna su Accedi")
         scrivi("mister.rossi", in: nome)
         scrivi("Prova-Finta-Zero", in: app.secureTextFields["Password"])
         XCTAssertTrue(entra.isEnabled)

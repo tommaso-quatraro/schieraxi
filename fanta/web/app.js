@@ -4021,11 +4021,14 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
     el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", t("accesso.nome_aria"));
     document.body.appendChild(el);
   }
-  // grafica B (spec §9): un modulo centrato senza carta; il nome è quello disegnato della testata, per i lettori di schermo «SchieraXI»
+  // grafica B (spec §9): un modulo centrato senza carta; il nome è quello disegnato della testata, per i lettori di schermo «SchieraXI».
+  // «Password dimenticata» non è una delle due schede: al loro posto il suo titolo, come «Il tuo codice di recupero» (collaudo del 27/11
+  // sera: le schede restavano tutte e due non scelte); «Torna all'accesso» le riporta
   el.innerHTML = `<div class="accesso-corpo${primaVolta ? " primo" : ""}">
     <div class="accesso-marchio">${marchio(72, true)}</div>
     <h1 class="accesso-titolo"><svg class="wm" aria-hidden="true" focusable="false"><use href="#wm-c"/></svg><span class="solo-lettori">SchieraXI</span></h1>
-    <div class="segmenti" id="accesso-schede">${SCHEDE_ACCESSO.map(k => `<button type="button" data-s="${k}" class="${k === scheda ? "attivo" : ""}" aria-pressed="${k === scheda}">${t("accesso.scheda_" + k)}</button>`).join("")}</div>
+    ${SCHEDE_ACCESSO.includes(scheda) ? `<div class="segmenti" id="accesso-schede">${SCHEDE_ACCESSO.map(k => `<button type="button" data-s="${k}" class="${k === scheda ? "attivo" : ""}" aria-pressed="${k === scheda}">${t("accesso.scheda_" + k)}</button>`).join("")}</div>`
+      : `<h2>${t("accesso.scheda_recupero")}</h2>`}
     <div id="accesso-msg" role="status"></div>
     ${socialPronto() && SCHEDE_ACCESSO.includes(scheda) && extra.sub !== "verifica" ? `<div class="accesso-social">${htmlGoogle(t("social.continua"))}<div class="accesso-oppure debole piccolo" aria-hidden="true"><span>${t("social.oppure")}</span></div></div>` : ""}
     ${scheda === "recupero" && stato.emailAttiva !== false && (extra.sub === "email" || extra.sub === "codice") ? `<div class="segmenti" id="accesso-metodi">${[["email", t("accesso.recupero_con_email")], ["codice", t("accesso.recupero_con_codice")]].map(([k, c]) => `<button type="button" data-m="${k}" class="${k === extra.sub ? "attivo" : ""}" aria-pressed="${k === extra.sub}">${c}</button>`).join("")}</div>` : ""}
