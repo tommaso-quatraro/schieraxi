@@ -168,12 +168,24 @@ struct LaMiaLegaComeLaWebTests {
 
     // MARK: Regole, − e +
 
-    @Test("− e + come la web (#911): da un valore fuori dai passi si va al passo vicino, senza saltarne uno", arguments: [
-        (1.25, 0.5, true, 1.5), (1.25, 0.5, false, 1.0), (-0.25, 0.5, true, 0.0), (-0.25, 0.5, false, -0.5),
-        (1.0, 0.5, true, 1.5), (1.0, 0.5, false, 0.5), (6.1, 0.25, true, 6.25), (6.1, 0.25, false, 6.0), (3.0, 1.0, true, 4.0),
-    ])
-    func passi(valore: Double, passo: Double, su: Bool, atteso: Double) {
-        #expect(RegoleLogica.passoSuccessivo(valore, passo: passo, su: su, minimo: -20, massimo: 20) == atteso)
+    @Test("+ come la web (#911): dal valore al primo passo da 0,5 sopra, senza saltarne uno",
+          arguments: [(1.25, 1.5), (-0.25, 0.0), (1.0, 1.5), (0.1, 0.5)])
+    func piu(valore: Double, atteso: Double) {
+        #expect(RegoleLogica.passoSuccessivo(valore, passo: 0.5, su: true, minimo: -20, massimo: 20) == atteso)
+    }
+
+    @Test("− come la web (#911): dal valore al primo passo da 0,5 sotto, senza saltarne uno",
+          arguments: [(1.25, 1.0), (-0.25, -0.5), (1.0, 0.5), (0.1, 0.0)])
+    func meno(valore: Double, atteso: Double) {
+        #expect(RegoleLogica.passoSuccessivo(valore, passo: 0.5, su: false, minimo: -20, massimo: 20) == atteso)
+    }
+
+    @Test("Con altri passi la stessa regola: la media delle fasce (0,25) e i numeri interi (1)")
+    func altriPassi() {
+        #expect(RegoleLogica.passoSuccessivo(6.1, passo: 0.25, su: true, minimo: 4, massimo: 9) == 6.25)
+        #expect(RegoleLogica.passoSuccessivo(6.1, passo: 0.25, su: false, minimo: 4, massimo: 9) == 6.0)
+        #expect(RegoleLogica.passoSuccessivo(3, passo: 1, su: true, minimo: 0, massimo: 25) == 4)
+        #expect(RegoleLogica.passoSuccessivo(3, passo: 1, su: false, minimo: 0, massimo: 25) == 2)
     }
 
     @Test("− e + non escono dai limiti")

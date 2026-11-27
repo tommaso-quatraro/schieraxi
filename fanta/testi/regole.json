@@ -88,6 +88,10 @@
     "it": "Non ho riconosciuto nessuna regola in questo testo. Controlla di aver copiato la pagina del regolamento, oppure imposta i valori a mano qui sotto.",
     "en": "I did not recognise any rule in this text. Check that you copied the rules page, or set the values by hand below."
   },
+  "regole.nuovo": {
+    "it": "Nuovo",
+    "en": "New"
+  },
   "regole.panchina_sostituzioni": {
     "it": "Panchina e sostituzioni",
     "en": "Bench and substitutions"

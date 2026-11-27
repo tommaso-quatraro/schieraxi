@@ -105,3 +105,6 @@ regole.uscita_titolo
 regole.esci_senza_salvare
 regole.continua_modificare
 regole.modifiche_non_salvate
+
+# Novità: l'etichetta delle versioni non ancora viste (da togliere con il codice)
+regole.nuovo
