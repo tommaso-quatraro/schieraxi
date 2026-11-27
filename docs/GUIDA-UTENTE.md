@@ -36,11 +36,11 @@ Parole che vedrai spesso:
    Se chi gestisce il server ha aperto le iscrizioni, in cima a **Registrati** c'è scritto **Scegli un nome utente e una password.** e il campo del codice non c'è: non serve nessun invito. Se il server è al completo l'app dice **Iscrizioni chiuse: siamo al completo**; se in un giorno si sono già registrate molte persone, **Per oggi le iscrizioni sono chiuse: riprova domani**.
 2. Scegli un **nome utente** (da 3 a 32 caratteri: lettere senza accenti, numeri, punto, trattino o trattino basso; comincia con una lettera o un numero: le regole sono scritte anche sotto il campo) e una **password** di almeno 10 caratteri. L'**email** è facoltativa: serve a recuperare la password (se sul server le email sono spente il campo non c'è).
 3. Spunta la casella (hai letto Privacy e Termini e hai almeno 14 anni) e tocca **Crea l'account**.
-4. **Salva il codice di recupero** che compare una sola volta: serve se dimentichi la password. Poi tocca **Entra nell'app**.
+4. **Salva il codice di recupero** che compare una sola volta: serve se dimentichi la password. Poi tocca **Entra nell'app** (sull'iPhone **Continua**).
 
 Per entrare ancora: scheda **Accedi**, nome utente e password, poi **Accedi**. Se compare **Continua con Google**, puoi usarlo senza password. Se hai già un account con la stessa email, entra come sempre e collega Google da **Impostazioni › Il tuo account › Accessi**.
 
-Password dimenticata: link **Password dimenticata** sotto il modulo. Si parte da **Con il codice di recupero** (va bene anche il codice che ti dà chi gestisce l'app); se hai collegato un'email, scegli **Con l'email** e ti arriva un codice a 6 cifre. Se sul server le email sono spente, la scelta non c'è e resta solo il codice di recupero. Se non hai né l'uno né l'altro, scrivi al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
+Password dimenticata: link **Password dimenticata** sotto il modulo. Di solito si parte da **Con il codice di recupero** (va bene anche il codice che ti dà chi gestisce l'app); se hai collegato un'email, scegli **Con l'email** e ti arriva un codice a 6 cifre. Se sul server le email sono spente, la scelta non c'è e resta solo il codice di recupero. Se non hai né l'uno né l'altro, scrivi al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
 
 ### Caricare la tua squadra
 

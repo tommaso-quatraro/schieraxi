@@ -113,7 +113,7 @@ Ogni iPhone e iPad ha il suo permesso: con lo stesso account, entrare o uscire s
 
 ## 9. Limiti noti
 
-- Niente notifiche push vere (servono a un account a pagamento). L'app manda da sola solo i promemoria della scadenza (un'ora e un quarto d'ora prima) e quelli del rinnovo; l'avviso quando cambia la formazione da schierare arriva dalla web app, oppure con ntfy se la scelta è attiva (interruttore «Avvisi anche per l'app nativa»). Dettagli in `ios/README.md`.
+- Niente notifiche push vere (servono a un account a pagamento). L'app manda da sola solo i promemoria della scadenza (un'ora e un quarto d'ora prima) quelli del rinnovo e l'avviso di una versione nuova; l'avviso quando cambia la formazione da schierare arriva dalla web app, oppure con ntfy se la scelta è attiva (interruttore «Avvisi anche per l'app nativa»). Dettagli in `ios/README.md`.
 - Il certificato dura 7 giorni: se il rinnovo fallisce più giorni di fila, l'app smette di aprirsi.
 - Il repository è pubblico: così le Actions di GitHub su macOS sono gratuite. Lì dentro non ci sono firme, certificati o password.
 - Problemi che non si risolvono: scrivi da **Impostazioni › Scrivici** dell'app, oppure al recapito indicato nella pagina [Privacy](https://app.schieraxi.it/privacy).
