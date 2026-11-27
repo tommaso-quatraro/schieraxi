@@ -14,6 +14,10 @@ struct RitornoReteTests {
     enum Fatto {
         case aspetta(_ secondi: TimeInterval)
         case rete(_ inLinea: Bool, _ secondi: TimeInterval)
+        /// «Riprova» toccato a mano.
+        case riprova
+        /// Una lettura che riesce: la copia non è più a video.
+        case riuscita
     }
 
     private static let inizio = Date(timeIntervalSince1970: 1_795_000_000)
@@ -28,6 +32,10 @@ struct RitornoReteTests {
                 attesa.aspetta(adesso: inizio.addingTimeInterval(secondi))
             case .rete(let inLinea, let secondi):
                 riprove.append(attesa.cambio(inLinea: inLinea, adesso: inizio.addingTimeInterval(secondi)))
+            case .riprova:
+                attesa.riprovaAMano()
+            case .riuscita:
+                attesa.letturaRiuscita()
             }
         }
         return riprove
@@ -66,5 +74,29 @@ struct RitornoReteTests {
     func conLaReteAccesa() {
         let riprove = Self.riprove([.rete(true, 0), .aspetta(1), .rete(true, 2), .rete(false, 3), .rete(true, 4)])
         #expect(riprove == [false, false, false, true])
+    }
+
+    @Test("«Riprova» toccato a mano che resta senza rete riattiva il tentativo, anche entro 5 minuti dall'ultimo automatico (#980)")
+    func riprovaAManoRiarma() {
+        // tornata la rete si riprova da soli (10 s) e non riesce (12 s); poi un «Riprova» toccato a mano resta senza rete (30 s):
+        // al ritorno della rete (40 s) si riprova di nuovo, come la web, dove «Riprova» rilegge la pagina e riattiva il tentativo
+        let riprove = Self.riprove([.rete(true, 0), .aspetta(1), .rete(false, 2), .rete(true, 10), .aspetta(12), .rete(false, 20),
+                                    .riprova, .aspetta(30), .rete(true, 40)])
+        #expect(riprove == [false, false, true, false, true])
+    }
+
+    @Test("«Riprova» da solo non fa riprovare: serve una lettura rimasta senza rete con la copia a video")
+    func riprovaSenzaCopia() {
+        #expect(Self.riprove([.rete(true, 0), .riprova, .rete(false, 1), .rete(true, 2)]) == [false, false, false])
+    }
+
+    @Test("Una lettura riuscita toglie l'attesa: con la copia non più a video un cambio di rete non fa ricaricare niente (#980)")
+    func letturaRiuscitaAzzera() {
+        // la copia aspetta la rete (1 s) e un «Riprova» riesce: passando dal Wi-Fi al cellulare (la rete cade e torna) niente «Aggiorna»
+        let wifiCellulare = Self.riprove([.rete(true, 0), .aspetta(1), .riuscita, .rete(false, 6), .rete(true, 7)])
+        #expect(wifiCellulare == [false, false, false])
+        // una lettura di dopo che resta di nuovo senza rete, con la copia a video, aspetta il ritorno della rete come prima
+        let dopo = Self.riprove([.rete(true, 0), .aspetta(1), .riuscita, .aspetta(8), .rete(false, 9), .rete(true, 10)])
+        #expect(dopo == [false, false, true])
     }
 }

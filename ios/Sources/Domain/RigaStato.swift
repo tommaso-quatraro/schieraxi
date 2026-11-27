@@ -19,7 +19,7 @@ struct RigaStato: Equatable {
 
     /// nil finché `/api/stato` non ha mai risposto (e non ce n'è una copia) e non si sa che il server non risponde: niente da dire,
     /// come la web prima della sua prima lettura.
-    init?(info: InfoServer?, nonRaggiungibile: Bool) {
+    init?(info: InfoServer?, nonRaggiungibile: Bool, guastoInPagina: Bool = false) {
         let copia = info.map(Self.pezziDi)
         if nonRaggiungibile {
             pezzi = [Catalogo.Testata.offline] + (copia?.pezzi ?? [])

@@ -168,6 +168,25 @@ struct CaricatoreAnnullatoTests {
         #expect(!senzaCopia, "senza copia a video c'è l'errore con «Riprova», come la web")
     }
 
+    // #980: prima l'attesa restava anche con la copia non più a video, e un passaggio dal Wi-Fi al cellulare faceva partire un
+    // «Aggiorna» inutile.
+    @Test("Una lettura che riesce toglie l'attesa del ritorno della rete: la copia non è più a video")
+    func letturaRiuscitaTogliLAttesa() async throws {
+        let rete = RitornoRete()
+        let passo = Contatore()
+        let server = ServerDiProva { _, _, _ in
+            if passo.passo() == 1 { throw ErroreApi.rete("spento") }   // la seconda lettura resta senza rete
+            return try Fixture.dati("oggi")
+        }
+        let c = Caricatore<Oggi>("/api/oggi", cache: false, ascolta: false, server: server, rete: rete)
+        await c.ricarica()
+        await c.ricarica()
+        try #require(c.datiSalvati != nil && rete.inAttesa, "senza rete resta la copia e si aspetta il ritorno della rete")
+        await c.ricarica()                                              // «Riprova», e questa volta riesce
+        #expect(c.datiSalvati == nil, "la copia non è più a video")
+        #expect(!rete.inAttesa, "e non si aspetta più la rete: un cambio di rete non fa ricaricare niente")
+    }
+
     /// Una lettura riuscita (se `conDati`) e poi una che finisce con `errore`: il ritorno della rete aspetta?
     private func aspettaLaRete(dopo errore: ErroreApi, conDati: Bool) async -> Bool {
         let rete = RitornoRete()

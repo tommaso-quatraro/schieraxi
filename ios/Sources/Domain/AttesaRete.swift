@@ -24,6 +24,12 @@ struct AttesaRete {
         inAttesa = true
     }
 
+    /// Da scrivere (#980).
+    mutating func riprovaAMano() {}
+
+    /// Da scrivere (#980).
+    mutating func letturaRiuscita() {}
+
     /// Una notizia sulla rete. true = la rete è tornata e una copia aspettava: si riprova (e non si aspetta più).
     mutating func cambio(inLinea nuovo: Bool, adesso: Date = Date()) -> Bool {
         defer { inLinea = nuovo }
