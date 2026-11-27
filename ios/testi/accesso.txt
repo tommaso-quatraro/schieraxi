@@ -6,6 +6,8 @@ accesso.scheda_accedi
 accesso.scheda_registra
 accesso.scheda_recupero
 accesso.nome_utente
+# le regole sotto il campo quando il nome si sceglie (Registrati, il nome dopo Google), come la web, #940
+accesso.nome_utente_aiuto
 accesso.password
 accesso.password_10
 accesso.password_nuova_10
@@ -20,6 +22,8 @@ accesso.invio_registra
 accesso.invio_verifica
 accesso.invio_recupero
 accesso.invio_recupero_email
+# il pulsante d'invio mentre conta dopo «troppi tentativi» (AttesaRiprova.testoPulsante), come la web, #940
+accesso.riprova_tra
 
 # Frasi in cima al modulo
 accesso.serve_invito

@@ -161,5 +161,8 @@ extension Catalogo {
 
         /// `account.elimina_conferma`
         static let eliminaConferma = "Elimino il tuo account e TUTTI i tuoi dati? Non si può annullare."
+
+        /// `account.eliminato_fatto`
+        static let eliminatoFatto = "Il tuo account e tutti i tuoi dati sono stati eliminati."
     }
 }

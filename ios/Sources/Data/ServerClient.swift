@@ -121,15 +121,10 @@ enum ErroreApi: LocalizedError {
         return senzaRete.contains(codice)
     }
 
-    /// Un'attesa in parole: «30 secondi», «10 minuti», «6 h 55 min», «2 giorni».
+    /// Un'attesa in parole, le stesse della web (`attesaTesto`, #940): «1 secondo», «30 secondi», dai 90 secondi «10 minuti»,
+    /// dall'ora «circa 1 ora», «circa 7 ore». Prima «1 secondi», «75 minuti», «6 h 55 min», «2 giorni».
     static func tempoLeggibile(_ secondi: Int) -> String {
-        if secondi < 90 { return "\(secondi) secondi" }
-        let minuti = (secondi + 59) / 60
-        if minuti < 90 { return "\(minuti) minuti" }
-        let ore = minuti / 60
-        if ore >= 48 { return "\(ore / 24) giorni" }
-        let resto = minuti % 60
-        return resto == 0 ? "\(ore) h" : "\(ore) h \(resto) min"
+        AttesaRiprova.tempo(secondi)
     }
 
     /// Il messaggio senza le frasi che cominciano con «Riprova» e senza «aspetta prima di riprovare» (li sostituisce il tempo

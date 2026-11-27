@@ -46,7 +46,7 @@ NON_PERSONALI = {
     ("GET", "/api/push/chiave"),
     ("GET", "/api/account/me"), ("POST", "/api/account/registra"), ("POST", "/api/account/accedi"), ("POST", "/api/account/esci"),
     ("POST", "/api/account/esci-da-tutti"), ("POST", "/api/account/cambia-password"), ("POST", "/api/account/codice-recupero"),
-    ("POST", "/api/account/elimina"), ("POST", "/api/account/recupero"), ("PUT", "/api/account/nome"),
+    ("POST", "/api/account/elimina"), ("POST", "/api/account/elimina/controlla"), ("POST", "/api/account/recupero"), ("PUT", "/api/account/nome"),
     ("POST", "/api/account/token-widget"), ("GET", "/api/account/token-widget"), ("DELETE", "/api/account/token-widget"),
     ("POST", "/api/account/email"), ("POST", "/api/account/email/conferma"), ("POST", "/api/account/email/togli"),
     ("POST", "/api/account/recupero-email"), ("POST", "/api/account/recupero-email/conferma"), ("POST", "/api/account/registra/conferma"),

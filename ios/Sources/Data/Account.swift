@@ -218,6 +218,19 @@ enum AttesaRiprova {
     static func secondiRimasti(fino: Date, adesso: Date = Date()) -> Int {
         max(0, Int(fino.timeIntervalSince(adesso).rounded(.up)))
     }
+
+    /// Il testo del pulsante mentre conta, come la web (#940): «Riprova tra 24 secondi», «Riprova tra 1 secondo», dai 90 secondi
+    /// in su i minuti («Riprova tra 5 minuti»), dall'ora «circa 1 ora» (`accesso.riprova_tra` con `comune.attesa_*`).
+    static func testoPulsante(_ secondi: Int) -> String {
+        Catalogo.Accesso.riprovaTra(attesa: tempo(secondi))
+    }
+
+    static func tempo(_ s: Int) -> String {
+        if s < 90 { return Catalogo.Comune.attesaSecondi(s) }
+        if s < 3600 { return Catalogo.Comune.attesaMinuti(n: String((s + 59) / 60)) }
+        let ore = max(1, Int((Double(s) / 3600).rounded()))
+        return ore == 1 ? Catalogo.Comune.attesaOra(n: "1") : Catalogo.Comune.attesaOre(n: String(ore))
+    }
 }
 
 /// Cosa si cancella dal telefono quando si esce da un account (o la sessione finisce): copie su disco delle risposte e delle immagini,
@@ -824,11 +837,22 @@ final class SessioneAccount: ObservableObject {
         emailInAttesa = nil
     }
 
-    /// Cancella l'account e tutti i suoi dati sul server (non si può annullare), poi svuota il telefono.
+    /// «Elimina l'account», primo passo (#940, come la web): il server controlla la password (per chi entra solo con Google la
+    /// riconferma recente) e non tocca niente. La domanda «Sei sicuro?» arriva solo dopo, così con la password sbagliata non si
+    /// chiede per niente.
+    func controllaPerEliminare(password: String) async throws {
+        try inizia()
+        defer { inCorso = false }
+        _ = try await server.corpoJSON("POST", "/api/account/elimina/controlla", CorpoSoloPassword(password: passwordPerServer(password)))
+    }
+
+    /// Cancella l'account e tutti i suoi dati sul server (non si può annullare), poi svuota il telefono. La schermata di accesso
+    /// dice una volta che account e dati non ci sono più (`account.eliminato_fatto`, come la web).
     func elimina(password: String) async throws {
         try inizia()
         defer { inCorso = false }
         _ = try await server.corpoJSON("POST", "/api/account/elimina", CorpoSoloPassword(password: passwordPerServer(password)))
+        avvisoAccesso = Catalogo.Account.eliminatoFatto   // prima di chiudere: la schermata di accesso la legge appena compare
         chiudiLocale()
     }
 

@@ -169,8 +169,9 @@ async function api(percorso, opzioni = {}) {
       const ifMatch = opzioni.ifMatch || etagDi[risorsa];
       if (scrive && ifMatch) intestazioni["If-Match"] = ifMatch;
       let r;
-      // timeout (ms): la richiesta non resta appesa per sempre; senzaRicarica: col 412 ci pensa chi chiama; leggiEtag(etag): l'ETag della risposta
-      const { timeout, ifMatch: _usato, senzaRicarica, leggiEtag, ...resto } = opzioni;
+      // timeout (ms): la richiesta non resta appesa per sempre; senzaRicarica: col 412 ci pensa chi chiama; leggiEtag(etag): l'ETag della risposta;
+      // errore401: con la sessione finita l'errore arriva lo stesso a chi chiama (le uscite, che hanno qualcosa da fare anche allora)
+      const { timeout, ifMatch: _usato, senzaRicarica, leggiEtag, errore401, ...resto } = opzioni;
       const ferma = timeout ? new AbortController() : null;
       const sveglia = ferma ? setTimeout(() => ferma.abort(), timeout) : null;
       try { r = await fetch(percorso, { ...resto, headers: intestazioni, ...(ferma ? { signal: ferma.signal } : {}) }); }
@@ -191,7 +192,13 @@ async function api(percorso, opzioni = {}) {
       }
       if (!r.ok) {
         if (dati && dati.registrazione) stato.registrazione = dati.registrazione;
-        if (r.status === 401 && dati && dati.multiutente) sessioneScaduta();          // vedi "account" più sotto
+        if (r.status === 401 && dati && dati.multiutente) {                            // vedi "account" più sotto
+          sessioneScaduta();
+          // La pagina d'accesso dice già «La sessione è finita: accedi di nuovo.» (#940): l'errore non arriva a chi ha chiesto, che
+          // altrimenti aggiungerebbe il suo avviso («Accesso richiesto»). La richiesta resta senza risposta: dopo il nuovo accesso
+          // la pagina riparte da capo (entraNellApp).
+          if (!errore401) return new Promise(() => {});
+        }
         // 502-504 senza la risposta del server (la pagina d'errore del proxy, con il servizio spento o che riparte): non risponde
         const testo = dati && typeof dati.detail === "string" ? dati.detail
           : dati === null && r.status >= 502 && r.status <= 504 ? t("comune.server_non_risponde")
@@ -255,8 +262,16 @@ function caricamento(testo = t("comune.calcolo_in_corso"), opz = {}) {
 const nPl = (n, uno, molti) => `${n} ${n === 1 ? uno : molti}`;
 // Con «troppe richieste» (429) il server dice quanto aspettare: lo diciamo anche noi.
 // Se il messaggio del server dice già quando riprovare («Si azzera tra...») non lo ripetiamo; sopra l'ora si arrotonda alle ore.
-const attesaTesto = s => s < 90 ? t("comune.attesa_secondi", { n: s }) : s < 3600 ? t("comune.attesa_minuti", { n: Math.ceil(s / 60) })
+const attesaTesto = s => s < 90 ? tp("comune.attesa_secondi", s) : s < 3600 ? t("comune.attesa_minuti", { n: Math.ceil(s / 60) })
   : t(Math.round(s / 3600) <= 1 ? "comune.attesa_ora" : "comune.attesa_ore", { n: Math.max(1, Math.round(s / 3600)) });
+// La frase del server senza l'invito a riprovare («riprova più tardi», «aspetta prima di riprovare», anche in inglese), chiusa da
+// un punto: quanto manca lo dice il pulsante che conta (accesso, #940, come l'iPhone). "" se della frase non resta niente.
+const senzaInvitoARiprovare = testo => {
+  let p = String(testo || "").replace(/\s*\b(riprova|try again)\b[^.!]*[.!]?/gi, "")
+    .replace(/\s*[:,;]?\s*(aspetta prima di riprovare|wait before trying again)[.!]?/gi, "").replace(/[\s:,;]+$/, "").trim();
+  if (p && !/[.!?]$/.test(p)) p += ".";
+  return p;
+};
 const attesaDa = e => e && e.status === 429 && e.riprova && !/\btra\b/i.test(e.originale || e.message || "") ? t("comune.riprova_tra", { attesa: attesaTesto(e.riprova) }) : "";
 // Un errore mostrato a chi usa l'app. `role="alert"`: il lettore di schermo lo dice subito, e i test del browser riconoscono una
 // schermata che si rompe (la web cattura i suoi errori e non scrive in console). Solo per gli errori veri: avvisi, stati vuoti e
@@ -775,18 +790,20 @@ function tornaImp(gruppo) {
 const urlImg = (nome, tipo) => `/api/squadre/immagine?squadra=${encodeURIComponent(nome)}&tipo=${tipo}&v=${stato.vImg || 0}`;
 // `stato.squadreLette`: l'elenco è arrivato davvero almeno una volta (o il server ha detto che le rose non ci sono). Se la lettura non
 // riesce l'elenco resta vuoto, ma non vuol dire «senza rose»: il primo avvio non parte da solo su quello (#874, primoavvio.js).
+// `stato.squadreNonArrivate`: l'ultima lettura non è arrivata (senza rete, o il server che riparte): Impostazioni mostra «La mia
+// squadra» spenta, con la frase che dice quando si apre, invece di toglierla (collaudo d'insieme del 26/11).
 async function caricaSquadre(seServono = false) {
   // seServono: all'avvio, se le rose non ci sono ancora (primo avvio) non si chiede nulla: niente errore in console.
-  if (seServono && stato.info && stato.info.rose_importate === false) { stato.squadre = []; stato.squadreLette = true; }
+  if (seServono && stato.info && stato.info.rose_importate === false) { stato.squadre = []; stato.squadreLette = true; stato.squadreNonArrivate = false; }
   else {
-    try { stato.squadre = await api("/api/squadre"); stato.squadreLette = true; }
-    catch (e) { stato.squadre = stato.squadre || []; segnaAvvioDaRileggere(e); }
+    try { stato.squadre = await api("/api/squadre"); stato.squadreLette = true; stato.squadreNonArrivate = false; }
+    catch (e) { stato.squadre = stato.squadre || []; stato.squadreNonArrivate = !!(e && (e.rete || e.status >= 500)); segnaAvvioDaRileggere(e); }
   }
   aggiornaRigaStato();                                                     // lo stemma della mia squadra nella riga di stato
 }
 // Lo stato d'avvio (#801): /api/stato e /api/squadre si leggono all'avvio (e dopo un cambio di rose o regole). Se una lettura non
-// riesce (aperta senza rete o mentre il server riparte) la riga di stato dice «Server non raggiungibile», Impostazioni nasconde «La
-// mia squadra» e «Le altre squadre», La mia squadra chiede di importare le rose. Si rileggono quando il browser dice che la rete è
+// riesce (aperta senza rete o mentre il server riparte) la riga di stato dice «Server non raggiungibile», Impostazioni nasconde «Le
+// altre squadre» e mostra «La mia squadra» spenta (`stato.squadreNonArrivate`, collaudo d'insieme del 26/11). Si rileggono quando il browser dice che la rete è
 // tornata e alla prima risposta buona del server (api(): con il server che riparte il browser non dice niente), una lettura alla
 // volta; riuscite, la pagina di Impostazioni che ne dipende si ridisegna. Una lettura che non riesce ancora aspetta il segnale dopo.
 // Solo dopo un guasto della rete o del server (5xx): un rifiuto (4xx) rileggendo non cambia, e ripartirebbe a ogni risposta buona.
@@ -936,7 +953,9 @@ async function aggiornaDati() {
       }
       if (s.in_corso) { setTimeout(controlla, 2000); return; }
       segnaAggiornamento(false);
-      avviso(s.errori.length ? t("aggiorna.problemi", { errori: s.errori.join("; ") }) : t("aggiorna.ok"), 6000);
+      // le frasi del server (`errori`, tradotte da `errori_frasi`: collaudo d'insieme del 26/11), una per riga sotto la testa
+      const problemi = testiDi(s, "errori");
+      avviso(problemi.length ? t("aggiorna.problemi", { errori: "\n" + problemi.join("\n") }) : t("aggiorna.ok"), 6000);
       stato.calendario = null;
       svuotaCache();
       await caricaInfo();
@@ -3716,7 +3735,9 @@ function sessioneScaduta() {
 const campoAccesso = (id, etichetta, tipo, extra = "", aiuto = "") =>
   `<label class="accesso-campo"><span class="debole piccolo">${etichetta}</span><input class="campo-testo" id="${id}" type="${tipo}" ${extra}${aiuto ? ` aria-describedby="${id}-aiuto"` : ""}></label>`
   + (aiuto ? `<div class="debole piccolo accesso-aiuto" id="${id}-aiuto">${aiuto}</div>` : "");
-const CAMPO_NOME = () => campoAccesso("ac-nome", t("accesso.nome_utente"), "text", 'autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="64" required');
+// `regole`: quando il nome si sceglie (Registrati, il nome dopo Google) sotto il campo ci sono le regole, prima di sbagliare (#940)
+const CAMPO_NOME = (regole = false) => campoAccesso("ac-nome", t("accesso.nome_utente"), "text", 'autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="64" required',
+  regole ? t("accesso.nome_utente_aiuto") : "");
 const SENZA_AIUTI = 'autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="40" required';
 const CAMPO_PW = 'autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="200" required';
 const SCHEDE_ACCESSO = ["accedi", "registra"];          // «Password dimenticata» è un link sotto il modulo, non una scheda
@@ -3743,7 +3764,7 @@ function campiAccesso(scheda, extra = {}) {
   if (scheda === "registra" && extra.sub === "verifica") return `<div class="debole piccolo">${t("accesso.verifica_spiega", { email: esc(extra.email || "") })}</div>`
     + CAMPO_CODICE_EMAIL("ac-codice-email");
   if (scheda === "registra") return `<div class="debole piccolo">${t(spiegaRegistrazione(modo, !!invitoSalvato()))}</div>`
-    + (modo === "aperta" ? "" : campoAccesso("ac-invito", t("accesso.codice_invito"), "text", SENZA_AIUTI + valoreInvito())) + CAMPO_NOME()
+    + (modo === "aperta" ? "" : campoAccesso("ac-invito", t("accesso.codice_invito"), "text", SENZA_AIUTI + valoreInvito())) + CAMPO_NOME(true)
     + (stato.emailAttiva === false && modo !== "email" ? "" : CAMPO_EMAIL("ac-email", modo !== "email"))
     + campoAccesso("ac-pw", t("accesso.password_10"), "password", `autocomplete="new-password" minlength="10" ${CAMPO_PW}`)
     + CAMPO_TRAPPOLA()
@@ -3802,6 +3823,28 @@ function mostraMessaggioAccesso(testo, errore, dopo = false) {
   };
   if (dopo) setTimeout(scrivi, 50); else scrivi();
 }
+// Dopo «troppi tentativi» il pulsante d'invio resta spento e conta da solo («Riprova tra 24 secondi», poi i minuti), al massimo
+// per ATTESA_CONTATA secondi; a zero torna com'era e la frase dell'attesa (`frase`) se ne va. A ogni giro il conto si rifà
+// dall'orologio (una scheda in secondo piano fa meno giri) e scende almeno di un secondo (l'orologio fermo dei test).
+const ATTESA_CONTATA = 3600;
+function contaAttesa(bottone, secondi, frase) {
+  const testo = bottone.textContent, fine = Date.now() + secondi * 1000;
+  let resta = secondi;
+  const scrivi = () => { bottone.textContent = t("accesso.riprova_tra", { attesa: attesaTesto(resta) }); };
+  bottone.disabled = true;
+  scrivi();
+  const giro = setInterval(() => {
+    if (!document.body.contains(bottone)) { clearInterval(giro); return; }        // un'altra scheda dell'accesso: ricomincia da capo
+    resta = Math.min(resta - 1, Math.ceil((fine - Date.now()) / 1000));
+    if (resta > 0) { scrivi(); return; }
+    clearInterval(giro);
+    bottone.textContent = testo;
+    bottone.disabled = false;
+    const msg = $("#accesso-msg");
+    if (msg && msg.textContent === frase) msg.replaceChildren();
+  }, 1000);
+}
+
 // `extra.errore`: il messaggio è un errore (un accesso con Google non riuscito), non un avviso.
 function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
   accessoAperto = true;
@@ -3886,10 +3929,19 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
         mostraCodiceAccesso(t("accesso.password_cambiata"), r.codice_recupero, t("accesso.vai_accesso"), () => mostraAccesso(t("accesso.password_cambiata_accedi")));
       }
     } catch (e) {
-      const attesa = e.status === 429 && e.riprova ? (e.riprova < 90 ? t("accesso.riprova_secondi", { n: e.riprova }) : e.riprova < 3600 ? t("accesso.riprova_minuti", { n: Math.ceil(e.riprova / 60) }) : t("accesso.riprova_ore", { n: Math.max(1, Math.round(e.riprova / 3600)) })) : "";
-      mostraMessaggioAccesso((e.message || t("accesso.errore_generico")) + attesa, true);
+      // «Troppi tentativi» (429) con l'attesa (#940, come l'iPhone): fino a un'ora la frase non dice il tempo, lo dice il pulsante che
+      // conta; oltre l'ora (il tetto delle iscrizioni del giorno) il pulsante resta acceso e il tempo, in ore, sta nella frase
+      const attesa = e.status === 429 && e.riprova > 0 ? e.riprova : 0, frase = attesa ? senzaInvitoARiprovare(e.message) : "";
+      invia.removeAttribute("aria-busy");
+      if (attesa && attesa <= ATTESA_CONTATA && frase) {
+        mostraMessaggioAccesso(frase, true);
+        contaAttesa(invia, attesa, frase);
+      } else {
+        mostraMessaggioAccesso(attesa ? `${frase || e.message} ${t("accesso.riprova_tra", { attesa: attesaTesto(attesa) })}.`
+          : e.message || t("accesso.errore_generico"), true);
+        invia.disabled = false;
+      }
       if ($("#ac-pw") && svuotaPassword(scheda, e.status)) $("#ac-pw").value = "";
-      invia.disabled = false; invia.removeAttribute("aria-busy");
     } finally { inCorso = false; }
   });
 }
@@ -3995,7 +4047,7 @@ function mostraNuovoGoogle(r, messaggio = "") {
     <div class="debole piccolo">${t("social.scegli_spiega")}</div>
     <div id="accesso-msg" role="status"></div>
     <form id="accesso-form" novalidate>
-      ${campoAccesso("ac-nome", t("accesso.nome_utente"), "text", `value="${esc(r.nome_suggerito || "")}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="64" required`)}
+      ${campoAccesso("ac-nome", t("accesso.nome_utente"), "text", `value="${esc(r.nome_suggerito || "")}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="64" required`, t("accesso.nome_utente_aiuto"))}
       ${r.serve_invito ? campoAccesso("ac-invito", t("accesso.codice_invito"), "text", SENZA_AIUTI + valoreInvito()) : ""}
       <label class="interruttore accesso-letto"><span>${t("accesso.letto", { privacy: linkLegale("privacy", "legale.privacy"), termini: linkLegale("termini", "legale.termini"), eta: ETA_MINIMA })}</span><input type="checkbox" id="ac-letto"></label>
       <div class="pulsanti"><button class="bottone" type="submit" id="accesso-invia">${t("social.crea")}</button></div></form>
@@ -4165,8 +4217,8 @@ async function iscrizioneMia(reg, chiave) {
 // l'uscita non è riuscita, e se non riesce la rimanda al server. 401: la sessione era già finita, si esce lo stesso.
 async function esciDa(percorso) {
   const ep = await endpointPushQui();
-  if (ep) try { await api("/api/push/disiscrivi", { method: "POST", body: JSON.stringify({ endpoint: ep }) }); } catch { /* decide l'uscita */ }
-  try { await api(percorso, { method: "POST" }); }
+  if (ep) try { await api("/api/push/disiscrivi", { method: "POST", body: JSON.stringify({ endpoint: ep }), errore401: true }); } catch { /* decide l'uscita */ }
+  try { await api(percorso, { method: "POST", errore401: true }); }
   catch (e) {
     if (e.status !== 401) {
       if (ep) { segnaAvvisiDaRimandare(); rimandaAvvisi(); }
@@ -4189,22 +4241,30 @@ const perdeGoogle = () => !!(stato.accessi && stato.accessi.password === true
   && (stato.accessi.social || []).some(s => s.provider === "google"));
 async function esciDaTutti() {
   if (!confirm(t("account.esci_tutti_conferma") + (perdeGoogle() ? " " + t("account.esci_tutti_google") : ""))) return;
-  try { await api("/api/account/esci-da-tutti", { method: "POST" }); }
+  try { await api("/api/account/esci-da-tutti", { method: "POST", errore401: true }); }
   catch (e) {
     if (e.status !== 401) avviso(t("account.esci_tutti_no", { motivo: e.message || "" }).trim(), 8000);     // 401: c'è già l'accesso
     return;
   }
   await lasciaNotifiche(false);                       // le iscrizioni sul server le ha già tolte lui: qui solo quella del browser
   await svuotaDatiLocali();
-  try { sessionStorage.setItem(USCITO_OVUNQUE, "1"); } catch { /* niente memoria: l'accesso torna senza la frase */ }
+  ricordaAvvisoAccesso("uscito-ovunque");
   location.reload();
 }
-// Dopo «Esci da tutti i dispositivi» la pagina si ricarica: il segno (scritto dopo la pulizia, che svuota sessionStorage) fa dire alla
-// schermata di accesso che l'uscita è riuscita (#779). Si legge e si toglie all'avvio, una volta sola, qualunque cosa risponda il server.
-const USCITO_OVUNQUE = "uscito-ovunque";
-function leggiUscitoOvunque() {
-  try { const c = sessionStorage.getItem(USCITO_OVUNQUE) === "1"; sessionStorage.removeItem(USCITO_OVUNQUE); return c; }
-  catch { return false; }
+// Dopo «Esci da tutti i dispositivi» (#779) e «Elimina l'account» (#940) la pagina si ricarica: il segno (scritto dopo la pulizia, che
+// svuota sessionStorage) fa dire alla schermata di accesso com'è andata. Si legge e si toglie all'avvio, una volta sola, qualunque
+// cosa risponda il server. Senza memoria l'accesso torna senza la frase.
+const AVVISO_ACCESSO = "avviso-accesso";
+const AVVISI_ACCESSO = { "uscito-ovunque": "account.esci_tutti_fatto", eliminato: "account.eliminato_fatto" };
+function ricordaAvvisoAccesso(quale) {
+  try { sessionStorage.setItem(AVVISO_ACCESSO, quale); } catch { /* niente memoria */ }
+}
+function leggiAvvisoAccesso() {
+  try {
+    const quale = sessionStorage.getItem(AVVISO_ACCESSO) || "";
+    sessionStorage.removeItem(AVVISO_ACCESSO);
+    return Object.hasOwn(AVVISI_ACCESSO, quale) ? t(AVVISI_ACCESSO[quale]) : "";
+  } catch { return ""; }
 }
 
 // Email dell'account: aggiungere/cambiare (codice a 6 cifre per posta), confermare, togliere. Tutti i valori dell'utente passano da esc().
@@ -4321,11 +4381,15 @@ function schedaAmministratore() {
     <div class="pulsanti"><button class="bottone secondario" id="adm-reset">${t("admin.genera_codice")}</button></div><div id="adm-esito-reset"></div>
     <h3 id="adm-utenti-titolo" tabindex="-1">${t("admin.utenti_titolo")}</h3><div id="adm-utenti"><p class="debole piccolo">${t("admin.carico")}</p></div></div>` : "";
 }
-// «Nuovo invito» e «Inviti aperti»: solo se si entra con un invito (FANTA_REGISTRAZIONE=invito o email).
+// «Nuovo invito» e «Inviti aperti»: solo se si entra con un invito (FANTA_REGISTRAZIONE=invito o email). «Quante persone» (#940): con
+// più di una lo stesso link vale per un gruppo (la chat degli amici), fino al tetto del server, che arriva con l'elenco degli inviti
+// (`max_usi` di GET /api/admin/inviti, poi in stato.maxUsiInvito): finché non c'è il «+» non sale e la spiegazione aspetta.
 const schedaInviti = () => `<h3>${t("admin.invito_titolo")}</h3>
     <div class="debole piccolo">${t("admin.invito_spiega")}</div>
     <div id="adm-avviso-posti" role="status"></div>
     <label class="accesso-campo"><span class="debole piccolo">${t("admin.etichetta")}</span><input class="campo-testo" id="adm-etichetta" type="text" maxlength="60" autocomplete="off"></label>
+    ${rigaRegola(t("admin.posti"), stepper("adm-posti", 1, { passo: 1, dec: 0, min: 1, max: stato.maxUsiInvito || 1 }),
+      `<span id="adm-posti-aiuto">${stato.maxUsiInvito ? t("admin.posti_aiuto", { n: stato.maxUsiInvito }) : ""}</span>`)}
     <label class="interruttore"><span>${t("admin.nuovo_admin")}</span><input type="checkbox" id="adm-admin"></label>
     <div class="pulsanti"><button class="bottone" id="adm-invito">${t("admin.crea_invito")}</button></div><div id="adm-esito-invito"></div>
     <h3 id="adm-inviti-titolo" tabindex="-1">${t("admin.inviti_aperti")}</h3><div id="adm-inviti"><p class="debole piccolo">${t("admin.carico")}</p></div>`;
@@ -4392,16 +4456,32 @@ function collegaAccount() {
     $("#acc-pw-codice").value = "";
     mostraCodice("#acc-esito-codice", r.codice_recupero);
   }));
-  $("#acc-elimina").addEventListener("click", () => provaCosi(t("account.elimina_no"), async () => {
-    const pw = soloGoogle() ? "" : valore("#acc-pw-elimina");
-    if (!soloGoogle() && !pw) { avviso(t("account.elimina_serve_password")); return; }
-    if (!confirm(t("account.elimina_conferma"))) return;
-    try { await api("/api/account/elimina", { method: "POST", body: JSON.stringify({ password: pw }) }); }
-    catch (e) { throw new Error(erroreGoogle(e)); }               // password sbagliata, rete giù: gli avvisi restano accesi (#801)
-    await lasciaNotifiche(false);                                 // il server ha cancellato anche le iscrizioni: qui solo quella del browser
-    await svuotaDatiLocali();
-    location.reload();
-  }));
+  // «Elimina il mio account»: prima il server controlla la password (o, per chi entra solo con Google, la conferma recente), poi la
+  // domanda «Sei sicuro?» (#940: prima arrivava anche con la password sbagliata), poi l'eliminazione e la frase sulla pagina d'accesso.
+  // Il pulsante resta spento per tutto il percorso (un secondo tocco non rifà il controllo né la domanda); si riaccende se ci si
+  // ferma prima (password vuota o sbagliata, domanda annullata, errore), mai dopo l'eliminazione.
+  $("#acc-elimina").addEventListener("click", async () => {
+    const pulsante = $("#acc-elimina");
+    if (pulsante.disabled) return;
+    pulsante.disabled = true;
+    let eliminato = false;
+    await provaCosi(t("account.elimina_no"), async () => {
+      const pw = soloGoogle() ? "" : valore("#acc-pw-elimina");
+      if (!soloGoogle() && !pw) { avviso(t("account.elimina_serve_password")); return; }
+      const corpo = JSON.stringify({ password: pw });
+      try { await api("/api/account/elimina/controlla", { method: "POST", body: corpo }); }
+      catch (e) { throw new Error(erroreGoogle(e)); }
+      if (!confirm(t("account.elimina_conferma"))) return;
+      try { await api("/api/account/elimina", { method: "POST", body: corpo }); }
+      catch (e) { throw new Error(erroreGoogle(e)); }             // password sbagliata, rete giù: gli avvisi restano accesi (#801)
+      eliminato = true;
+      await lasciaNotifiche(false);                               // il server ha cancellato anche le iscrizioni: qui solo quella del browser
+      await svuotaDatiLocali();
+      ricordaAvvisoAccesso("eliminato");
+      location.reload();
+    });
+    if (!eliminato) pulsante.disabled = false;
+  });
 }
 
 function collegaAmministratore() {
@@ -4421,8 +4501,15 @@ function collegaAmministratore() {
     dove.innerHTML = r.avviso ? `<div class="attenzione">${esc(testoDi(r, "avviso"))}</div>` : "";
   };
   if ($("#adm-invito")) $("#adm-invito").addEventListener("click", () => provaCosi(t("admin.crea_invito_no"), async () => {
-    const r = await api("/api/admin/inviti", { method: "POST", body: JSON.stringify({ etichetta: valore("#adm-etichetta"), amministratore: $("#adm-admin").checked }) });
+    // il tetto è del server (stato.maxUsiInvito); se l'elenco degli inviti non è arrivato, il numero lo controlla lui
+    const persone = numeroScritto(valore("#adm-posti")), massimo = stato.maxUsiInvito;
+    if (!Number.isInteger(persone) || persone < 1 || (massimo && persone > massimo)) {
+      avviso(massimo ? t("admin.posti_non_validi", { n: massimo }) : t("admin.posti_non_validi_senza_tetto"), 5000);
+      return;
+    }
+    const r = await api("/api/admin/inviti", { method: "POST", body: JSON.stringify({ etichetta: valore("#adm-etichetta"), amministratore: $("#adm-admin").checked, usi: persone }) });
     $("#adm-etichetta").value = "";
+    $("#adm-posti").value = "1";
     avvisoPosti(r);
     mostraInvito(r);
     caricaUtenti();
@@ -4434,8 +4521,10 @@ function collegaAmministratore() {
     const link = linkInvito(r.codice), messaggio = t("admin.invito_messaggio", { link, giorni: r.valido_giorni });
     const condividi = typeof navigator.share === "function";
     dove.dataset.invito = r.id == null ? "" : String(r.id);               // di quale invito è il link (annullaInvito)
-    dove.innerHTML = `<div class="debole piccolo">${t("admin.invito_esito", { etichetta: esc(r.etichetta), giorni: r.valido_giorni })}</div>
-      <div class="attenzione">${t("admin.invito_manda")}</div>
+    const gruppo = Number(r.usi_max) > 1;                                     // un link per la chat degli amici (#940)
+    dove.innerHTML = `<div class="debole piccolo">${gruppo ? t("admin.invito_esito_gruppo", { etichetta: esc(r.etichetta), giorni: r.valido_giorni, n: Number(r.usi_max) })
+        : t("admin.invito_esito", { etichetta: esc(r.etichetta), giorni: r.valido_giorni })}</div>
+      <div class="attenzione">${t(gruppo ? "admin.invito_manda_gruppo" : "admin.invito_manda")}</div>
       <div class="codice-una-volta piccolo" id="adm-link-invito">${esc(link)}</div>
       <div class="pulsanti">${condividi ? `<button class="bottone" type="button" id="adm-condividi">${t("admin.invito_condividi")}</button>` : ""}
         <button class="bottone ${condividi ? "secondario" : ""}" type="button" id="adm-copia-messaggio">${t("admin.invito_copia_messaggio")}</button></div>
@@ -4478,18 +4567,26 @@ function collegaAmministratore() {
         b.addEventListener("click", () => azioneUtente(b.dataset.azione, r.utenti.find(u => Number(u.id) === Number(b.dataset.utente))));
     } catch (e) { if (document.body.contains(dove)) dove.textContent = e.message; }
   };
-  // Blocca, sblocca, elimina: prima la conferma con il nome (l'eliminazione non si annulla), poi l'elenco si rilegge e il focus va
-  // sul titolo «Utenti» (il pulsante premuto non c'è più)
+  // Blocca, sblocca, elimina: prima la conferma con il nome (l'eliminazione non si annulla), poi si rileggono l'elenco, i commenti
+  // (quelli di un account eliminato vanno via con lui) e gli eventi di sicurezza (collaudo d'insieme del 26/11: restavano quelli di
+  // prima), e il focus va sul titolo «Utenti» (il pulsante premuto non c'è più)
   const azioneUtente = (azione, u) => u && AZIONI_UTENTE[azione] && provaCosi(t(AZIONI_UTENTE[azione].no), async () => {
     if (!confirm(t(AZIONI_UTENTE[azione].conferma, { nome: u.nome_visualizzato || u.nome_utente }))) return;
     const id = Number(u.id);
     if (azione === "elimina") await api(`/api/admin/utenti/${id}`, { method: "DELETE" });
     else await api(`/api/admin/utenti/${id}/${azione}`, { method: "POST" });
     avviso(t(AZIONI_UTENTE[azione].fatto), 4000);
-    await caricaUtenti();
+    await Promise.all([caricaUtenti(), caricaRegistro(), typeof caricaCommenti === "function" ? caricaCommenti() : null]);
     if ($("#adm-utenti-titolo")) $("#adm-utenti-titolo").focus();
   });
   caricaUtenti();
+  // il tetto delle persone di un invito, dal server (#940): il «+» di «Quante persone» si ferma lì e la spiegazione lo dice
+  const tettoPersone = n => {
+    stato.maxUsiInvito = n;
+    const campo = $("#adm-posti"), aiuto = $("#adm-posti-aiuto");
+    if (campo) campo.closest(".stepper").dataset.max = String(n);
+    if (aiuto) aiuto.textContent = t("admin.posti_aiuto", { n });
+  };
   // inviti aperti (#894): il nome, la frase del server (creato, scade, posti liberi) e «Annulla»; gli inviti chiusi (usati,
   // scaduti, annullati) non si mostrano. Annullare chiede prima (il link dell'amico smette di valere), toglie il link appena creato
   // se è di quell'invito, rilegge l'elenco e l'avviso dei posti e porta il focus sul titolo dell'elenco (il pulsante non c'è più)
@@ -4497,7 +4594,9 @@ function collegaAmministratore() {
     const dove = $("#adm-inviti");
     if (!dove) return;
     try {
-      const aperti = (await api("/api/admin/inviti")).inviti.filter(i => i.stato === "attivo");
+      const r = await api("/api/admin/inviti");
+      if (Number.isInteger(r.max_usi) && r.max_usi > 0) tettoPersone(r.max_usi);
+      const aperti = r.inviti.filter(i => i.stato === "attivo");
       dove.innerHTML = aperti.length ? `<ul class="elenco adm-inviti" aria-labelledby="adm-inviti-titolo">${aperti.map(i => `<li class="riga">
           <div><div>${esc(i.etichetta)}</div><div class="debole piccolo">${esc(testoDi(i, "dettaglio"))}</div></div>
           <button class="azione-testo" type="button" data-annulla-invito="${Number(i.id)}" aria-label="${esc(t("admin.annulla_invito_per", { etichetta: i.etichetta }))}">${t("admin.annulla_invito")}</button></li>`).join("")}</ul>`
@@ -4557,9 +4656,13 @@ function collegaAmministratore() {
 // arriva, vale lo stesso (chiSonoInRitardo). Senza niente di salvato, o tornando da Google o da un link d'invito, si aspetta: è la
 // risposta a dire quale schermata mostrare.
 const ATTESA_CHI_SONO_MS = 4000;
+// «Chi sono» con `anche_senza_accesso`: senza sessione il server risponde 200 con `utente: null` (#940: un 401 lasciava una riga rossa
+// nella console della pagina d'accesso); un server di prima, e le risposte finte dei test, rispondono ancora 401.
+const CHI_SONO = "/api/account/me?anche_senza_accesso=1";
+const senzaSessione = (r, dati) => !!(r && dati && dati.multiutente && (r.status === 401 || (r.ok && !dati.utente)));
 async function controllaAccesso() {
-  const uscitoOvunque = leggiUscitoOvunque();
-  const chiesta = fetch("/api/account/me", { headers: { "X-Fanta": "1" } }).then(async r => {
+  const avvisoUscita = leggiAvvisoAccesso();
+  const chiesta = fetch(CHI_SONO, { headers: { "X-Fanta": "1" } }).then(async r => {
     let dati = null;
     try { dati = await r.json(); } catch { /* risposta vuota */ }
     return { r, dati };
@@ -4580,11 +4683,11 @@ async function controllaAccesso() {
   ricordaDatiAccesso(dati);
   const ritornoGoogle = leggiRitornoGoogle();                                              // se si torna da Google: codice o errore nell'indirizzo
   const invito = leggiInvitoDaLink();                                                      // link d'invito: `?invito=CODICE`
-  if (r.status === 401 && dati && dati.multiutente) {
+  if (senzaSessione(r, dati)) {
     // la sessione non vale più: via le copie rimaste, come all'uscita, prima della schermata di accesso
     if (restanoCopie()) await svuotaDatiLocali({ tieniAccesso: true });
     if (ritornoGoogle) await gestisciRitornoGoogle(ritornoGoogle, false);
-    else mostraAccesso(uscitoOvunque ? t("account.esci_tutti_fatto") : "", invito ? "registra" : "accedi");
+    else mostraAccesso(avvisoUscita, invito ? "registra" : "accedi");
     return false;
   }
   if (r.ok && dati && dati.multiutente) {
@@ -4630,7 +4733,7 @@ function ricordaAccount(dati) {
 function chiSonoInRitardo({ r, dati }) {
   if (!r || r.status >= 500 || !dati || accessoAperto) return;
   ricordaDatiAccesso(dati);                     // prima dell'accesso: «Continua con Google» e il modo di registrarsi vengono da qui
-  if (r.status === 401 && dati.multiutente) { sessioneScaduta(); return; }
+  if (senzaSessione(r, dati)) { sessioneScaduta(); return; }
   if (!r.ok || !dati.multiutente || !dati.utente) return;
   const stesso = !!stato.account && String(stato.account.id) === String(dati.utente.id);
   ricordaAccount(dati);

@@ -97,6 +97,21 @@ def _da_quando(prima: dict | None) -> str:
     return frasi.elidi_date(f" ({'; '.join(parti)})")                      # «dall'08/11», «l'11/11» (#859)
 
 
+def _non_risponde(e: Exception) -> bool:
+    """La fonte non ha risposto: rete giù, proxy, tempo scaduto, o risposte 429 e 5xx anche dopo i nuovi tentativi di
+    `rete.scarica` (che alza un HTTPError senza risposta). Una risposta 4xx è una risposta: la pagina non c'è più o è cambiata."""
+    if isinstance(e, (requests.ConnectionError, requests.Timeout)):
+        return True
+    if isinstance(e, requests.HTTPError):
+        codice = getattr(e.response, "status_code", None)
+        return codice is None or codice == 429 or codice >= 500
+    return False
+
+
+def _nome_fonte(fonte: str) -> str:
+    return fonti_attive.FONTI[fonte][0] if fonte in fonti_attive.FONTI else fonte
+
+
 class Aggiornamento:
     def __init__(self, db: sqlite3.Connection, stagione: Stagione, scrivi: Callable[[str], None] = print):
         self.db = db
@@ -104,6 +119,9 @@ class Aggiornamento:
         self.scrivi = scrivi
         self.errori: list[str] = []
         self.riusciti: list[str] = []
+        self.scaricati: list[str] = []      # i passi riusciti che hanno ricevuto almeno una pagina (`rete.arrivate_qui`)
+        # i passi non riusciti per chi ha premuto «Aggiorna i dati» (`per_utente`): (fonte o None, "rete" | "dati" | "controlli")
+        self._guasti: list[tuple[str | None, str]] = []
         self.slug_noti: set[str] = set()
         # righe di `aggiornamenti` con un'ora nuova da scrivere a fine giro: dentro `esegui` si scrivono tutte insieme alla riga
         # generale, così la «versione» dei dati (consigli._versione, che guarda le ore di quelle righe) cambia una volta sola per
@@ -119,6 +137,7 @@ class Aggiornamento:
             self.scrivi(f"  - {nome}: saltato, {fonti_attive.FONTI[fonte][0]} è spenta")
             self._segna_esito(nome, saltato=True)
             return
+        arrivate = rete.arrivate_qui()
         try:
             funzione()
             if self._a_fine is None:
@@ -127,12 +146,43 @@ class Aggiornamento:
                 self._a_fine.append(("passo", nome, _ora()))
             self.db.commit()
             self.riusciti.append(nome)
+            if rete.arrivate_qui() > arrivate:
+                self.scaricati.append(nome)
         except Exception as e:  # noqa: BLE001 - una fonte rotta non deve fermare le altre
             self.db.rollback()
             errore = f"{type(e).__name__}: {e}"
             prima = self._segna_esito(nome, errore=errore)
             self.errori.append(f"{nome}: {errore}{_da_quando(prima)}")
+            self._guasti.append((fonte, "controlli" if nome == "controlli" else "rete" if _non_risponde(e) else "dati"))
             self.scrivi(f"  ! {nome}: non riuscito ({errore}){_da_quando(prima)}")
+
+    def per_utente(self) -> list[frasi.Frase]:
+        """Le frasi per chi ha premuto «Aggiorna i dati» (`errori` di GET /api/aggiorna), senza i dettagli tecnici, che restano in
+        `errori` (registro, Stato dei dati). Un fatto una volta: le fonti che non rispondono tutte in una frase, poi una frase per
+        fonte con una parte dei dati che non si è aggiornata (pagina cambiata, voti calati...), poi i controlli storti. Vuota se
+        non c'è stato nessun problema."""
+        ferme: list[str] = []
+        parti: list[str | None] = []
+        controlli = False
+        for fonte, tipo in self._guasti:
+            nome = _nome_fonte(fonte) if fonte else None
+            if tipo == "controlli":
+                controlli = True
+            elif tipo == "rete" and nome:
+                if nome not in ferme:
+                    ferme.append(nome)
+            elif nome not in parti:
+                parti.append(nome)
+        uscita = []
+        if len(ferme) == 1:
+            uscita.append(frasi.F("aggiorna.non_risponde", fonte=ferme[0]))
+        elif ferme:
+            uscita.append(frasi.F("aggiorna.non_rispondono", fonti=frasi.elenco(ferme, con_e=True)))
+        uscita += [frasi.F("aggiorna.parte_non_aggiornata", fonte=n) if n else frasi.F("aggiorna.parte_non_aggiornata_generica")
+                   for n in parti]
+        if controlli:
+            uscita.append(frasi.F("aggiorna.controlli"))
+        return uscita
 
     def _segna_esito(self, nome: str, errore: str | None = None, saltato: bool = False) -> dict | None:
         """Esito del passo in `aggiornamenti` (`archivio.segna_passo`). Se l'archivio non lo accetta (occupato) si scrive nel registro
@@ -594,11 +644,12 @@ class Aggiornamento:
             # risultati e voti sono arrivati lo stesso: un giro della sera fallito prima non è più un guasto (#661, revisione #700)
             archivio.togli_errore(self.db, archivio.PASSO_SERA)
         errori = json.dumps(self.errori, ensure_ascii=False)
-        if any(n != "controlli" for n in self.riusciti):
+        if self.scaricati:
             archivio.segna(self.db, "aggiornamento", _ora(), errori)
         else:
-            # nessun passo dei dati è riuscito: l'ora resta quella dell'ultimo aggiornamento riuscito almeno in parte (così «I dati non
-            # si aggiornano» e la salute se ne accorgono), gli errori sono quelli di adesso
+            # nessun passo ha scaricato niente (non riusciti, oppure riusciti senza niente da chiedere, come «voti» senza giornate
+            # nuove o il listone con la copia di oggi: collaudo del 26/11/2026): l'ora resta quella dell'ultimo aggiornamento che ha
+            # portato dati (così «I dati non si aggiornano», Giornate e la salute se ne accorgono), gli errori sono quelli di adesso
             if not self.db.execute("UPDATE aggiornamenti SET dettaglio = ? WHERE cosa = 'aggiornamento'", (errori,)).rowcount:
                 archivio.segna(self.db, "aggiornamento", None, errori)
         self.db.commit()
@@ -614,6 +665,7 @@ class Aggiornamento:
             self.scrivi(f"  ! {r['stagione']} {r['nome']}: {r['dettaglio']}")
             if r["nome"] in controlli.CONTANO_COME_ERRORI and r["esito"] == "errore":
                 self.errori.append(f"controlli: {r['nome']}: {r['dettaglio']}")
+                self._guasti.append((None, "controlli"))
 
 
 # Le fonti che contattano i passi di un aggiornamento normale (`Aggiornamento.esegui`): football-data solo con le fonti in ombra.
@@ -628,14 +680,20 @@ def fonti_accese() -> list[str]:
     return [f for f in fonti if fonti_attive.acceso(f)]
 
 
-def esegui(storico: bool = False, scrivi: Callable[[str], None] = print, stagioni_storiche: int = 1) -> list[str]:
+def esegui(storico: bool = False, scrivi: Callable[[str], None] = print, stagioni_storiche: int = 1,
+           per_utente: list | None = None) -> list[str]:
+    """Un aggiornamento completo; restituisce gli errori della corsa (tecnici: registro, riga generale). `per_utente`: se c'è, ci
+    aggiunge le frasi per chi ha premuto «Aggiorna i dati» (`Aggiornamento.per_utente`)."""
     db = archivio.apri()
     try:
         st = Stagione.di(date.today())
         scrivi(f"Aggiornamento stagione {st.codice}" + (
             (" (con la stagione scorsa)" if stagioni_storiche == 1 else f" (con le {stagioni_storiche} stagioni scorse)")
             if storico else ""))
-        errori = Aggiornamento(db, st, scrivi).esegui(storico, stagioni_storiche)
+        agg = Aggiornamento(db, st, scrivi)
+        errori = agg.esegui(storico, stagioni_storiche)
+        if per_utente is not None:
+            per_utente.extend(agg.per_utente())
         scrivi(f"Fatto: {rete.contatore} richieste" + (f", {len(errori)} passi non riusciti" if errori else ""))
         return errori
     finally:

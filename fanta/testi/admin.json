@@ -17,12 +17,28 @@
     "en": "New invitation"
   },
   "admin.invito_spiega": {
-    "it": "Un codice che vale una volta sola e per 7 giorni. L'etichetta serve a ricordare per chi era.",
-    "en": "A code that works once only and for 7 days. The label helps you remember who it was for."
+    "it": "Un codice che vale 7 giorni, per una persona sola o per un gruppo di amici con lo stesso link. L'etichetta serve a ricordare per chi era.",
+    "en": "A code valid for 7 days, for one person or for a group of friends with the same link. The label helps you remember who it was for."
   },
   "admin.etichetta": {
     "it": "Etichetta",
     "en": "Label"
+  },
+  "admin.posti": {
+    "it": "Quante persone",
+    "en": "How many people"
+  },
+  "admin.posti_aiuto": {
+    "it": "Da 1 a {n}: con più persone il link va bene per la chat degli amici.",
+    "en": "From 1 to {n}: with more people the link is right for the friends' chat."
+  },
+  "admin.posti_non_validi": {
+    "it": "Scrivi quante persone, da 1 a {n}.",
+    "en": "Enter how many people, from 1 to {n}."
+  },
+  "admin.posti_non_validi_senza_tetto": {
+    "it": "Scrivi quante persone, con un numero da 1 in su.",
+    "en": "Enter how many people, with a number from 1 up."
   },
   "admin.nuovo_admin": {
     "it": "Il nuovo account sarà amministratore",
@@ -39,6 +55,10 @@
   "admin.invito_esito": {
     "it": "Invito per «{etichetta}», valido {giorni} giorni, una volta sola.",
     "en": "Invitation for «{etichetta}», valid for {giorni} days, once only."
+  },
+  "admin.invito_esito_gruppo": {
+    "it": "Invito per «{etichetta}», valido {giorni} giorni, per {n} persone.",
+    "en": "Invitation for «{etichetta}», valid for {giorni} days, for {n} people."
   },
   "admin.reset_titolo": {
     "it": "Password dimenticata",
@@ -144,6 +164,10 @@
     "it": "Manda all'amico questo link: apre la registrazione con il codice già scritto.",
     "en": "Send your friend this link: it opens the sign-up with the code already filled in."
   },
+  "admin.invito_manda_gruppo": {
+    "it": "Manda questo link nella chat degli amici: apre la registrazione con il codice già scritto.",
+    "en": "Send this link in the friends' chat: it opens sign-up with the code already filled in."
+  },
   "admin.invito_condividi": {
     "it": "Condividi l'invito",
     "en": "Share the invitation"
@@ -153,8 +177,8 @@
     "en": "Copy the message"
   },
   "admin.invito_copiato": {
-    "it": "Messaggio copiato: incollalo nella chat con l'amico",
-    "en": "Message copied: paste it in the chat with your friend"
+    "it": "Messaggio copiato: incollalo nella chat",
+    "en": "Message copied: paste it in the chat"
   },
   "admin.invito_codice_app": {
     "it": "Se usa l'app per iPhone, il codice d'invito è {codice}.",

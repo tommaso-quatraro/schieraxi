@@ -70,6 +70,11 @@
     "it": "Non l'hai ancora scelta",
     "en": "Not chosen yet"
   },
+  "imp.mia_squadra_senza_rete": {
+    "it": "Si apre quando il server torna raggiungibile",
+    "en": "Opens when the server can be reached again",
+    "nota": "Impostazioni › La mia lega, sotto «La mia squadra» spenta quando l'elenco delle squadre non arriva (senza rete): collaudo d'insieme del 26/11/2026"
+  },
   "imp.altre_squadre": {
     "it": "Le altre squadre",
     "en": "The other teams"

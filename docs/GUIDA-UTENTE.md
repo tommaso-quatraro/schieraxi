@@ -34,13 +34,13 @@ Parole che vedrai spesso:
 1. Apri il **link d'invito** che ti ha mandato chi gestisce l'app: si apre la scheda **Registrati** con il codice già scritto (lo dice la riga **Codice d'invito già inserito**). Senza link: apri **https://app.schieraxi.it** (o l'app per iPhone), scheda **Registrati**, e scrivi il **codice d'invito**.
    Se l'invito è scaduto o qualcuno l'ha già usato, l'app lo dice: chiedine uno nuovo a chi te l'ha mandato. Quello che hai scritto, password compresa, resta.
    Se chi gestisce il server ha aperto le iscrizioni, in cima a **Registrati** c'è scritto **Scegli un nome utente e una password.** e il campo del codice non c'è: non serve nessun invito. Se il server è al completo l'app dice **Iscrizioni chiuse: siamo al completo**; se in un giorno si sono già registrate molte persone, **Per oggi le iscrizioni sono chiuse: riprova domani**.
-2. Scegli un **nome utente** (3-32 caratteri: lettere senza accenti, numeri, punto, trattino) e una **password** di almeno 10 caratteri. L'**email** è facoltativa: serve a recuperare la password (se sul server le email sono spente il campo non c'è).
+2. Scegli un **nome utente** (da 3 a 32 caratteri: lettere senza accenti, numeri, punto, trattino o trattino basso; comincia con una lettera o un numero: le regole sono scritte anche sotto il campo) e una **password** di almeno 10 caratteri. L'**email** è facoltativa: serve a recuperare la password (se sul server le email sono spente il campo non c'è).
 3. Spunta la casella (hai letto Privacy e Termini e hai almeno 14 anni) e tocca **Crea l'account**.
-4. **Salva il codice di recupero** che compare una sola volta: serve se dimentichi la password.
+4. **Salva il codice di recupero** che compare una sola volta: serve se dimentichi la password. Poi tocca **Entra nell'app** (sull'iPhone **Continua**).
 
-Per entrare ancora: nome utente e password, poi **Entra nell'app**. Se compare **Continua con Google**, puoi usarlo senza password. Se hai già un account con la stessa email, entra come sempre e collega Google da **Impostazioni › Il tuo account › Accessi**.
+Per entrare ancora: scheda **Accedi**, nome utente e password, poi **Accedi**. Se compare **Continua con Google**, puoi usarlo senza password. Se hai già un account con la stessa email, entra come sempre e collega Google da **Impostazioni › Il tuo account › Accessi**.
 
-Password dimenticata: link **Password dimenticata** sotto il modulo. Con un'email collegata ti arriva un codice a 6 cifre; altrimenti usi il codice di recupero. Se l'app dice che le email non sono attive, resta solo il codice di recupero. Se non hai né l'uno né l'altro, scrivi al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
+Password dimenticata: link **Password dimenticata** sotto il modulo. Di solito si parte da **Con il codice di recupero** (va bene anche il codice che ti dà chi gestisce l'app); se hai collegato un'email, scegli **Con l'email** e ti arriva un codice a 6 cifre. Se sul server le email sono spente, la scelta non c'è e resta solo il codice di recupero. Se non hai né l'uno né l'altro, scrivi al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
 
 ### Caricare la tua squadra
 
@@ -129,10 +129,10 @@ Altri due stati della riga sotto il campo:
 - il **fantavoto atteso, se gioca**, e accanto **gioca N%** (con lo stato a parole, se c'è, e sotto la nota che lo spiega);
 - **Perché è titolare**, quando la scelta può sembrare strana (vedi sotto);
 - **Perché questo numero**: i motivi del fantavoto atteso; quanto è probabile che giochi non è fra questi, perché sta già accanto al numero;
-- gli **ultimi voti**: i fantavoti con i bonus e i malus della tua lega;
+- gli **ultimi voti**: i fantavoti con i bonus e i malus della tua lega (anche fantamedia, grafico e forma in **Tutti i numeri** li contano così);
 - **Sostituisci**, se è un tuo titolare e la formazione è ancora aperta: mostra i compagni dello stesso ruolo con quanti punti attesi guadagna o perde la formazione se entra lui («+0,9», «−0,4»), dal cambio che rende di più. È lo stesso numero di cui cambiano i punti attesi accanto al modulo dopo il cambio: se il titolare rischia di non giocare, entra già uno dalla panchina, e il cambio vale meno della differenza fra i due giocatori. Un tocco fa il cambio e lo salva;
 - **Metti in campo**, se è in panchina o fra i non schierati e la formazione è ancora aperta: è il contrario di **Sostituisci**. Mostra i titolari che possono lasciargli il posto, anche di un altro ruolo se il modulo che ne esce è ammesso dalla tua lega (la riga lo dice: «Si passa al 5-3-2»), con quanti punti attesi guadagna o perde la formazione. Un tocco fa il cambio e lo salva;
-- **Tutti i numeri**, chiuso finché non lo apri: la partita (difficoltà, gol attesi, probabilità di gol, assist e cartellini), le prossime partite, la forma, la stagione, poi gol e assist rispetto alle occasioni e le statistiche avanzate; l'ultima riga dice «Dati fino al …», cioè fin dove arrivano quei numeri.
+- **Tutti i numeri**, chiuso finché non lo apri: **Questa partita** (difficoltà, gol attesi, probabilità di gol, assist e cartellini), **Prossime partite**, **Forma**, **Gol e assist rispetto alle occasioni**, **Stagione** e **Statistiche avanzate**. In fondo, una volta sola, una riga come «Dati fino al 24/11.»: fin dove arrivano gol e assist attesi e statistiche avanzate.
 
 Quando la sua partita è cominciata, nella scheda spariscono **gioca N%** e le probabilità; a partita finita resta solo com'è andata: il fantavoto preso, **Senza voto** o **Voto in arrivo**.
 
@@ -156,7 +156,7 @@ Altre cose da sapere:
 Rose, squadre e regole stanno nella sezione **La mia lega** di Impostazioni (sezione 6). Ogni voce apre la sua pagina; **‹ Impostazioni**, in alto, torna indietro.
 
 - **Aggiorna le rose**: stessa procedura del primo avvio (sezione 2): **Scegli il file (Excel o CSV)**, oppure apri **Incolla il testo delle rose** e tocca **Controlla le rose**. Con **Togli le squadre che non sono nel file**, sotto il pulsante del file, le squadre mancanti vengono tolte (vale per il file e per il testo). Dopo **Conferma e salva**, **Cosa è cambiato** dice le novità e, sotto **Da controllare**, cosa non torna nelle squadre del file, in frasi come «Real Esempio: manca 1 difensore.».
-- **La mia squadra** (accanto c'è il suo nome): la rosa della tua squadra, con stemma e maglia se li hai caricati (**Stemma e maglia**) e i crediti. Ogni giocatore ha il costo d'acquisto e la quotazione, quando ci sono. Se non è la tua, **Non è la tua squadra?** la cambia. Finché non hai detto qual è la tua, la pagina chiede solo quella: scegli la squadra nel menu e si salva subito. **Cambia il nome** corregge il nome della squadra (per esempio se l'importazione ha letto quello sbagliato): stemma, maglia e «la tua squadra» lo seguono.
+- **La mia squadra** (accanto c'è il suo nome; senza rete la riga è spenta e dice «Si apre quando il server torna raggiungibile»): la rosa della tua squadra, con stemma e maglia se li hai caricati (**Stemma e maglia**) e i crediti. Ogni giocatore ha il costo d'acquisto e la quotazione, quando ci sono. Se non è la tua, **Non è la tua squadra?** la cambia. Finché non hai detto qual è la tua, la pagina chiede solo quella: scegli la squadra nel menu e si salva subito. **Cambia il nome** corregge il nome della squadra (per esempio se l'importazione ha letto quello sbagliato): stemma, maglia e «la tua squadra» lo seguono.
 - **Regole e scadenza**: in cima i **Tempi della lega**, le due domande del primo avvio, che si salvano appena le cambi. Sotto, **Incolla il regolamento**: incolli il testo del regolamento di Leghe, tocchi **Riconosci le regole**, controlli cosa ha capito SchieraXI e tocchi **Salva queste regole**: si salva solo ciò che sta sotto **Riconosciuto**. Quello che non può applicare sta sotto **Non applicato**, con il perché; le righe che non ha saputo leggere con sicurezza stanno in **Righe da controllare a mano**, da impostare tu. I singoli valori (punteggi, modificatore difesa, moduli, panchina, partite rinviate, rosa e crediti, nome della lega) stanno dietro **Modifica i valori**, con **Salva le regole** in fondo. I malus si scrivono con il meno davanti, «−0,5» o «-0,5», con la virgola o con il punto; i numeri interi, come i crediti, con le sole cifre («1000», non «1.000»). Un campo vuoto, una scritta che non è un numero o un numero fuori dai limiti si segnala prima di salvare, con il nome del campo.
 - **Le altre squadre** (accanto quante sono): le squadre della lega senza la tua. Un tocco apre la rosa di una squadra e, da lì, la sua formazione consigliata. Di norma questa voce non c'è: la accende chi gestisce l'app.
 
@@ -187,7 +187,7 @@ Non arrivano più i cambi nelle probabili che non cambiano la formazione da schi
 
 Una formazione salvata non più valida (per esempio con un giocatore ceduto) per gli avvisi conta come non salvata: parlano della consigliata e ti dicono che quella che hai salvato non è più valida.
 
-Gli avvisi dicono le cose a parole e sono nella lingua scelta nell'app: se la metti in inglese, arrivano in inglese.
+Gli avvisi dicono le cose a parole e sono nella lingua scelta nella web app (**Impostazioni › Aspetto**): se la metti in inglese, arrivano in inglese.
 
 Attivazione: nella web app, **Impostazioni › Avvisi**, accendi **Avvisi su questo dispositivo** e rispondi sì alla domanda del browser. Su iPhone serve prima aggiungere l'app alla schermata Home (iOS 16.4 o più recente): finché non c'è, al posto dell'interruttore una frase dice cosa fare.
 
@@ -198,6 +198,8 @@ Se gli avvisi smettono di arrivare: spegni e riaccendi **Avvisi su questo dispos
 ### Widget sull'iPhone
 
 Il widget è il riquadro sulla Home o sulla schermata di blocco. Sono tre: **Prossima giornata**, **Formazione consigliata** e **Da controllare**. **Da controllare** è spento finché chi gestisce l'app non lo accende: fino ad allora dice «Widget spento». Si collega **da solo** dall'app per iPhone: entra nell'app, poi tieni premuta la Home, tocca **+** e scegli SchieraXI. Se dice «Tocca per collegare» (sotto: «Si apre SchieraXI per collegarlo»), toccalo: si apre l'app su **Collega il widget**; tocca **Collega**. La stessa schermata si apre dalla riga **Widget: tocca per collegare** in **Impostazioni** dell'app (quando è collegato la riga dice «Widget collegato automaticamente»). Solo se non basta, l'app copia un codice da incollare tenendo premuto il widget: **Modifica widget › Collegamento manuale**. Su Android non ci sono widget.
+
+Ogni iPhone e iPad ha il suo collegamento: con lo stesso account, entrare o uscire su uno non scollega il widget dell'altro. I dispositivi collegati possono essere al massimo 10; con l'undicesimo si scollega quello usato meno di recente, che su quel dispositivo dice «Tocca per collegare».
 
 ### L'app per iPhone: il rinnovo
 
@@ -213,7 +215,7 @@ Poi una riga per ogni giornata finita, la più recente in cima: i punti fatti, g
 - **La tua formazione.**: hai salvato una formazione tua, ma per quella giornata il confronto non c'è;
 - **Non l'avevi cambiata: sono i punti della consigliata alla scadenza.** oppure **Formazione non salvata: sono i punti della consigliata.**
 
-Un tocco sulla riga apre i suoi 11: per ognuno il fantavoto atteso e il fantavoto preso, oppure «senza voto». Per chi aveva una partita rinviata il fantavoto preso è quello che la tua lega ha contato: il voto d'ufficio, oppure «senza voto», anche se il recupero si è giocato. Sopra, una riga dice chi ha fatto meglio e chi peggio del previsto di almeno un punto, al massimo due per parte: per esempio «Meglio del previsto: Rossi (+3,9) e Verdi (+2,0). Peggio: Bianchi (−2,5).». Chi ha preso il voto d'ufficio o è rimasto senza voto per il rinvio non c'è. Sotto la tabella, se i punti della giornata non sono la somma dei fantavoti degli 11, qualche riga dice perché: chi è entrato dalla panchina e al posto di chi, il modificatore difesa, una partita rinviata. Più sotto, se hai cambiato la consigliata, chi hai messo al posto di chi. Un altro tocco la richiude. Sul tablet e sul computer l'elenco sta a sinistra e la giornata scelta a destra; la più recente è già aperta.
+Un tocco sulla riga apre i suoi 11: per ognuno il fantavoto atteso e il fantavoto preso, oppure «senza voto». Per chi aveva una partita rinviata il fantavoto preso è quello che la tua lega ha contato: il voto d'ufficio, oppure «senza voto», anche se il recupero si è giocato. Sopra, una riga dice chi ha fatto meglio e chi peggio del previsto di almeno un punto, al massimo due per parte: per esempio «Meglio del previsto: Rossi (+3,9) e Verdi (+2,0). Peggio: Bianchi (−2,5).». Chi ha preso il voto d'ufficio o è rimasto senza voto per il rinvio non c'è. Sotto la tabella, se i punti della giornata non sono la somma dei fantavoti degli 11, qualche riga dice perché: chi è entrato dalla panchina e al posto di chi, il modificatore difesa, una partita rinviata. Più sotto, se hai cambiato la consigliata, chi hai messo al posto di chi. Un altro tocco la richiude. Sul tablet e sul computer l'elenco sta a sinistra e la giornata scelta a destra; la più recente è già aperta. Nell'app per iPad anche **Dettagli** si apre a destra, come una giornata.
 
 Se gli 11 non sono quelli che hai schierato davvero nell'app della lega, tocca **Non è quello che ho schierato** e scegli i tuoi 11 titolari. La giornata si ricalcola. Il pulsante c'è solo per le giornate della stagione in corso. Se la pagina è vuota, dice perché: manca la tua squadra, non è finita nessuna giornata, oppure sono ancora da calcolare.
 
@@ -240,15 +242,15 @@ pagina loro, con **‹ Impostazioni** in alto per tornare. Sulla web, su uno sch
 | Avvisi | **Avvisi su questo dispositivo** (acceso o spento) e **Ore tranquille** (sezione 4) |
 | La mia lega | **Aggiorna le rose**, **La mia squadra**, **Regole e scadenza**, **Le altre squadre** (sezione 3, «La mia lega») |
 | Il tuo account | nome, email, Google collegato (**Accessi**), password (la nuova si scrive due volte: **Ripeti la nuova password**), nuovo codice di recupero, **Scarica i tuoi dati**, **Elimina l'account**, **Esci**, **Esci da tutti i dispositivi** |
-| Aspetto | tema (automatico, chiaro, scuro) e lingua (italiano o inglese). La dimensione del testo è quella del telefono o dello zoom del browser |
+| Aspetto | tema (automatico, chiaro, scuro) e, sulla web, lingua (italiano o inglese): l'app per iPhone è in italiano e ha invece **Animazioni ridotte**. La dimensione del testo è quella del telefono o dello zoom del browser |
 | Informazioni | Privacy, Termini d'uso, Crediti e fonti, Codice sorgente, versione (sull'iPhone anche **Versione dell'app**) e **Novità**: le ultime dieci versioni, le altre con un tocco in fondo |
 | Scrivici | con un account: un commento per chi gestisce l'app (un'idea, un problema, un dubbio). Scrivi nella casella (fino a 2000 caratteri, va a capo), tocca **Invia** e compare «Grazie, l'abbiamo ricevuto.». Al massimo 5 commenti al giorno; lo legge solo chi gestisce l'app, ed entra in **Scarica i tuoi dati** |
 | Gestione | solo per chi gestisce l'app: vedi [GUIDA-GESTIONE.md](GUIDA-GESTIONE.md) |
 
 - **Scarica i tuoi dati**: un file con i tuoi dati (account e lega: regole, rose, scelte, avvisi, e i commenti mandati con **Scrivici**), mai la password né quelli degli altri utenti. Serve per tenerne una copia; non si ricarica nell'app. Sull'iPhone si salva da **Condividi › Salva su File**.
-- **Esci**: dopo una conferma, chiude l'accesso su questo dispositivo e toglie da qui i tuoi dati e gli avvisi. Se non riesce (per esempio senza rete) l'app lo dice e resti dentro: riprova.
+- **Esci**: dopo una conferma, chiude l'accesso su questo dispositivo e toglie da qui i tuoi dati e gli avvisi. Se non riesce (per esempio senza rete) l'app lo dice e resti dentro: riprova. Sull'iPhone, se il server non si raggiunge, compare anche **Esci solo da questo dispositivo**: sul server la sessione resta aperta finché non scade.
 - **Esci da tutti i dispositivi**: se non riconosci un accesso (te lo segnala anche un'email di sicurezza), chiude l'accesso su ogni telefono e computer, anche su quello che stai usando, dopo una conferma. Si chiudono anche il widget e le notifiche. Poi si rientra come sempre.
-- **Elimina l'account** cancella anche tutti i tuoi dati dal server e non si annulla. Se entri solo con Google, per aggiungere una password, cambiare l'email o eliminare l'account l'app chiede prima **Conferma con Google**.
+- **Elimina l'account** cancella anche tutti i tuoi dati dal server e non si annulla. Scrivi la tua password e tocca **Elimina il mio account**: prima l'app controlla la password (se è sbagliata dice «La password non è giusta» e non chiede altro), poi chiede conferma. Dopo l'eliminazione la pagina d'accesso dice «Il tuo account e tutti i tuoi dati sono stati eliminati.». Se entri solo con Google, per aggiungere una password, cambiare l'email o eliminare l'account l'app chiede prima **Conferma con Google**.
 - **Cambiare l'email**: quando confermi il codice del nuovo indirizzo, gli altri dispositivi escono (resta dentro quello che stai usando) e all'indirizzo di prima arriva un messaggio con i passi da fare se non sei stato tu. Lo stesso messaggio arriva se togli l'email.
 - **Stemma e maglia**: da **Impostazioni › La mia squadra › Stemma e maglia** (le altre squadre dalla loro rosa, in **Le altre squadre**) o, sull'iPhone, dal menu Condividi. Nel foglio scegli la squadra, poi per lo stemma o la maglia **Da file o foto** (PNG, JPEG o WebP, massimo 4 MB). Carica solo immagini della tua squadra; **Rimuovi** la toglie.
 
@@ -289,8 +291,9 @@ Sulla schermata Home, a schermo intero, senza store:
 | «Un attimo, mister: ci sto lavorando.» | Aspetta: l'app riprova da sola. |
 | «Il calcolo sta durando più del previsto: riprova tra poco.» | Il server è ancora al lavoro: riprova fra qualche minuto. |
 | «Questi dati sono stati cambiati da un altro dispositivo» | L'app ha ricaricato la versione nuova: controlla e rifai la modifica. |
-| «Troppi tentativi» | Aspetta il tempo indicato e riprova. |
+| «Troppi tentativi» | Aspetta: nella pagina d'accesso il pulsante conta da solo («Riprova tra 24 secondi») e, quando torna come prima, puoi riprovare. Quello che hai scritto resta. |
 | «La sessione è finita: accedi di nuovo.» | Entra di nuovo con nome e password. |
+| «Questo account è bloccato: chiedi a chi gestisce SchieraXI.» | Chi gestisce l'app ha bloccato il tuo account: i tuoi dati restano. Chiedigli di sbloccarlo, poi entra con la tua password. |
 | «Nessuna rosa importata» | Importa le rose (sezione 2). |
 | «Non ho trovato rose nel file» | Hai scelto un altro file (calendario, classifica): riesporta le rose da Leghe e riprova. |
 | «Non riesco a leggere la formazione che hai salvato» | Tocca **Riprova**. Finché non si legge, la Formazione non fa cambiare niente: così la tua scelta non viene sovrascritta. |

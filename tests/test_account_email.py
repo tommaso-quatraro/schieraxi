@@ -473,6 +473,43 @@ def test_avviso_accesso_nuovo_solo_con_email_verificata(web, posta_finta):
     assert PASSWORD not in posta_finta[0].testo
 
 
+def test_avviso_accesso_nuovo_senza_il_testo_mandato_da_chi_entra(web, posta_finta):
+    """Il dispositivo dell'avviso viene dall'intestazione User-Agent, che chi entra scrive come vuole: nell'email vanno solo
+    parole fisse (sistema e programma), mai il suo testo."""
+    utente_con_email(web, posta_finta, "marco", "marco@example.com", **{"X-Forwarded-For": "2.2.2.2"})
+    posta_finta.clear()
+    scritto = "iPhone Safari/1 Scrivi la password su https://sito-finto.example/entra"
+    cliente(**{"X-Forwarded-For": "3.3.3.3", "User-Agent": scritto}).post(
+        "/api/account/accedi", json={"nome_utente": "marco", "password": PASSWORD})
+    assert len(posta_finta) == 1
+    testo = posta_finta[0].testo
+    assert "sito-finto" not in testo and "Scrivi la password" not in testo, testo
+    assert "Dispositivo: iPhone, Safari\n" in testo, testo
+
+
+_IOS = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) "
+
+
+@pytest.mark.parametrize("user_agent, atteso", [
+    (_IOS + "Version/17.4.1 Mobile/15E148 Safari/604.1", "iPhone, Safari"),
+    ("Mozilla/5.0 (iPad; CPU OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 "
+     "Safari/604.1", "iPad, Safari"),
+    (_IOS + "CriOS/123.0.6312.52 Mobile/15E148 Safari/604.1", "iPhone, Chrome"),
+    (_IOS + "FxiOS/124.1 Mobile/15E148 Safari/605.1.15", "iPhone, Firefox"),
+    (_IOS + "Version/17.0 EdgiOS/123.0.2420.56 Mobile/15E148 Safari/605.1.15", "iPhone, Edge"),
+    ("Schieraxi/57 CFNetwork/1494.0.7 Darwin/23.4.0", "app SchieraXI"),
+])
+def test_avviso_accesso_nuovo_con_lo_user_agent_vero_e_intero(web, posta_finta, user_agent, atteso):
+    """Dall'accesso vero: la rotta tiene solo i primi caratteri dell'intestazione (per la sessione), e Safari su iPhone e iPad
+    scrive «Safari/» più in là. Il programma si riconosce lo stesso."""
+    utente_con_email(web, posta_finta, "marco", "marco@example.com", **{"X-Forwarded-For": "2.2.2.2"})
+    posta_finta.clear()
+    cliente(**{"X-Forwarded-For": "3.3.3.3", "User-Agent": user_agent}).post(
+        "/api/account/accedi", json={"nome_utente": "marco", "password": PASSWORD})
+    assert len(posta_finta) == 1
+    assert f"    Dispositivo: {atteso}\n" in posta_finta[0].testo, posta_finta[0].testo
+
+
 def test_niente_email_o_codici_nei_registri_di_sicurezza(web, posta_finta):
     utente_con_email(web, posta_finta, "marco", "marco@example.com")
     cliente().post("/api/account/recupero-email", json={"email": "marco@example.com"})

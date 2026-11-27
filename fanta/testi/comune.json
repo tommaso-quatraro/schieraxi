@@ -93,7 +93,11 @@
     "it": " (riprova tra {attesa})",
     "en": " (try again in {attesa})"
   },
-  "comune.attesa_secondi": {
+  "comune.attesa_secondi.one": {
+    "it": "{n} secondo",
+    "en": "{n} second"
+  },
+  "comune.attesa_secondi.other": {
     "it": "{n} secondi",
     "en": "{n} seconds"
   },

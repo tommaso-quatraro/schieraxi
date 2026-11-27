@@ -15,6 +15,9 @@ extension Catalogo {
         /// `accesso.nome_utente`
         static let nomeUtente = "Nome utente"
 
+        /// `accesso.nome_utente_aiuto`
+        static let nomeUtenteAiuto = "Da 3 a 32 caratteri: lettere senza accenti, numeri, punto, trattino o trattino basso. Comincia con una lettera o un numero."
+
         /// `accesso.password`
         static let password = "Password"
 
@@ -56,6 +59,11 @@ extension Catalogo {
 
         /// `accesso.invio_recupero_email`
         static let invioRecuperoEmail = "Mandami il codice"
+
+        /// `accesso.riprova_tra`
+        static func riprovaTra(attesa: String) -> String {
+            "Riprova tra \(attesa)"
+        }
 
         /// `accesso.serve_invito`
         static let serveInvito = "Ti serve un codice d'invito: chiedilo a chi ti ha invitato."

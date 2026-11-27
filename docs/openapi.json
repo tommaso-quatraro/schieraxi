@@ -1616,6 +1616,42 @@
     "summary": "Elimina Account"
    }
   },
+  "/api/account/elimina/controlla": {
+   "post": {
+    "description": "«Elimina l'account», primo passo (#940): la password è giusta? (Per chi entra solo con Google: la riconferma recente.)\nNon tocca niente: il client chiede la conferma solo dopo, così con la password sbagliata non chiede «Sei sicuro?» per niente.\nVale lo stesso tetto dei tentativi delle altre conferme della password. Un server di prima risponde 404: niente di eliminato.",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SoloPassword"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Controlla Prima Di Eliminare"
+   }
+  },
   "/api/account/email": {
    "post": {
     "description": "Aggiunge o cambia l'email: manda un codice a 6 cifre al nuovo indirizzo (serve la password). Stessa risposta in ogni caso.",
@@ -2568,7 +2604,7 @@
   },
   "/api/admin/registro": {
    "get": {
-    "description": "Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà).\nOgni errore e ogni richiesta lenta ha accanto il nome della parte dell'app (`parte`, `parte_frase`).",
+    "description": "Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà),\ncon in più gli ultimi eventi importanti (registrazioni, recuperi, eliminazioni, cambi di ruolo...) anche se tanti tentativi\nsbagliati li hanno spinti più indietro. Ogni errore e ogni richiesta lenta ha accanto il nome della parte dell'app (`parte`, `parte_frase`).",
     "responses": {
      "200": {
       "content": {

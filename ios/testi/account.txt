@@ -59,3 +59,5 @@ account.elimina_titolo
 account.elimina_avviso
 account.elimina
 account.elimina_conferma
+# la frase della schermata di accesso dopo l'eliminazione, come la web, #940
+account.eliminato_fatto
