@@ -126,7 +126,8 @@ def test_segno_rovinato_vale_come_nessun_segno(tmp_path):
 
 
 # ---------------------------------------------------------------- dal servizio al cron, con gli avvisi veri
-def test_il_giro_del_servizio_manda_i_promemoria_e_il_cron_dopo_non_li_rifa(mondo, registro, monkeypatch, capsys):  # noqa: F811
+def test_il_giro_del_servizio_manda_i_promemoria_e_il_cron_dopo_non_li_rifa(mondo, registro, monkeypatch, capsys,  # noqa: F811
+                                                                            caplog):
     from fanta import archivio, pianificatore
 
     class UnOraPrima(datetime):
@@ -138,8 +139,12 @@ def test_il_giro_del_servizio_manda_i_promemoria_e_il_cron_dopo_non_li_rifa(mond
     a, b = nuovo("amico1", (1, "Castro")), nuovo("amico2", (2, "Bonny"))
     orologio = [UN_ORA_PRIMA]
     fermo = Fermo(orologio, UN_ORA_PRIMA + timedelta(seconds=1))      # un giro solo: il thread si ferma alla prima attesa
-    avvisi_utenti.sorveglia_promemoria(fermo, lambda: mondo.db, adesso=lambda: orologio[0], ritardo=0)
+    with caplog.at_level(logging.INFO, logger="uvicorn.error"):
+        avvisi_utenti.sorveglia_promemoria(fermo, lambda: mondo.db, adesso=lambda: orologio[0], ritardo=0)
     assert sorted(chi for chi, _, _ in registro.web) == sorted([a.cartella.name, b.cartella.name])     # uno a testa
+    # nel registro del servizio quanti ne sono partiti, come le righe del cron: il numero dell'utente, mai il nome
+    assert f"Promemoria: utente {a.utente_id}, 1 avvisi" in caplog.text and f"Promemoria: utente {b.utente_id}, 1 avvisi" in caplog.text
+    assert "amico" not in caplog.text and "Castro" not in caplog.text
     chiamate = []
     monkeypatch.setattr(cli, "_avvisi_per_utente", lambda f: chiamate.append(f))
     monkeypatch.setattr(archivio, "apri", lambda *x: mondo.db)
