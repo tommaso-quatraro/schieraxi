@@ -410,6 +410,14 @@ def cmd_cambi(a) -> None:
 
 
 def cmd_promemoria(a) -> None:
+    from . import account
+    if account.multiutente():                     # con gli account il giro lo fa il servizio: il cron solo se il servizio non lo fa
+        from . import avvisi_utenti
+        fare, riga = avvisi_utenti.promemoria_dal_cron()
+        if not fare:
+            return
+        if riga:
+            print(riga)
     _avvisi_telefono("promemoria")
 
 

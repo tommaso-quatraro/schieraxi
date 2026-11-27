@@ -74,6 +74,8 @@ async def _ciclo(_):
     threading.Thread(target=pianificatore.sorveglia, args=(fermo, _leghe_attive, _db, _aggiorna_leggero, _dopo_giro_leggero),
                      kwargs={"risultati": _risultati_leggeri},       # e risultati e voti la sera stessa, dopo le partite
                      name="pianificatore", daemon=True).start()          # giri in più vicino alla scadenza (FANTA_PIANIFICATORE=0 lo spegne)
+    threading.Thread(target=avvisi_utenti.sorveglia_promemoria, args=(fermo, _db),
+                     name="promemoria", daemon=True).start()            # promemoria della scadenza con gli account (spento: li fa il cron)
     threading.Thread(target=copia_scadenza.sorveglia, args=(fermo, lambda: copia_scadenza.contesti(_contesto_locale), _db),
                      name="copia-scadenza", daemon=True).start()       # copia della consigliata alla scadenza per ogni utente (FANTA_COPIA_SCADENZA=0 la spegne)
     # risultati in diretta: un solo raccoglitore per tutto il servizio, sempre avviato; a ogni giro `live.sorveglia` guarda la funzione
