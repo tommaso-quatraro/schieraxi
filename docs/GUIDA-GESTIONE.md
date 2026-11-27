@@ -67,7 +67,7 @@ ridagli il ruolo di amministratore.
 registrazione con il codice già scritto e vale 7 giorni. Sotto c'è anche il codice, per chi usa l'app per iPhone. L'etichetta
 serve a ricordare per chi era; con la casella **Il nuovo account sarà amministratore** chi entra gestisce l'app anche lui. Con la
 casella accesa **Quante persone** torna a 1 e non si cambia (sotto c'è scritto «Un invito da amministratore vale per una persona
-sola.»), e **Crea l'invito** chiede prima conferma; dopo ogni invito la casella si spegne da sola: l'invito dopo è di nuovo per un
+sola.»; togliendo la casella torna il numero di prima), e **Crea l'invito** chiede prima conferma; dopo ogni invito la casella si spegne da sola: l'invito dopo è di nuovo per un
 utente normale, e **Quante persone** si cambia di nuovo. Mentre l'invito si crea il pulsante resta spento (un doppio tocco non
 crea due inviti).
 
