@@ -1835,8 +1835,8 @@ const altezzaGrafico = (L, rapporto, minimo, massimo) => Math.round(Math.min(mas
 function adattaGrafico(svg, disegna, altezza) {
   if (!svg || !disegna) return;
   let fatta = 0;
-  const rifai = () => {
-    const L = Math.round(parseFloat(getComputedStyle(svg).width));
+  const rifai = larga => {                                 // 0 quando il grafico è nascosto (Tutti i numeri chiuso): resta com'è
+    const L = Math.round(larga);
     if (!(L > 0) || L === fatta) return;
     if (fatta) svg.classList.add("ridisegnato");          // dopo il primo, la linea non si ridisegna da capo a ogni cambio di larghezza
     fatta = L;
@@ -1844,8 +1844,8 @@ function adattaGrafico(svg, disegna, altezza) {
     svg.setAttribute("viewBox", `0 0 ${L} ${A}`);
     svg.innerHTML = disegna(L, A);
   };
-  if (typeof ResizeObserver === "function") new ResizeObserver(rifai).observe(svg);
-  else rifai();
+  if (typeof ResizeObserver === "function") new ResizeObserver(voci => rifai(voci[voci.length - 1].contentRect.width)).observe(svg);
+  else rifai(svg.getBoundingClientRect().width);
 }
 
 // Grafico a linee: fantavoto (verde) e voto (azzurro) giornata per giornata; "sv" dove non ha preso voto. Il margine di 18 px tiene
