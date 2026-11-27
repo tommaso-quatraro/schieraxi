@@ -62,7 +62,9 @@ def _dettagli(precisioni: dict, lingua: str) -> dict:
     if NODE is None:
         pytest.skip("serve node")
     prova = (TESTI_JS + f'\nLINGUA = "{lingua}";\n' + _riga("const num = ") + _riga("const virgola = ") + _riga("const alPercento = ")
-             + _riga("const elidiOrdinali = ") + _funzione("esc") + _funzione("nomeGiornata") + _funzione("dettagliPrecisione")
+             + _riga("const elidiOrdinali = ") + _funzione("esc") + _funzione("nomeGiornata")
+             + _riga("const altezzaGrafico = ") + _riga("const altezzaErrori = ") + _funzione("disegnoErrori")     # le barre (collaudo tablet)
+             + _funzione("dettagliPrecisione")
              + f"\nconst r = {json.dumps(precisioni)};\n"
              + "console.log(JSON.stringify(Object.fromEntries(Object.entries(r).map(([k, x]) => [k, dettagliPrecisione(x.p, x.con)]))));")
     r = subprocess.run([NODE, "-"], input=prova, capture_output=True, encoding="utf-8", timeout=60)

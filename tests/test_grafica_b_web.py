@@ -676,10 +676,13 @@ def test_la_griglia_della_riga_e_dell_intestazione_ha_lo_stesso_carattere():
 
 @pytest.mark.skipif(not NODE, reason="serve node")
 def test_la_riga_della_partita_va_a_capo_tra_i_pezzi():
-    """A 390 px la riga sotto il nome andava a capo dentro un pezzo. Ogni pezzo è un blocco intero: si va a capo tra i pezzi."""
+    """A 390 px la riga sotto il nome andava a capo dentro un pezzo. Ogni pezzo è un blocco intero: si va a capo tra i pezzi. Dal
+    collaudo tablet del 27/11 la lineetta sta nel primo pezzo e il «·» davanti al pezzo che segue (a inizio riga resta fuori dal
+    bordo): le misure vere sono in tests/browser/test_larghezze_tablet.py."""
     riga = _esegui_righe(f"voceGiocatore({json.dumps(GIOCATORE)})")
-    assert re.search(r'<span class="nb">NAP <span aria-hidden="true">vs LAZ</span>.*? · sab 31 20:45</span>', riga)
-    assert re.search(r"\.voce-g \.dettaglio \.nb \{[^}]*display: inline-block; max-width: 100%", CSS)
+    assert re.search(r'<span class="pezzi"><span class="nb"><i class="lineetta"[^>]*></i>NAP <span aria-hidden="true">vs LAZ</span>.*?</span>'
+                     r'<span class="nb"><span class="sep">·</span>sab 31 20:45</span></span>', riga)
+    assert re.search(r"\.voce-g \.pezzi \{[^}]*display: flex; flex-wrap: wrap", CSS)
 
 
 @pytest.mark.skipif(not NODE, reason="serve node")
