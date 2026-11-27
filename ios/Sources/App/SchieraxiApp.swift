@@ -10,6 +10,9 @@ struct SchieraxiApp: App {
     @Environment(\.scenePhase) private var fase
 
     init() {
+        // il delegato delle notifiche prima che l'app finisca di partire: con l'app aperta gli avvisi si vedono, e arriva anche il
+        // tocco su un promemoria che ha aperto l'app (porta alla Formazione, sotto `toccoSugliAvvisi`)
+        DelegatoAvvisi.installa()
         OpzioniTolte.pulisci()   // colore, densità e sezione iniziale non si scelgono più: si torna ai valori normali
         // I giocatori seguiti non ci sono più (#634): via dalla ricerca di iOS (Spotlight) le voci messe da una versione di prima.
         // Una volta sola: quando riesce resta un segno sul telefono e agli avvii dopo non si rifà.
@@ -41,6 +44,8 @@ struct SchieraxiApp: App {
                         nav.vai(a: destinazione)
                     }
                 }
+                // il tocco su un promemoria della scadenza: la Formazione, come schieraxi://formazione (`DelegatoAvvisi`)
+                .toccoSugliAvvisi(nav)
                 .onChange(of: fase) { _, nuova in
                     // Uscendo dall'app si chiede a iOS il prossimo aggiornamento in background.
                     if nuova == .background { Aggiornamento.programma() }

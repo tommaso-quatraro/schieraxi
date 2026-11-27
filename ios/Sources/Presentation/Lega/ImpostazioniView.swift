@@ -36,6 +36,7 @@ struct ImpostazioniView: View {
     @EnvironmentObject private var nav: Navigazione
     @Environment(\.funzioni) private var funzioni
     @Environment(\.dynamicTypeSize) private var dimensione
+    @Environment(\.scenePhase) private var fase
 
     init(vm: LegaViewModel) {
         self.vm = vm
@@ -97,6 +98,11 @@ struct ImpostazioniView: View {
             .navigationDestination(for: PaginaImpostazioni.self) { destinazione($0).colonnaPagina() }
             .task { await vm.carica() }
             .task { await avvisi.carica() }
+            // tornando nell'app (anche dalle Impostazioni di iOS, dove il permesso si toglie o si ridà) «Avvisi su questo
+            // dispositivo» dice il permesso di adesso
+            .onChange(of: fase) { _, nuova in
+                if nuova == .active { Task { await avvisi.rileggiPermesso() } }
+            }
         }
         // sull'iPad il titolo grande di questa pagina e delle sue pagine va in cima alla colonna, non al bordo dello schermo (#930)
         .titoliNellaColonna()

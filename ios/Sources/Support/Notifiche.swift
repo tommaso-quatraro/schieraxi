@@ -7,7 +7,8 @@ import UserNotifications
 /// notifiche della web sì, sempre (potrebbero essere sul computer, o su una web app che non le mostra più: la riga d'aiuto dice
 /// come evitare il doppione). Gli avvisi quando cambia la formazione li manda solo il server (#676, #906).
 /// Si programmano quando l'app legge la giornata, quando l'interruttore si riaccende e quando cambiano le ore tranquille;
-/// spegnendolo si tolgono subito (vedi `TelefonoAvvisi`).
+/// spegnendolo si tolgono subito (vedi `TelefonoAvvisi`). Con l'app aperta si vedono come ad app chiusa e il tocco su un promemoria
+/// della scadenza apre la Formazione (`DelegatoAvvisi`).
 enum Notifiche {
     /// Un promemoria locale pronto da programmare: identificativo, quando suona, titolo e testo.
     struct Promemoria: Equatable, Sendable {
@@ -23,12 +24,20 @@ enum Notifiche {
     /// I due promemoria della scadenza del certificato.
     static let identificativiCertificato = ["fanta-cert-24", "fanta-cert-6"]
 
-    /// Come si mostra un avviso che arriva con l'app aperta (`DelegatoAvvisi`). DA FARE: ancora vuoto, il test deve fallire.
-    static let conAppAperta: UNNotificationPresentationOptions = []
+    /// Come si mostra un avviso che arriva con l'app aperta (`DelegatoAvvisi`): come ad app chiusa, con il banner, nel Centro
+    /// Notifiche e con il suono. La web lo mostra sempre (`fanta/web/sw.js`); senza, iOS lo teneva nascosto.
+    static let conAppAperta: UNNotificationPresentationOptions = [.banner, .list, .sound]
 
-    /// Dove porta il tocco su un avviso dell'app. DA FARE: ancora nessuna destinazione, il test deve fallire.
+    /// Dove porta il tocco sui promemoria della scadenza: lo stesso indirizzo del tocco sull'avviso di ntfy, come la web
+    /// (`/?vista=formazione`).
+    static let collegamentoPromemoria = "schieraxi://formazione"
+
+    /// Dove porta il tocco su un avviso dell'app (`DelegatoAvvisi`): i promemoria della scadenza, anche quelli programmati da una
+    /// versione di prima, alla Formazione, con lo stesso percorso di `schieraxi://formazione` (`Collegamenti.interpreta`); gli altri
+    /// (certificato, versione nuova) da nessuna parte: l'app si apre dov'era.
     static func destinazione(identificativo: String) -> Destinazione? {
-        nil
+        guard identificativiPromemoria.contains(identificativo), let url = URL(string: collegamentoPromemoria) else { return nil }
+        return Collegamenti.interpreta(url)
     }
 
     static func stato() async -> UNAuthorizationStatus {
@@ -87,7 +96,9 @@ enum Notifiche {
     /// del server (`testi`, la voce con gli stessi minuti), così come sono, se letti da poco (`freschezzaTesti`; `lettaIl`: quando è
     /// stata letta la giornata, nil se non si sa). Senza il testo del server (server di prima, lettura vecchia, spunta appena tolta
     /// con la lista vuota) il promemoria minimo del catalogo, senza titolo: la giornata e l'ora della scadenza (`oggi.prossima_chiude`,
-    /// la frase della web), mai una frase composta qui.
+    /// la frase della web), mai una frase composta qui. Tutti e due in italiano: il server scrive i testi nella lingua della richiesta
+    /// e l'app chiede sempre l'italiano (`LinguaServer`), come il catalogo dell'app; prima li scriveva nella lingua degli avvisi, e
+    /// con l'inglese scelto sulla web un promemoria arrivava in inglese e quello di riserva in italiano.
     static func promemoriaDaProgrammare(giornata: NomeGiornata, inizio: Date, testi: [TestoPromemoria]?, lettaIl: Date?,
                                         ore: OreTranquille, attivi: Set<Int>, tace: Bool, dalServer: Bool,
                                         adesso: Date = Date()) -> [Promemoria] {

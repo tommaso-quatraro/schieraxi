@@ -27,9 +27,10 @@ struct CertificatoSezione: View {
 
     private var info: Certificato.Info { Certificato.info(scadenza: scadenza) }
 
-    /// La riga sotto la scadenza. DA FARE: ancora il testo vecchio, il test deve fallire.
+    /// La riga sotto la scadenza: quando arrivano i due promemoria (`Notifiche.promemoriaCertificato`: nelle ore tranquille prima che
+    /// comincino, mai di notte) e il testo vero di quello di 6 ore prima (`avv.certificato_ore`; diceva «Rinnovala con SideStore»).
     nonisolated static var aiuto: String {
-        "Con l'Apple ID gratuito il certificato dura 7 giorni. 24 ore e 6 ore prima della scadenza arriva un promemoria: «Rinnovala con SideStore»."
+        "Con l'Apple ID gratuito il certificato dura 7 giorni. 24 ore e 6 ore prima della scadenza arriva un promemoria (se cade nelle ore tranquille, un minuto prima che comincino): «\(Catalogo.Avv.certificatoOre(6))»"
     }
 
     private var colore: Color {

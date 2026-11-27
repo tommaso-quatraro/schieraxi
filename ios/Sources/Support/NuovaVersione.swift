@@ -1,7 +1,7 @@
 import Foundation
 
 /// Controlla se su GitHub c'è una build più nuova di quella installata (le release si chiamano `build-N`)
-/// e, una volta per build, manda una notifica locale con le istruzioni per aggiornare da SideStore.
+/// e, una volta per build, manda una notifica locale che invita ad aggiornarla dall'app con cui è installata (`avviso`).
 /// L'app non si aggiorna da sola: iOS non lo permette a un'app che non viene dall'App Store.
 enum NuovaVersione {
     struct Esito: Equatable {
@@ -64,14 +64,16 @@ enum NuovaVersione {
         memoria.set(esito.build, forKey: chiaveAvvisata)
     }
 
-    /// La versione leggibile di una build. DA FARE: ancora la sigla, il test deve fallire.
+    /// La versione che la compilazione dà alla build `build` («1.0.38»: `MARKETING_VERSION="1.0.$BUILD_N"` di ipa.yml), la stessa
+    /// che Impostazioni › Informazioni mostra come «Versione dell'app». Se ipa.yml cambia il modo di numerare, va cambiata anche qui.
     static func versione(build: Int) -> String {
-        "build-\(build)"
+        "1.0.\(build)"
     }
 
-    /// Titolo e testo dell'avviso. DA FARE: ancora scritti qui, il test deve fallire.
+    /// Titolo e testo dell'avviso, dal catalogo (`avv.versione_nuova_titolo`, `avv.versione_nuova_testo`), con la versione
+    /// leggibile e non la sigla della release («build-38»).
     static func avviso(per esito: Esito) -> (titolo: String, testo: String) {
-        ("SchieraXI · C'è una versione nuova", "Aggiorna SchieraXI dall'app con cui l'hai installata (\(esito.nome)).")
+        (Catalogo.Avv.versioneNuovaTitolo, Catalogo.Avv.versioneNuovaTesto(versione: versione(build: esito.build)))
     }
 
     /// Controlla e, se c'è una build mai segnalata, manda la notifica (una sola volta per build).
