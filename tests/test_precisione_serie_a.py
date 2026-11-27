@@ -174,7 +174,8 @@ def _funzione(nome: str) -> str:
 def _carte(lingua: str, *precisioni: dict) -> list[str]:
     al_percento = next(r for r in APP.splitlines() if r.startswith("const alPercento = "))
     elidi = next(r for r in APP.splitlines() if r.startswith("const elidiOrdinali = "))
-    prova = (TESTI + "\nconst virgola = x => (LINGUA === 'it' ? String(x).replace('.', ',') : String(x));\n" + al_percento + "\n" + elidi + "\n"
+    num = next(r for r in APP.splitlines() if r.startswith("const num = "))       # i numeri della carta passano da `num`
+    prova = (TESTI + "\nconst virgola = x => (LINGUA === 'it' ? String(x).replace('.', ',') : String(x));\n" + al_percento + "\n" + elidi + "\n" + num + "\n"
              + _funzione("esc") + _funzione("nomeGiornata") + _funzione("dettagliPrecisione") + f"""
     LINGUA = "{lingua}";
     console.log(JSON.stringify({json.dumps(list(precisioni))}.map(p => dettagliPrecisione(p, true))));

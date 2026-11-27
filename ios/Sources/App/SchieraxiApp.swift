@@ -23,6 +23,8 @@ struct SchieraxiApp: App {
             }
         }
         Suggerimenti.configura()
+        // senza rete si vede la copia salvata: quando il telefono ritrova la rete si riprova da soli, come la web
+        if !Demo.attivo, !Ambiente.ospiteDeiTest { RitornoRete.condiviso.avvia() }
     }
 
     var body: some Scene {

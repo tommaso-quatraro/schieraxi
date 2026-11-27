@@ -18,12 +18,13 @@ enum DatiVecchi {
     /// altrimenti il messaggio dell'errore (già in italiano), in testa e con la nota fra parentesi come la web nello stesso caso
     /// (`comune.cache_errore` in `app.js`, #830): così un motivo come «Il server non risponde: riprova fra poco» non finisce dopo
     /// altri due punti, con la maiuscola a metà frase. Nella nota il giorno e l'ora della copia, ora italiana, scritti come
-    /// `fData` e `fOra` della web: «dati salvati il 17 nov alle 10:05» (#845). Senza motivo lo stesso giorno e la stessa ora
-    /// (prima l'orologio del telefono: a Londra la stessa copia era «alle 10:05» con il 502 e «09:05» senza rete).
+    /// `fData` e `fOra` della web: «dati salvati il 17 nov alle 10:05» (#845). Senza motivo (rete assente, server spento) la frase
+    /// della web nello stesso caso, con lo stesso giorno e la stessa ora: «Non riesco a collegarmi: questi sono i dati salvati il
+    /// 17 nov alle 10:05.» (`comune.cache_offline`; prima una frase scritta qui, diversa dalla web).
     static func frase(salvatiIl data: Date, motivo: String?) -> String {
         let giorno = giornoEMese.string(from: data), ora = Quando.ora(data)
         guard let m = motivo?.trimmingCharacters(in: .whitespacesAndNewlines), !m.isEmpty else {
-            return elidiGiorno("Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il \(giorno) alle \(ora) e può essere vecchio.")
+            return elidiGiorno(Catalogo.Comune.cacheOffline(giorno: giorno, ora: ora))
         }
         return elidiGiorno(Catalogo.Comune.cacheErrore(errore: m, giorno: giorno, ora: ora))
     }
@@ -55,6 +56,20 @@ enum DatiVecchi {
         guard let uscitaIl else { return false }
         if adesso.timeIntervalSince(uscitaIl) >= sogliaRitorno { return true }
         return !calendario.isDate(uscitaIl, inSameDayAs: adesso)
+    }
+
+    /// Dopo la scadenza della formazione la Formazione rilegge una volta, dopo questi secondi (per dare tempo al server).
+    static let attesaDopoLaScadenza: TimeInterval = 5
+
+    /// Tornando nell'app, la Formazione rilegge subito se la rilettura della scadenza toccava mentre l'app era fuori: il lavoro che
+    /// la fa si ferma quando l'app non è attiva. `fuoriDal`: da quando l'app non era più attiva (anche solo il Centro di controllo);
+    /// `inBackgroundDal`: da quando era in secondo piano, nil se non ci è andata. Fuori da 10 minuti o più, o dal giorno prima, no:
+    /// ricarica già tutto la porta (`serveAggiornareAlRitorno`, contato come lei dal secondo piano).
+    static func rileggiPerLaScadenza(_ scadenza: Date?, fuoriDal: Date?, inBackgroundDal: Date?, adesso: Date) -> Bool {
+        guard let scadenza, let fuoriDal else { return false }
+        let rilettura = scadenza.addingTimeInterval(attesaDopoLaScadenza)
+        guard fuoriDal < rilettura, rilettura <= adesso else { return false }
+        return !serveAggiornareAlRitorno(uscitaIl: inBackgroundDal, adesso: adesso)
     }
 
     private static let calendario: Calendar = {

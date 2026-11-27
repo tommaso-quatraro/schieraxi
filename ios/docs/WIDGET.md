@@ -94,7 +94,11 @@ Copia salvata (server che non risponde o rete assente, #834): una riga sola per 
 «dati delle 18:30»; di un altro giorno anche il giorno, come `Quando.relativa`: «dati di ieri 18:30», «dati di mar 17 21:05»,
 oltre la settimana «dati di dom 8 nov 18:30»; dove non entra perde l'ora («dati di ieri»), poi «dati di» (la sola data accanto al
 simbolo, «ieri», di oggi «18:30»: con il testo molto grande sta su una riga anche nel medio), mai «…» (`ParoleWidget.datiSalvati`,
-ora italiana, contata dall'istante della voce: a mezzanotte «dati delle 23:30» diventa «dati di ieri 23:30»). Nel Formazione piccolo
+ora italiana, contata dall'istante della voce: a mezzanotte «dati delle 23:30» diventa «dati di ieri 23:30»). La stessa riga c'è
+anche con i dati arrivati bene ma vecchi, perché iOS ha rimandato le ricariche: oltre 15 minuti con una partita in gioco o che sta
+per iniziare, oltre un'ora negli altri momenti, con l'orologio al posto della nuvola sbarrata (`EtaDatiWidget`, `Voce.oraDeiDati`;
+la timeline ha una voce in più quando passa ogni soglia). Prima a partite in corso i punti di un'ora prima sembravano attuali.
+Nel Formazione piccolo
 e medio la riga c'è anche con «2 da controllare», sopra, e con il testo normale ci stanno tutte e due, anche sull'iPad: per fare
 posto cedono prima il titolo del piccolo (resta il simbolo con la giornata), nel medio «punti attesi» e la fascia su due righe
 («attesi · tra 65 e 81» su una), poi la fascia («72,7 attesi»); per ultima, solo con il testo molto grande, la data della copia, e

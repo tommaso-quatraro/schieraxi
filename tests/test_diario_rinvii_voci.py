@@ -131,12 +131,72 @@ def test_la_giornata_sospesa_ha_una_riga_che_lo_dice(mondo):
     assert diario.elenco(mondo.file, aspetta, mondo.db)["in_attesa"] == []
 
 
-def test_con_le_regole_di_adesso_il_diario_non_legge_l_archivio(mondo):
-    """Revisione di #947: una voce calcolata con le regole di adesso non chiede niente all'archivio (prima ogni GET /api/diario e
-    /api/widget lo leggeva una volta per voce). Un archivio vuoto, senza tabelle, farebbe alzare un errore a ogni lettura."""
+def test_con_la_regola_aspetta_la_giornata_col_recupero_da_giocare_ha_la_frase(mondo):
+    """Con «aspetta», il predefinito, una giornata con un recupero ancora da giocare non è finita: non ha una voce, e prima
+    nemmeno la frase, perché `in_attesa` nasceva solo dalle voci nascoste. In Giornate spariva per settimane senza spiegazione."""
+    r = diario.elenco(mondo.file, Regole(), mondo.db)
+    assert r["giornate"] == []
+    assert [(x["stagione"], x["giornata"], x["giornata_lega"], x["testo"]) for x in r["in_attesa"]] == [(ST, 1, 1, ATTESA_1)]
+    assert r["in_attesa"][0]["frase"] == {"chiave": "diario.in_attesa_recupero",
+                                          "param": {"giornata": {"chiave": "giornata.lega", "param": {"n": 1, "a": 1}}}}
+    mondo.recupero(TUTTI_SEI)                                   # giocato il recupero (e arrivati i voti) la giornata entra nel Diario
+    mondo.aggiorna(Regole())
+    r = diario.elenco(mondo.file, Regole(), mondo.db)
+    assert [v["giornata"] for v in r["giornate"]] == [1] and r["in_attesa"] == []
+
+
+@pytest.mark.parametrize("mia", ["Mia", None])
+def test_la_rotta_del_diario_dice_l_attesa_solo_a_chi_ha_la_sua_squadra(mondo, monkeypatch, tmp_path, mia):
+    """Senza la tua squadra nessun punto arriverà: la pagina dice dove sceglierla (`motivo_vuoto` «squadra»), non che la giornata
+    aspetta il recupero. Web e iPhone, con una frase d'attesa, non mostrano la frase della pagina vuota."""
+    from fastapi.testclient import TestClient
+
+    from fanta import regole, server
+    monkeypatch.setattr(server, "FILE_REGOLE", tmp_path / "regole.json")
+    monkeypatch.setattr(server, "FILE_ROSE", tmp_path / "rose.json")
+    monkeypatch.setattr(diario, "FILE", mondo.file)
+    lega.salva(lega.Rose(mondo.rose.squadre, mia), tmp_path / "rose.json")
+    regole.salva(Regole(), tmp_path / "regole.json")
+    mondo.db.commit()
+    monkeypatch.setattr(server, "_db", lambda: archivio.apri(tmp_path / "fanta.sqlite"))     # la rotta chiude la connessione
+    r = TestClient(server.app, headers={"X-Fanta": "1"}).get("/api/diario").json()
+    assert r["giornate"] == []
+    if mia:
+        assert r["motivo_vuoto"] == "giornate" and [x["testo"] for x in r["in_attesa"]] == [ATTESA_1]
+    else:
+        assert r["motivo_vuoto"] == "squadra" and r["in_attesa"] == []
+
+
+def test_la_frase_d_attesa_solo_a_turno_giocato_e_dalla_prima_giornata_della_lega(mondo):
+    """Una partita del turno ancora da giocare: la giornata è in corso, non aspetta il recupero. E come le voci, niente frase per
+    una giornata di prima che la lega cominciasse."""
+    assert [x["giornata"] for x in diario.elenco(mondo.file, Regole(prima_giornata_lega=2), mondo.db)["in_attesa"]] == []
+    mondo.db.execute("UPDATE partite SET giocata = 0 WHERE id = 4")
+    assert diario.elenco(mondo.file, Regole(), mondo.db)["in_attesa"] == []
+
+
+def test_una_giornata_sola_nella_frase_d_attesa(mondo):
+    """La voce nascosta (calcolata con il voto d'ufficio, poi «aspetta») e la giornata senza voce che aspetta il recupero sono la
+    stessa giornata: una frase sola."""
     mondo.aggiorna(UFFICIO)
-    vuoto = sqlite3.connect(":memory:")
-    assert [v["giornata"] for v in diario.elenco(mondo.file, UFFICIO, vuoto)["giornate"]] == [1]
+    aspetta = rinvii.con_eccezione(UFFICIO, ST, 1, "aspetta", ST)
+    assert [x["giornata"] for x in diario.elenco(mondo.file, aspetta, mondo.db)["in_attesa"]] == [1]
+
+
+def test_con_le_regole_di_adesso_il_diario_legge_l_archivio_una_volta(mondo, monkeypatch):
+    """Revisione di #947: una voce calcolata con le regole di adesso non chiede niente all'archivio per sé (prima ogni GET
+    /api/diario e /api/widget lo leggeva una volta per voce): né se la giornata è finita né se i voti sono arrivati. L'archivio si
+    legge una volta sola per tutte, per il calendario delle giornate che aspettano un recupero."""
+    mondo.aggiorna(UFFICIO)
+    voce = diario.carica(mondo.file)["giornate"][f"{ST}/1"]
+    diario._scrivi(mondo.file, voci={f"{ST}/3": voce | {"giornata": 3}})
+    monkeypatch.setattr(rinvii, "giornate_chiuse", lambda *a, **k: pytest.fail("non serve"))
+    monkeypatch.setattr(fasi, "voti_arrivati", lambda *a, **k: pytest.fail("non serve"))
+    letture = []
+    mondo.db.set_trace_callback(lambda sql: letture.append(sql) if sql.lstrip().upper().startswith("SELECT") else None)
+    assert [v["giornata"] for v in diario.elenco(mondo.file, UFFICIO, mondo.db)["giornate"]] == [3, 1]
+    mondo.db.set_trace_callback(None)
+    assert len(letture) == 1 and "FROM partite" in letture[0]
 
 
 def _giornata_2_giocata(db) -> None:
@@ -193,15 +253,18 @@ def test_titolare_ceduto_prima_del_recupero_la_voce_si_rifa_lo_stesso(mondo, mon
     assert diario.aggiorna(mondo.db, aspetta, senza_12, mondo.file, simulazioni=30) == 0      # una volta sola
 
 
-def test_voti_del_recupero_arrivati_prima_del_calcolo_la_voce_resta_nascosta(mondo):
+def test_voti_del_recupero_arrivati_prima_del_calcolo_la_voce_resta_nascosta(mondo, monkeypatch):
     """Seconda revisione di #947: il recupero è giocato e i suoi voti sono arrivati, ma il Diario non ha ancora fatto il suo giro.
     I segni `rinvio` della voce dicono il voto d'ufficio e la regola di adesso è «aspetta»: la voce non si mostra, senza nemmeno
-    leggere l'archivio (vuoto qui), e Oggi conta dai voti."""
+    chiedere all'archivio se la giornata è finita e se i voti sono arrivati, e Oggi conta dai voti."""
     assert mondo.aggiorna(UFFICIO) == 1
     aspetta = rinvii.con_eccezione(UFFICIO, ST, 1, "aspetta", ST)
     mondo.recupero(TUTTI_SEI | {21: 7.0, 25: 10.0})
     assert diario.elenco(mondo.file, aspetta, mondo.db)["giornate"] == []
-    assert diario.elenco(mondo.file, aspetta, sqlite3.connect(":memory:"))["giornate"] == []
+    with monkeypatch.context() as m:
+        m.setattr(rinvii, "giornate_chiuse", lambda *a, **k: pytest.fail("non serve"))
+        m.setattr(fasi, "voti_arrivati", lambda *a, **k: pytest.fail("non serve"))
+        assert diario.elenco(mondo.file, aspetta, mondo.db)["giornate"] == []
     assert mondo.riepilogo(aspetta)["nel_diario"] is False
 
 

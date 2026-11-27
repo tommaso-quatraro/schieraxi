@@ -140,6 +140,22 @@ def test_la_formazione_che_conta_anche_dopo_la_correzione_a_mano(vero):  # noqa:
     assert fa["meglio"][0]["id"] == 25                                                  # il 25 c'è solo nella formazione corretta
 
 
+def test_il_widget_prende_la_formazione_che_conta_come_giornate(vero):  # noqa: F811 (fixture importata)
+    """«Attesi e fatti» del widget: la tua formazione, altrimenti la copia fatta alla scadenza, altrimenti la consigliata, come la
+    riga di Giornate e il riepilogo di Oggi. Senza l'istantanea la consigliata è rifatta dopo (con il 25 che prende 9: 69 punti) e
+    la copia alla scadenza ne ha fatti 66: prima il widget scriveva 69, l'app 66."""
+    from fanta import widget
+    _scelte.salva_automatica(ST, 1, MOSTRATI, "3-4-3", vero.scelte)
+    diario.aggiorna(vero.db, Regole(), vero.rose, vero.file, simulazioni=50, file_scelte=vero.scelte)
+    voci = {v["giornata"]: v for v in diario.elenco(vero.file, Regole(), vero.db)["giornate"]}
+    assert voci[1]["consigliata"]["reale"] != voci[1]["automatica"]["reale"] == 66.0
+    w = {x["giornata"]: x for x in widget._diario(vero.file, Regole(), vero.db)}
+    for g in (1, 2):
+        fa = voci[g]["fatti_e_attesi"]
+        assert (w[g]["attesi"], w[g]["fatti"]) == (fa["atteso"], fa["fatti"])
+        assert w[g]["intervallo"] == voci[g][fa["formazione"]]["intervallo"]
+
+
 # ---------------------------------------------------------------- #674: la consigliata di allora salvata ma non valutabile
 CEDUTO = [1, 4, 5, 6, 12, 13, 14, 15, 20, 21, 99]          # il 99 era nella consigliata di allora e non è più in rosa
 NON_SALVATA = "quella mostrata prima della scadenza non era stata salvata"

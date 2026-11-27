@@ -114,7 +114,7 @@ def cmd_importa(a) -> None:
             sys.exit(str(e))
     nuove = lega.da_import(lette, precedenti, sostituisci_tutto=a.sostituisci_tutto)
     lega.salva(nuove, FILE_ROSE, copia_di_riserva=True)
-    diff = movimenti.differenze(precedenti, nuove)
+    diff = movimenti.differenze(precedenti, nuove, {s.nome for s in lette})
     movimenti.registra(FILE_MOVIMENTI, diff)
     print(f"Importate {len(lette)} squadre (listone del {quando}):")
     for letta in lette:

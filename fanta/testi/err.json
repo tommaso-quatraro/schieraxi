@@ -303,6 +303,21 @@
     "en": "An administrator can be blocked, unblocked or deleted only on the server, from the command line",
     "nota": "Gestione › Utenti: blocca, sblocca o elimina un altro amministratore (403); la web non mostra i pulsanti su quelle righe"
   },
+  "err.reset_altro_amministratore": {
+    "it": "Per un altro amministratore il codice non si crea dalla web: la password si cambia con il suo codice di recupero.",
+    "en": "You cannot create the code for another administrator from the web: they change the password with their own recovery code.",
+    "nota": "Gestione › «Genera il codice» con il nome di un altro amministratore (403), come blocca ed elimina"
+  },
+  "err.rose_altro_amministratore": {
+    "it": "Le rose di un altro amministratore si importano solo sul server, dalla riga di comando.",
+    "en": "Another administrator's rosters can be imported only on the server, from the command line.",
+    "nota": "POST /api/admin/utenti/{id}/rose sull'account di un altro amministratore (403), come blocca ed elimina"
+  },
+  "err.registro_illeggibile": {
+    "it": "Non riesco a leggere il registro del server ({1}): controlla i permessi del file sul server.",
+    "en": "I cannot read the server log ({1}): check the file permissions on the server.",
+    "nota": "Gestione › Errori recenti: un file del registro c'è ma non si legge (503); {1} è il nome del file, per esempio sicurezza.log"
+  },
   "err.problema_file": {
     "it": "Il server ha un problema con i suoi file: riprova più tardi. Se succede ancora, avvisa chi gestisce l'app.",
     "en": "The server has a problem with its files: try again later. If it keeps happening, tell whoever runs the app."
@@ -695,6 +710,10 @@
   "err.squadra_troppi_giocatori": {
     "it": "«{1}» ha {2} giocatori: il massimo è {3}. Controlla il file: forse due squadre sono finite insieme.",
     "en": "“{1}” has {2} players: the maximum is {3}. Check the file: maybe two teams ended up together."
+  },
+  "err.squadra_troppi_giocatori_club": {
+    "it": "«{1}» ha {2} giocatori: il massimo è {3}. Forse «{4}» è una vostra squadra: si chiama come una squadra di Serie A e l'ho preso per quella. Lascia una riga vuota prima del suo nome e riprova.",
+    "en": "“{1}” has {2} players: the maximum is {3}. Maybe “{4}” is one of your teams: it has the same name as a Serie A club and I took it for that. Leave a blank line before its name and try again."
   },
   "err.calcoli_in_coda": {
     "it": "Il server ha molti calcoli in coda: riprova fra qualche secondo",

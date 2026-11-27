@@ -314,6 +314,37 @@ def test_il_modulo_e_un_menu_e_un_altro_modulo_si_salva(web):
     assert stato(web) == "È la consigliata." and scritte[-1][:2] == ("DELETE", "/api/scelta?giornata=9")
 
 
+def _voce_scelta(menu) -> str:
+    """Il testo della voce scelta nel menu del modulo."""
+    return menu.evaluate("s => s.selectedOptions[0] ? s.selectedOptions[0].textContent : ''")
+
+
+def test_dopo_una_sostituzione_il_menu_del_modulo_ha_la_tua_formazione_e_riporta_alla_consigliata(web):
+    """Difetto del 27/11: dopo un «Sostituisci» nello stesso ruolo il menu teneva scelta la voce del server con lo stesso modulo
+    («4-3-3 · 73,8 punti · consigliato») e accanto c'erano i punti della tua (71,0); sceglierla non faceva niente, quindi alla
+    consigliata non si tornava. Ora la formazione cambiata a mano ha una voce sua, con i suoi punti (quelli del server), ed è
+    quella scelta; la consigliata si sceglie e ci si torna."""
+    solo(web, "prima")
+    web.risposta("/api/scelta?giornata=9", None)
+    f = web.registrata("/api/formazione")
+    web.risposta("/api/formazione/valuta", {**web.registrata("/api/formazione/valuta"), "modulo": f["modulo"], "punteggio_atteso": 71.0})
+    web.apri("/")
+    tocca(web, campo(web).nth(3))
+    tocca(web, scheda(web).get_by_role("button", name="Sostituisci"))
+    tocca(web, scheda(web).get_by_role("listitem").first.get_by_role("button"))
+    menu = principale(web).get_by_label("Modulo")
+    assert principale(web).locator("#punti-attesi").inner_text() == "71,0"
+    assert _voce_scelta(menu) == f"{f['modulo']} · 71,0 punti · la tua", _voce_scelta(menu)
+    assert menu.locator("option").count() == len(f["moduli"]) + 1
+    scritte = scritture(web)
+    menu.select_option(f["modulo"])                                    # la voce consigliata
+    web.aspetta()
+    assert stato(web) == "È la consigliata." and scritte and scritte[-1][:2] == ("DELETE", "/api/scelta?giornata=9")
+    menu = principale(web).get_by_label("Modulo")
+    assert _voce_scelta(menu).endswith("· consigliato") and menu.locator("option").count() == len(f["moduli"])
+    assert not web.errori_mostrati() and not web.errori_console
+
+
 def test_la_spunta_l_ho_messa_resta_dopo_una_ricarica(web):
     """La spunta si salva sul server (campo `messa` della scelta) e torna con la scelta: qui il test fa la parte del server."""
     solo(web, "prima")
@@ -358,6 +389,35 @@ def test_copia_per_l_app_della_lega_sta_sotto_il_campo(web):
     web.apri("/")
     assert principale(web).get_by_role("button", name="Copia per l'app della lega").is_visible()
     assert principale(web).get_by_role("checkbox", name="L'ho messa").is_visible()
+
+
+COPIA_NEGATA = """(() => { try { navigator.clipboard.writeText = () => Promise.reject(new Error('negato')); } catch (e) {}
+  document.execCommand = () => false; })()"""
+
+
+@pytest.mark.parametrize("larghezza", [390, PC])
+def test_se_la_copia_non_riesce_il_testo_della_formazione_compare_da_copiare_a_mano(web, larghezza):
+    """Copia non riuscita (browser che non lascia scrivere negli appunti): l'avviso diceva «tieni premuto sul testo», ma il testo
+    non c'era. Ora compare sotto il pulsante, in un riquadro di sola lettura già selezionato."""
+    solo(web, "prima")
+    web.pagina.add_init_script(COPIA_NEGATA)
+    web.risposta("/api/scelta?giornata=9", None)
+    f = web.registrata("/api/formazione")
+    web.apri("/", larghezza=larghezza)
+    riquadro = principale(web).get_by_role("textbox", name="Formazione da copiare")
+    assert riquadro.count() == 0
+    tocca(web, principale(web).get_by_role("button", name="Copia per l'app della lega"))
+    assert web.pagina.get_by_role("status").filter(has_text="Non riesco a copiare").first.is_visible()
+    assert riquadro.is_visible() and not riquadro.is_editable()
+    testo = riquadro.input_value()
+    consigliato = next(m for m in f["moduli"] if m["modulo"] == f["modulo"])
+    assert f["modulo"] in testo.splitlines()[0]
+    assert all(f["schede"][str(i)]["nome"] in testo for i in consigliato["titolari"]), testo
+    assert riquadro.evaluate("e => e.selectionStart === 0 && e.selectionEnd === e.value.length"), "il testo non è selezionato"
+    alto = riquadro.evaluate("e => e.scrollHeight <= e.clientHeight + 1")
+    assert alto, "il testo non sta tutto nel riquadro"
+    assert not web.scorre_di_lato() and not web.errori_mostrati() and not web.errori_console
+    assert not web.violazioni_gravi(), web.violazioni_gravi()
 
 
 # ---------------------------------------------------------------- le decisioni in cima: al massimo due, solo con un'azione
@@ -628,17 +688,42 @@ def test_chi_gioca_una_partita_gia_cominciata_non_si_sostituisce_e_la_scheda_dic
     assert riserva["nome"] not in scheda(web).inner_text()
 
 
+BLOCCATO = {"detail": "Esempio E. gioca in una partita già cominciata: non si può più spostare.", "codice": "giocatore_bloccato"}
+
+
 def test_se_il_server_rifiuta_il_ritorno_alla_consigliata_la_formazione_resta_e_un_avviso_lo_dice(web):
+    """Il rifiuto dice che un anticipo è cominciato e la pagina non lo sapeva: la Formazione si rilegge (chi gioca non si sposta
+    più), non si ridisegna con i dati di prima."""
     solo(web, "prima")
     web.apri("/")                                                     # nello scenario registrato c'è una scelta fatta a mano
     prima, stato_prima = nomi_sul_campo(web), stato(web)
-    web.risposta("/api/scelta?giornata=9", {"detail": "Esempio E. gioca in una partita già cominciata: non si può più spostare.",
-                                            "codice": "giocatore_bloccato"}, stato=400)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/scelta",
+                     lambda r: r.fulfill(status=400, content_type="application/json", body=json.dumps(BLOCCATO))
+                     if r.request.method == "DELETE" else r.fallback())
+    lette = web.richieste.count("/api/formazione")
     tocca(web, principale(web).get_by_role("button", name="Torna alla consigliata"))
     avviso = web.pagina.get_by_role("status").filter(has_text="non si può più spostare")
     assert avviso.count() == 1 and avviso.first.is_visible()
     assert nomi_sul_campo(web) == prima and stato(web) == stato_prima
     assert principale(web).get_by_role("button", name="Torna alla consigliata").is_visible()
+    assert web.richieste.count("/api/formazione") == lette + 1, "dopo il rifiuto la formazione non è stata riletta dal server"
+    assert not web.errori_mostrati()
+
+
+def test_se_il_server_rifiuta_una_sostituzione_per_una_partita_cominciata_la_formazione_si_rilegge(web):
+    solo(web, "prima")
+    web.risposta("/api/scelta?giornata=9", None)
+    web.apri("/")
+    prima = nomi_sul_campo(web)
+    web.risposta("/api/formazione/valuta", BLOCCATO, stato=400)
+    lette = web.richieste.count("/api/formazione")
+    tocca(web, campo(web).nth(3))
+    tocca(web, scheda(web).get_by_role("button", name="Sostituisci"))
+    tocca(web, scheda(web).get_by_role("listitem").first.get_by_role("button"))
+    avviso = web.pagina.get_by_role("status").filter(has_text="non si può più spostare")
+    assert avviso.count() == 1 and avviso.first.is_visible()
+    assert nomi_sul_campo(web) == prima and stato(web) == "È la consigliata."
+    assert web.richieste.count("/api/formazione") == lette + 1, "dopo il rifiuto la formazione non è stata riletta dal server"
     assert not web.errori_mostrati()
 
 
@@ -1264,20 +1349,84 @@ def test_un_412_su_altri_dati_non_toglie_l_if_match_alle_scritture_sulla_scelta(
 
 
 # ---------------------------------------------------------------- tastiera: dopo un comando il fuoco non si perde
-def test_da_tastiera_il_menu_del_modulo_tiene_il_fuoco_dopo_ogni_scelta(web):
+def test_da_tastiera_il_menu_del_modulo_salva_solo_alla_conferma_e_tiene_il_fuoco(web):
+    """Con il menu chiuso ogni freccia cambia la voce. Difetto del 27/11: ogni freccia salvava, e una seconda freccia durante il
+    salvataggio riportava indietro il menu. Ora le frecce scorrono le voci (il modulo scritto sul menu le segue) e si salva alla
+    conferma: Invio, o il fuoco che lascia il menu. Col tocco e col mouse si salva alla scelta, come prima
+    (test_il_modulo_e_un_menu_e_un_altro_modulo_si_salva)."""
     solo(web, "prima")
+    mem = server_con_memoria(web, None)
+    web.apri("/", larghezza=PC)
+    f = web.registrata("/api/formazione")
+    titolari = {m["modulo"]: sorted(m["titolari"]) for m in f["moduli"]}
+    menu = lambda: principale(web).get_by_label("Modulo")             # noqa: E731
+    valori = menu().locator("option").evaluate_all("os => os.map(o => o.value)")
+    inizio = menu().evaluate("s => s.selectedIndex")
+    scritte = scritture(web)
+    menu().focus()
+    web.pagina.keyboard.press("ArrowDown")
+    web.pagina.keyboard.press("ArrowDown")
+    web.aspetta()
+    assert not scritte, "le frecce hanno salvato prima della conferma"
+    scelto = valori[inizio + 2]
+    assert menu().input_value() == scelto
+    assert principale(web).locator(".menu-modulo .menu-scelta-testo").inner_text() == scelto
+    web.pagina.keyboard.press("Enter")
+    web.aspetta()
+    assert len(scritte) == 1 and sorted(scritte[0][2]["titolari"]) == titolari[scelto], scritte
+    assert menu().input_value() == scelto and _ha_il_fuoco(menu()), "dopo Invio il fuoco non è sul menu"
+    # una freccia, poi il fuoco esce dal menu (Tab): si salva lo stesso, una volta
+    web.pagina.keyboard.press("ArrowUp")
+    web.aspetta()
+    assert len(scritte) == 1
+    web.pagina.keyboard.press("Tab")
+    web.aspetta()
+    assert len(scritte) == 2 and sorted(scritte[1][2]["titolari"]) == titolari[valori[inizio + 1]], scritte
+    assert sorted(mem["scelta"]["titolari"]) == titolari[valori[inizio + 1]]
+    assert not web.errori_mostrati() and not web.errori_console
+
+
+CONTA_COPIE = """(() => { window.__copie = [];
+  try { navigator.clipboard.writeText = t => { window.__copie.push(t); return Promise.resolve(); }; } catch (e) {} })()"""
+
+
+def _aspetta_che(web, condizione, ms: int = 10000) -> None:
+    """Aspetta che una condizione del test (non della pagina) diventi vera, per esempio una richiesta trattenuta da `route` arrivata.
+    Con l'API sincrona di Playwright i gestori delle rotte e degli eventi partono solo durante una chiamata a Playwright: un
+    `time.sleep` non li fa mai partire (il job `browser` della #978 falliva quando la richiesta arrivava dopo la chiamata di prima).
+    Si aspetta quindi con `wait_for_timeout`, che intanto consegna gli eventi: la condizione si vede vera appena il gestore è partito."""
+    import time
+    fine = time.monotonic() + ms / 1000
+    while not condizione() and time.monotonic() < fine:
+        web.pagina.wait_for_timeout(20)
+    assert condizione(), "attesa scaduta"
+
+
+def test_la_copia_non_prende_la_formazione_di_prima_mentre_si_salva_quella_scelta_con_le_frecce(web):
+    """Difetto visto in revisione (#978): con le frecce si sceglie un altro modulo, poi un clic su «Copia per l'app della lega».
+    L'uscita dal menu fa partire il salvataggio, ma la copia prendeva ancora la formazione disegnata e diceva «Copiata». Finché il
+    salvataggio è in volo la copia non si fa e un avviso lo dice; a salvataggio arrivato copia la formazione nuova."""
+    solo(web, "prima")
+    web.pagina.add_init_script(CONTA_COPIE)
     server_con_memoria(web, None)
     web.apri("/", larghezza=PC)
-    scritte = scritture(web)
-    principale(web).get_by_label("Modulo").focus()
+    fermi = _trattieni_i_salvataggi(web)
+    menu = principale(web).get_by_label("Modulo")
+    valori = menu.locator("option").evaluate_all("os => os.map(o => o.value)")
+    scelto = valori[menu.evaluate("s => s.selectedIndex") + 2]
+    menu.focus()
     web.pagina.keyboard.press("ArrowDown")
-    web.aspetta()
-    assert len(scritte) == 1 and _ha_il_fuoco(principale(web).get_by_label("Modulo")), "dopo la prima freccia il fuoco non è sul menu"
-    primo = principale(web).get_by_label("Modulo").input_value()
     web.pagina.keyboard.press("ArrowDown")
+    principale(web).get_by_role("button", name="Copia per l'app della lega").click()
+    _aspetta_che(web, lambda: len(fermi) == 1)
+    assert web.pagina.evaluate("window.__copie") == [], "a salvataggio in volo la copia ha preso la formazione di prima"
+    assert web.pagina.get_by_role("status").filter(has_text="Sto ancora ricalcolando").first.is_visible()
+    fermi[0].fallback()
     web.aspetta()
-    assert len(scritte) == 2 and principale(web).get_by_label("Modulo").input_value() != primo
-    assert _ha_il_fuoco(principale(web).get_by_label("Modulo"))
+    assert principale(web).get_by_label("Modulo").input_value() == scelto
+    tocca(web, principale(web).get_by_role("button", name="Copia per l'app della lega"))
+    copie = web.pagina.evaluate("window.__copie")
+    assert len(copie) == 1 and copie[0].splitlines()[0].endswith(scelto), copie
 
 
 def test_da_tastiera_spunta_torna_alla_consigliata_e_sostituisci_non_lasciano_il_fuoco_nel_vuoto(web):

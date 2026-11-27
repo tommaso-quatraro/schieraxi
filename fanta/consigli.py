@@ -453,7 +453,7 @@ def incerti(titolari: list, panchina: list, regole: Regole | None = None) -> lis
 
 
 def _moduli(tutte: list, regole: Regole) -> list[dict]:
-    return [{"modulo": x.modulo, "punteggio_atteso": round(x.atteso, 1), **incertezza.campi(x.atteso, x.dev),
+    return [{"modulo": x.modulo, "punteggio_atteso": frasi.arrotonda(x.atteso), **incertezza.campi(x.atteso, x.dev),
              "titolari": [g.id for g in x.titolari], "panchina": [g.id for g in x.panchina],
              "incerti": incerti(x.titolari, x.panchina, regole)} for x in tutte]
 
@@ -561,13 +561,13 @@ def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni, f
         fl = f if (peso, inclinazione) == (fz.PESO_BASE, (0.0, 0.0)) else fz.migliore(
             candidati, regole, simulazioni, peso=peso, valutatore=val, inclinazione=inclinazione, **vincoli)
         livelli.append({"rischio": rischio, "stile": rischio, "nome": nome, "descrizione": descrizione, "modulo": fl.modulo,
-                        "punteggio_atteso": round(fl.atteso, 1), **incertezza.campi(fl.atteso, fl.dev),
+                        "punteggio_atteso": frasi.arrotonda(fl.atteso), **incertezza.campi(fl.atteso, fl.dev),
                         "moduli": _moduli(fl.tutte, regole)})
     scelti = {g.id for g in f.titolari + f.panchina}
     fuori = [scheda_previsione(g.id, prev.loc[g.id]) for g in rosa if g.id not in scelti]
     senza_dati = [g.nome for g in s.giocatori if g.id is None or g.id not in prev.index]
     risultato = {
-        "squadra": s.nome, "giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole), "modulo": f.modulo, "punteggio_atteso": round(f.atteso, 1),
+        "squadra": s.nome, "giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole), "modulo": f.modulo, "punteggio_atteso": frasi.arrotonda(f.atteso),
         "alternative": [{"modulo": m, "punteggio_atteso": v} for m, v in f.alternative],
         "titolari": [scheda_previsione(g.id, prev.loc[g.id]) for g in f.titolari],
         "panchina": [scheda_previsione(g.id, prev.loc[g.id]) for g in f.panchina],
@@ -1021,7 +1021,7 @@ def _con_consigliata(migliore: dict, tit: list, panchina: list, atteso: float, d
     conta = {r: sum(1 for g in tit if g.ruolo == r) for r in "DCA"}
     modulo = f"{conta['D']}-{conta['C']}-{conta['A']}"
     fascia = incertezza.campi(atteso, dev)
-    voce = {"modulo": modulo, "punteggio_atteso": round(atteso, 1), **fascia, "titolari": [g.id for g in tit],
+    voce = {"modulo": modulo, "punteggio_atteso": frasi.arrotonda(atteso), **fascia, "titolari": [g.id for g in tit],
             "panchina": [g.id for g in panchina], "incerti": incerti(tit, panchina, regole)}
     moduli = [voce if m["modulo"] == modulo else m for m in migliore.get("moduli") or []]
     if not any(m["modulo"] == modulo for m in moduli):
@@ -1148,7 +1148,7 @@ def valuta(db: sqlite3.Connection, regole: Regole, rose: Rose, titolari: list[in
     fascia = incertezza.campi(media, dev)
     # brutta/eccezionale = gli estremi della fascia calibrata (10% e 90%), non quelli della simulazione (troppo stretti)
     return {"modulo": modulo, "giornata": giornata, "giornata_lega": serie_a_a_lega(giornata, regole),
-            "punteggio_atteso": round(media, 1), **fascia,
+            "punteggio_atteso": frasi.arrotonda(media), **fascia,
             "brutta_giornata": fascia["intervallo"]["basso"], "giornata_eccezionale": fascia["intervallo"]["alto"],
             "panchina": [g.id for g in panchina],
             # la differenza dei due numeri scritti (questo e quello della consigliata), così «60,0 … −4,1 (64,1)» torna (#392)

@@ -335,7 +335,8 @@ def test_svincolato_e_scambio_solo_sopra_soglia(mondo, monkeypatch):
                                                              "guadagno": g, "fattibile": fattibile, "motivo": "Nuovo è titolare fisso nel Como"}]}
     monkeypatch.setattr(da_fare.consigli, "mercato", lambda *a, **k: prop(3.25))
     s = [x for x in vai(mondo) if x["tipo"] == "svincolato"]
-    assert len(s) == 1 and "3,2" in s[0]["testo"] and "titolare fisso nel Como" in s[0]["testo"] and s[0]["motivo"]
+    # 3,25 si scrive «3,3», come lo scrivono la web e l'iPhone (frasi.arrotonda: il mezzo lontano dallo zero)
+    assert len(s) == 1 and "3,3" in s[0]["testo"] and "titolare fisso nel Como" in s[0]["testo"] and s[0]["motivo"]
     assert s[0]["destinazione"]["link"] == "schieraxi://giocatore/40"
     monkeypatch.setattr(da_fare.consigli, "mercato", lambda *a, **k: prop(1.0))
     assert not [x for x in vai(mondo) if x["tipo"] == "svincolato"]

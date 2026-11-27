@@ -314,7 +314,8 @@ function paContaDaSistemare(dove) {
   if (titolo) titolo.textContent = t("pav.da_sistemare", { n: rimasti });
 }
 
-// Giocatori che l'importazione non ha riconosciuto: si cerca quello giusto nel listone e si abbina.
+// Giocatori che l'importazione non ha riconosciuto: si cerca quello giusto nel listone e si abbina. Se una rosa non si legge
+// lo si dice, come l'iPhone: senza, la sezione mancava e sembrava che non ci fosse niente da sistemare.
 async function paNonRiconosciuti() {
   const dove = $("#pa-fix");
   if (!dove) return;
@@ -322,7 +323,10 @@ async function paNonRiconosciuti() {
   try {
     const rose = await Promise.all((stato.squadre || []).map(s => api(`/api/rosa?squadra=${encodeURIComponent(s.nome)}`)));
     dubbi = rose.flatMap(r => r.giocatori.filter(g => g.id === null).map(g => ({ squadra: r.nome, nome: g.nome })));
-  } catch { return; }
+  } catch (e) {
+    dove.innerHTML = `<div class="errore" role="alert">${esc(t("pav.da_sistemare_errore", { motivo: e.message }))}</div>`;
+    return;
+  }
   if (!dubbi.length) return;
   dove.innerHTML = `<h3 class="pa-titolo" id="pa-fix-titolo">${t("pav.da_sistemare", { n: dubbi.length })}</h3>
     <p class="debole piccolo">${t("onb.non_trovati_nel")}</p>

@@ -47,6 +47,7 @@ struct ImportaExcelView: View {
         // dopo un salvataggio i «giocatori da sistemare» (rimasti senza codice) si rileggono
         .onChange(of: vm.inCorso) { _, ora in if !ora, vm.esito != nil { Task { await dubbi.carica() } } }
         .onChange(of: vm.errore) { _, nuovo in if let nuovo { AccessibilityNotification.Announcement(nuovo).post() } }
+        .onChange(of: dubbi.erroreLettura) { _, nuovo in if let nuovo { AccessibilityNotification.Announcement(nuovo).post() } }
         .sheet(item: $dubbi.scelto) { d in
             NavigationStack { CercaGiocatoreGiustoView(vm: dubbi, dubbio: d) }
         }
@@ -132,7 +133,10 @@ struct ImportaExcelView: View {
     /// del passo «La tua squadra» della web (`paNonRiconosciuti`, #931); sulla web la sezione sta nel primo avvio (differenza ammessa).
     @ViewBuilder
     private var daSistemare: some View {
-        if !dubbi.dubbi.isEmpty {
+        if let errore = dubbi.erroreLettura {
+            // le rose non si sono lette: lo si dice al posto della sezione, come la web (`paNonRiconosciuti`)
+            Section { Label(errore, systemImage: "exclamationmark.triangle").foregroundStyle(Color.attenzione) }
+        } else if !dubbi.dubbi.isEmpty {
             Section {
                 Text(Catalogo.Onb.nonTrovatiNel)
                     .font(.footnote).foregroundStyle(Color.testoSecondario)

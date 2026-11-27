@@ -1,5 +1,136 @@
 [
   {
+    "versione": "1.606",
+    "data": "2026-11-27T14:30:51",
+    "titolo": "Formazione: si aggiorna da sola alla scadenza, e il menu del modulo dice la tua",
+    "voci": [
+      "Formazione sulla web aperta alla scadenza: pochi secondi dopo si aggiorna da sola e si chiude, senza ricaricare la pagina. Si aggiorna anche quando torni sull'app dopo la scadenza o dopo più di 5 minuti, e quando un cambio non riesce perché una partita è già cominciata. «Formazione chiusa» compare solo a scadenza passata, non più mezzo minuto prima.",
+      "Menu del modulo dopo un cambio fatto a mano: in cima c'è la tua formazione con i suoi punti («4-3-3 · 71,0 punti · la tua»), scelta; scegliendo il modulo «consigliato» torni alla consigliata. Prima restava scelta la voce consigliata e sceglierla non faceva niente.",
+      "Con la tastiera, nel menu del modulo le frecce scorrono le voci e il modulo si cambia con Invio (o uscendo dal menu), non a ogni freccia.",
+      "Se «Copia per l'app della lega» non riesce, il testo della formazione compare sotto il pulsante, già selezionato, da copiare a mano."
+    ],
+    "tecnico": [
+      "Web, `mostraFormazione`: una rilettura che chiede prima al server con la pagina com'è (`vistaFormazione(inPagina)`, opzione nuova `inPagina` di `caricaConCache`: con i dati uguali niente ridisegno, la copia salvata solo se il server non risponde) 5 secondi dopo la scadenza della formazione in pagina (`scadenzaDi`, una volta per scadenza, `scadenzaRiletta`) e al `visibilitychange` se la scadenza è passata o i dati hanno più di 5 minuti; dopo un rifiuto `giocatore_bloccato` di POST /api/formazione/valuta o DELETE /api/scelta si rilegge come dopo `formazione_chiusa`. `testoConto` arrotonda in su i minuti che mancano.",
+      "Menu del modulo: la voce `VOCE_TUA` (testo `formazione.opzione_tua`) quando gli 11 in pagina non sono quelli di un modulo calcolato; con la tastiera i `change` arrivati nello stesso giro di un tasto non salvano, si salva con Invio o `blur`. Copia non riuscita: riquadro `#da-copiare` (testo `formazione.da_copiare`). Nessuna rotta cambiata; l'iPhone non cambia in questo lavoro. Con un salvataggio in volo «Copia per l'app della lega» non copia (`libero()`); dopo un salvataggio riuscito i dati contano come appena letti (`sc.letta`)."
+    ],
+    "titolo_en": "Lineup: it updates by itself at the deadline, and the formation menu shows yours",
+    "voci_en": [
+      "Lineup on the web open at the deadline: a few seconds later it updates by itself and closes, without reloading the page. It also updates when you come back to the app after the deadline or after more than 5 minutes, and when a change fails because a match has already started. “Lineup closed” appears only once the deadline has passed, no longer half a minute early.",
+      "Formation menu after a change made by hand: at the top there is your lineup with its points (“4-3-3 · 71.0 points · yours”), selected; choosing the “recommended” formation takes you back to the recommended lineup. Before, the recommended entry stayed selected and choosing it did nothing.",
+      "With the keyboard, the arrows move through the formation menu and the formation changes with Enter (or when leaving the menu), not at every arrow.",
+      "If “Copy for the league app” fails, the lineup text appears below the button, already selected, to copy by hand."
+    ]
+  },
+  {
+    "versione": "1.605",
+    "data": "2026-11-27T13:46:30",
+    "titolo": "Gestione: permessi degli amministratori più stretti e inviti più sicuri",
+    "voci": [
+      "Gestione: il codice di «Password dimenticata» e l'importazione delle rose per conto di un altro non valgono più per un altro amministratore, come già Blocca ed Elimina.",
+      "Un invito da amministratore chiede conferma e la casella si spegne dopo ogni invito; un doppio tocco su «Crea l'invito», «Genera il codice» o «Aggiorna i dati» non fa più due richieste.",
+      "Errori recenti si aggiorna anche dopo inviti e codici, e se il server non legge il suo registro lo dice invece di «Nessun evento»."
+    ],
+    "tecnico": [
+      "account.crea_reset(..., chi=Utente): 403 account.RESET_ALTRO_AMMINISTRATORE (err.reset_altro_amministratore) per l'account di un altro amministratore, il proprio sì; l'evento reset_creato ha da=chi.nome_utente. POST /api/admin/reset-password passa chi (solo_amministratore come parametro).",
+      "server.importa_per_conto_di: dalla web (da_chi) 403 account.ROSE_ALTRO_AMMINISTRATORE (err.rose_altro_amministratore) sull'account di un altro amministratore, prima del tetto di frequenza; il proprio sì; dal comando importa-per-conto-di (da_chi None) sì.",
+      "registro.ultimi: salta solo FileNotFoundError; un altro OSError scrive la causa nel log del servizio (logger fanta.registro) e alza RegistroIlleggibile. GET /api/admin/registro risponde 503 «Non riesco a leggere il registro del server ({nome}): …» (err.registro_illeggibile); la web lo mostra con role=alert.",
+      "Web (collegaAmministratore): spentoMentre per #adm-invito e #adm-reset; confirm(admin.invito_admin_conferma) con #adm-admin accesa e spunta tolta dopo l'invito; caricaRegistro dopo invito, annullamento e codice; #adm-registro senza aria-live. aggiornaDati: chiedoAggiornamento e #aggiorna-dati spento durante il POST, riacceso nel finally se l'aggiornamento non è partito."
+    ],
+    "titolo_en": "Management: stricter administrator permissions and safer invitations",
+    "voci_en": [
+      "Management: the “\u0001” code and importing rosters on someone's behalf no longer work for another administrator, as already for Block and Delete.",
+      "An administrator invitation asks for confirmation and the box clears after each invitation; a double tap on “\u0001”, “\u0001” or “\u0001” no longer sends two requests.",
+      "Recent errors also refreshes after invitations and codes, and if the server cannot read its log it says so instead of “\u0001”."
+    ]
+  },
+  {
+    "versione": "1.604",
+    "data": "2026-11-27T13:31:14",
+    "titolo": "La web non resta più vuota se l'ultimo pezzo dell'app arriva in ritardo",
+    "voci": [
+      "Apertura della web con la rete lenta o assente: se Impostazioni (o una sua pagina) si apriva prima di aver ricevuto tutti i pezzi dell'app, la pagina restava bianca fino alla ricarica. Ora aspetta che ci siano tutti e poi si disegna, anche senza rete, con «La mia squadra» spenta e la frase che dice quando si apre."
+    ],
+    "tecnico": [
+      "app.js: l'avvio aspetta DOMContentLoaded (`scriptPronti`) prima di disegnare la prima schermata. impostazioni.js è l'ultimo degli script (dopo app.js): se i dati d'avvio arrivavano (o fallivano, senza rete) prima che fosse eseguito, `vai()` chiamava `vistaImpostazioni` non ancora definita e il <main> restava vuoto. La richiesta dei dati (stato, squadre, funzioni, volti) parte subito come prima: aspetta solo il disegno.",
+      "Test: tests/browser/test_copie_e_rete.py::test_l_ultimo_script_in_ritardo_non_lascia_vuota_la_prima_schermata (impostazioni.js trattenuto, con e senza rete). Spiega i fallimenti, ogni tanto, di test_senza_rete_impostazioni_tiene_la_mia_squadra_spenta_con_una_frase sui server di GitHub (pagina vuota dopo il ricaricamento senza rete): non visto in locale, nemmeno sotto carico, ma riprodotto trattenendo lo script."
+    ],
+    "titolo_en": "The web app no longer stays blank when the last piece of the app arrives late",
+    "voci_en": [
+      "Opening the web app with a slow or missing connection: if Settings (or one of its pages) was drawn before all the pieces of the app had arrived, the page stayed blank until a reload. It now waits for all of them and then draws, even offline, with “My team” switched off and the sentence saying when it opens."
+    ]
+  },
+  {
+    "versione": "1.603",
+    "data": "2026-11-27T12:54:39",
+    "titolo": "Giornate più chiare: tutti i voti in tabella, le giornate in attesa del recupero e la stessa panchina di Oggi",
+    "voci": [
+      "In Giornate la tabella degli 11 mostra anche chi giocava la sua prima partita (per esempio un portiere di riserva o chi è arrivato da poco): il suo voto c'è, l'atteso resta vuoto, e la somma dei voti torna con i punti.",
+      "Una giornata che aspetta ancora un recupero non sparisce più da Giornate: in cima c'è la frase «in attesa del recupero, i punti arrivano dopo».",
+      "Se hai salvato solo gli 11 senza panchina, la panchina scelta da SchieraXI è la stessa in Oggi e in Giornate quando c'è la copia fatta alla scadenza (di solito c'è): il totale e chi è entrato dalla panchina non cambiano quando la giornata entra in Giornate."
+    ],
+    "tecnico": [
+      "fanta/diario.py: chi non ha una previsione ricostruita (`_senza_previsione`) entra in `giocatori` con p_voto e fv_atteso null e il voto che la lega ha contato (`_numeri_senza_previsione`), anche nei punti rifatti e in `numeri_giocatori`/`_stessi_voti` (con `giocatori_rosa`), così una correzione del suo voto rifà la voce; le voci di prima lo prendono quando se ne rifanno i punti. fanta/precisione.py lo esclude in modo esplicito da mostrati e ricostruiti: la misura resta quella di prima (python -m fanta verifica non usa questi file).",
+      "fanta/rinvii.py: `giornate_in_attesa` (stessa lettura del calendario di `giornate_chiuse`, rifatta su `_partite_per_giornata` e `_solo_recuperi`); `diario.elenco` la mette in `in_attesa` per le giornate senza voce, una lettura del calendario per chiamata (il widget no: `attese=False`). GET /api/diario senza la tua squadra lascia `in_attesa` vuoto.",
+      "fanta/widget.py: il campo `diario` di GET /api/widget con `diario.formazione_che_conta` (resa pubblica): schierata, poi automatica, poi consigliata, come Giornate e Oggi (oggi nessun widget dell'iPhone lo disegna). Il test iPhone `diarioComeLApp` ripete la stessa regola.",
+      "Panchina del sistema per 11 salvati senza panchina: `diario.panchina_alla_scadenza` con i numeri della rosa alla scadenza (`numeri_rosa`), usata da `fasi._panchina_della_giornata` e da `calcola_giornata` (voce nuova, «Correggi», punti rifatti); la consigliata rifatta tiene la panchina dei numeri rifatti. I numeri della scadenza restano per 12 giornate (MAX_NUMERI_ROSA = MASSIMO_GIORNATE, prima 4). Senza copia alla scadenza Oggi resta senza panchina e il Diario la sceglie con i numeri rifatti, come prima: Oggi non può rifare le previsioni. docs/API.md aggiornato."
+    ],
+    "titolo_en": "Clearer Matchdays: every mark in the table, matchdays waiting for a rescheduled match and the same bench as Today",
+    "voci_en": [
+      "In Matchdays the table of the 11 also shows whoever was playing their first match (for example a reserve goalkeeper or a new arrival): their mark is there, the expected score stays empty, and the marks add up to the points.",
+      "A matchday still waiting for a rescheduled match no longer disappears from Matchdays: at the top it says it is waiting for the rescheduled match and the points will come later.",
+      "If you saved only the 11 without a bench, the bench chosen by SchieraXI is the same in Today and in Matchdays when there is the copy made at the deadline (usually there is): the total and who came off the bench do not change when the matchday enters Matchdays."
+    ]
+  },
+  {
+    "versione": "1.602",
+    "data": "2026-11-27T12:36:06",
+    "titolo": "Gli stessi numeri con la virgola su iPhone, web e nelle frasi",
+    "voci": [
+      "Sull'iPhone e nel widget un fantavoto atteso come 6,35 si legge «6,3», come sulla web: prima l'iPhone scriveva «6,4». Capitava a circa due numeri su cinque tra quelli che finiscono con il 5 (6,35, 5,55, 7,05, 8,45…), anche nella tabella degli 11 della Formazione.",
+      "Le differenze scritte accanto ai numeri, come «Meglio del previsto: Rossi (+1,2)» in Giornate, tornano sempre con i due numeri che leggi.",
+      "Sulla web un numero appena sotto lo zero si scrive «0,0», non più «-0,0»."
+    ],
+    "tecnico": [
+      "Una regola sola, frasi.arrotonda(x, cifre=1): Decimal(x).quantize(ROUND_HALF_UP), cioè il valore vero del float con il mezzo lontano dallo zero, come toFixed della web (era già diario._letto, che ora la usa). La usano anche _segno_e_cifre (i numeri dentro le frasi, prima f\"{x:.1f}\", al pari sui casi esatti: 6,25 → «6,2»), frasi.differenza (prima round di Python), perche_scelta._uno (che deve restare uguale a come la frase scrive il numero, #659; la riga «fantavoto atteso più alto» ora confronta e scrive round(mu, 2), il fv_atteso della scheda, come la tabella) e i punteggio_atteso di consigli.py (prima round(x, 1)): cambiano solo i valori esattamente a metà, come 72,25, che ora si scrivono 72,3 dappertutto. Nessun numero del calcolo cambia.",
+      "iPhone: Formato.decimali moltiplicava per 10 e arrotondava il prodotto già arrotondato dal calcolatore (6,35 × 10 = 63,5 tondo → «6,4»); ora, quando il prodotto cade proprio a metà, decide il resto esatto del prodotto (addingProduct). Simulato con le stesse operazioni contro Decimal su 510.006 numeri: nessuna differenza (prima 8.412).",
+      "Web: num toglie il meno da «-0.0» (toFixed lo lascia), e dettagliPrecisione passa da num. Provati con node contro le frasi del server su tutti i numeri con due decimali fra −20 e 20 (tests/test_arrotonda_come_server.py); gli stessi casi in ios/Tests/SchieraxiTests/ArrotondaComeIlServerTests.swift."
+    ],
+    "titolo_en": "The same decimal numbers on iPhone, web and in sentences",
+    "voci_en": [
+      "On the iPhone and in the widget an expected fantavoto like 6.35 reads «6.3», as on the web: before, the iPhone wrote «6.4». It happened to about two numbers in five among those ending in 5 (6.35, 5.55, 7.05, 8.45…), also in the table of the 11 in the Lineup.",
+      "The differences written next to the numbers, like «Better than expected: Rossi (+1.2)» in Matchdays, always match the two numbers you read.",
+      "On the web a number just below zero is written «0.0», no longer «-0.0»."
+    ]
+  },
+  {
+    "versione": "1.601",
+    "data": "2026-11-27T12:19:22",
+    "titolo": "Importa le rose: squadre che si chiamano come un club e scambi visti giusti",
+    "voci": [
+      "Importa le rose: una vostra squadra che si chiama come una squadra di Serie A («Roma», «AS Roma», «Inter») ora è riconosciuta come squadra nell'Excel con le squadre affiancate, nel testo incollato dopo una riga vuota e quando è già salvata nella lega. Dove non si capisce, l'anteprima lo dice e spiega cosa fare.",
+      "Se una squadra risulta con troppi giocatori perché il nome di una squadra della lega è stato preso per un club, il messaggio dice quale nome e cosa fare, invece di «ha 50 giocatori» e basta.",
+      "Reimportando solo la tua rosa dopo uno scambio, «Cosa cambia» e lo storico mostrano il passaggio giusto anche se la rosa salvata dell'altra squadra è vecchia.",
+      "Nel testo con un nome per riga «Crediti residui: 37» si legge anche se accanto ai giocatori non ci sono club e costo.",
+      "«Giocatori da sistemare»: se le rose non si leggono la web e l'iPhone lo dicono al posto dell'elenco. Sull'iPhone, con due righe uguali nella stessa squadra, abbinandone una sparisce solo quella."
+    ],
+    "tecnico": [
+      "rose.py: una riga con il solo nome di un club di Serie A è il titolo di una fantasquadra quando è una squadra già salvata (squadre_note), quando i giocatori hanno il club sulla stessa riga (_club_sulla_riga) o dove comincia una squadra: in cima al blocco, dopo una riga vuota, dopo totale o crediti (_estrai_blocco, _club_da_solo). Nel testo con un nome per riga (_club_e_titolo): dopo una riga vuota, dopo un giocatore che ha già il club, in prima riga, dopo i crediti; nei testi di soli nomi anche dopo una rosa completa o con il nome di una squadra salvata. Le righe decise come titoli arrivano a _Celle (titoli) e diventano «testo».",
+      "rose.py: i club che potrebbero essere un titolo finiscono in SquadraLetta.club_dubbi e nell'avviso rose.club_forse_squadra (frasi.py, frase.json); limiti.controlla_rose(ctx, rose, lette) li usa nel 413 per troppi giocatori (err.squadra_troppi_giocatori_club). Un foglio diviso per club (titoli di club con sotto i giocatori di quel club, _giocatori_del_club) si salta come listone.",
+      "rose.py: CSV con la colonna della fantasquadra: _colonna_fantasquadra conta anche i club che non sono quelli del giocatore della riga, e il club del giocatore non si prende più dalla colonna della fantasquadra.",
+      "rose.py: nel testo con un nome per riga la riga dei crediti va nella colonna dei nomi (prima in una quinta colonna, che senza club e costo era un blocco senza squadra).",
+      "movimenti.differenze(prima, dopo, lette): un giocatore in due squadre è di quella letta dal file (server._importa, anteprima_rose.anteprima, comando importa); chi era già nella squadra di arrivo non conta come passaggio, così il doppione rimasto non ripete il passaggio all'importazione dopo.",
+      "Web: paNonRiconosciuti mostra l'errore di lettura (pav.da_sistemare_errore, role=alert). iPhone: GiocatoreDaSistemare.posizione nell'identificativo, DubbiRoseViewModel.erroreLettura mostrato in ImportaRoseView."
+    ],
+    "titolo_en": "Import rosters: teams named like a club and trades seen correctly",
+    "voci_en": [
+      "Import rosters: one of your teams with the same name as a Serie A club («Roma», «AS Roma», «Inter») is now recognised as a team in the Excel file with teams side by side, in pasted text after a blank line and when it is already saved in the league. Where it is not clear, the preview says so and explains what to do.",
+      "If a team ends up with too many players because the name of a league team was taken for a club, the message says which name and what to do, instead of just «has 50 players».",
+      "When you re-import only your own roster after a trade, «What changes» and the history show the right move even if the saved roster of the other team is old.",
+      "In text with one name per line, «Crediti residui: 37» is read even when the players have no club and cost next to them.",
+      "«Players to fix»: if the rosters cannot be read, the web app and the iPhone say so in place of the list. On the iPhone, with two identical rows in the same team, matching one removes only that one."
+    ]
+  },
+  {
     "versione": "1.600",
     "data": "2026-11-27T11:29:02",
     "titolo": "iPhone e iPad: scheda del giocatore più ordinata sull'iPad e frasi giuste anche sull'iPad",

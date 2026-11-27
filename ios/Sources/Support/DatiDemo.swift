@@ -1174,23 +1174,29 @@ private extension LegaDemo {
                                        "modificabile": true, "atteso_vs_fatto": avf(c.atteso, c.fatti), "consigliata": consigliata,
                                        "automatica": NSNull(), "giocatori": numeriGiocatori(g.serieA, c)]
             if let ora = calcolata[g.serieA] { voce["istantanea"] = istantanea(g.serieA, c.modulo, base, atteso: c.atteso, ora: ora) }
+            // la copia della consigliata fatta alla scadenza: con l'istantanea è quella mostrata (gli stessi numeri della consigliata),
+            // senza ha i suoi (`LegaDemo.giornateFinite`, Serie A 7)
+            let copia: EsitoGiornata? = calcolata[g.serieA] != nil ? c : g.automatica
             if let s = g.schierata, let nomi = tuoi[g.serieA] {
                 voce["schierata"] = esito(s, nomi)
-            } else if calcolata[g.serieA] != nil {
-                voce["automatica"] = esito(c, base)
+            } else if let copia {
+                voce["automatica"] = esito(copia, base)
             }
+            let tua = voce["schierata"] != nil
             // senza l'istantanea la consigliata di allora non era stata salvata: la frase la scrive il server
-            // (`nota_consigliata` di fanta/diario.py, #674), qui il suo testo per la consigliata rifatta o per la tua formazione
+            // (`nota_consigliata` di fanta/diario.py, #674), qui il suo testo per la tua formazione o per la consigliata rifatta; con
+            // la copia fatta alla scadenza il server non scrive niente
             if calcolata[g.serieA] == nil {
                 voce["consigliata_di_allora"] = "non_salvata"
-                voce["nota_consigliata"] = voce["schierata"] == nil
-                    ? "Questa è rifatta con i dati di allora: quella mostrata prima della scadenza non era stata salvata."
-                    : "Qui il confronto con la consigliata non c'è: quella mostrata prima della scadenza non era stata salvata."
+                if tua {
+                    voce["nota_consigliata"] = "Qui il confronto con la consigliata non c'è: quella mostrata prima della scadenza non era stata salvata."
+                } else if copia == nil {
+                    voce["nota_consigliata"] = "Questa è rifatta con i dati di allora: quella mostrata prima della scadenza non era stata salvata."
+                }
             }
             // fatti contro attesi della formazione che conta (la tua, poi la copia alla scadenza, poi la consigliata), come il server
-            let tua = voce["schierata"] != nil
-            let conta: EsitoGiornata = tua ? (g.schierata ?? c) : c
-            let formazione: String = tua ? "schierata" : (calcolata[g.serieA] != nil ? "automatica" : "consigliata")
+            let conta: EsitoGiornata = tua ? (g.schierata ?? c) : (copia ?? c)
+            let formazione: String = tua ? "schierata" : (copia != nil ? "automatica" : "consigliata")
             let differenza: Double = ((conta.fatti - conta.atteso) * 10).rounded() / 10
             var fatti: [String: Any] = ["formazione": formazione, "atteso": conta.atteso, "fatti": conta.fatti,
                                         "differenza": differenza, "testo": NSNull()]
