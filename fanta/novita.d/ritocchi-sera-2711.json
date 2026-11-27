@@ -1,0 +1,25 @@
+{
+  "titolo": "Inviti da amministratore più chiari, squadra per intero nella scheda e numeri allineati",
+  "voci": [
+    "Gestione › Inviti aperti: un invito che fa entrare un amministratore ha accanto «(amministratore)», come nell'elenco degli utenti.",
+    "Gestione › Nuovo invito: con la casella «Il nuovo account sarà amministratore» il numero di persone resta 1 e sotto c'è scritto perché; togliendo la casella torna libero.",
+    "Scheda del giocatore: sotto il nome la squadra è sempre scritta per intero (per esempio «Attaccante · Inter»), anche per i giocatori che non sono tuoi. Uguale sull'iPhone.",
+    "Stato dei dati › Quanto è affidabile il modello: i numeri della carta hanno sempre le stesse cifre (per esempio 1,59 e 1,60; 63,0 e 62,9).",
+    "Password dimenticata: la pagina ha il suo titolo al posto delle schede Accedi e Registrati. Uguale sull'iPhone."
+  ],
+  "titolo_en": "Clearer administrator invitations, full team name on the player card and aligned numbers",
+  "voci_en": [
+    "Management › Open invitations: an invitation that lets in an administrator shows “(administrator)” next to it, as in the list of users.",
+    "Management › New invitation: with the box “The new account will be an administrator” ticked, the number of people stays at 1 and a sentence below says why; unticking the box frees it again.",
+    "Player card: under the name the team is always written in full (for example “Forward · Inter”), also for players who are not yours. Same on iPhone.",
+    "Data status › How reliable the model is: the numbers on the card always have the same digits (for example 1.59 and 1.60; 63.0 and 62.9).",
+    "Forgot password: the page has its own title instead of the Sign in and Sign up tabs. Same on iPhone."
+  ],
+  "tecnico": [
+    "Web: Gestione › Inviti aperti legge `ruolo` di GET /api/admin/inviti (admin.admin_breve); con la spunta amministratore #adm-posti vale 1 ed è spento con i suoi pulsanti (admin.posti_amministratore).",
+    "Scheda del giocatore: il club da `squadra_slug` (`nomeClub` della web, `TestaScheda` e la voce di VoiceOver del risultato atteso sull'iPhone); `calciatore.squadra` di /api/giocatore è la sigla del listone.",
+    "affidabilita.sintesi arrotonda errori (2 cifre) e punti (1 cifra) con frasi.arrotonda invece di round; la web li scrive con num(x, 2) e num(x, 1), come Formato.decimali dell'iPhone. Vale dalla prossima prova calcolata.",
+    "Accesso: sul recupero della password al posto di #accesso-schede un titolo h2 (accesso.scheda_recupero); iPhone uguale (AccessoView).",
+    "script/ci/server_finto.py: RISPOSTE_SENZA_DATI risponde a /api/avatar (versione 3, tratti vuoti) quando lo scenario non ce l'ha."
+  ]
+}

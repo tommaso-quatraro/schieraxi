@@ -66,7 +66,16 @@ struct SchermataAccesso: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityElement(children: .combine)
                 }
-                selettore
+                if modulo.scheda == .recupera {
+                    // «Password dimenticata» non è una delle due schede: il suo titolo al posto loro, come la web (collaudo del 27/11
+                    // sera: «Accedi» e «Registrati» restavano tutte e due non scelte); «Torna all'accesso» le riporta
+                    Text(Scheda.recupera.titolo)
+                        .font(.title3.bold())
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityAddTraits(.isHeader)
+                } else {
+                    selettore
+                }
                 sezioneGoogle
                 if modulo.mostraMetodi(postaAccesa: postaAccesa) { selettoreMetodo }
                 Carta { campi }

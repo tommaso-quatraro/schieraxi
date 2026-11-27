@@ -71,12 +71,16 @@ final class AccessoUITests: XCTestCase {
         tocca(app.buttons["Password dimenticata"], finchéCompare: app.buttons["Scegli la nuova password"],
               "«Password dimenticata» apre il recupero con il codice")
         XCTAssertTrue(app.textFields["Codice"].waitForExistence(timeout: 10))
+        // al posto delle due schede il titolo della pagina, come la web (collaudo del 27/11 sera)
+        XCTAssertTrue(app.staticTexts["Password dimenticata"].exists, "il recupero ha il suo titolo")
+        XCTAssertFalse(app.buttons["scheda-accedi"].exists || app.buttons["scheda-registrati"].exists, "niente schede non scelte")
         tocca(app.buttons["Con l'email"], finchéCompare: app.buttons["Mandami il codice"], "«Con l'email» passa al recupero con l'email")
         XCTAssertTrue(app.textFields["Email"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons["Torna all'accesso"].exists)
 
         // di nuovo Accedi, con nome e password: si entra
-        tocca(app.buttons["scheda-accedi"], finchéCompare: app.buttons["Password dimenticata"], "la scheda Accedi mostra «Password dimenticata»")
+        tocca(app.buttons["Torna all'accesso"], finchéCompare: app.buttons["scheda-accedi"], "«Torna all'accesso» riporta le schede")
+        XCTAssertTrue(app.buttons["Password dimenticata"].waitForExistence(timeout: 10), "si torna su Accedi")
         scrivi("mister.rossi", in: nome)
         scrivi("Prova-Finta-Zero", in: app.secureTextFields["Password"])
         XCTAssertTrue(entra.isEnabled)
@@ -324,11 +328,12 @@ final class AccessoUITests: XCTestCase {
         XCTAssertTrue(app.textFields["Nome utente"].waitForExistence(timeout: 30))
         // Ogni cambio aspetta che compaia il pulsante della scheda d'arrivo prima del successivo: niente attese fisse.
         // Il pulsante si cerca ogni volta, così un tocco su una schermata che si sta ancora montando non resta appeso.
+        // Dal recupero si torna con «Torna all'accesso»: lì le due schede non ci sono, c'è il titolo (collaudo del 27/11 sera).
         let arrivi: [(tocco: String, atteso: String)] = [
             ("scheda-registrati", "Crea l'account"),
             ("scheda-accedi", "Password dimenticata"),
             ("Password dimenticata", "Scegli la nuova password"),
-            ("scheda-accedi", "Password dimenticata"),
+            ("Torna all'accesso", "Password dimenticata"),
         ]
         for giro in 1...6 {
             for passo in arrivi {
@@ -337,11 +342,13 @@ final class AccessoUITests: XCTestCase {
                 }
             }
         }
-        // Con i tocchi a raffica sul Mac di GitHub un tocco può perdersi: si rimette «Accedi» finché «Password dimenticata» compare.
+        // Con i tocchi a raffica sul Mac di GitHub un tocco può perdersi: si torna ad «Accedi» finché «Password dimenticata»
+        // compare: dal recupero con «Torna all'accesso», da Registrati con la scheda.
         var tornata = false
         for _ in 0..<6 where !tornata {
             if app.buttons["Password dimenticata"].waitForExistence(timeout: 8) { tornata = true; break }
-            app.buttons["scheda-accedi"].tap()
+            let torna = app.buttons["Torna all'accesso"]
+            if torna.exists { torna.tap() } else if app.buttons["scheda-accedi"].exists { app.buttons["scheda-accedi"].tap() }
         }
         XCTAssertTrue(tornata, "dopo i cambi rapidi la scheda Accedi deve tornare")
         XCTAssertTrue(app.secureTextFields["Password"].waitForExistence(timeout: 20))

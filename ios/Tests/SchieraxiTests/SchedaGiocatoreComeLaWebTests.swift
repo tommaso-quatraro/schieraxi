@@ -54,12 +54,17 @@ struct SchedaGiocatoreComeLaWebTests {
         #expect(dallaFormazione.id == 7 && dallaFormazione.nome == "Mauro Retalli" && dallaFormazione.ruolo == "A")
         #expect(dallaFormazione.club == "Genoa" && dallaFormazione.slug == "genoa")
         #expect(dallaFormazione.previsione?.id == 7)
+        // il server manda la sigla del listone in `squadra` e il nome nell'indirizzo in `squadra_slug`: il club è per intero
         let s: SchedaGiocatore = try Decodifica.decodifica(Data(#"""
-        {"calciatore": {"id": 7, "nome": "Mauro Retalli", "ruolo": "A", "squadra": "Hellas Verona", "squadra_slug": "verona"}}
+        {"calciatore": {"id": 7, "nome": "Mauro Retalli", "ruolo": "A", "squadra": "INT", "squadra_slug": "inter"}}
         """#.utf8))
         let dalServer = TestaScheda(scheda: s)
-        #expect(dalServer.club == "Hellas Verona" && dalServer.slug == "verona")
+        #expect(dalServer.club == "Inter" && dalServer.slug == "inter", "mai la sigla «INT» (o «Int»)")
         #expect(dalServer.previsione == nil)
+        let senzaSlug: SchedaGiocatore = try Decodifica.decodifica(Data(#"""
+        {"calciatore": {"id": 7, "nome": "Mauro Retalli", "ruolo": "A", "squadra": "Hellas Verona"}}
+        """#.utf8))
+        #expect(TestaScheda(scheda: senzaSlug).club == "Hellas Verona", "senza lo slug resta ciò che manda il server")
     }
 
     // MARK: le cifre

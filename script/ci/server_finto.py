@@ -17,6 +17,10 @@ import urllib.parse
 from pathlib import Path
 
 MAX_CORPO_RICHIESTA = 1_000_000
+# Rotte che le registrazioni tolgono apposta (prove/fotografie_dal_vero.py), con la risposta del server vero quando non ha dati: i
+# tratti dei volti vengono dalle foto vere dei calciatori, e senza l'app disegna i volti dal codice. Prima ogni pagina aveva un 404
+# (collaudo del 27/11 sera). Se lo scenario ha la sua risposta, vale quella.
+RISPOSTE_SENZA_DATI = {"/api/avatar": json.dumps({"versione": 3, "tratti": {}})}
 
 # Tipi dei file della web scritti qui: su Windows `mimetypes` legge il registro, che può dire text/plain per .js.
 TIPI = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
@@ -47,8 +51,9 @@ class _ServerSenzaNome(http.server.ThreadingHTTPServer):
 
 class ServerFinto:
     """Serve i file di `cartella_web` (un percorso che esce dalla cartella dà 404) e risponde alle `/api/...` con le risposte
-    dello scenario: prima l'indirizzo con la query, poi senza; altrimenti 404 {"detail": "rotta non registrata"} e l'indirizzo
-    va in `mancanti`. Ogni metodo ha la stessa risposta: niente si scrive. Si ferma all'uscita dal `with`."""
+    dello scenario (più `RISPOSTE_SENZA_DATI`, se lo scenario non le ha): prima l'indirizzo con la query, poi senza; altrimenti 404
+    {"detail": "rotta non registrata"} e l'indirizzo va in `mancanti`. Ogni metodo ha la stessa risposta: niente si scrive. Si
+    ferma all'uscita dal `with`."""
 
     def __init__(self, cartella_web: Path, scenario: Path, porta: int, host: str = "127.0.0.1"):
         self.radice = Path(cartella_web).resolve()
@@ -56,8 +61,8 @@ class ServerFinto:
             raise FileNotFoundError(f"manca index.html in {self.radice}")
         dati = leggi_scenario(scenario)
         self.adesso = dati["adesso"]
-        self.risposte = {urllib.parse.unquote(k): v if isinstance(v, str) else json.dumps(v)
-                         for k, v in dati["risposte"].items()}
+        self.risposte = RISPOSTE_SENZA_DATI | {urllib.parse.unquote(k): v if isinstance(v, str) else json.dumps(v)
+                                               for k, v in dati["risposte"].items()}
         self.host, self.porta = solo_locale(host), porta
         self._mancanti: set[str] = set()
         self._blocco = threading.Lock()

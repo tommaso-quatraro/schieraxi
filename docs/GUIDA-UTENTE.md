@@ -40,7 +40,7 @@ Parole che vedrai spesso:
 
 Per entrare ancora: scheda **Accedi**, nome utente e password, poi **Accedi**. Se compare **Continua con Google**, puoi usarlo senza password. Se hai già un account con la stessa email, entra come sempre e collega Google da **Impostazioni › Il tuo account › Accessi**.
 
-Password dimenticata: link **Password dimenticata** sotto il modulo. Di solito si parte da **Con il codice di recupero** (va bene anche il codice che ti dà chi gestisce l'app); se hai collegato un'email, scegli **Con l'email** e ti arriva un codice a 6 cifre. Se sul server le email sono spente, la scelta non c'è e resta solo il codice di recupero. Se non hai né l'uno né l'altro, scrivi al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
+Password dimenticata: link **Password dimenticata** sotto il modulo; si apre una pagina con quel titolo al posto di **Accedi** e **Registrati** (**Torna all'accesso** le riporta). Di solito si parte da **Con il codice di recupero** (va bene anche il codice che ti dà chi gestisce l'app); se hai collegato un'email, scegli **Con l'email** e ti arriva un codice a 6 cifre. Se sul server le email sono spente, la scelta non c'è e resta solo il codice di recupero. Se non hai né l'uno né l'altro, scrivi al recapito nella pagina [Privacy](https://app.schieraxi.it/privacy).
 
 ### Caricare la tua squadra
 

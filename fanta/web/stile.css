@@ -714,6 +714,8 @@ html:has(.intestazione-colonne.ferma) { scroll-padding-top: calc(var(--alto-test
 .stepper { display: inline-flex; align-items: center; border: 1px solid var(--bordo-campo); border-radius: var(--r-in); background: color-mix(in srgb, var(--solido) 50%, transparent); overflow: hidden; flex: none; max-width: 100%; }   /* i −/+ restano da 44 px (#289): se il posto non basta cede il numero */
 .stepper button { width: 44px; height: 44px; flex: none; border: 0; background: none; font-size: var(--t-card); font-weight: 500; color: var(--azione); line-height: 1; }
 .stepper button:active { background: color-mix(in srgb, var(--azione) 18%, transparent); }
+.stepper:has(input:disabled) { opacity: .55; }                 /* un numero che non si cambia (Gestione: l'invito da amministratore è per una persona) */
+.stepper button:disabled { cursor: default; background: none; }
 .stepper input { width: 58px; min-width: 0; height: 44px; border: 0; background: none; text-align: center; font-family: var(--font-numeri); font-size: var(--t-card); font-weight: 600; font-variant-numeric: tabular-nums; padding: 0; outline: none; }
 .interruttore-ios { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 9px 0; font-size: var(--t-corpo); }
 .interruttore-ios + .interruttore-ios, .riga-regola + .interruttore-ios { border-top: 1px solid var(--filo); }   /* righe separate dal filo, come le regole */

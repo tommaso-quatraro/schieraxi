@@ -44,6 +44,11 @@
     "it": "Il nuovo account sarà amministratore",
     "en": "The new account will be an administrator"
   },
+  "admin.posti_amministratore": {
+    "it": "Un invito da amministratore vale per una persona sola.",
+    "en": "An administrator invitation is for one person only.",
+    "nota": "sotto «Quante persone» (al posto di admin.posti_aiuto) quando la spunta admin.nuovo_admin è accesa: il numero resta 1 e non si cambia (il server rifiuta gli altri, err.invito_admin_una_volta)"
+  },
   "admin.invito_admin_conferma": {
     "it": "Chi entra con questo invito sarà amministratore: potrà creare inviti e bloccare o eliminare gli account degli altri. Confermi?",
     "en": "Whoever signs up with this invitation will be an administrator: they can create invitations and block or delete other accounts. Continue?",

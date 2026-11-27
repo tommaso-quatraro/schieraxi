@@ -1857,8 +1857,10 @@ function bloccoPerche(x) {
 // decidere: il fantavoto atteso (se gioca), «gioca N%» con lo stato a parole e la nota che lo spiega, perché è titolare, i motivi del numero, gli ultimi voti
 // e, per un titolare della tua formazione ancora aperta, «Sostituisci» (se gioca un anticipo già cominciato, la riga che dice che non
 // si sposta più). Tutto il resto (probabilità, stagione, occasioni, prossime partite) sta dietro «Tutti i numeri».
-// `c`: {id, nome, ruolo, squadra, squadra_slug}; `pr`: la sua previsione per la giornata (la scheda della Formazione o `previsione`
-// di /api/giocatore), null se non c'è; `fz`: la Formazione in pagina (stato.formaz), se la scheda si apre da lì.
+// `c`: {id, nome, ruolo, squadra, squadra_slug}; sotto il nome la squadra per intero dal suo nome nell'indirizzo («inter» → «Inter»):
+// `squadra` della scheda del server è la sigla del listone («INT», collaudo del 27/11 sera). `pr`: la sua previsione per la giornata
+// (la scheda della Formazione o `previsione` di /api/giocatore), null se non c'è; `fz`: la Formazione in pagina (stato.formaz), se la
+// scheda si apre da lì.
 function htmlScheda(c, pr, fz) {
   const esito = pr ? esitoPartita(pr) : null, stato = pr && !esito ? parolaStato(pr) : null;
   const finitaP = !!pr && PARTITA_FINITA.includes(pr.stato_partita);
@@ -1887,7 +1889,7 @@ function htmlScheda(c, pr, fz) {
     <div class="intestazione-scheda">
       ${volto({ id: c.id, nome: c.nome, squadra: c.squadra_slug, ruolo: c.ruolo }, true)}
       <div><h2>${esc(c.nome)}</h2>
-        <div class="debole">${NOME_RUOLO_1[c.ruolo] || esc(c.ruolo)} · ${esc(c.squadra)}${pr && pr.diffidato ? ` · <span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : ""}</div>
+        <div class="debole">${NOME_RUOLO_1[c.ruolo] || esc(c.ruolo)} · ${esc(nomeClub(c.squadra_slug || c.squadra))}${pr && pr.diffidato ? ` · <span class="etichetta arancio">${t("oggi.diffidato_tipo")}</span>` : ""}</div>
         ${partita ? `<div class="debole">${partita}</div>` : ""}</div>
     </div>
     ${cifre}
@@ -3100,7 +3102,8 @@ async function mostraAffidabilita(numero) {
     if (numero !== ultimaScheda || !document.body.contains(dove)) return;
     const s = a.sintesi, righe = (a.righe || []).filter(r => r.punti_modello != null);
     if (!s || !s.giornate) { dove.innerHTML = `<h2>${t("scambio.quanto_affidabile_modello")}</h2><div class="debole piccolo">${t("avv.prova_sola_dopo")}</div>`; return; }
-    const v = x => (x == null ? "–" : virgola(x));
+    // stesse cifre in tutta la carta, come l'iPhone: errori a due, punti a una (collaudo del 27/11 sera: «1,59» accanto a «1,6»)
+    const errore2 = x => num(x, 2), v = x => num(x, 1);
     let grafico = "";
     if (righe.length >= 2) {
       const W = 300, H = 110, P = 8, tutti = righe.flatMap(r => [r.punti_modello, r.punti_fantamedia, r.punti_perfetta]).filter(x => x != null);
@@ -3113,7 +3116,7 @@ async function mostraAffidabilita(numero) {
     }
     dove.innerHTML = `<h2>${t("scambio.quanto_affidabile_modello")}</h2>
       <div class="debole piccolo">${tp("avv.prova_su", s.giornate)}</div>
-      <div class="stat-fila" style="margin-top:12px"><div><b>${v(s.errore_modello)}</b><span>${t("avv.errore_sui_fantavoti")}</span></div><div><b>${v(s.errore_fantamedia)}</b><span>${t("avv.errore_fantamedia")}</span></div>
+      <div class="stat-fila" style="margin-top:12px"><div><b>${errore2(s.errore_modello)}</b><span>${t("avv.errore_sui_fantavoti")}</span></div><div><b>${errore2(s.errore_fantamedia)}</b><span>${t("avv.errore_fantamedia")}</span></div>
         <div><b class="${s.punti_modello != null && s.punti_fantamedia != null && s.punti_modello >= s.punti_fantamedia ? "positivo" : ""}">${v(s.punti_modello)}</b><span>${t("avv.punti_formazione_modello")}</span></div></div>
       <div class="debole piccolo" style="margin-top:8px">${t("avv.punti_medi", { m: v(s.punti_modello), f: v(s.punti_fantamedia), p: v(s.punti_perfetta) })}
         ${t("avv.mancano_probabili")}</div>${grafico}`;
@@ -4019,11 +4022,14 @@ function mostraAccesso(messaggio = "", scheda = "accedi", extra = {}) {
     el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", t("accesso.nome_aria"));
     document.body.appendChild(el);
   }
-  // grafica B (spec §9): un modulo centrato senza carta; il nome è quello disegnato della testata, per i lettori di schermo «SchieraXI»
+  // grafica B (spec §9): un modulo centrato senza carta; il nome è quello disegnato della testata, per i lettori di schermo «SchieraXI».
+  // «Password dimenticata» non è una delle due schede: al loro posto il suo titolo, come «Il tuo codice di recupero» (collaudo del 27/11
+  // sera: le schede restavano tutte e due non scelte); «Torna all'accesso» le riporta
   el.innerHTML = `<div class="accesso-corpo${primaVolta ? " primo" : ""}">
     <div class="accesso-marchio">${marchio(72, true)}</div>
     <h1 class="accesso-titolo"><svg class="wm" aria-hidden="true" focusable="false"><use href="#wm-c"/></svg><span class="solo-lettori">SchieraXI</span></h1>
-    <div class="segmenti" id="accesso-schede">${SCHEDE_ACCESSO.map(k => `<button type="button" data-s="${k}" class="${k === scheda ? "attivo" : ""}" aria-pressed="${k === scheda}">${t("accesso.scheda_" + k)}</button>`).join("")}</div>
+    ${SCHEDE_ACCESSO.includes(scheda) ? `<div class="segmenti" id="accesso-schede">${SCHEDE_ACCESSO.map(k => `<button type="button" data-s="${k}" class="${k === scheda ? "attivo" : ""}" aria-pressed="${k === scheda}">${t("accesso.scheda_" + k)}</button>`).join("")}</div>`
+      : `<h2>${t("accesso.scheda_recupero")}</h2>`}
     <div id="accesso-msg" role="status"></div>
     ${socialPronto() && SCHEDE_ACCESSO.includes(scheda) && extra.sub !== "verifica" ? `<div class="accesso-social">${htmlGoogle(t("social.continua"))}<div class="accesso-oppure debole piccolo" aria-hidden="true"><span>${t("social.oppure")}</span></div></div>` : ""}
     ${scheda === "recupero" && stato.emailAttiva !== false && (extra.sub === "email" || extra.sub === "codice") ? `<div class="segmenti" id="accesso-metodi">${[["email", t("accesso.recupero_con_email")], ["codice", t("accesso.recupero_con_codice")]].map(([k, c]) => `<button type="button" data-m="${k}" class="${k === extra.sub ? "attivo" : ""}" aria-pressed="${k === extra.sub}">${c}</button>`).join("")}</div>` : ""}
@@ -4666,6 +4672,22 @@ function collegaAmministratore() {
     pulsante.disabled = true;
     try { await fai(); } finally { pulsante.disabled = false; }
   };
+  // Un invito da amministratore vale per una persona sola (il server rifiuta gli altri numeri, collaudo del 27/11 sera): con la spunta
+  // «Quante persone» torna a 1 e si spegne, e la frase sotto dice perché; senza la spunta torna libero, con il numero scritto prima
+  // (`postiPrima`, che dopo un invito si dimentica: si riparte da 1) e la frase del tetto
+  let postiPrima = null;
+  const postiPerAmministratore = () => {
+    const campo = $("#adm-posti"), aiuto = $("#adm-posti-aiuto");
+    if (!campo) return;
+    const unaSola = !!($("#adm-admin") && $("#adm-admin").checked);
+    if (unaSola && !campo.disabled) { postiPrima = campo.value; campo.value = "1"; }
+    else if (!unaSola && campo.disabled && postiPrima !== null) campo.value = postiPrima;
+    if (!unaSola) postiPrima = null;
+    campo.disabled = unaSola;
+    campo.closest(".stepper").querySelectorAll("button").forEach(b => { b.disabled = unaSola; });
+    if (aiuto) aiuto.textContent = unaSola ? t("admin.posti_amministratore") : stato.maxUsiInvito ? t("admin.posti_aiuto", { n: stato.maxUsiInvito }) : "";
+  };
+  if ($("#adm-admin")) $("#adm-admin").addEventListener("change", postiPerAmministratore);
   // Dopo l'invito la spunta «amministratore» si toglie, e con la spunta accesa si chiede prima (revisione del 27/11: restava accesa
   // e anche l'invito dopo dava i poteri di chi gestisce il server). Dopo l'invito si rilegge anche «Errori recenti» (l'evento nuovo).
   if ($("#adm-invito")) $("#adm-invito").addEventListener("click", spentoMentre($("#adm-invito"), () => provaCosi(t("admin.crea_invito_no"), async () => {
@@ -4681,6 +4703,8 @@ function collegaAmministratore() {
     if ($("#adm-admin")) $("#adm-admin").checked = false;
     $("#adm-etichetta").value = "";
     $("#adm-posti").value = "1";
+    postiPrima = null;                                   // il numero di prima della spunta non torna: il modulo riparte da capo
+    postiPerAmministratore();
     avvisoPosti(r);
     mostraInvito(r);
     caricaUtenti();
@@ -4756,9 +4780,9 @@ function collegaAmministratore() {
   // il tetto delle persone di un invito, dal server (#940): il «+» di «Quante persone» si ferma lì e la spiegazione lo dice
   const tettoPersone = n => {
     stato.maxUsiInvito = n;
-    const campo = $("#adm-posti"), aiuto = $("#adm-posti-aiuto");
+    const campo = $("#adm-posti");
     if (campo) campo.closest(".stepper").dataset.max = String(n);
-    if (aiuto) aiuto.textContent = t("admin.posti_aiuto", { n });
+    postiPerAmministratore();
   };
   // inviti aperti (#894): il nome, la frase del server (creato, scade, posti liberi) e «Annulla»; gli inviti chiusi (usati,
   // scaduti, annullati) non si mostrano. Annullare chiede prima (il link dell'amico smette di valere), toglie il link appena creato
@@ -4771,7 +4795,7 @@ function collegaAmministratore() {
       if (Number.isInteger(r.max_usi) && r.max_usi > 0) tettoPersone(r.max_usi);
       const aperti = r.inviti.filter(i => i.stato === "attivo");
       dove.innerHTML = aperti.length ? `<ul class="elenco adm-inviti" aria-labelledby="adm-inviti-titolo">${aperti.map(i => `<li class="riga">
-          <div><div>${esc(i.etichetta)}</div><div class="debole piccolo">${esc(testoDi(i, "dettaglio"))}</div></div>
+          <div><div>${esc(i.etichetta)}${i.ruolo === "amministratore" ? t("admin.admin_breve") : ""}</div><div class="debole piccolo">${esc(testoDi(i, "dettaglio"))}</div></div>
           <button class="azione-testo" type="button" data-annulla-invito="${Number(i.id)}" aria-label="${esc(t("admin.annulla_invito_per", { etichetta: i.etichetta }))}">${t("admin.annulla_invito")}</button></li>`).join("")}</ul>`
         : `<p class="debole piccolo">${t("admin.nessun_invito_aperto")}</p>`;
       for (const b of dove.querySelectorAll("[data-annulla-invito]"))

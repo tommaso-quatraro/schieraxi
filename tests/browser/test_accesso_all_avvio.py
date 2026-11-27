@@ -110,6 +110,29 @@ def test_registrazione_aperta_con_le_email_spente_non_chiede_l_email(web):
     assert web.pagina.locator("#ac-nome").is_visible() and web.pagina.locator("#ac-pw").is_visible()
 
 
+@pytest.mark.parametrize("larghezza", [390, 1440])
+def test_password_dimenticata_ha_il_suo_titolo_al_posto_delle_schede(web, larghezza):
+    """Collaudo del 27/11 sera: la pagina non aveva un titolo e in alto c'erano «Accedi» e «Registrati», nessuna delle due scelta.
+    Ora al posto delle schede il titolo «Password dimenticata»; «Torna all'accesso» riporta le schede, con «Accedi» scelta."""
+    solo_prima(web)
+    web.risposta("/api/account/me", SENZA_SESSIONE, stato=401)
+    web.pagina.set_viewport_size({"width": larghezza, "height": 844 if larghezza < 600 else 900})
+    web.pagina.goto(web.server.indirizzo + "/", wait_until="load")
+    aspetta_accesso(web)
+    accesso = web.pagina.get_by_role("dialog")
+    accesso.get_by_role("link", name="Password dimenticata").click()
+    titolo = accesso.get_by_role("heading", name="Password dimenticata")
+    titolo.wait_for(timeout=10000)
+    assert titolo.is_visible()
+    assert accesso.get_by_role("button", name="Accedi", exact=True).count() == 0
+    assert accesso.get_by_role("button", name="Registrati", exact=True).count() == 0
+    accesso.get_by_role("link", name="Torna all'accesso").click()
+    scelta = accesso.get_by_role("button", name="Accedi", exact=True).first
+    scelta.wait_for(timeout=10000)
+    assert accesso.locator("[aria-pressed='true']").all_inner_texts() == ["Accedi"]
+    assert accesso.get_by_role("heading", name="Password dimenticata").count() == 0
+
+
 def test_registrazione_aperta_password_dimenticata_parte_dal_codice(web):
     """L'email è facoltativa: «Password dimenticata» parte dal codice di recupero, come con l'invito."""
     solo_prima(web)
