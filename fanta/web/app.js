@@ -936,7 +936,12 @@ async function rileggiAggiornamento() {
   try { await caricaInfo(); } finally { leggoAggiornamento = false; }
   if (stato.aggiornoDati) seguiAggiornamento();
 }
+// Spento anche durante la richiesta che lo avvia (revisione del 27/11: un doppio tocco ne mandava due); se non parte si riaccende.
+let chiedoAggiornamento = false;
 async function aggiornaDati() {
+  if (chiedoAggiornamento) return;
+  chiedoAggiornamento = true;
+  if ($("#aggiorna-dati")) $("#aggiorna-dati").disabled = true;
   try {
     const r = await api("/api/aggiorna", { method: "POST" });
     if (!r.avviato) { avviso(traduciErrore(r.messaggio), 6000); return; }        // già in corso, o nessuna fonte accesa (#779)
@@ -964,6 +969,10 @@ async function aggiornaDati() {
     };
     setTimeout(controlla, 2000);
   } catch (e) { avviso(e.message); }
+  finally {
+    chiedoAggiornamento = false;
+    if ($("#aggiorna-dati") && !stato.aggiornoDati) $("#aggiorna-dati").disabled = false;
+  }
 }
 
 // ---------------------------------------------------------------- Formazione: la schermata che dice chi schierare (#616)
@@ -4407,11 +4416,12 @@ const AZIONI_UTENTE = {
   sblocca: { nome: "admin.sblocca", per: "admin.sblocca_per", conferma: "admin.sblocca_conferma", fatto: "admin.sblocca_fatto", no: "admin.sblocca_no" },
   elimina: { nome: "admin.elimina", per: "admin.elimina_per", conferma: "admin.elimina_conferma", fatto: "admin.elimina_fatto", no: "admin.elimina_no" },
 };
-// «Errori recenti», accanto agli strumenti da 1100 px (paginaGestione).
+// «Errori recenti», accanto agli strumenti da 1100 px (paginaGestione). Il registro (fino a 60 eventi) non è una regione che il
+// lettore di schermo legge da sola a ogni caricamento (revisione del 27/11): gli esiti delle azioni li dice l'avviso.
 function schedaErrori() {
   return gestisceAccount() ? `<div class="carta" id="scheda-errori"><h3>${t("errori.titolo")}</h3>
     <div class="debole piccolo">${t("errori.spiega")}</div>
-    <div id="adm-registro" class="debole piccolo" aria-live="polite">${t("admin.carico")}</div>
+    <div id="adm-registro" class="debole piccolo">${t("admin.carico")}</div>
     <div class="pulsanti"><button class="bottone secondario" type="button" id="adm-registro-aggiorna">${t("errori.aggiorna")}</button></div></div>` : "";
 }
 
@@ -4508,21 +4518,34 @@ function collegaAmministratore() {
     if (!dove || !r || !("avviso" in r)) return;
     dove.innerHTML = r.avviso ? `<div class="attenzione">${esc(testoDi(r, "avviso"))}</div>` : "";
   };
-  if ($("#adm-invito")) $("#adm-invito").addEventListener("click", () => provaCosi(t("admin.crea_invito_no"), async () => {
+  // «Crea l'invito» e «Genera il codice» restano spenti finché la richiesta non ha risposto (revisione del 27/11: un doppio tocco
+  // creava due inviti); si riaccendono anche dopo un errore o una domanda annullata
+  const spentoMentre = (pulsante, fai) => async () => {
+    if (!pulsante || pulsante.disabled) return;
+    pulsante.disabled = true;
+    try { await fai(); } finally { pulsante.disabled = false; }
+  };
+  // Dopo l'invito la spunta «amministratore» si toglie, e con la spunta accesa si chiede prima (revisione del 27/11: restava accesa
+  // e anche l'invito dopo dava i poteri di chi gestisce il server). Dopo l'invito si rilegge anche «Errori recenti» (l'evento nuovo).
+  if ($("#adm-invito")) $("#adm-invito").addEventListener("click", spentoMentre($("#adm-invito"), () => provaCosi(t("admin.crea_invito_no"), async () => {
     // il tetto è del server (stato.maxUsiInvito); se l'elenco degli inviti non è arrivato, il numero lo controlla lui
     const persone = numeroScritto(valore("#adm-posti")), massimo = stato.maxUsiInvito;
     if (!Number.isInteger(persone) || persone < 1 || (massimo && persone > massimo)) {
       avviso(massimo ? t("admin.posti_non_validi", { n: massimo }) : t("admin.posti_non_validi_senza_tetto"), 5000);
       return;
     }
-    const r = await api("/api/admin/inviti", { method: "POST", body: JSON.stringify({ etichetta: valore("#adm-etichetta"), amministratore: $("#adm-admin").checked, usi: persone }) });
+    const amministratore = !!($("#adm-admin") && $("#adm-admin").checked);
+    if (amministratore && !confirm(t("admin.invito_admin_conferma"))) return;
+    const r = await api("/api/admin/inviti", { method: "POST", body: JSON.stringify({ etichetta: valore("#adm-etichetta"), amministratore, usi: persone }) });
+    if ($("#adm-admin")) $("#adm-admin").checked = false;
     $("#adm-etichetta").value = "";
     $("#adm-posti").value = "1";
     avvisoPosti(r);
     mostraInvito(r);
     caricaUtenti();
     caricaInviti();
-  }));
+    caricaRegistro();
+  })));
   const mostraInvito = r => {
     const dove = $("#adm-esito-invito");
     if (!dove) return;
@@ -4543,11 +4566,12 @@ function collegaAmministratore() {
       catch (e) { if (e && e.name !== "AbortError") avviso(await copiaTesto(messaggio) ? t("admin.invito_copiato") : t("codice.non_copio")); }
     });
   };
-  $("#adm-reset").addEventListener("click", () => provaCosi(t("account.nuovo_codice_no"), async () => {
+  $("#adm-reset").addEventListener("click", spentoMentre($("#adm-reset"), () => provaCosi(t("account.nuovo_codice_no"), async () => {
     const r = await api("/api/admin/reset-password", { method: "POST", body: JSON.stringify({ nome_utente: valore("#adm-nome") }) });
     mostraCodice("#adm-esito-reset", r.codice);
     $("#adm-esito-reset").insertAdjacentHTML("afterbegin", `<div class="debole piccolo">${t("admin.reset_esito", { ore: r.valido_ore })}</div>`);
-  }));
+    caricaRegistro();
+  })));
   // Utenti: quanti sono e, per ognuno, il nome, la frase del server (iscrizione e ultimo accesso) e, se è bloccato, da quando.
   // Sugli altri account «Blocca» (o «Sblocca») ed «Elimina»; il proprio non ha pulsanti («Sei tu»): si elimina da Il tuo account.
   // Nemmeno quelli degli altri amministratori: si gestiscono solo sul server, dalla riga di comando (il server rifiuta con 403).
@@ -4620,7 +4644,7 @@ function collegaAmministratore() {
     const esito = $("#adm-esito-invito");
     if (esito && esito.dataset.invito === String(invito.id)) { esito.innerHTML = ""; delete esito.dataset.invito; }
     avviso(t("admin.invito_annullato"), 4000);
-    await Promise.all([caricaInviti(), caricaUtenti()]);
+    await Promise.all([caricaInviti(), caricaUtenti(), caricaRegistro()]);
     if ($("#adm-inviti-titolo")) $("#adm-inviti-titolo").focus();
   });
   caricaInviti();
@@ -4652,7 +4676,7 @@ function collegaAmministratore() {
           { quando: quando(e.quando), dove: doveRotta(e, e.metodo), stato: esc(e.stato || ""), tipo: esc(e.errore || "") })}</li>`)}
         <h3>${t("errori.sicurezza")}</h3>${righe(r.sicurezza, t("errori.nessun_evento"), e => `<li>${quando(e.quando)} · ${evento(e.tipo)}${e.nome ? " · " + esc(e.nome) : ""}${e.ip ? " · " + esc(e.ip) : ""}</li>`)}
         <h3>${t("errori.lente")}</h3>${righe(c.piu_lente, t("errori.ancora_niente"), p => `<li>${tp("errori.lenta_riga", p.richieste, { n: fNum(p.richieste), dove: doveRotta(p), medio: tempo(p.medio_ms) })}</li>`)}`;
-    } catch (e) { dove.textContent = e.message; }
+    } catch (e) { if (document.body.contains(dove)) dove.innerHTML = errore(e); }     // un file del registro che non si legge: la frase del server (27/11)
   };
   $("#adm-registro-aggiorna").addEventListener("click", caricaRegistro);
   caricaRegistro();
