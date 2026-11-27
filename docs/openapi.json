@@ -2604,7 +2604,7 @@
   },
   "/api/admin/registro": {
    "get": {
-    "description": "Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà),\ncon in più gli ultimi eventi importanti (registrazioni, recuperi, eliminazioni, cambi di ruolo...) anche se tanti tentativi\nsbagliati li hanno spinti più indietro. Ogni errore e ogni richiesta lenta ha accanto il nome della parte dell'app (`parte`, `parte_frase`).",
+    "description": "Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà),\ncon in più gli ultimi eventi importanti (registrazioni, recuperi, eliminazioni, cambi di ruolo...) anche se tanti tentativi\nsbagliati li hanno spinti più indietro. Ogni errore e ogni richiesta lenta ha accanto il nome della parte dell'app (`parte`, `parte_frase`).\nUn file del registro che c'è ma non si legge: 503 con il suo nome (la causa è nel log del servizio), mai un elenco vuoto.",
     "responses": {
      "200": {
       "content": {
