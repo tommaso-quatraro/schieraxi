@@ -1,0 +1,21 @@
+{
+  "titolo": "Gestione: permessi degli amministratori più stretti e inviti più sicuri",
+  "voci": [
+    "Gestione › Password dimenticata: il codice per cambiare la password vale per gli utenti e per il tuo account, non per un altro amministratore, come già per Blocca ed Elimina.",
+    "Gestione › Nuovo invito: con la casella «Il nuovo account sarà amministratore» accesa l'app chiede conferma, e dopo ogni invito la casella si spegne da sola.",
+    "«Crea l'invito», «Genera il codice» e «Aggiorna i dati» restano spenti finché il server non risponde: un doppio tocco non crea due inviti.",
+    "Errori recenti si aggiorna anche dopo un invito creato o annullato e dopo un codice per la password; se il server non riesce a leggere il suo registro lo dice, invece di «Nessun evento»."
+  ],
+  "titolo_en": "Management: stricter administrator permissions and safer invitations",
+  "voci_en": [
+    "Management › Forgotten password: the code to change a password works for users and for your own account, not for another administrator, as already for Block and Delete.",
+    "Management › New invitation: with «The new account will be an administrator» ticked the app asks for confirmation, and after each invitation the box clears by itself.",
+    "«Create the invitation», «Generate the code» and «Refresh the data» stay off until the server answers: a double tap does not create two invitations.",
+    "Recent errors also refreshes after an invitation is created or cancelled and after a password code; if the server cannot read its log it says so, instead of «No events»."
+  ],
+  "tecnico": [
+    "account.crea_reset(..., chi=Utente): 403 account.RESET_ALTRO_AMMINISTRATORE (err.reset_altro_amministratore) per l'account di un altro amministratore, il proprio sì; l'evento reset_creato ha da=chi.nome_utente. POST /api/admin/reset-password passa chi (solo_amministratore come parametro).",
+    "registro.ultimi: salta solo FileNotFoundError; un altro OSError scrive la causa nel log del servizio (logger fanta.registro) e alza RegistroIlleggibile. GET /api/admin/registro risponde 503 «Non riesco a leggere il registro del server ({nome}): …» (err.registro_illeggibile); la web lo mostra con role=alert.",
+    "Web (collegaAmministratore): spentoMentre per #adm-invito e #adm-reset; confirm(admin.invito_admin_conferma) con #adm-admin accesa e spunta tolta dopo l'invito; caricaRegistro dopo invito, annullamento e codice; #adm-registro senza aria-live. aggiornaDati: chiedoAggiornamento e #aggiorna-dati spento durante il POST, riacceso nel finally se l'aggiornamento non è partito."
+  ]
+}
