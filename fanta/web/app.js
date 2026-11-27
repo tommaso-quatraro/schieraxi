@@ -977,17 +977,31 @@ async function aggiornaDati() {
 const scadenzaDi = o => (o.prossima && (o.fase === "finita" || o.senza_formazione) && o.prossima.scadenza) || o.scadenza || o.inizio;
 // «Si chiude oggi 18:20» e «fra 3 h 10 min»: il conto resta, piccolo, accanto alla scadenza. Con la giornata ancora senza date la
 // frase del server (`senza_data` di /api/oggi, #552: «Data da definire»); un server di prima non la manda e resta il testo di sempre.
+// «Formazione chiusa» solo da quando la scadenza è passata: i minuti che mancano si arrotondano in su (con l'arrotondamento al più
+// vicino, 29 secondi prima la testa la diceva già chiusa mentre si poteva ancora cambiare).
 function testoConto(o) {
   if (o.senza_data && typeof o.senza_data.testo === "string" && o.senza_data.testo.trim()) return { chiude: testoDi(o.senza_data), manca: "" };
   const quandoChiude = scadenzaDi(o), fine = parseData(quandoChiude);
   if (!fine) return { chiude: t("oggi.calendario_no"), manca: "" };
-  const min = Math.round((fine - new Date()) / 60000);
-  if (min <= 0) return { chiude: t("formazione.chiusa_breve"), manca: "" };
+  const ms = fine - new Date();
+  if (ms <= 0) return { chiude: t("formazione.chiusa_breve"), manca: "" };
+  const min = Math.ceil(ms / 60000);
   const g = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), m = min % 60;
   // ogni numero resta attaccato alla sua unità (spazio che non va a capo): «1 giorno» / «8 h», mai «h» da sola su una riga (issue #286)
   const tempo = (g >= 1 ? tp("oggi.giorni_ore", g, { h }) : h >= 1 ? `${h} h ${m} min` : `${m} min`).replace(/(\d) /g, "$1 ");
   return { chiude: t("formazione.si_chiude", { quando: quando(quandoChiude) }), manca: t("formazione.fra", { tempo }) };
 }
+
+// La Formazione aperta si rilegge da sola, una lettura per evento e mai a ciclo (mostraFormazione): quando arriva la scadenza della
+// formazione in pagina (RILEGGI_DOPO_SCADENZA_MS dopo, per dare tempo al server, come l'iPhone) e, tornando in primo piano, se la
+// scadenza è passata (con il telefono in tasca i timer della pagina si fermano) o se l'ultima lettura è più vecchia di
+// DATI_VECCHI_MS. Per ogni scadenza una lettura sola (`scadenzaRiletta`): se il server la dice ancora aperta (orologio del telefono
+// avanti) non si rilegge di nuovo; un salvataggio arrivato tardi lo rifiuta con «formazione chiusa» e la pagina si rilegge.
+const RILEGGI_DOPO_SCADENZA_MS = 5000, DATI_VECCHI_MS = 5 * 60000, TIMER_MASSIMO_MS = 2 ** 31 - 1;
+let timerScadenza = null, scadenzaRiletta = null, formazioneAlRitorno = null;
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && formazioneAlRitorno) formazioneAlRitorno();
+});
 
 // Rose importate, la tua squadra non ancora scelta (primo avvio lasciato al passo «La tua squadra», collaudo del 26/11): al posto
 // dell'errore «Indica la tua squadra…» con un «Riprova» che non serviva, la domanda della guida, con le stesse parole e lo stesso
@@ -1173,6 +1187,9 @@ function rileggiFormazione() {
 // Anticipi già cominciati (#373): chi gioca una partita già cominciata non si sposta più (campo `bloccati` di GET /api/formazione;
 // manca senza anticipi cominciati e con un server vecchio). Il server rifiuta comunque un salvataggio che ne sposta uno.
 const giocatoriFermi = f => new Set((Array.isArray(f && f.bloccati) ? f.bloccati : []).map(Number));
+// Un rifiuto del server che dice che i dati in pagina sono vecchi: la scadenza è passata (`formazione_chiusa`) o è cominciato un
+// anticipo che la pagina non sapeva (`giocatore_bloccato`). Dopo, la Formazione si rilegge invece di ridisegnarsi.
+const rileggereDopo = e => e.codice === "formazione_chiusa" || e.codice === "giocatore_bloccato";
 // Chi può prendere il posto di un titolare lo dice il server (POST /api/formazione/sostituisci, `apriSostituzione`): stesso ruolo,
 // non già fra i titolari e non fermo, con i punti attesi della formazione dopo il cambio.
 // La Formazione si ridisegna (modulo, «Torna alla consigliata», un salvataggio arrivato): la sostituzione di un titolare aperta
@@ -1298,6 +1315,7 @@ function cambiInCorso(c) {
 // `b`: ciò che caricaGiornata ha letto ({o, f, scelta, valutata, non_valida}); per un'altra squadra solo {f}.
 function mostraFormazione(b, squadra, opz = {}) {
   const { o, f } = b;
+  clearTimeout(timerScadenza); formazioneAlRitorno = null;  // le riletture da sole preparate da una Formazione disegnata prima
   if (b.senza_squadra) { mostraSenzaSquadra(opz); return; }
   if (o && o.senza_rose) { mostraSenzaRose(opz); return; }
   if (o && o.campionato_finito) { mostraCampionatoFinito(o, opz); return; }
@@ -1323,7 +1341,7 @@ function mostraFormazione(b, squadra, opz = {}) {
   const nonLetta = mia && (b.scelta_non_letta === true || b.scelta === undefined);
   const sc = stato.scelta = { chiave: `${squadra || "mia"}/${f.giornata}`, salvata: mia && !nonLetta ? b.scelta : undefined,
     nonValida: mia && (!!b.non_valida || f.stato_scelta === "non_valida"), manuale: null, richiesta: 0, occupato: false,
-    nonLetta, copia: !!opz.daCache, sola: false, fuoco: null };
+    nonLetta, copia: !!opz.daCache, sola: false, fuoco: null, letta: Date.now() };   // `letta`: quando si sono chiesti i dati in pagina
   const spenti = () => mia && (sc.copia || sc.nonLetta || (!sc.occupato && scritturaSuScelta(f.giornata)));
   sc.sola = spenti();
   // la formazione di partenza: gli 11 salvati, se valgono e non sono proprio quelli della consigliata
@@ -1409,7 +1427,9 @@ function mostraFormazione(b, squadra, opz = {}) {
       if (e.status === 412) { cambiataAltrove(e); return false; }
       if (!qui(n)) { if (altrove(n)) avviso(nonSalvata(e), 5000); return false; }   // pagina riletta o lasciata nel frattempo: lo si dice lo stesso
       avviso(e.message, 5000);
-      if (e.codice === "formazione_chiusa") rileggiFormazione(); else disegna(true);      // scadenza passata con la pagina aperta: si rilegge tutto
+      // scadenza passata o anticipo cominciato con la pagina aperta: si rilegge tutto (ridisegnata, la pagina mostrerebbe ancora
+      // spostabile chi gioca una partita già cominciata)
+      if (rileggereDopo(e)) rileggiFormazione(); else disegna(true);
       return false;
     } finally { if (n === sc.richiesta) sc.occupato = false; }
   };
@@ -1429,7 +1449,7 @@ function mostraFormazione(b, squadra, opz = {}) {
       if (e.status === 412) { cambiataAltrove(e); return; }
       if (!qui(n)) { if (altrove(n)) avviso(nonSalvata(e), 5000); return; }
       avviso(e.message, 5000);                              // per esempio la consigliata sposterebbe chi gioca un anticipo già cominciato (#373)
-      if (e.codice === "formazione_chiusa") rileggiFormazione(); else disegna(true);
+      if (rileggereDopo(e)) rileggiFormazione(); else disegna(true);
     } finally { if (n === sc.richiesta) sc.occupato = false; }
   };
   const libero = () => { if (sc.occupato) avviso(t("formazione.sto_ancora_ricalcolando")); return !sc.occupato; };
@@ -1589,9 +1609,27 @@ function mostraFormazione(b, squadra, opz = {}) {
       el.textContent = ct.manca; chiude.textContent = ct.chiude;
     }, 30000);
   }
+  // le riletture da sole (vedi RILEGGI_DOPO_SCADENZA_MS), per la formazione in pagina
+  if (o && !squadra) {
+    const quandoChiude = scadenzaDi(o), fine = parseData(quandoChiude), chiave = `${f.giornata}/${quandoChiude}`;
+    const inPagina = () => stato.scelta === sc && stato.vista === "formazione" && !stato.squadraVista;
+    const rileggiPerScadenza = () => { scadenzaRiletta = chiave; rileggiFormazione(); };
+    const manca = fine && !chiusa ? fine - Date.now() : NaN;
+    if (manca > 0 && manca + RILEGGI_DOPO_SCADENZA_MS <= TIMER_MASSIMO_MS) {
+      timerScadenza = setTimeout(() => { if (inPagina()) rileggiPerScadenza(); }, manca + RILEGGI_DOPO_SCADENZA_MS);
+    }
+    formazioneAlRitorno = () => {
+      if (!inPagina()) return;
+      const ora = Date.now();
+      // sulla copia del telefono i dati nuovi sono già chiesti: la scadenza aspetta loro
+      if (!chiusa && fine && fine <= ora && scadenzaRiletta !== chiave && !sc.copia) rileggiPerScadenza();
+      else if (ora - sc.letta > DATI_VECCHI_MS) rileggiFormazione();
+    };
+  }
   // Per caricaConCache: i dati nuovi sono uguali alla copia in pagina, i comandi spenti si accendono dove sono (niente ridisegno).
   // Se la scelta non era stata letta nemmeno stavolta, ora lo si dice. `sola()`: i comandi che scrivono sono spenti.
   return { sola: () => stato.scelta === sc && sc.sola, pronta() {
+    if (stato.scelta === sc) sc.letta = Date.now();         // i dati in pagina sono quelli appena letti
     if (stato.scelta !== sc || !sc.sola) return;
     sc.copia = false;
     if (sc.nonLetta) { disegna(true); return; }

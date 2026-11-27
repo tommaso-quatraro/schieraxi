@@ -628,17 +628,42 @@ def test_chi_gioca_una_partita_gia_cominciata_non_si_sostituisce_e_la_scheda_dic
     assert riserva["nome"] not in scheda(web).inner_text()
 
 
+BLOCCATO = {"detail": "Esempio E. gioca in una partita già cominciata: non si può più spostare.", "codice": "giocatore_bloccato"}
+
+
 def test_se_il_server_rifiuta_il_ritorno_alla_consigliata_la_formazione_resta_e_un_avviso_lo_dice(web):
+    """Il rifiuto dice che un anticipo è cominciato e la pagina non lo sapeva: la Formazione si rilegge (chi gioca non si sposta
+    più), non si ridisegna con i dati di prima."""
     solo(web, "prima")
     web.apri("/")                                                     # nello scenario registrato c'è una scelta fatta a mano
     prima, stato_prima = nomi_sul_campo(web), stato(web)
-    web.risposta("/api/scelta?giornata=9", {"detail": "Esempio E. gioca in una partita già cominciata: non si può più spostare.",
-                                            "codice": "giocatore_bloccato"}, stato=400)
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/scelta",
+                     lambda r: r.fulfill(status=400, content_type="application/json", body=json.dumps(BLOCCATO))
+                     if r.request.method == "DELETE" else r.fallback())
+    lette = web.richieste.count("/api/formazione")
     tocca(web, principale(web).get_by_role("button", name="Torna alla consigliata"))
     avviso = web.pagina.get_by_role("status").filter(has_text="non si può più spostare")
     assert avviso.count() == 1 and avviso.first.is_visible()
     assert nomi_sul_campo(web) == prima and stato(web) == stato_prima
     assert principale(web).get_by_role("button", name="Torna alla consigliata").is_visible()
+    assert web.richieste.count("/api/formazione") == lette + 1, "dopo il rifiuto la formazione non è stata riletta dal server"
+    assert not web.errori_mostrati()
+
+
+def test_se_il_server_rifiuta_una_sostituzione_per_una_partita_cominciata_la_formazione_si_rilegge(web):
+    solo(web, "prima")
+    web.risposta("/api/scelta?giornata=9", None)
+    web.apri("/")
+    prima = nomi_sul_campo(web)
+    web.risposta("/api/formazione/valuta", BLOCCATO, stato=400)
+    lette = web.richieste.count("/api/formazione")
+    tocca(web, campo(web).nth(3))
+    tocca(web, scheda(web).get_by_role("button", name="Sostituisci"))
+    tocca(web, scheda(web).get_by_role("listitem").first.get_by_role("button"))
+    avviso = web.pagina.get_by_role("status").filter(has_text="non si può più spostare")
+    assert avviso.count() == 1 and avviso.first.is_visible()
+    assert nomi_sul_campo(web) == prima and stato(web) == "È la consigliata."
+    assert web.richieste.count("/api/formazione") == lette + 1, "dopo il rifiuto la formazione non è stata riletta dal server"
     assert not web.errori_mostrati()
 
 
