@@ -234,6 +234,27 @@ def test_il_senno_di_poi_conta_il_modificatore_della_difesa_della_lega(giocate):
     assert a["punti"]["perfetta"] >= max(a["punti"][k] for k in ("consigliata", "s1", "s2"))
 
 
+def test_parte_giocate_non_conta_chi_ha_giocato_prima_della_scadenza(giocate, monkeypatch):
+    """Revisione della #966: nella giornata 3 l'attaccante 25 (9 in pagella) gioca un anticipo tre giorni prima delle altre partite.
+    Il modello prevede la giornata con i dati fino alla scadenza, che per lui vengono dopo la sua partita: non si misura, e nella
+    giornata 3 nessuna formazione lo schiera. S2 e il senno di poi lì fanno 66 come la consigliata (nella 2 sempre 69)."""
+    p = giocate.d.partite
+    giocate.d.partite = pd.concat([p, pd.DataFrame([{"id": 31, "stagione": ST, "giornata": 3, "data": "2026-08-31 18:00", "giocata": 1},
+                                                    {"id": 32, "stagione": ST, "giornata": 3, "data": "2026-09-03 20:45", "giocata": 1}])],
+                                  ignore_index=True)
+    di_prima = vc.previsioni
+
+    def previsioni(d, stagione, giornata, regole, par):
+        prev = di_prima(d, stagione, giornata, regole, par)
+        if giornata == 3:
+            prev.loc[prev["id"] == 25, "partita"] = 31                    # il 25 gioca l'anticipo
+        return prev
+    monkeypatch.setattr(vc, "previsioni", previsioni)
+    a = vc.parte_giocate(giocate.d, Regole(), giocate.rose, ST, simulazioni=60)
+    assert a["giornate"] == [2, 3] and a["casi"] == 2
+    assert a["punti"] == {"consigliata": 66.0, "s1": 66.0, "s2": 67.5, "perfetta": 67.5}
+
+
 def test_il_senno_di_poi_non_sta_mai_sotto_una_formazione_valutata(giocate):
     """Con il voto d'ufficio un titolare senza voto e senza riserva può valere più di un voto vero: il portiere 3 non prende voto
     e la consigliata, che lo schiera, fa 70 contro i 69 dei migliori voti veri. Il senno di poi è almeno quello (come `verifica`)."""

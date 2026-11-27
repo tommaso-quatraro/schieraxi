@@ -107,3 +107,17 @@ def conta_per_scadenza(quando: datetime, giocata: bool, inizio: datetime | None,
         return True
     return quando >= inizio or (giocata and not anticipo(quando, inizio)
                                 and not lontano(quando, giocata, inizio, precedente, prossimo))
+
+
+def prima_che_conta(date: Iterable[tuple[datetime | None, bool]], prima: Iterable[datetime | None] = (),
+                    dopo: Iterable[datetime | None] = ()) -> datetime | None:
+    """La prima partita che conta per la scadenza della formazione (la fissa), dalle (data, giocata) delle partite della giornata e
+    dalle date della giornata prima (`prima`) e di quella dopo (`dopo`): dall'inizio del turno (con la giornata dopo, #698), senza
+    anticipi né anticipi lontani (`conta_per_scadenza`, con la giornata prima e quella dopo, #659). La regola unica di
+    `avvisi.prima_partita` (la scadenza) e di `modello.inizio_giornata` (fin dove il modello vede i dati). None se nessuna data."""
+    date = [(d, bool(giocata)) for d, giocata in date if d is not None]
+    if not date:
+        return None
+    precedente, prossimo = inizio(prima), inizio(dopo)
+    inizio_turno = inizio((d for d, _ in date), prossimo)
+    return min(d for d, giocata in date if conta_per_scadenza(d, giocata, inizio_turno, precedente, prossimo))

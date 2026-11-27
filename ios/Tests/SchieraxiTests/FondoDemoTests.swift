@@ -71,6 +71,16 @@ struct FondoDemoTests {
         #expect(FondoDemo.arrivo(demo: true, argomenti: argomenti).id == caso.id)
     }
 
+    /// La foto `impostazioni-fondo` (#944, punto 5): la pagina scorre fino all'ultima riga, messa in fondo allo schermo. Prima si
+    /// fermava sulla prima riga dell'ultima sezione (Informazioni) e la riga sotto, Gestione, restava sotto la barra.
+    @Test("Impostazioni in fondo: l'ancora è l'ultima riga della pagina, con o senza Gestione e Scrivici")
+    func impostazioniFinoAllUltimaRiga() {
+        #expect(ImpostazioniView.ancoraFondo(VociImpostazioni.informazioni(gestisce: true)) == "imp-gestione")
+        #expect(ImpostazioniView.ancoraFondo(VociImpostazioni.informazioni(gestisce: true, scrivici: true)) == "imp-gestione")
+        #expect(ImpostazioniView.ancoraFondo(VociImpostazioni.informazioni(gestisce: false, scrivici: true)) == "imp-scrivici")
+        #expect(ImpostazioniView.ancoraFondo(VociImpostazioni.informazioni(gestisce: false)) == "imp-informazioni")
+    }
+
     /// La riga della taratura è nel piè della sezione, che non è una riga della lista: il punto della foto sta sull'ultimo gruppo,
     /// subito sopra. Gli altri gruppi tengono la loro identità.
     @Test("Solo l'ultimo gruppo della calibrazione prende il punto della foto della taratura")
