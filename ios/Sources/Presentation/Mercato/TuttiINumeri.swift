@@ -145,28 +145,29 @@ struct TuttiINumeri: View {
         }
     }
 
+    /// Colore e frase dal codice del server (`LetturaScheda.tendenza`, 27/11/2026): prima li decideva l'app con la soglia 0,3, che
+    /// resta solo per un server di prima.
     @ViewBuilder
     private var rendimento: some View {
-        if let r = scheda.rendimento, let sovra = r.sovraRendimento {
+        if let r = scheda.rendimento, let sovra = r.sovraRendimento, let tendenza = LetturaScheda.tendenza(r) {
             VStack(alignment: .leading, spacing: 6) {
                 titolo(Catalogo.Mercato.rendeSopraSotto)
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(Formato.conSegno(sovra, cifre: 2)).font(.title2.bold()).monospacedDigit()
-                        .foregroundStyle(sovra > 0.3 ? Color.verde : sovra < -0.3 ? Color.malus : .primary)
+                        .foregroundStyle(tendenza == .cala ? Color.verde : tendenza == .sblocca ? Color.malus : .primary)
                     Text(Catalogo.Mercato.puntiPartita).font(.caption).foregroundStyle(Color.testoSecondario)
                 }
                 .accessibilityElement(children: .combine)
-                nota(rigaRendimento(r, sovra: sovra))
+                nota(rigaRendimento(r))
             }
         }
     }
 
     /// La riga sotto il numero, come la web: gol e assist rispetto agli attesi e cosa vuol dire. Fin dove arrivano i dati lo dice
     /// una volta sola la riga in fondo a «Statistiche avanzate», stessa fonte (#911).
-    private func rigaRendimento(_ r: Rendimento, sovra: Double) -> String {
+    private func rigaRendimento(_ r: Rendimento) -> String {
         let riga = Catalogo.Mercato.rendimentoRiga(a: Formato.conSegno(r.assistMenoXa ?? 0), g: Formato.conSegno(r.golMenoXg ?? 0))
-        let senso = sovra > 0.3 ? Catalogo.Mercato.rendCala : sovra < -0.3 ? Catalogo.Mercato.rendSblocca : Catalogo.Mercato.rendLinea
-        return riga + " " + senso
+        return [riga, LetturaScheda.fraseRendimento(r)].compactMap { $0 }.joined(separator: " ")
     }
 
     // MARK: stagione e statistiche avanzate
@@ -180,7 +181,7 @@ struct TuttiINumeri: View {
                     TesseraDato(valore: "\(Formato.intero(st.presenze))/\(Formato.intero(st.giornateGiocateSerieA))", etichetta: Catalogo.Mercato.presenze)
                     TesseraDato(valore: Formato.decimali(st.mediaVoto, cifre: 2), etichetta: Catalogo.Mercato.mediaVoto)
                     TesseraDato(valore: Formato.decimali(st.fantamedia, cifre: 2), etichetta: Catalogo.Mercato.fantamedia)
-                    TesseraDato(valore: String(Formato.intero(st.gol) + Formato.intero(st.rigSegnati)),
+                    TesseraDato(valore: String(Formato.intero(LetturaScheda.golConRigori(st))),
                                 etichetta: Catalogo.Mercato.golRig(n: String(Formato.intero(st.rigSegnati))))
                     TesseraDato(valore: String(Formato.intero(st.assist)), etichetta: Catalogo.Mercato.assist)
                     TesseraDato(valore: "\(Formato.intero(st.ammonizioni))/\(Formato.intero(st.espulsioni))", etichetta: Catalogo.Mercato.gialliRossi)

@@ -1331,5 +1331,10 @@
     "it": "Non cambio l'interruttore: il file {1} sul server è scritto male e lo perderei. Correggilo o toglilo, poi riprova.",
     "en": "I am not changing the switch: the file {1} on the server is malformed and I would lose it. Fix it or remove it, then try again.",
     "nota": "409 di PUT /api/admin/fonti e /api/admin/funzioni con dati/fonti.json o dati/funzioni.json scritto male (fanta/interruttori.py): riscriverlo cancellerebbe le altre scelte"
+  },
+  "err.fuori_listone": {
+    "it": "Questo giocatore non è più nel listone di Serie A.",
+    "en": "This player is no longer in the Serie A player list.",
+    "nota": "404 di GET /api/giocatore/{id} per chi non è nel listone (scheda.FuoriDalListone); web e iPhone la scrivono anche da sé al tocco di una riga della Rosa senza quotazione"
   }
 }

@@ -193,6 +193,8 @@ struct StagioneGiocatore: Decodable {
     let golSubiti: Double?
     let rigSegnati: Double?
     let rigParati: Double?
+    /// Gol più rigori segnati, la tessera «gol (N rig.)», già sommati dal server (27/11/2026). nil da un server di prima.
+    let golConRigori: Double?
 }
 
 struct SchedaGiocatore: Decodable {
@@ -204,6 +206,9 @@ struct SchedaGiocatore: Decodable {
     let voti: [VotoGiornata]?
     let avanzate: StatisticheAvanzate?
     let rendimento: Rendimento?
+    /// Le prossime partite della sua squadra scelte dal server, anche senza previsione (27/11/2026); nil da un server di prima, che
+    /// non le manda: allora il calendario (`SchedaGiocatoreViewModel.prossime`).
+    let prossimePartite: [PartitaCalendario]?
     /// L'andamento dei fantavoti deciso dal server (#895, `scheda.andamento`): `in_crescita`, `in_calo`, `stabile`, `pochi_dati`.
     /// Facoltativo e tollerante: un server di prima non lo manda, una forma strana vale «niente».
     private let andamento: Tollerante<String>?
@@ -236,6 +241,9 @@ struct GiocatoreRosa: Decodable, Identifiable {
     let costo: Double?
     let quotazione: Double?
     let previsione: Giocatore?
+    /// Uscito dal listone (ceduto all'estero), deciso dal server: niente scheda (vedi `RigaRosa.fuoriListone`). nil da un server di prima.
+    /// `var` con il valore iniziale: si legge dal JSON come gli altri campi e chi costruisce la riga a mano (i test) può non darlo.
+    var fuoriListone: Bool? = nil
     var ident: String { "\(id ?? -1)-\(nome)" }
 }
 
@@ -938,6 +946,10 @@ struct Rendimento: Decodable, Equatable {
     let sovraRendimento: Double?
     let golMenoXg: Double?
     let assistMenoXa: Double?
+    /// Il codice del server (27/11/2026): `cala`, `sblocca` o `in_linea` (vedi `LetturaScheda.tendenza`). nil da un server di prima.
+    let tendenza: String?
+    /// La frase del server che lo spiega («Crea più di quanto segna: …»). nil da un server di prima.
+    let testo: String?
 }
 
 // MARK: - Tipi usati da Oggi (stanno qui perché Modelli.swift è compilato anche dal widget)

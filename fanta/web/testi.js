@@ -713,6 +713,7 @@ const TESTI = {
     "err.p_regola_nome_lega": "Nome della lega",
     "err.p_regola_fonte_voto": "Voto di partenza",
     "err.interruttori_file_rovinato": "Non cambio l'interruttore: il file {1} sul server è scritto male e lo perderei. Correggilo o toglilo, poi riprova.",
+    "err.fuori_listone": "Questo giocatore non è più nel listone di Serie A.",
 
     "errori.titolo": "Errori recenti",
     "errori.spiega": "Gli errori del server e gli ultimi eventi di sicurezza. Nessuna password, nessun dato delle richieste: solo quando, dove e che tipo di errore.",
@@ -1285,6 +1286,9 @@ const TESTI = {
     "frase.aggiorna.parte_non_aggiornata_generica": "Una parte dei dati non si è aggiornata: il dettaglio è in Stato dei dati.",
     "frase.aggiorna.controlli": "I controlli sui dati hanno trovato un problema: il dettaglio è in Stato dei dati.",
     "frase.aggiorna.errore_server": "L'aggiornamento si è fermato per un errore del server: il dettaglio è nel registro.",
+    "frase.rendimento.cala": "Sta segnando più di quanto crea: è probabile che cali.",
+    "frase.rendimento.sblocca": "Crea più di quanto segna: è probabile che si sblocchi.",
+    "frase.rendimento.in_linea": "In linea con le occasioni che ha.",
 
     "giocatore.gioca": "gioca {p}",
 
@@ -2758,6 +2762,7 @@ const TESTI = {
     "err.p_regola_nome_lega": "League name",
     "err.p_regola_fonte_voto": "Starting grade",
     "err.interruttori_file_rovinato": "I am not changing the switch: the file {1} on the server is malformed and I would lose it. Fix it or remove it, then try again.",
+    "err.fuori_listone": "This player is no longer in the Serie A player list.",
 
     "errori.titolo": "Recent errors",
     "errori.spiega": "Server errors and the latest security events. No passwords, no request data: only when, where and what kind of error.",
@@ -3330,6 +3335,9 @@ const TESTI = {
     "frase.aggiorna.parte_non_aggiornata_generica": "Part of the data was not refreshed: the details are in Data status.",
     "frase.aggiorna.controlli": "The data checks found a problem: the details are in Data status.",
     "frase.aggiorna.errore_server": "The refresh stopped because of a server error: the details are in the log.",
+    "frase.rendimento.cala": "He is scoring more than he creates: he is likely to cool off.",
+    "frase.rendimento.sblocca": "He creates more than he scores: he is likely to break through.",
+    "frase.rendimento.in_linea": "In line with the chances he gets.",
 
     "giocatore.gioca": "plays {p}",
 
