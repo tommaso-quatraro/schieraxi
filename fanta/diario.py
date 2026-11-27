@@ -18,7 +18,6 @@ import threading
 import time
 from dataclasses import asdict
 from datetime import datetime
-from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import pandas as pd
@@ -28,7 +27,7 @@ from . import indicatori_consiglio as ic
 from . import verifica_consiglio as vc
 from . import formazione as fz
 from .blocco import BloccoFile
-from .frasi import F, ConSegno, elenco as elenco_frasi, nome_giornata
+from .frasi import F, ConSegno, arrotonda, elenco as elenco_frasi, nome_giornata
 from .lega import Rose
 from .modello import Dati, Parametri, previsioni
 from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
@@ -40,8 +39,11 @@ FILE = RADICE / "dati" / "diario.json"
 MASSIMO_GIORNATE = 12
 SIMULAZIONI = 300
 MAX_ISTANTANEE = 60
-# I numeri di tutta la rosa alla scadenza (`numeri_rosa`): servono solo al riepilogo di Oggi della giornata appena finita (#794)
-MAX_NUMERI_ROSA = 4
+# I numeri di tutta la rosa alla scadenza (`numeri_rosa`): con loro il riepilogo di Oggi della giornata appena finita (#794) e il
+# Diario scelgono la panchina del sistema (`panchina_alla_scadenza`). Restano per tutte le giornate che il Diario rifà a un cambio
+# di regole (MASSIMO_GIORNATE): con meno, la panchina di quelle più vecchie cambiava per un motivo che non è la regola cambiata.
+# Circa 2 KB a giornata, fuori dalle istantanee che l'app riceve
+MAX_NUMERI_ROSA = MASSIMO_GIORNATE
 # «L'ho messa» (#616): il campo della scelta salvata che dice «ho messo questi 11 nell'app della lega». `scelte.salva` lo scrive
 # solo quando è vero (`messa: true`, con `messa_il`) e lo fa cadere se gli 11 cambiano. È l'unico punto dove il Diario lo legge:
 # `schierata_confermata` dice se la scelta salvata è quella schierata davvero e ogni voce lo porta in `schierata.confermata`.
@@ -167,15 +169,33 @@ def salva_istantanea(f: dict, stagione: str, percorso: Path | None = None) -> bo
 def numeri_rosa(percorso: Path | None, stagione: str, giornata: int) -> dict[int, dict]:
     """{id: {ruolo, p_voto, fv_atteso}} della rosa alla scadenza della giornata, come li mostrava l'app: i numeri di tutta la rosa
     (`f["schede"]`) e, per le giornate salvate prima che ci fossero, quelli che l'istantanea ha (titolari e panchina). Per la
-    panchina del riepilogo di Oggi, scelta con questi numeri congelati (#794). Vuoto se non c'è niente."""
-    d = carica(percorso)
-    chiave = f"{stagione}/{giornata}"
+    panchina del sistema di una formazione salvata senza panchina, scelta con questi numeri congelati nel riepilogo di Oggi (#794)
+    e nel Diario (`panchina_alla_scadenza`). Vuoto se non c'è niente."""
+    return _numeri_rosa_di(carica(percorso), f"{stagione}/{giornata}")
+
+
+def _numeri_rosa_di(d: dict, chiave: str) -> dict[int, dict]:
+    """`numeri_rosa` dal file del diario già letto (`d`), per la giornata `chiave` («stagione/giornata»)."""
     ist = (d.get("istantanee") or {}).get(chiave) if isinstance(d.get("istantanee"), dict) else None
-    righe = [x for x in ((ist or {}).get("titolari") or []) + ((ist or {}).get("panchina") or []) if isinstance(x, dict)]
+    ist = ist if isinstance(ist, dict) else {}
+    righe = [x for x in (ist.get("titolari") or []) + (ist.get("panchina") or []) if isinstance(x, dict)]
     tutti = (d.get("numeri_rosa") or {}).get(chiave) if isinstance(d.get("numeri_rosa"), dict) else None
     righe += [x for x in tutti or [] if isinstance(x, dict)]
     return {x["id"]: {k: x[k] for k in ("ruolo", "p_voto", "fv_atteso")} for x in righe
             if isinstance(x.get("id"), int) and all(_numero(x.get(k)) is not None for k in ("p_voto", "fv_atteso")) and x.get("ruolo") in RUOLI}
+
+
+def panchina_alla_scadenza(numeri: dict[int, dict], rosa: dict[int, tuple[str, str | None]], titolari, regole: Regole) -> list[int] | None:
+    """La panchina che sceglie il sistema per 11 salvati senza panchina, con i numeri della rosa alla scadenza (`numeri` =
+    `numeri_rosa`): la stessa nel riepilogo di Oggi (`fasi._panchina_della_giornata`) e nel Diario (`calcola_giornata`), così il
+    totale e chi è entrato non cambiano quando la giornata entra nel Diario. `rosa` = {id: (nome, ruolo)} nell'ordine della rosa
+    (l'ordine decide fra chi vale uguale); il ruolo è quello di allora e c'è solo chi ha i numeri. None senza numeri."""
+    giocatori = [fz.Giocatore(i, nome, numeri[i]["ruolo"], float(numeri[i]["p_voto"]), float(numeri[i]["fv_atteso"]), 6.0)
+                 for i, (nome, _) in rosa.items() if i in numeri]
+    if not giocatori:
+        return None
+    scelti = {int(i) for i in titolari}
+    return [g.id for g in fz._panchina(giocatori, [g for g in giocatori if g.id in scelti], regole)]
 
 
 def impronta_regole(regole: Regole, stagione: str | None = None, giornata: int | None = None, fuori_turno: bool = False) -> str:
@@ -422,35 +442,61 @@ def _fv_della_lega(prev: pd.DataFrame, fv_vero: dict, r_rinvio: dict) -> tuple[d
     return {i: x for i, x in fv.items() if gioca.get(i, True)}, dict.fromkeys(coinvolti, r_rinvio["modo"])
 
 
-def _numeri_giocatori(prev: pd.DataFrame, fv_lega: dict, ids, rinvio: dict | None = None) -> list[dict]:
+def _numeri_giocatori(prev: pd.DataFrame, fv_lega: dict, ids, rinvio: dict | None = None, senza: dict | None = None) -> list[dict]:
     """Per la tabella degli 11 della pagina Giornate e per «Quanto ci abbiamo preso»: per ogni giocatore la probabilità di voto e il
     fantavoto atteso RICOSTRUITI con i dati di prima e il fantavoto che la lega ha contato (`fv`, null = nessun voto; vedi
     `_fv_della_lega`). Chi aveva la partita rinviata e ha il voto della regola della lega ha in più `rinvio` (la regola, da
-    `rinvio` = {id: regola}): quel voto non è del campo, quindi non si confronta con l'atteso. Circa 60 byte a giocatore."""
+    `rinvio` = {id: regola}): quel voto non è del campo, quindi non si confronta con l'atteso. Circa 60 byte a giocatore.
+    Chi non ha una previsione ricostruita (`senza` = {id: fantavoto contato dalla lega o None}, `_numeri_senza_previsione`) c'è con
+    `p_voto` e `fv_atteso` null: il suo voto conta nei punti, quindi sta anche nella tabella, con l'atteso vuoto («–»); «Quanto ci
+    abbiamo preso» lo lascia fuori (`precisione.numeri_giornata`)."""
     out = []
     for i in dict.fromkeys(int(x) for x in ids):
         if i in prev.index:
-            out.append({"id": i, "p_voto": round(float(prev.at[i, "p_voto"]), 3), "fv_atteso": round(float(prev.at[i, "mu"]), 2),
-                        "fv": round(float(fv_lega[i]), 2) if i in fv_lega else None} | (
-                {"rinvio": rinvio[i]} if rinvio and i in rinvio else {}))
+            riga = {"id": i, "p_voto": round(float(prev.at[i, "p_voto"]), 3), "fv_atteso": round(float(prev.at[i, "mu"]), 2),
+                    "fv": round(float(fv_lega[i]), 2) if i in fv_lega else None}
+        elif senza and i in senza:
+            riga = {"id": i, "p_voto": None, "fv_atteso": None, "fv": senza[i]}
+        else:
+            continue
+        out.append(riga | ({"rinvio": rinvio[i]} if rinvio and i in rinvio else {}))
     return out[:MAX_GIOCATORI_VOCE]
 
 
-def numeri_giocatori(d: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri, ids) -> list[dict] | None:
+def _numeri_senza_previsione(extra, gioca: dict, fv: dict, rinviati, r_rinvio: dict) -> tuple[dict, dict]:
+    """({id: fantavoto che la lega ha contato, o None se nessun voto}, {id: regola dei rinvii}) di chi non ha una previsione
+    ricostruita (`extra`, da `_senza_previsione`), dai voti già passati per la regola della lega (`rinvii.voti_lega`): i numeri
+    di `_numeri_giocatori` per loro. Con «aspetta» nessuno ha la regola."""
+    senza = {int(i): round(float(fv[i]), 2) if gioca.get(i) else None for i in extra}
+    rinvio = {int(i): r_rinvio["modo"] for i in extra if i in rinviati} if r_rinvio["modo"] != "aspetta" else {}
+    return senza, rinvio
+
+
+def numeri_giocatori(d: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri, ids,
+                     giocatori_rosa: dict[int, tuple[str, str | None]] | None = None) -> list[dict] | None:
     """Solo i numeri per giocatore di una giornata finita, senza simulazioni, con la regola della lega per le partite rinviate come
-    in `calcola_giornata`: completa le voci scritte prima che ci fossero e dice se i voti sono cambiati (`_stessi_voti`)."""
+    in `calcola_giornata`: completa le voci scritte prima che ci fossero e dice se i voti sono cambiati (`_stessi_voti`).
+    Con `giocatori_rosa` ({id: (nome, ruolo)}, come in `calcola_giornata`) ci sono anche quelli di `ids` senza una previsione."""
     r_rinvio = rinvii.regola(regole, stagione, giornata)
     rinviate = rinvii.id_fuori_turno(d.partite, stagione, giornata)
     pv = _previsti_e_veri(d, stagione, giornata, regole, par, rinviate if r_rinvio["modo"] != "aspetta" else frozenset())
     if pv is None:
         return None
-    fv_lega, rinvio = _fv_della_lega(rinvii.applica(pv[0], rinviate, r_rinvio), pv[2], r_rinvio)
-    return _numeri_giocatori(pv[0], fv_lega, ids, rinvio)
+    prev, reali, fv_vero = pv
+    fv_lega, rinvio = _fv_della_lega(rinvii.applica(prev, rinviate, r_rinvio), fv_vero, r_rinvio)
+    chiesti = {int(i) for i in ids}
+    gioca, fv, voto = {}, {}, {}
+    extra, extra_rinviati = _senza_previsione(d, {i: x for i, x in (giocatori_rosa or {}).items() if i in chiesti}, prev.index,
+                                              reali, COLONNA_VOTO[regole.fonte_voto], regole, rinviate, r_rinvio, gioca, fv, voto)
+    rinvii.voti_lega(gioca, fv, voto, extra_rinviati, r_rinvio)
+    senza, rinvio_senza = _numeri_senza_previsione(extra, gioca, fv, set(extra_rinviati), r_rinvio)
+    return _numeri_giocatori(prev, fv_lega, ids, rinvio | rinvio_senza, senza)
 
 
-def _senza_previsione(d: Dati, giocatori_rosa, rosa: dict, reali: pd.DataFrame, col: str, regole: Regole, rinviate, r_rinvio: dict,
+def _senza_previsione(d: Dati, giocatori_rosa, rosa, reali: pd.DataFrame, col: str, regole: Regole, rinviate, r_rinvio: dict,
                       gioca: dict, fv: dict, voto: dict) -> tuple[dict, list[int]]:
-    """Chi è in rosa ma non ha una previsione ricostruita per la giornata (mai sceso in campo prima, #447): {id: Giocatore} che non
+    """Chi è in rosa (`giocatori_rosa`) ma non fra chi ha una previsione ricostruita per la giornata (`rosa`, gli id) (mai sceso in
+    campo prima, #447): {id: Giocatore} che non
     prende mai voto nelle simulazioni, con il voto vero se l'ha preso (scritto in `gioca`, `fv`, `voto`), e gli id di chi giocava
     una partita rinviata, trovata dal suo club (`d.calciatori` e `d.partite`), per la regola della lega (`rinvii.voti_lega`). Con il
     voto d'ufficio la lega glielo dà di sicuro: allora prende voto sempre, con quel voto (come `rinvii.applica` per gli altri)."""
@@ -508,8 +554,11 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
                      scelta: dict | None, simulazioni: int = SIMULAZIONI, automatica: dict | None = None,
                      altri_ids=(), istantanea: dict | None = None, cambi: tuple | None = None,
                      indicatori: bool = True, giocatori_rosa: dict[int, tuple[str, str | None]] | None = None,
-                     tieni: dict | None = None, completa: bool = False, ceduti=()) -> dict | None:
+                     tieni: dict | None = None, completa: bool = False, ceduti=(),
+                     numeri_scadenza: dict[int, dict] | None = None) -> dict | None:
     """La voce del diario di una giornata finita, o None se mancano i dati (o la rosa è troppo piccola per quella giornata).
+    `numeri_scadenza` = i numeri della rosa alla scadenza (`numeri_rosa`): con quelli si sceglie la panchina del sistema di una
+    formazione salvata senza panchina, come nel riepilogo di Oggi (`panchina_alla_scadenza`); senza, con i numeri rifatti.
     Con `tieni` (una voce già scritta) non la rifà da zero: ne rifà solo i punti (`rifai_i_punti`); con anche `completa` (per dare
     il dettaglio dei punti a una voce di prima, `_con_il_dettaglio`) il dettaglio di una formazione è null se la sua panchina di
     allora non si conosce intera e la panchina ha contato.
@@ -549,26 +598,40 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
     gioca, fv, voto, extra, rinviati = _voti_veri(d, rosa | fuori_rosa, giocatori_rosa, prev, reali, fv_vero, regole, rinviate, r_rinvio)
     tutti = rosa | fuori_rosa | extra
     ruoli = {i: g.ruolo for i, g in tutti.items()}
+    # chi non ha una previsione sta anche nella tabella degli 11, con il voto che conta nei punti e l'atteso vuoto
+    senza, rinvio_senza = _numeri_senza_previsione(extra, gioca, fv, rinviati, r_rinvio)
+    ids_numeri = list(ids) + list(senza) + list(altri_ids)
 
     def fatti(tit: list[fz.Giocatore], panc: list[fz.Giocatore]) -> tuple[float, dict]:
         """(punti fatti, da dove vengono) di una formazione: i punti sono quelli di sempre (`formazione.punteggio`)."""
         return fz.punteggio(tit, panc, gioca, fv, voto, regole), _dettaglio(tit, panc, gioca, fv, voto, regole, rinviati, r_rinvio)
 
-    def formazione(scelti: list[int], panchina) -> tuple[list[fz.Giocatore], list[fz.Giocatore]]:
+    # la rosa nel suo ordine, per la panchina scelta con i numeri della scadenza (lo stesso ordine del riepilogo di Oggi)
+    rosa_in_ordine = dict(giocatori_rosa) if giocatori_rosa else {i: (g.nome, g.ruolo) for i, g in rosa.items()}
+
+    def formazione(scelti: list[int], panchina, alla_scadenza: bool = True) -> tuple[list[fz.Giocatore], list[fz.Giocatore]]:
         """(titolari, panchina) di una formazione con i giocatori di questa giornata e della rosa di oggi (`tutti`): la panchina sua,
         se la conosciamo (giornate importate), altrimenti quella del sistema. La usano la voce (`riga_di`) e i soli punti di una
-        voce già scritta (`tieni`): lo stesso insieme di giocatori, così il numero non cambia fra «Correggi» e il giro del cron."""
+        voce già scritta (`tieni`): lo stesso insieme di giocatori, così il numero non cambia fra «Correggi» e il giro del cron.
+        La panchina del sistema si sceglie con i numeri della rosa alla scadenza (`numeri_scadenza`), se ci sono, come nel
+        riepilogo di Oggi (`panchina_alla_scadenza`); altrimenti, e per la consigliata rifatta (`alla_scadenza` falso), con i
+        numeri rifatti a giornata finita."""
         tit = [tutti[i] for i in scelti]
         propria = [tutti[i] for i in dict.fromkeys(int(i) for i in panchina if i in tutti and i not in scelti)]
+        if propria:
+            return tit, propria
+        if alla_scadenza and numeri_scadenza:
+            ids_panchina = panchina_alla_scadenza(numeri_scadenza, rosa_in_ordine, scelti, regole) or []
+            return tit, [tutti[i] for i in ids_panchina if i in tutti]
         # la panchina del sistema pesca anche chi non ha previsione solo se la formazione ne usa qualcuno: le altre restano come prima
-        lista_v = lista + list(extra.values()) if any(g.id in extra for g in tit + propria) else lista
-        return tit, propria or fz._panchina(lista_v, tit, regole)
+        lista_v = lista + list(extra.values()) if any(g.id in extra for g in tit) else lista
+        return tit, fz._panchina(lista_v, tit, regole)
 
     if tieni is not None:
-        def punti(scelti: list[int], panchina=()) -> tuple[float, dict | None] | None:
+        def punti(scelti: list[int], panchina=(), alla_scadenza: bool = True) -> tuple[float, dict | None] | None:
             if not scelti or any(i not in tutti for i in scelti):
                 return None                     # un titolare non è più in rosa: come in «Correggi», la formazione non si rifà
-            reale, dettaglio = fatti(*formazione(scelti, panchina))
+            reale, dettaglio = fatti(*formazione(scelti, panchina, alla_scadenza))
             # senza la panchina di allora, intera (dall'istantanea o dalla scelta), quella del sistema rifatta con la rosa e il modello
             # di oggi può far entrare un altro giocatore con lo stesso voto: i punti tornano, chi è entrato no (revisione di #905).
             # Per una voce di prima allora il dettaglio vale solo se la panchina non ha contato
@@ -590,13 +653,20 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
             # #798): uno non si rifà, quindi la voce resta com'era, con le impronte di adesso perché i giri dopo non ci riprovino
             return json.loads(json.dumps(tieni)) | impronte
         for g in nuova.get("giocatori") or []:
-            if isinstance(g, dict) and g.get("id") in numeri_prev.index:
-                g["fv"] = round(float(fv_lega[g["id"]]), 2) if g["id"] in fv_lega else None
-                g.pop("rinvio", None)
-                if g["id"] in rinvio_numeri:
-                    g["rinvio"] = rinvio_numeri[g["id"]]
+            if not isinstance(g, dict) or not (g.get("id") in numeri_prev.index or g.get("id") in senza):
+                continue
+            i = g["id"]
+            g["fv"] = (round(float(fv_lega[i]), 2) if i in fv_lega else None) if i in numeri_prev.index else senza[i]
+            g.pop("rinvio", None)
+            if i in rinvio_numeri or i in rinvio_senza:
+                g["rinvio"] = rinvio_numeri.get(i) or rinvio_senza[i]
         if "giocatori" not in nuova:
-            nuova["giocatori"] = _numeri_giocatori(numeri_prev, fv_lega, list(ids) + list(altri_ids), rinvio_numeri)
+            nuova["giocatori"] = _numeri_giocatori(numeri_prev, fv_lega, ids_numeri, rinvio_numeri | rinvio_senza, senza)
+        else:
+            # una voce scritta prima che ci fosse chi non ha previsione: lo prende ora, con il voto che conta nei punti
+            presenti = {g.get("id") for g in nuova["giocatori"] if isinstance(g, dict)}
+            nuova["giocatori"] = (nuova["giocatori"] + _numeri_giocatori(numeri_prev, fv_lega, [i for i in senza if i not in presenti],
+                                                                         rinvio_senza, senza))[:MAX_GIOCATORI_VOCE]
         return nuova | impronte
     # chi non ha previsione sta in colonne fisse DOPO le estrazioni della rosa: la consigliata vale come prima, e la stessa
     # formazione vale lo stesso con o senza di lui (revisione di #461)
@@ -612,7 +682,7 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
             "impronta_voti": impronta_voti(d, stagione, giornata),
             "consigliata": ricostruita, "ricostruita": dict(ricostruita),
             "schierata": None, "automatica": None,
-            "giocatori": _numeri_giocatori(numeri_prev, fv_lega, list(ids) + list(altri_ids), rinvio_numeri)}
+            "giocatori": _numeri_giocatori(numeri_prev, fv_lega, ids_numeri, rinvio_numeri | rinvio_senza, senza)}
 
     def riga_di(sc: dict | None) -> dict | None:
         scelti = list(dict.fromkeys(int(i) for i in (sc or {}).get("titolari", [])))
@@ -640,7 +710,7 @@ def calcola_giornata(d: Dati, stagione: str, giornata: int, regole: Regole, par:
 def rifai_i_punti(d: Dati, stagione: str, giornata: int, regole: Regole, par: Parametri, voce: dict, ids_rosa: list[int],
                   scelta: dict | None, automatica: dict | None, istantanea: dict | None,
                   giocatori_rosa: dict[int, tuple[str, str | None]] | None, simulazioni: int = SIMULAZIONI, altri_ids=(),
-                  completa: bool = False, ceduti=()) -> dict | None:
+                  completa: bool = False, ceduti=(), numeri_scadenza: dict[int, dict] | None = None) -> dict | None:
     """La voce `voce` con i soli punti fatti rifatti con i voti di adesso (#793, decisione del coordinatore): stesse formazioni,
     stessa classificazione (consigliata mostrata o ricostruita, `consigliata_di_allora`, tipo e «L'ho messa» della schierata,
     copia automatica), stessi punti attesi. Cambiano `reale` di ogni formazione, `fv` dei numeri per giocatore, i punti degli
@@ -648,10 +718,10 @@ def rifai_i_punti(d: Dati, stagione: str, giornata: int, regole: Regole, par: Pa
     `calcola_giornata` e di «Correggi» (la rosa di oggi, `formazione`), così il numero non cambia fra l'uno e l'altro. I numeri che
     si confrontano (schierata, consigliata, ricostruita, S2) cambiano tutti insieme o nessuno: se una formazione non si rifà (un
     titolare non più in rosa) la voce resta com'era, con le sole impronte nuove. Le simulazioni servono solo a S2 degli
-    indicatori. None se mancano i dati (come `calcola_giornata`). `completa`: vedi `calcola_giornata`."""
+    indicatori. None se mancano i dati (come `calcola_giornata`). `completa` e `numeri_scadenza`: vedi `calcola_giornata`."""
     return calcola_giornata(d, stagione, giornata, regole, par, ids_rosa, scelta, simulazioni, automatica, altri_ids,
                             istantanea=istantanea, giocatori_rosa=giocatori_rosa, tieni=voce, completa=completa,
-                            ceduti=ceduti)
+                            ceduti=ceduti, numeri_scadenza=numeri_scadenza)
 
 
 def _solo_punti(voce: dict, punti, istantanea: dict | None, scelta: dict | None, automatica: dict | None) -> dict | None:
@@ -660,13 +730,15 @@ def _solo_punti(voce: dict, punti, istantanea: dict | None, scelta: dict | None,
     schierata negli indicatori; None se anche una sola formazione non si rifà (`punti` None: un titolare non più in rosa), perché
     i numeri che si confrontano cambiano tutti insieme o nessuno. La panchina è l'unico dato che la riga non ha: per la mostrata
     quella dell'istantanea; per una formazione con gli stessi 11 della mostrata e senza una panchina sua, i punti della mostrata
-    (come `_come_la_mostrata`); altrimenti quella della scelta, se ha gli stessi 11, o quella del sistema."""
+    (come `_come_la_mostrata`); altrimenti quella della scelta, se ha gli stessi 11, o quella del sistema. Quella del sistema con i
+    numeri della scadenza, come alla prima volta (`punti(titolari, panchina, alla_scadenza)`, `formazione` di `calcola_giornata`),
+    tranne per la consigliata rifatta, che la sceglie con i numeri rifatti."""
     nuova = json.loads(json.dumps(voce))
     ist_panc = _ids((istantanea or {}).get("panchina"))
     mancate = []
 
-    def rifai(riga: dict, panchina=()) -> None:
-        p = punti(_ids(riga.get("titolari")), panchina)
+    def rifai(riga: dict, panchina=(), alla_scadenza: bool = True) -> None:
+        p = punti(_ids(riga.get("titolari")), panchina, alla_scadenza)
         if p is None:
             mancate.append(riga)
         else:
@@ -675,9 +747,9 @@ def _solo_punti(voce: dict, punti, istantanea: dict | None, scelta: dict | None,
     cons = nuova.get("consigliata") if isinstance(nuova.get("consigliata"), dict) else None
     mostrata = bool(cons) and cons.get("origine") == "mostrata"
     if cons:
-        rifai(cons, ist_panc if mostrata else ())
+        rifai(cons, ist_panc if mostrata else (), alla_scadenza=mostrata)          # la rifatta tiene la panchina dei numeri rifatti
     if isinstance(nuova.get("ricostruita"), dict):
-        rifai(nuova["ricostruita"])
+        rifai(nuova["ricostruita"], alla_scadenza=False)
     for chiave, sc in (("schierata", scelta), ("automatica", automatica)):
         riga = nuova.get(chiave)
         if not isinstance(riga, dict):
@@ -701,13 +773,14 @@ def _solo_punti(voce: dict, punti, istantanea: dict | None, scelta: dict | None,
     return nuova
 
 
-def _stessi_voti(d: Dati, stagione: str, giornata: int, regole: Regole, voce: dict) -> bool:
+def _stessi_voti(d: Dati, stagione: str, giornata: int, regole: Regole, voce: dict,
+                 giocatori_rosa: dict[int, tuple[str, str | None]] | None = None) -> bool:
     """Vero se i voti dei giocatori della voce (il fantavoto contato dalla lega di ciascuno in `giocatori`, con il segno `rinvio`)
     sono quelli di adesso: i suoi punti sono già giusti e basta scriverle l'impronta (revisione di #798: al rilascio, a voti
-    invariati, nessun numero cambia)."""
+    invariati, nessun numero cambia). `giocatori_rosa` come in `numeri_giocatori`: anche chi non ha una previsione."""
     prima = {g["id"]: (g.get("fv"), g.get("rinvio")) for g in voce.get("giocatori") or []
              if isinstance(g, dict) and isinstance(g.get("id"), int)}
-    adesso = numeri_giocatori(d, stagione, giornata, regole, Parametri(), list(prima)) if prima else None
+    adesso = numeri_giocatori(d, stagione, giornata, regole, Parametri(), list(prima), giocatori_rosa) if prima else None
     if adesso is None:
         return False
     adesso = {g["id"]: (g["fv"], g.get("rinvio")) for g in adesso}
@@ -835,6 +908,7 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
         chiave = f"{stagione}/{g}"
         ist = istantanee.get(chiave) if isinstance(istantanee.get(chiave), dict) else {}
         vecchia = voci.get(chiave)
+        scadenza_numeri = _numeri_rosa_di(dati_diario, chiave)      # la panchina del sistema come nel riepilogo di Oggi
         # chi non è più in rosa: della consigliata di allora (solo per i numeri per giocatore) e, seconda revisione di #947, i
         # titolari della tua formazione (schierata o copia alla scadenza), per esempio uno ceduto prima del recupero: questi si
         # contano anche quando se ne rifanno i punti (`ceduti` di `rifai_i_punti`)
@@ -861,7 +935,7 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
             # zero la voce perderebbe la formazione schierata. Se ne rifanno i punti con le regole di adesso, con le stesse formazioni
             # e chi è stato ceduto (`ceduti`). Prima restava com'era, con i punti di un'altra regola dei rinvii (seconda revisione di #947)
             if voce := rifai_i_punti(consigli.dati(db), stagione, g, regole, Parametri(), vecchia, ids, None, auto, ist or None,
-                                     _giocatori_rosa(squadra), simulazioni, altri, ceduti=ceduti):
+                                     _giocatori_rosa(squadra), simulazioni, altri, ceduti=ceduti, numeri_scadenza=scadenza_numeri):
                 nuove_voci[chiave] = voce
             continue
         if vecchia:
@@ -882,15 +956,16 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
             # con le stesse formazioni e la stessa classificazione (decisione del coordinatore su #793)
             dati = consigli.dati(db)
             if salta and vecchia.get("regole") == impronta and vecchia.get("impronta_voti") != (adesso := impronta_voti(dati, stagione, g)):
-                if _stessi_voti(dati, stagione, g, regole, vecchia):
+                if _stessi_voti(dati, stagione, g, regole, vecchia, _giocatori_rosa(squadra)):
                     nuove_voci[chiave] = {**vecchia, "impronta_voti": adesso}     # voti dei suoi giocatori invariati: solo l'impronta
                 elif voce := rifai_i_punti(dati, stagione, g, regole, Parametri(), vecchia, ids, scelta, auto, ist or None,
-                                           _giocatori_rosa(squadra), simulazioni, altri, ceduti=ceduti):
+                                           _giocatori_rosa(squadra), simulazioni, altri, ceduti=ceduti,
+                                           numeri_scadenza=scadenza_numeri):
                     nuove_voci[chiave] = voce
                 continue
             if salta:
                 if "giocatori" not in vecchia:          # voce scritta prima dei numeri per giocatore: si completa senza simulazioni
-                    numeri = numeri_giocatori(consigli.dati(db), stagione, g, regole, Parametri(), ids + altri)
+                    numeri = numeri_giocatori(consigli.dati(db), stagione, g, regole, Parametri(), ids + altri, _giocatori_rosa(squadra))
                     if numeri is not None:
                         nuove_voci[chiave] = {**vecchia, "giocatori": numeri}
                 elif _senza_dettaglio(vecchia):         # voce scritta prima di #900: prende il dettaglio dei punti, una volta
@@ -899,7 +974,7 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
                         # e vorrebbero le simulazioni
                         rifatta = rifai_i_punti(dati, stagione, g, regole, Parametri(), {k: x for k, x in vecchia.items() if k != "consiglio"},
                                                 ids, scelta, auto, ist or None, _giocatori_rosa(squadra), simulazioni, altri,
-                                                completa=True, ceduti=ceduti)
+                                                completa=True, ceduti=ceduti, numeri_scadenza=scadenza_numeri)
                     except Exception as e:  # noqa: BLE001 - un di più: non deve fermare le giornate dopo
                         # una volta sola: la voce resta com'era, con il dettaglio null, così i giri dopo non ci riprovano
                         LOG.warning("diario: dettaglio dei punti della giornata %s non calcolato (%s), la voce resta senza",
@@ -908,12 +983,13 @@ def aggiorna(db: sqlite3.Connection, regole: Regole, rose: Rose | None, percorso
                     nuove_voci[chiave] = _con_il_dettaglio(vecchia, rifatta)
                 continue
         voce = calcola_giornata(consigli.dati(db), stagione, g, regole, Parametri(), ids, scelta, simulazioni, auto, altri,
-                                giocatori_rosa=_giocatori_rosa(squadra), **per_il_consiglio(db, regole, stagione, g, dati_diario))
+                                giocatori_rosa=_giocatori_rosa(squadra), numeri_scadenza=scadenza_numeri,
+                                **per_il_consiglio(db, regole, stagione, g, dati_diario))
         if voce and vecchia and vecchia.get("schierata") and not voce["schierata"]:
             # rifatta da zero (regole cambiate) la formazione schierata non si valuta più con la rosa di oggi: resta la voce di prima,
             # con i soli punti rifatti (anche con i voti di adesso, #793) e le impronte nuove, così i giri dopo non la rifanno ogni volta
             voce = rifai_i_punti(consigli.dati(db), stagione, g, regole, Parametri(), vecchia, ids, scelta, auto, ist or None,
-                                 _giocatori_rosa(squadra), simulazioni, altri, ceduti=ceduti) or (
+                                 _giocatori_rosa(squadra), simulazioni, altri, ceduti=ceduti, numeri_scadenza=scadenza_numeri) or (
                 _unisci_voce(vecchia, voce) | {"regole": voce["regole"], "impronta_voti": voce["impronta_voti"]})
         if voce:
             nuove_voci[chiave] = voce
@@ -961,16 +1037,16 @@ def prepara_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None,
                       stagione: str | None = None) -> tuple[dict, list[int]]:
     """Il pezzo lento (simulazioni), senza scrivere niente: (voce del diario, titolari scelti). Alza SchierataNonValida."""
     if tipo not in ("consigliata", "manuale"):
-        raise SchierataNonValida("Il tipo deve essere «consigliata» o «manuale»")
+        raise SchierataNonValida("Il tipo deve essere «consigliata» o «manuale».")
     controlla_stagione(stagione)
     squadra = rose.squadra(rose.mia_squadra) if rose and rose.mia_squadra else None
     if not squadra:
-        raise SchierataNonValida("Indica prima la tua squadra in «La mia squadra»")
+        raise SchierataNonValida("Indica prima la tua squadra in «La mia squadra».")
     stagione = consigli.stagione_corrente()
     if giornata < regole.prima_giornata_lega:
-        raise SchierataNonValida("Quella giornata è precedente all'inizio della tua lega")
+        raise SchierataNonValida("Quella giornata è precedente all'inizio della tua lega.")
     if giornata not in rinvii.giornate_chiuse(db, stagione, regole):
-        raise SchierataNonValida("Si può dire cosa hai schierato solo per le giornate già finite")
+        raise SchierataNonValida("Si può dire cosa hai schierato solo per le giornate già finite.")
     ids = [g.id for g in squadra.giocatori if g.id is not None]
     dati = consigli.dati(db)
     diario = carica(file_diario)
@@ -978,7 +1054,7 @@ def prepara_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None,
     if tipo == "consigliata":
         voce = diario["giornate"].get(chiave) or calcola_giornata(dati, stagione, giornata, regole, Parametri(), ids, None, simulazioni)
         if not voce:
-            raise SchierataNonValida("Per questa giornata non ho i dati per ricostruire la formazione consigliata")
+            raise SchierataNonValida("Per questa giornata non ho i dati per ricostruire la formazione consigliata.")
         scelti = [t["id"] for t in voce["consigliata"]["titolari"]]
         ist = (diario.get("istantanee") or {}).get(chiave)          # meglio quella davvero mostrata allora, se la rosa è ancora la stessa
         if isinstance(ist, dict):
@@ -988,17 +1064,18 @@ def prepara_schierata(db: sqlite3.Connection, regole: Regole, rose: Rose | None,
     else:
         scelti = [int(i) for i in (titolari or [])]
         if len(set(scelti)) != 11:
-            raise SchierataNonValida("Servono 11 titolari diversi")
+            raise SchierataNonValida("Servono 11 titolari diversi.")
         if not set(scelti) <= set(ids):
-            raise SchierataNonValida("Tra i titolari ci sono giocatori che non sono nella tua rosa")
+            raise SchierataNonValida("Tra i titolari ci sono giocatori che non sono nella tua rosa.")
         motivo = scelte.motivo_non_valida(scelti, {g.id: g.ruolo for g in squadra.giocatori if g.id is not None}, regole)
         if motivo:                                                   # la regola unica della scelta: qui resta il modulo
             raise SchierataNonValida(motivo)
     scelta = {"titolari": scelti, "tipo": tipo}
     voce = calcola_giornata(dati, stagione, giornata, regole, Parametri(), ids, scelta, simulazioni,
-                            giocatori_rosa=_giocatori_rosa(squadra), **per_il_consiglio(db, regole, stagione, giornata, diario))
+                            giocatori_rosa=_giocatori_rosa(squadra), numeri_scadenza=_numeri_rosa_di(diario, chiave),
+                            **per_il_consiglio(db, regole, stagione, giornata, diario))
     if not voce or not voce["schierata"]:
-        raise SchierataNonValida("Non riesco a valutare questa formazione per quella giornata")
+        raise SchierataNonValida("Non riesco a valutare questa formazione per quella giornata.")
     return voce, scelti
 
 
@@ -1098,14 +1175,15 @@ def _numero(x) -> float | None:
 
 
 def _letto(x: float) -> float:
-    """Il numero come lo scrive la pagina: una cifra, come `toFixed(1)` della web (il mezzo lontano dallo zero, sul valore vero del
-    numero: 6,25 → 6,3; 5,55, che è 5,5499…, → 5,5). `round` di Python farebbe 6,2."""
-    return float(Decimal(x).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+    """Il numero come lo scrive la pagina: una cifra, con la regola di `frasi.arrotonda` (la stessa della web e dell'iPhone: il mezzo
+    lontano dallo zero, sul valore vero del numero: 6,25 → 6,3; 5,55, che è 5,5499…, → 5,5). `round` di Python farebbe 6,2."""
+    return arrotonda(x)
 
 
-def _formazione_che_conta(voce: dict) -> tuple[str, dict] | None:
-    """La formazione dei punti della giornata, come nella riga della pagina Giornate e nel riepilogo della Formazione: la tua
-    (`schierata`), altrimenti la copia della consigliata fatta alla scadenza (`automatica`), altrimenti la consigliata."""
+def formazione_che_conta(voce: dict) -> tuple[str, dict] | None:
+    """La formazione dei punti della giornata, come nella riga della pagina Giornate, nel riepilogo della Formazione e in «Attesi e
+    fatti» del widget (`widget._diario`): la tua (`schierata`), altrimenti la copia della consigliata fatta alla scadenza
+    (`automatica`), altrimenti la consigliata. ("schierata" | "automatica" | "consigliata", la riga), None se non ce n'è una."""
     return next(((k, voce[k]) for k in ("schierata", "automatica", "consigliata") if isinstance(voce.get(k), dict)), None)
 
 
@@ -1122,7 +1200,7 @@ def _frase_scarti(meglio: list[dict], peggio: list[dict]):
 
 def fatti_e_attesi(voce: dict) -> dict | None:
     """Per la pagina Giornate (#672): i punti fatti e attesi della formazione che conta (`formazione`: "schierata", "automatica" o
-    "consigliata", vedi `_formazione_che_conta`), la `differenza` (fatti meno attesi, positiva = meglio del previsto) e chi dei suoi
+    "consigliata", vedi `formazione_che_conta`), la `differenza` (fatti meno attesi, positiva = meglio del previsto) e chi dei suoi
     titolari ha fatto meglio (`meglio`) o peggio (`peggio`) del suo fantavoto atteso di almeno SOGLIA_SCARTO punti, al massimo
     MAX_SCARTI per parte, dalla differenza più grande: `{id, nome, ruolo, atteso, preso, differenza}`. L'atteso di un giocatore è quello mostrato prima della
     scadenza (istantanea), se c'è, altrimenti quello rifatto con i soli dati di prima (`giocatori`): gli stessi numeri della tabella
@@ -1130,7 +1208,7 @@ def fatti_e_attesi(voce: dict) -> dict | None:
     chi aveva la partita rinviata e ha il voto della regola della lega (`giocatori[].rinvio`: d'ufficio o nessuno, non del campo).
     Le differenze sono quelle dei numeri come la pagina li scrive (`_letto`). `testo` e `frase`: la frase su `meglio` e `peggio`,
     null se sono vuoti. None se la formazione non ha i punti."""
-    chi = _formazione_che_conta(voce)
+    chi = formazione_che_conta(voce)
     if chi is None or _numero(chi[1].get("atteso")) is None or _numero(chi[1].get("reale")) is None:
         return None
     nome, f = chi
@@ -1202,7 +1280,7 @@ def spiegazione_punti(voce: dict) -> dict | None:
     rinviata, chi è entrato al posto di chi, chi è rimasto senza sostituto, modificatore difesa), con `righe_frasi` per tradurle.
     Una voce scritta prima del dettaglio (o che non si è potuta completare, `dettaglio` null) ha una frase sola che lo dice, ma solo
     se i conti non tornano con i voti degli 11. None se non c'è niente da spiegare."""
-    chi = _formazione_che_conta(voce)
+    chi = formazione_che_conta(voce)
     if chi is None or _numero(chi[1].get("reale")) is None:
         return None
     nome, f = chi
@@ -1303,12 +1381,23 @@ def _sospesa_senza_archivio(regole: Regole, voce: dict) -> bool | None:
     return None
 
 
-def elenco(percorso: Path | None = None, regole: Regole | None = None, db: sqlite3.Connection | None = None) -> dict:
+def _in_attesa(stagione: str, giornata: int, regole: Regole) -> dict:
+    """Una giornata che aspetta il recupero, per `in_attesa` di `elenco`: {stagione, giornata, giornata_lega, testo, frase}."""
+    lega = serie_a_a_lega(giornata, regole)
+    frase = F("diario.in_attesa_recupero", giornata=nome_giornata(giornata, lega))
+    return {"stagione": stagione, "giornata": giornata, "giornata_lega": lega, "testo": str(frase), "frase": frase.json()}
+
+
+def elenco(percorso: Path | None = None, regole: Regole | None = None, db: sqlite3.Connection | None = None,
+           attese: bool = True) -> dict:
     """Le voci dalla più recente, con la sintesi: quello che mostra l'app. Con le regole della lega, la stagione in corso conta solo
     dalla prima giornata della lega e ogni voce porta anche `giornata_lega` (il numero nel calendario della lega). Con le regole e
     l'archivio `db` non ci sono le voci sospese (`sospesa`), nemmeno nei conti in cima: le loro giornate stanno in `in_attesa`
     (dalla più recente, {stagione, giornata, giornata_lega, testo, frase}, «Giornata 5 · 8ª di Serie A: in attesa del recupero, i
-    punti arrivano dopo.»), che web e iPhone mostrano così com'è (revisione di #947: prima la giornata spariva senza spiegazione)."""
+    punti arrivano dopo.»), che web e iPhone mostrano così com'è (revisione di #947: prima la giornata spariva senza spiegazione).
+    In `in_attesa` anche le giornate della stagione in corso che con la regola «aspetta» non sono finite perché manca un recupero
+    (`rinvii.giornate_in_attesa`) e non hanno una voce: prima sparivano per settimane senza spiegazione. Per questo, con le regole
+    e l'archivio, il calendario si legge una volta a ogni chiamata; non con `attese` falso (il widget, che mostra solo le voci)."""
     d = carica(percorso)
     istantanee = d["istantanee"] if isinstance(d.get("istantanee"), dict) else {}
     voci = [per_i_client(v) for v in sorted(d["giornate"].values(), key=lambda v: (v["stagione"], v["giornata"]), reverse=True)]
@@ -1321,12 +1410,11 @@ def elenco(percorso: Path | None = None, regole: Regole | None = None, db: sqlit
             serve = any(_sospesa_senza_archivio(regole, v) is None for v in voci)
             chiuse = set(rinvii.giornate_chiuse(db, corrente, regole)) if serve else set()
             sospese = [v for v in voci if sospesa(db, regole, v, chiuse)]
+            con_voce = {v["giornata"] for v in voci if v["stagione"] == corrente}
             voci = [v for v in voci if v not in sospese]
-            for v in sospese:
-                lega = serie_a_a_lega(v["giornata"], regole)
-                frase = F("diario.in_attesa_recupero", giornata=nome_giornata(v["giornata"], lega))
-                in_attesa.append({"stagione": v["stagione"], "giornata": v["giornata"], "giornata_lega": lega, "testo": str(frase),
-                                  "frase": frase.json()})
+            senza_voce = [g for g in rinvii.giornate_in_attesa(db, corrente, regole)
+                          if g >= regole.prima_giornata_lega and g not in con_voce] if attese else []
+            in_attesa = [_in_attesa(corrente, g, regole) for g in sorted({v["giornata"] for v in sospese} | set(senza_voce), reverse=True)]
         for v in voci:
             v["giornata_lega"] = serie_a_a_lega(v["giornata"], regole) if v["stagione"] == corrente else None
     for v in voci:

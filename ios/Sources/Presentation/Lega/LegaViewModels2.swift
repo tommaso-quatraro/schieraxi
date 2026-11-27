@@ -395,10 +395,16 @@ final class AggiornaDatiViewModel: ViewModelBase {
                     segna(occupato: false)
                     errori = stato.errori ?? []
                     // una frase del server per riga sotto la testa, come l'avviso della web (#958: unite con «; » si leggeva
-                    // «…riprova più tardi.; I controlli…»)
-                    messaggio = errori.isEmpty ? Catalogo.Aggiorna.ok
-                        : Catalogo.Aggiorna.problemi(errori: "\n" + errori.joined(separator: "\n"))
-                    Haptics.esito(riuscito: errori.isEmpty)
+                    // «…riprova più tardi.; I controlli…»). La testa la sceglie il server: con `nessun_dato_nuovo` non è
+                    // arrivato niente e si dice «Nessun dato nuovo:», come la web (collaudo del 27/11: diceva «Aggiornato»).
+                    let righe = "\n" + errori.joined(separator: "\n")
+                    let niente = stato.nessunDatoNuovo == true
+                    if niente {
+                        messaggio = errori.isEmpty ? Catalogo.Aggiorna.nessunDatoNiente : Catalogo.Aggiorna.nessunDato(errori: righe)
+                    } else {
+                        messaggio = errori.isEmpty ? Catalogo.Aggiorna.ok : Catalogo.Aggiorna.problemi(errori: righe)
+                    }
+                    Haptics.esito(riuscito: errori.isEmpty && !niente)
                     NotificationCenter.default.post(name: .aggiornaTutto, object: nil)   // tutte le schermate si ricaricano
                     return
                 }
@@ -481,6 +487,9 @@ final class DubbiRoseViewModel: ViewModelBase {
     @Published private(set) var trovati: [GiocatoreBreve] = []
     @Published private(set) var cercando = false
     @Published private(set) var errore: String?
+    /// Le rose non si sono lette: la frase della web (`pav.da_sistemare_errore`) con il motivo, al posto della sezione. Gli errori
+    /// della ricerca e dell'abbinamento restano in `errore`, nel foglio della ricerca.
+    @Published private(set) var erroreLettura: String?
     @Published private(set) var sistemati = 0
     @Published var scelto: GiocatoreDaSistemare?
     /// Pausa prima di interrogare il server mentre si scrive (i test la azzerano).
@@ -500,9 +509,10 @@ final class DubbiRoseViewModel: ViewModelBase {
             }
             dubbi = DubbiRose.trova(in: rose)
             errore = nil
+            erroreLettura = nil
         } catch {
             if error is CancellationError { return }
-            errore = error.localizedDescription
+            erroreLettura = Catalogo.Pav.daSistemareErrore(motivo: error.localizedDescription)
         }
         caricato = true
     }

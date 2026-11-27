@@ -102,4 +102,4 @@ def test_dopo_la_nuova_stagione_oggi_e_formazione_dicono_di_importare_le_rose(lu
     assert o.status_code == 200 and o.json()["senza_rose"] is True, o.text      # come al primo avvio: l'invito a importarle
     assert "rose" in [v["tipo"] for v in o.json()["da_fare"]]
     f = a.get("/api/formazione")
-    assert f.status_code == 409 and f.json()["detail"] == "Nessuna rosa importata: importale con «Aggiorna le rose»", f.text
+    assert f.status_code == 409 and f.json()["detail"] == "Nessuna rosa importata: importale con «Aggiorna le rose».", f.text

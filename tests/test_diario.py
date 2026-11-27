@@ -368,7 +368,7 @@ def test_ho_schierato_a_mano(vero):
 
 @pytest.mark.parametrize("giornata, tipo, titolari, messaggio", [
     (9, "consigliata", None, "già finite"),                                          # giornata non finita
-    (1, "manuale", [1, 4, 5], "11 titolari"),
+    (1, "manuale", [1, 4, 5], r"^Servono 11 titolari diversi\.$"),                    # con il punto (revisione della #968)
     (1, "manuale", [1, 4, 5, 6, 12, 13, 14, 15, 20, 21, 99], "non sono nella tua rosa"),
     (1, "manuale", [1, 1, 5, 6, 12, 13, 14, 15, 20, 21, 25], "11 titolari"),
     (1, "boh", None, "consigliata"),

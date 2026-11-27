@@ -201,13 +201,13 @@ def _da_contenuto(contenuto: bytes, nome: str) -> Rose:
     try:
         dati = json.loads(contenuto.decode("utf-8"))
     except ValueError:
-        raise ValueError(f"Il file {nome} è rovinato: ripristina la copia {nome}.bak o importa di nuovo le rose") from None
+        raise ValueError(f"Il file {nome} è rovinato: ripristina la copia {nome}.bak o importa di nuovo le rose.") from None
     return da_dict(dati)
 
 
 _CAMPI_GIOCATORE = {f.name for f in fields(GiocatoreRosa)}
 FORMA_SBAGLIATA = ("Il file rose.json non ha la forma giusta: ripristina la copia rose.json.bak o un backup, "
-                   "oppure importa di nuovo le rose")
+                   "oppure importa di nuovo le rose.")
 _STAGIONE = re.compile(r"[0-9]{4}-[0-9]{2}")       # «2026-27», come aggiorna.Stagione.codice
 
 

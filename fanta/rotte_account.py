@@ -219,13 +219,13 @@ def controllo_accesso(request: Request) -> JSONResponse | None:
         return JSONResponse(status_code=401, content={"detail": "Accesso richiesto"} | come_entrare)
     request.state.utente = utente
     if (percorso in SOLO_AMMINISTRATORE or percorso.startswith("/api/admin/")) and not utente.amministratore:
-        return JSONResponse(status_code=403, content={"detail": "Solo per l'amministratore"})
+        return JSONResponse(status_code=403, content={"detail": "Solo per l'amministratore."})
     return None
 
 
 # Invito inesistente, scaduto, revocato o già usato (`account.INVITO_NON_VALIDO`, da registrazione, conferma dell'email e Google):
 # a chi si iscrive un messaggio solo, che non dice quale dei casi è ma dice cosa fare (#580).
-INVITO_DA_CHIEDERE = "Invito non valido, scaduto o già usato: chiedine uno nuovo a chi te l'ha mandato"
+INVITO_DA_CHIEDERE = "Invito non valido, scaduto o già usato: chiedine uno nuovo a chi te l'ha mandato."
 
 
 def errore_account(_, e: ErroreAccount) -> JSONResponse:
@@ -249,7 +249,7 @@ def _posta_accesa() -> None:
 
 def _attivo() -> None:
     if not account.multiutente():
-        raise HTTPException(404, "Gli account non sono attivi")
+        raise HTTPException(404, "Gli account non sono attivi.")
 
 
 def utente_corrente(request: Request) -> Utente:
@@ -264,7 +264,7 @@ def utente_corrente(request: Request) -> Utente:
 
 def solo_amministratore(utente: Utente = Depends(utente_corrente)) -> Utente:
     if not utente.amministratore:
-        raise HTTPException(403, "Solo per l'amministratore")
+        raise HTTPException(403, "Solo per l'amministratore.")
     return utente
 
 
@@ -711,7 +711,7 @@ def blocca_utente(utente_id: int = FPath(ge=1, le=MAX_ID), chi: Utente = Depends
     """Blocca un account: non entra più e le sue sessioni, il token del widget e le notifiche web si chiudono subito. I dati restano.
     La conferma la chiede il client. Mai il proprio account (400) né quello di un altro amministratore (403)."""
     if utente_id == chi.id:
-        raise ErroreAccount("Non puoi bloccare il tuo account")
+        raise ErroreAccount("Non puoi bloccare il tuo account.")
     _utente_comune(utente_id)
     with closing(account.apri()) as db:
         chiuse = account.blocca(db, utente_id, da=chi.nome_utente)
@@ -733,7 +733,7 @@ def elimina_utente(utente_id: int = FPath(ge=1, le=MAX_ID), chi: Utente = Depend
     client. Il proprio account si elimina da Impostazioni › Il tuo account, con la password (400); quello di un altro
     amministratore solo dal comando (403)."""
     if utente_id == chi.id:
-        raise ErroreAccount("Il tuo account si elimina da Impostazioni › Il tuo account, con la password")
+        raise ErroreAccount("Il tuo account si elimina da Impostazioni › Il tuo account, con la password.")
     _utente_comune(utente_id)
     elimina_account_e_dati(utente_id, da=chi.nome_utente)
     return {"ok": True}
@@ -749,11 +749,15 @@ def _con_parte(voci: list[dict]) -> list[dict]:
 def registro_server():
     """Per l'amministratore: contatori dall'ultimo riavvio, ultimi errori del server e ultimi eventi di sicurezza (indirizzi nascosti a metà),
     con in più gli ultimi eventi importanti (registrazioni, recuperi, eliminazioni, cambi di ruolo...) anche se tanti tentativi
-    sbagliati li hanno spinti più indietro. Ogni errore e ogni richiesta lenta ha accanto il nome della parte dell'app (`parte`, `parte_frase`)."""
+    sbagliati li hanno spinti più indietro. Ogni errore e ogni richiesta lenta ha accanto il nome della parte dell'app (`parte`, `parte_frase`).
+    Un file del registro che c'è ma non si legge: 503 con il suo nome (la causa è nel log del servizio), mai un elenco vuoto."""
     contatori = registro.contatori.riepilogo()
+    try:
+        errori, sicurezza = registro.ultimi(registro.FILE_ERRORI, 30), registro.ultimi_sicurezza(30, nascondi_indirizzi=True)
+    except registro.RegistroIlleggibile as e:         # mai «Nessun evento» per un file che non si legge: 503 con il suo nome
+        raise HTTPException(503, f"Non riesco a leggere il registro del server ({e.nome}): controlla i permessi del file sul server.") from e
     return {"contatori": contatori | {"piu_lente": _con_parte(contatori["piu_lente"])},
-            "errori": _con_parte(registro.ultimi(registro.FILE_ERRORI, 30)),
-            "sicurezza": registro.ultimi_sicurezza(30, nascondi_indirizzi=True)}
+            "errori": _con_parte(errori), "sicurezza": sicurezza}
 
 
 class SceltaFonte(BaseModel):
@@ -805,10 +809,12 @@ def scegli_funzione(dati: SceltaFunzione, utente: Utente = Depends(solo_amminist
     return {"funzioni": funzioni.stato()}
 
 
-@router.post("/api/admin/reset-password", dependencies=[Depends(_attivo), Depends(solo_amministratore)])
-def reset_password(dati: DaResettare):
+@router.post("/api/admin/reset-password", dependencies=[Depends(_attivo)])
+def reset_password(dati: DaResettare, chi: Utente = Depends(solo_amministratore)):
+    """Il codice per chi ha perso la password. Per il proprio account o per un account comune; quello di un altro amministratore
+    no (403), come blocca ed elimina."""
     with closing(account.apri()) as db:
-        codice = account.crea_reset(db, dati.nome_utente)
+        codice = account.crea_reset(db, dati.nome_utente, chi=chi)
     return {"codice": codice, "valido_ore": int(account.DURATA_RESET.total_seconds() // 3600)}
 
 
@@ -816,7 +822,7 @@ def reset_password(dati: DaResettare):
 def _google() -> None:
     """Senza FANTA_GOOGLE_CLIENT_ID e FANTA_GOOGLE_CLIENT_SECRET è come se queste rotte non ci fossero."""
     if not account.multiutente() or not social.google_attivo():
-        raise HTTPException(404, "Non trovato")
+        raise HTTPException(404, "Non trovato.")
 
 
 class AvvioSocial(BaseModel):

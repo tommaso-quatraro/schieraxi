@@ -17,8 +17,6 @@ import logging
 import sqlite3
 from datetime import datetime, timedelta
 
-import pandas as pd
-
 from . import avvisi, diario, rinvii, scelte, turno as turni
 from . import etichette, frasi
 from . import formazione as fz
@@ -417,28 +415,28 @@ def blocco_in_corso(db, regole: Regole, rose, prev, f: dict, stagione: str, gior
         "partite": conta_partite(partite)}
 
 
-def _rosa_della_giornata(rose, stagione: str, giornata: int, file_diario) -> tuple[dict[int, dict], object, dict | None]:
-    """(info della rosa, numeri della rosa alla scadenza come tabella per `_panchina_di` o None, istantanea o None) per il riepilogo
-    di una giornata finita. Il ruolo è quello di allora, se c'è (una rosa scritta a mano può non averlo). Mai le previsioni di
-    un'altra giornata: sono della giornata da giocare (#794)."""
+def _rosa_della_giornata(rose, stagione: str, giornata: int, file_diario) -> tuple[dict[int, dict], dict[int, dict], dict | None]:
+    """(info della rosa, numeri della rosa alla scadenza (`diario.numeri_rosa`, vuoti se non ci sono), istantanea o None) per il
+    riepilogo di una giornata finita. Il ruolo è quello di allora, se c'è (una rosa scritta a mano può non averlo). Mai le previsioni
+    di un'altra giornata: sono della giornata da giocare (#794)."""
     info = _info_rosa(rose, None)
     numeri = diario.numeri_rosa(file_diario, stagione, giornata) if file_diario else {}
     info = {i: x | ({"ruolo": numeri[i]["ruolo"]} if i in numeri else {}) for i, x in info.items()}
-    tabella = pd.DataFrame([{"id": i, "p_voto": float(n["p_voto"]), "mu": float(n["fv_atteso"]), "mu_voto": 6.0}
-                            for i, n in numeri.items() if i in info]).set_index("id") if any(i in info for i in numeri) else None
     ist = (diario.carica(file_diario).get("istantanee") or {}).get(f"{stagione}/{giornata}") if file_diario else None
-    return info, tabella, ist if isinstance(ist, dict) else None
+    return info, numeri, ist if isinstance(ist, dict) else None
 
 
-def _panchina_della_giornata(info: dict[int, dict], numeri, ist: dict | None, titolari: list[int], regole: Regole) -> list[int]:
+def _panchina_della_giornata(info: dict[int, dict], numeri: dict[int, dict], ist: dict | None, titolari: list[int],
+                             regole: Regole) -> list[int]:
     """La panchina di una formazione salvata senza panchina, nel riepilogo di una giornata finita (#794): quella congelata alla
-    scadenza (l'istantanea) se gli 11 sono gli stessi; altrimenti quella che sceglie il sistema con la funzione di «in corso»
-    (`_panchina_di`), ma con i numeri della rosa alla scadenza (`diario.numeri_rosa`): «in corso» usa le previsioni vive, quindi in
-    qualche caso l'ordine delle riserve può essere diverso. Senza numeri (nessuna copia alla scadenza) vuota."""
+    scadenza (l'istantanea) se gli 11 sono gli stessi; altrimenti quella che sceglie il sistema con i numeri della rosa alla scadenza
+    (`diario.panchina_alla_scadenza`, la stessa funzione e gli stessi numeri del Diario, così il totale non cambia quando la giornata
+    entra nel Diario): «in corso» usa le previsioni vive, quindi in qualche caso l'ordine delle riserve può essere diverso. Senza
+    numeri (nessuna copia alla scadenza) vuota."""
     congelati = [g.get("id") for g in (ist or {}).get("titolari") or [] if isinstance(g, dict)]
     if congelati and set(congelati) == set(titolari) and (ist or {}).get("panchina"):
         return [int(g["id"]) for g in ist["panchina"] if isinstance(g, dict) and isinstance(g.get("id"), int)]
-    return _panchina_di(info, numeri, titolari, regole)
+    return diario.panchina_alla_scadenza(numeri, {i: (x["nome"], x["ruolo"]) for i, x in info.items()}, titolari, regole) or []
 
 
 def _rinvio_del_riepilogo(db, regole: Regole, rose, stagione: str, giornata: int, mancano: list[dict]) -> dict:

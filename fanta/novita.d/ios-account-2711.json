@@ -7,9 +7,9 @@
   ],
   "titolo_en": "iPhone: clearer sign-in after too many attempts and when the session ends",
   "voci_en": [
-    "iPhone, sign in: after «too many attempts» the wait only applies to what you were doing; «Forgot password», «Sign up» and «Continue with Google» no longer stay disabled.",
+    "iPhone, sign in: after “\u0001” the wait only applies to what you were doing; “\u0001”, “\u0001” and “\u0001” no longer stay disabled.",
     "iPhone: when a daily limit already says when it resets (for example in Write to us), the time is no longer repeated twice.",
-    "iPhone: when the server ends your session, the sign-in screen says «Your session has ended: please sign in again.», like the web; and the phone you sign in on is recognised, so you can get back in later even if someone is trying passwords on your name."
+    "iPhone: when the server ends your session, the sign-in screen says “\u0001”, like the web; and the phone you sign in on is recognised, so you can get back in later even if someone is trying passwords on your name."
   ],
   "tecnico": [
     "iPhone: ModuloAccesso.attesa (fine e passo del 429) al posto dello @State della vista; vale solo nel passo in cui è nata e ModuloAccesso.vai la toglie, come contaAttesa della web.",

@@ -4,7 +4,10 @@ import Foundation
 struct GiocatoreDaSistemare: Identifiable, Hashable {
     let squadra: String
     let nome: String
-    var id: String { "\(squadra)|\(nome)" }
+    /// La riga nella rosa della squadra (dall'alto, da 0): due righe con lo stesso nome nella stessa squadra restano due dubbi
+    /// distinti, e abbinandone una sparisce solo quella, come sulla web.
+    let posizione: Int
+    var id: String { "\(squadra)|\(posizione)" }
 }
 
 /// Corpo di `POST /api/rose/correggi`: chiavi identiche a quelle del server.
@@ -18,7 +21,8 @@ enum DubbiRose {
     /// I giocatori senza codice di tutte le rose, in ordine di squadra.
     static func trova(in rose: [Rosa]) -> [GiocatoreDaSistemare] {
         rose.flatMap { r in
-            r.giocatori.filter { $0.id == nil }.map { GiocatoreDaSistemare(squadra: r.nome, nome: $0.nome) }
+            r.giocatori.enumerated().filter { $0.element.id == nil }
+                .map { GiocatoreDaSistemare(squadra: r.nome, nome: $0.element.nome, posizione: $0.offset) }
         }
     }
 }

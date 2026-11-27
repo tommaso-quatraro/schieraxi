@@ -78,8 +78,9 @@
     "en": "I cannot connect: this is the data saved on {giorno} at {ora}."
   },
   "comune.cache_errore": {
-    "it": "{errore} (dati salvati il {giorno} alle {ora}, potrebbero non essere aggiornati).",
-    "en": "{errore} (saved data from {giorno} at {ora}, may be out of date)."
+    "it": "{errore} Dati salvati il {giorno} alle {ora}, potrebbero non essere aggiornati.",
+    "en": "{errore} Data saved on {giorno} at {ora}: it may be out of date.",
+    "nota": "{errore} = il messaggio dell'errore, chiuso dal punto (web: app.js; iPhone: DatiVecchi.frase); due frasi a sé dalla revisione della #968, prima la nota fra parentesi"
   },
   "comune.vai_lega": {
     "it": "Apri La mia lega",
@@ -90,8 +91,9 @@
     "en": "Player"
   },
   "comune.riprova_tra": {
-    "it": " (riprova tra {attesa})",
-    "en": " (try again in {attesa})"
+    "it": " Riprova tra {attesa}.",
+    "en": " Try again in {attesa}.",
+    "nota": "in coda a un errore 429 (attesaDa in app.js), dopo la frase del server senza il suo invito a riprovare, come l'iPhone (ErroreApi.errorDescription); comincia con uno spazio"
   },
   "comune.attesa_secondi.one": {
     "it": "{n} secondo",

@@ -134,6 +134,15 @@
       "forma": "web (catalogo `fanta/testi/formazione.json`, `oggi.json`, `mercato.json`, `scambi.json`); sull'iPhone conferma ed errore del rinvio stanno sotto il menu e non in un avviso che passa: la conferma se ne va dopo 8 secondi, l'errore alla prima lettura riuscita della giornata",
       "chi": "**fatto** (ramo `formazione-iphone-2611`): `FormazioneViewModel`, `SchedaAperta`, `SceltaSostituto`, `SceltaChiEsce`, `MotivoCambiSpenti`, `OggiViewModel`, `CartaPartitaRinviata`, `RigaCambio`, `PostoInFormazione`, `TestoFormazione`; prove `PulsantiSchedaAttualiTests`, `CambioNonPartitoTests`, `SostituisciTests`, `PartiteRinviateTests`, `FormazioneCopiaEInCorsoTests`, `FormazioneDalCatalogoTests`",
       "stato": "fatto"
+    },
+    {
+      "id": 140,
+      "schermata": "Formazione, conto alla rovescia negli ultimi secondi, menu del modulo dopo un cambio a mano e riletture da sole (#978)",
+      "web": "dalla #978 «Formazione chiusa» solo a scadenza passata: i minuti che mancano si arrotondano in su, quindi «fra 1 min» fino all'ultimo secondo (`testoConto`); nel menu del modulo, se gli 11 in pagina non sono quelli di un modulo calcolato dal server, in cima la voce «4-3-3 · 71,0 punti · la tua» (`formazione.opzione_tua`), scelta; la Formazione si rilegge da sola 5 secondi dopo la scadenza, al ritorno in primo piano (scadenza passata o dati di più di 5 minuti) e dopo un rifiuto `giocatore_bloccato`",
+      "iphone": "in lavorazione. Oggi «Formazione chiusa» già negli ultimi 30 secondi (`Quando.partiDelConto` arrotonda i minuti al più vicino con `Formato.intero`); dopo una sostituzione nello stesso ruolo la spunta del menu sta sulla voce del server con lo stesso modulo (anche «consigliato», con i suoi punti) e la voce della tua formazione non c'è, anche se sceglierla riporta alla consigliata; rilegge 5 secondi dopo la scadenza solo in primo piano, non tornando sull'app a scadenza passata, non per dati vecchi e non dopo `giocatore_bloccato`",
+      "forma": "web (#978): minuti arrotondati in su, voce «… · la tua» (`formazione.opzione_tua`) in cima al menu, le tre riletture da sole",
+      "chi": "differenza temporanea: web con la #978; iPhone: in lavorazione, dopo l'unione della #978",
+      "stato": "da-fare"
     }
   ]
 }

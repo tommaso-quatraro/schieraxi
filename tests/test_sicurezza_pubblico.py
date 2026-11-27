@@ -272,7 +272,7 @@ def test_i_messaggi_scritti_per_l_utente_restano():
         immagini.salva("Squadra", "boh", b"")
     except ValueError as e:
         r = server._errore_valore(_richiesta_vuota(), e)
-    assert _corpo(r)["detail"] == "Tipo di immagine non valido: stemma o maglia"
+    assert _corpo(r)["detail"] == "Tipo di immagine non valido: stemma o maglia."
 
 
 def test_errori_dell_aggiornamento_per_intero_solo_all_amministratore():

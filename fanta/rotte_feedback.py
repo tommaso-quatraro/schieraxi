@@ -30,7 +30,7 @@ class Commento(BaseModel):
 
 def _con_account() -> None:
     if not account.multiutente():
-        raise HTTPException(404, "Gli account non sono attivi")
+        raise HTTPException(404, "Gli account non sono attivi.")
 
 
 @router.post("/api/feedback", dependencies=[Depends(_con_account)])
@@ -66,5 +66,5 @@ def commenti_degli_utenti():
 def segna_letto(commento_id: int = FPath(ge=1, le=rotte_account.MAX_ID)):
     with closing(account.apri()) as db:
         if not feedback.segna_letto(db, commento_id):
-            raise HTTPException(404, "Commento non trovato")
+            raise HTTPException(404, "Commento non trovato.")
     return {"ok": True}

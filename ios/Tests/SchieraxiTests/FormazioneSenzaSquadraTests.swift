@@ -10,7 +10,7 @@ import Testing
 @MainActor
 @Suite("Formazione senza la tua squadra: la domanda della guida, come la web")
 struct FormazioneSenzaSquadraTests {
-    private static let rifiuto = "Indica la tua squadra in «La mia squadra»"
+    private static let rifiuto = "Indica la tua squadra in «La mia squadra»."
 
     /// Il server: `/api/stato` con o senza la mia squadra (`mia.valore`); senza, Oggi e Formazione rispondono 400 come lui.
     /// `PUT /api/mia-squadra` segna la squadra scelta. Con `rotto` vero `/api/stato` non risponde.
