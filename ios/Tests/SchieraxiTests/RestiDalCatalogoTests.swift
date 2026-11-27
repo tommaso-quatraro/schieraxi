@@ -297,6 +297,11 @@ struct RestiDalCatalogoTests {
                    "Catalogo.Avv.puntiDelleFormazioni", "Catalogo.Avv.giornateDaA("]),
         Caso(file: "Sources/Presentation/Lega/ParoleSquadre.swift",
              usa: ["Catalogo.Lega.rimuovi", "Catalogo.Lega.stemmaRimosso", "Catalogo.Lega.magliaRimossa"]),
+        // il grafico della prova del modello con le parole della web: legenda, VoiceOver, giornate
+        Caso(file: "Sources/Support/Grafici.swift",
+             testi: [Catalogo.Avv.maxPossibile, Catalogo.Avv.puntiDelleFormazioni],
+             usa: ["ParoleAffidabilita.modello", "ParoleAffidabilita.fantamedia", "ParoleAffidabilita.massimo",
+                   "ParoleAffidabilita.nomeGrafico", "ParoleAffidabilita.giornate(", "ParoleAffidabilita.riga"]),
     ]
 
     /// Un pezzo fisso più corto di così potrebbe stare per caso in un altro testo.
