@@ -53,8 +53,11 @@ def numeri_giornata(voce: dict) -> tuple[list[tuple[float, float, float | None]]
     «Mostrati» = i numeri che l'app mostrava prima della scadenza (istantanea; le probabili formazioni comprese);
     «ricostruiti» = rifatti dopo con i soli dati di prima della giornata, SENZA le probabili formazioni.
     Non c'è chi aveva la partita rinviata e ha il voto della regola della lega (`rinvio`, diario.py): d'ufficio o nessun voto, che
-    non dicono se il fantavoto atteso o «gioca N%» erano giusti."""
-    veri = {g["id"]: g for g in voce.get("giocatori") or [] if isinstance(g, dict) and "id" in g and not g.get("rinvio")}
+    non dicono se il fantavoto atteso o «gioca N%» erano giusti. E non c'è chi non ha una previsione ricostruita (`fv_atteso` null:
+    mai sceso in campo prima della giornata, diario.py), in nessuna delle due misure: sta nella tabella degli 11 perché il suo voto
+    conta nei punti, ma prima di averlo lì non entrava nella misura e la misura resta la stessa."""
+    veri = {g["id"]: g for g in voce.get("giocatori") or [] if isinstance(g, dict) and "id" in g and not g.get("rinvio")
+            and _numero(g.get("fv_atteso")) is not None}
     if not veri:
         return [], []
     ist = voce.get("istantanea") if isinstance(voce.get("istantanea"), dict) else {}
