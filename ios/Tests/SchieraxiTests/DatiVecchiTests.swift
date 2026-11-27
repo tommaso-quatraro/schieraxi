@@ -25,10 +25,10 @@ final class DatiVecchiTests: XCTestCase {
     func testFraseConESenzaMotivo() throws {
         let salvata = try oraItaliana(giorno: 2, ora: 10, minuto: 0)
         let rete = DatiVecchi.frase(salvatiIl: salvata, motivo: nil)
-        XCTAssertEqual(rete, "Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il 2 nov alle 10:00 e può essere vecchio.",
-                       "senza motivo la frase di sempre, con giorno e ora scritti come nella nota con il motivo")
+        XCTAssertEqual(rete, "Non riesco a collegarmi: questi sono i dati salvati il 2 nov alle 10:00.",
+                       "senza motivo la frase della web (`comune.cache_offline`), con giorno e ora scritti come nella nota con il motivo")
         let limite = DatiVecchi.frase(salvatiIl: salvata, motivo: "Hai finito le ricerche di oggi")
-        XCTAssertFalse(limite.contains("raggiungere"), "il server ha risposto: non si dice che non è raggiungibile")
+        XCTAssertFalse(limite.contains("collegarmi"), "il server ha risposto: non si dice che non è raggiungibile")
         let conPunto = DatiVecchi.frase(salvatiIl: salvata, motivo: "Errore del server.")
         XCTAssertFalse(conPunto.contains(".."))
         XCTAssertEqual(DatiVecchi.frase(salvatiIl: salvata, motivo: "  "), DatiVecchi.frase(salvatiIl: salvata, motivo: nil))
@@ -56,7 +56,7 @@ final class DatiVecchiTests: XCTestCase {
         XCTAssertEqual(DatiVecchi.frase(salvatiIl: notte, motivo: "Guasto"),
                        "Guasto (dati salvati il 17 nov alle 00:30, potrebbero non essere aggiornati).")
         XCTAssertEqual(DatiVecchi.frase(salvatiIl: notte, motivo: nil),
-                       "Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato il 17 nov alle 00:30 e può essere vecchio.")
+                       "Non riesco a collegarmi: questi sono i dati salvati il 17 nov alle 00:30.")
     }
 
     /// «l'8 nov», «l'11 nov», mai «il 8» o «il 11» (si legge «l'otto», «l'undici»), come la web (`elidiGiorno` in `testi.js`).
@@ -67,7 +67,7 @@ final class DatiVecchiTests: XCTestCase {
                        "Il server non risponde: riprova fra poco (dati salvati l'8 nov alle 10:05, potrebbero non essere aggiornati).")
         let undici = try oraItaliana(giorno: 11, ora: 10, minuto: 5)
         XCTAssertEqual(DatiVecchi.frase(salvatiIl: undici, motivo: nil),
-                       "Non riesco a raggiungere SchieraXI. Quello che vedi è stato salvato l'11 nov alle 10:05 e può essere vecchio.")
+                       "Non riesco a collegarmi: questi sono i dati salvati l'11 nov alle 10:05.")
         let diciotto = try oraItaliana(giorno: 18, ora: 10, minuto: 5)
         XCTAssertTrue(DatiVecchi.frase(salvatiIl: diciotto, motivo: "Guasto").contains("(dati salvati il 18 nov alle 10:05,"))
         let primo = try oraItaliana(giorno: 1, ora: 10, minuto: 5)

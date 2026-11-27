@@ -83,16 +83,19 @@ struct IntestazioneWidget: View {
 /// «dati di ieri 18:30» (forme e giorni in ora italiana in `ParoleWidget.datiSalvati`, contati dall'istante della voce). Dove non
 /// entra perde l'ora («dati di ieri»), poi «dati di» (la sola data accanto al simbolo, su una riga anche con il testo molto grande
 /// nel medio), e solo se nemmeno così entra va a capo: mai «…». VoiceOver legge sempre la forma intera.
-/// Carattere e colore li sceglie chi la usa.
+/// La stessa riga per i dati arrivati bene ma vecchi, perché iOS ha rimandato gli aggiornamenti (`EtaDatiWidget`): lì con l'orologio
+/// al posto della nuvola sbarrata, perché il collegamento c'era (`salvata` falso). Carattere e colore li sceglie chi la usa.
 struct RigaCopia: View {
     let scaricatoIl: Date
     let adesso: Date
+    /// true: la copia salvata (il server non ha risposto); false: dati arrivati bene ma vecchi.
+    var salvata = true
 
     var body: some View {
         let forme = ParoleWidget.datiSalvati(scaricatoIl, adesso: adesso)
         PrimaCheEntra(forme.count) { i in
             // l'ultima forma va a capo invece di finire con «…»; a sinistra anche dentro un Link (#787)
-            Label(forme[i], systemImage: "icloud.slash")
+            Label(forme[i], systemImage: salvata ? "icloud.slash" : "clock.arrow.circlepath")
                 .lineLimit(i == forme.count - 1 ? nil : 1)
                 .multilineTextAlignment(.leading)
         }
@@ -101,14 +104,14 @@ struct RigaCopia: View {
     }
 }
 
-/// La riga della copia nei widget Formazione quando il widget mostra una copia, niente quando i dati sono freschi. Quando il
-/// codice del widget non vale più (401) non c'è copia: il widget dice «Tocca per collegare» (`SenzaDatiWidget`).
+/// La riga dell'ora dei dati nei widget Formazione quando il widget mostra una copia o dati vecchi, niente quando i dati sono
+/// freschi. Quando il codice del widget non vale più (401) non c'è copia: il widget dice «Tocca per collegare» (`SenzaDatiWidget`).
 struct PiedeDati: View {
     let voce: Voce
 
     var body: some View {
-        if let copia = voce.copiaDel {
-            RigaCopia(scaricatoIl: copia, adesso: voce.date)
+        if let ora = voce.oraDeiDati {
+            RigaCopia(scaricatoIl: ora, adesso: voce.date, salvata: voce.datiSalvati)
                 .font(.caption2).foregroundStyle(TintaWidget.testo2)
         }
     }
@@ -164,8 +167,14 @@ extension Voce {
     /// Il riassunto completo, o nil se il server non lo ha ancora (si ricade sui widget «vecchi»).
     var completo: RiassuntoWidget? { widget }
 
-    /// Quando è stata scaricata la copia che il widget mostra (`PiedeDati`); nil con i dati freschi o senza riassunto.
-    var copiaDel: Date? { datiSalvati ? riassunto?.scaricatoIl : nil }
+    /// L'ora dei dati da scrivere sotto (`RigaCopia`): quella della copia salvata, o quella dei dati arrivati bene ma vecchi perché
+    /// iOS ha rimandato gli aggiornamenti (oltre 15 minuti con una partita in gioco, oltre un'ora negli altri momenti,
+    /// `EtaDatiWidget`); nil con i dati freschi o senza riassunto. Contata dall'istante della voce.
+    var oraDeiDati: Date? {
+        guard let r = riassunto else { return nil }
+        return EtaDatiWidget.ora(scaricatoIl: r.scaricatoIl, adesso: date, copia: datiSalvati,
+                                 partite: widget?.finestraLive(adesso: date) == true)
+    }
 
     /// Cosa mostrano i tre widget prima del loro contenuto di sempre, nello stesso ordine (`CasoWidget`, provato dai test): a
     /// campionato finito la frase del server (#727, `CampionatoFinitoWidget`), per chi è entrato a giornata già iniziata senza una

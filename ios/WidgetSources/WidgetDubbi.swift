@@ -104,9 +104,9 @@ struct VistaDubbi: View {
                 Text("Apri SchieraXI per i nomi.").font(.caption).foregroundStyle(.white.opacity(0.8))
                 Spacer(minLength: 0)
             }
-            if voce.datiSalvati {
-                // con il giorno se la copia non è di oggi (`RigaCopia`, #834)
-                RigaCopia(scaricatoIl: r.scaricatoIl, adesso: voce.date)
+            if let ora = voce.oraDeiDati {
+                // la copia salvata o i dati vecchi (`Voce.oraDeiDati`), con il giorno se non è di oggi (`RigaCopia`, #834)
+                RigaCopia(scaricatoIl: ora, adesso: voce.date, salvata: voce.datiSalvati)
                     .font(.caption2).foregroundStyle(.white.opacity(0.7))
             }
         }
