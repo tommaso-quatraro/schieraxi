@@ -97,20 +97,21 @@ enum LegaDemo {
 
     // MARK: - Calciatori
 
-    /// La mia rosa (25): 3 portieri, 8 difensori, 8 centrocampisti, 6 attaccanti. La consigliata (`moduli[0]`) resta quella da
-    /// schierare: nessuna formazione della rosa, in nessun modulo della lega e con quanti cambi si vuole, le dà un punto atteso o più
-    /// (`SOGLIA_CAMBIO_PUNTI` del server, #944, `DemoConsigliataTests`). Per questo Lemão gioca il 68% e Kervan il 78%, e valgono
-    /// meno di Marténi, che resta titolare anche in dubbio; Dimarzi gioca l'80% e Di Corvara l'86%, e valgono più o meno quanto
-    /// Buonvicini (prima, insieme nel 4-4-2, davano +1,1). Il cambio migliore è Reimvaldt al posto di Marténi, con il 3-5-2: +0,5.
+    /// La mia rosa (25): 3 portieri, 8 difensori, 8 centrocampisti, 6 attaccanti. La consigliata (`moduli[0]`) è la migliore della
+    /// rosa: nessun cambio e nessuna formazione, in nessun modulo della lega, ha più punti attesi (#944 e revisione della #955,
+    /// `DemoConsigliataTests`). Marténi, in dubbio al 62%, vale 5,58 punti attesi: chi può prendere il suo posto vale meno. Per
+    /// questo Lemão gioca il 68%, Kervan il 78%, Dimarzi il 72% (in panchina anche nelle probabili), Di Corvara e Reimvaldt l'80%,
+    /// Lobrenka l'88%: il cambio migliore, Lemão al posto di Marténi, vale −0,1. Il rendimento (`punti`) non cambia, quindi
+    /// nemmeno l'ordine della panchina.
     static let miaRosa: [CalciatoreDemo] = [
         cal(101, "Ivo Sorvani", "P", "inter", costo: 12, pVoto: 0.98, punti: 6.1),
         cal(102, "Milo Magrenti", "P", "milan", costo: 22, pVoto: 0.97, punti: 5.8),
         cal(103, "Marcello Carsetti", "P", "atalanta", costo: 14, pVoto: 0.96, punti: 5.6),
         cal(104, "Alvise Bastrani", "D", "inter", costo: 28, pVoto: 0.96, punti: 6.4, diffidato: true),
-        cal(105, "Fabio Dimarzi", "D", "inter", costo: 31, pVoto: 0.80, punti: 6.9),
+        cal(105, "Fabio Dimarzi", "D", "inter", costo: 31, pVoto: 0.72, punti: 6.9),
         cal(106, "Glauco Brevisi", "D", "juventus", costo: 20, pVoto: 0.93, punti: 6.0),
         cal(107, "Aurelio Buonvicini", "D", "napoli", costo: 19, pVoto: 0.92, punti: 5.9),
-        cal(108, "Gianni Di Corvara", "D", "napoli", costo: 17, pVoto: 0.86, punti: 6.2),
+        cal(108, "Gianni Di Corvara", "D", "napoli", costo: 17, pVoto: 0.80, punti: 6.2),
         cal(109, "Rolf Gostein", "D", "fiorentina", costo: 9, pVoto: 0.0, punti: 0.0, assente: true),
         cal(110, "Adriano Cambrisi", "D", "juventus", costo: 15, pVoto: 0.85, punti: 5.7),
         cal(111, "Ewan Ndolani", "D", "roma", costo: 8, pVoto: 0.78, punti: 5.2),
@@ -118,8 +119,8 @@ enum LegaDemo {
         cal(113, "Hamit Çalvaroğlu", "C", "inter", costo: 36, pVoto: 0.93, punti: 7.2),
         cal(114, "Teo Kloosmeijer", "C", "juventus", costo: 21, pVoto: 0.88, punti: 6.3),
         cal(115, "Cesare Pulinski", "C", "milan", costo: 38, pVoto: 0.91, punti: 6.8),
-        cal(116, "Stanko Lobrenka", "C", "napoli", costo: 10, pVoto: 0.90, punti: 5.6),
-        cal(117, "Tarek Reimvaldt", "C", "milan", costo: 24, pVoto: 0.89, punti: 6.2),
+        cal(116, "Stanko Lobrenka", "C", "napoli", costo: 10, pVoto: 0.88, punti: 5.6),
+        cal(117, "Tarek Reimvaldt", "C", "milan", costo: 24, pVoto: 0.80, punti: 6.2),
         cal(118, "Nereo Fagiani", "C", "fiorentina", costo: 6, pVoto: 0.0, punti: 0.0, assente: true),
         cal(119, "Moussa Kerabo", "C", "roma", costo: 13, pVoto: 0.84, punti: 5.5),
         cal(120, "Leonel Marténi", "A", "inter", costo: 80, pVoto: 0.62, punti: 7.9, dubbio: true),
@@ -590,14 +591,16 @@ enum LegaDemo {
     }
 
     /// Le giornate finite, dalla più recente (Serie A 10-7, cioè 7-4 della lega): il Diario dell'app e «Attesi e fatti» dei
-    /// widget, che come il server prendono la tua formazione se c'era, altrimenti la consigliata.
+    /// widget, che come il server prendono la tua formazione se c'era, altrimenti la consigliata. Il modulo è quello degli undici
+    /// che il Diario della demo scrive per la giornata (`DemoDiarioRuoliTests`): la consigliata della giornata 7 era «4-3-3» con gli
+    /// undici di un 3-4-3.
     static let giornateFinite: [GiornataFinita] = [
         GiornataFinita(serieA: 10, consigliata: EsitoGiornata(modulo: "3-4-3", atteso: 69.0, fatti: 72.5), schierata: nil),
         GiornataFinita(serieA: 9, consigliata: EsitoGiornata(modulo: "3-4-3", atteso: 68.5, fatti: 71.0),
                        schierata: EsitoGiornata(modulo: "3-5-2", atteso: 66.0, fatti: 63.5)),
         GiornataFinita(serieA: 8, consigliata: EsitoGiornata(modulo: "3-4-3", atteso: 67.0, fatti: 64.0),
                        schierata: EsitoGiornata(modulo: "3-4-3", atteso: 66.0, fatti: 59.5)),
-        GiornataFinita(serieA: 7, consigliata: EsitoGiornata(modulo: "4-3-3", atteso: 65.0, fatti: 60.5), schierata: nil),
+        GiornataFinita(serieA: 7, consigliata: EsitoGiornata(modulo: "3-4-3", atteso: 65.0, fatti: 60.5), schierata: nil),
     ]
 
     /// Il miglior scambio (il primo di Scambi): con chi, chi dai, chi ricevi, quanto guadagnate tu e loro.

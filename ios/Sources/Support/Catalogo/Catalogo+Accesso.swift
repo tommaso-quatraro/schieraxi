@@ -115,5 +115,10 @@ extension Catalogo {
 
         /// `accesso.risposta_incompleta`
         static let rispostaIncompleta = "Qualcosa non ha funzionato: riprova"
+
+        /// `accesso.indirizzo_spiega`
+        static func indirizzoSpiega(esempio: String) -> String {
+            "È l'indirizzo con cui apri SchieraXI dal browser, per esempio \(esempio). Deve cominciare con https://. Resta solo su questo dispositivo e puoi cambiarlo in Impostazioni."
+        }
     }
 }

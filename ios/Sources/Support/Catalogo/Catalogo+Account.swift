@@ -29,10 +29,13 @@ extension Catalogo {
         }
 
         /// `account.esci_solo_qui`
-        static let esciSoloQui = "Esci solo da questo telefono"
+        static let esciSoloQui = "Esci solo da questo dispositivo"
 
         /// `account.esci_solo_qui_spiega`
         static let esciSoloQuiSpiega = "Sul server la sessione resta aperta finché non scade."
+
+        /// `account.esci_aiuto`
+        static let esciAiuto = "Esci dal tuo account su questo dispositivo"
 
         /// `account.esci_tutti`
         static let esciTutti = "Esci da tutti i dispositivi"

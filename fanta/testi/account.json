@@ -103,9 +103,14 @@
     "nota": "«Esci» quando la richiesta non arriva al server (rete giù, server che riparte): si resta dentro, come con account.esci_tutti_no (#800)"
   },
   "account.esci_solo_qui": {
-    "it": "Esci solo da questo telefono",
-    "en": "Sign out of this phone only",
-    "nota": "solo l'app per iPhone: pulsante sotto account.esci_no quando la richiesta non arriva al server (rete giù, server che non risponde); esce dal telefono senza il server (#809). La web non ne ha bisogno: senza server non si apre"
+    "it": "Esci solo da questo dispositivo",
+    "en": "Sign out of this device only",
+    "nota": "solo l'app per iPhone e iPad: pulsante sotto account.esci_no quando la richiesta non arriva al server (rete giù, server che non risponde); esce dal dispositivo senza il server (#809). «dispositivo» come account.esci_conferma: vale anche sull'iPad (#955). La web non ne ha bisogno: senza server non si apre"
+  },
+  "account.esci_aiuto": {
+    "it": "Esci dal tuo account su questo dispositivo",
+    "en": "Sign out of your account on this device",
+    "nota": "solo l'app per iPhone e iPad: aiuto di VoiceOver sul pulsante «Esci» (#955); «dispositivo» come account.esci_conferma"
   },
   "account.esci_solo_qui_spiega": {
     "it": "Sul server la sessione resta aperta finché non scade.",

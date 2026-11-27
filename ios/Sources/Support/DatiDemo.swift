@@ -1062,13 +1062,20 @@ private extension LegaDemo {
         func lega(_ serieA: Int) -> Int { serieA - 3 }
         // Gli id seguono il nome (non la posizione), così due formazioni con un nome diverso risultano davvero diverse.
         let anagrafe = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Marténi", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Dunfrey", "Orsetti", "Mkhedrian", "Zelawski"]
-        let ruoliDi = ["Sorvani": "P", "Bastrani": "D", "Dimarzi": "D", "Dunfrey": "D", "Marténi": "A", "Thorvan": "A", "Lemão": "A", "Pulinski": "A", "Orsetti": "A"]
-        func titolari(_ nomi: [String]) -> [[String: Any]] {
-            nomi.map { ["id": 9000 + (anagrafe.firstIndex(of: $0) ?? 99), "nome": $0, "ruolo": ruoliDi[$0] ?? "C"] }
+        // Il ruolo è quello della rosa della demo per chi c'è (Pulinski era attaccante qui e centrocampista nella rosa, e Giornate
+        // mostrava un 3-4-3 con quattro attaccanti); scritto qui solo per chi nella rosa non c'è più (`DemoDiarioRuoliTests`).
+        let ruoliFuoriRosa = ["Dunfrey": "D", "Orsetti": "A", "Mkhedrian": "C", "Zelawski": "C"]
+        func ruolo(_ cognome: String) -> String {
+            tutti.first { $0.nome == cognome || $0.nome.hasSuffix(" " + cognome) }?.ruolo ?? ruoliFuoriRosa[cognome] ?? "C"
         }
+        func titolari(_ nomi: [String]) -> [[String: Any]] {
+            nomi.map { ["id": 9000 + (anagrafe.firstIndex(of: $0) ?? 99), "nome": $0, "ruolo": ruolo($0)] }
+        }
+        // gli undici dei moduli di `giornateFinite`: la consigliata un 3-4-3, la tua della giornata 9 un 3-5-2 (Mkhedrian al posto di
+        // Lemão), quella della giornata 8 un 3-4-3 (Mkhedrian e Zelawski al posto di Çalvaroğlu e Kloosmeijer)
         let base = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Marténi", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Dunfrey"]
-        let altra = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Marténi", "Thorvan", "Pulinski", "Lemão", "Kloosmeijer", "Orsetti"]
-        let altra2 = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Mkhedrian", "Marténi", "Thorvan", "Pulinski", "Lemão", "Zelawski", "Orsetti"]
+        let altra = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Çalvaroğlu", "Marténi", "Thorvan", "Pulinski", "Mkhedrian", "Kloosmeijer", "Dunfrey"]
+        let altra2 = ["Sorvani", "Bastrani", "Dimarzi", "Barlesi", "Mkhedrian", "Marténi", "Thorvan", "Pulinski", "Lemão", "Zelawski", "Dunfrey"]
         // Fantavoto atteso e preso di ogni giocatore (pagina Giornate, #673 passo 2): numeri inventati e fermi, vicini ai punti della
         // squadra divisi per 11; ogni giornata uno è senza voto.
         let scarti: [Double] = [1.5, -1, 0.5, -0.5, 2, -1.5, 0, 1, -2, 0.5, -0.5, 0.5, -1, 1]
@@ -1145,8 +1152,8 @@ private extension LegaDemo {
         // qui il suo testo per i numeri della tabella qui sopra (`DemoDiarioTests` controlla che siano quelli)
         let frasiScarti: [Int: String] = [
             10: "Meglio del previsto: Marténi (+2,6) e Bastrani (+1,5). Peggio: Thorvan (\u{2212}1,5) e Kloosmeijer (\u{2212}1,2).",
-            9: "Meglio del previsto: Thorvan (+2,7) e Dimarzi (+1,6). Peggio: Pulinski (\u{2212}1,4).",
-            8: "Meglio del previsto: Pulinski (+2,3) e Sorvani (+1,2). Peggio: Lemão (\u{2212}1,8) e Orsetti (\u{2212}1,5).",
+            9: "Meglio del previsto: Thorvan (+2,7) e Dimarzi (+1,6). Peggio: Pulinski (\u{2212}1,4) e Dunfrey (\u{2212}1,1).",
+            8: "Meglio del previsto: Pulinski (+2,3) e Sorvani (+1,2). Peggio: Lemão (\u{2212}1,8) e Thorvan (\u{2212}1,2).",
             7: "Meglio del previsto: Lemão (+2,0). Peggio: Kloosmeijer (\u{2212}2,1) e Pulinski (\u{2212}1,5).",
         ]
         // da dove vengono i punti (`spiegazione_punti`, #900): nella giornata 10 di Serie A Lemão è senza voto ed entra Orsetti, la prima
@@ -1208,10 +1215,10 @@ private extension LegaDemo {
             "scelte_tue": ["giornate": 2, "meglio_tua": 0, "meglio_consigliata": 2, "pari": 0, "punti_differenza": -12.0,
                            "percentuale_tua": 0, "pochi_dati": true,
                            "per_giornata": [
-                               ["stagione": "2026-27", "giornata": 9, "giornata_lega": lega(9), "hai_scelto": ["Orsetti"], "consigliava": ["Dunfrey"],
+                               ["stagione": "2026-27", "giornata": 9, "giornata_lega": lega(9), "hai_scelto": ["Mkhedrian"], "consigliava": ["Lemão"],
                                 "punti_tua": 63.5, "punti_consigliata": 71.0, "differenza": -7.5, "esito": "consigliata"],
-                               ["stagione": "2026-27", "giornata": 8, "giornata_lega": lega(8), "hai_scelto": ["Mkhedrian", "Zelawski", "Orsetti"],
-                                "consigliava": ["Çalvaroğlu", "Kloosmeijer", "Dunfrey"],
+                               ["stagione": "2026-27", "giornata": 8, "giornata_lega": lega(8), "hai_scelto": ["Mkhedrian", "Zelawski"],
+                                "consigliava": ["Çalvaroğlu", "Kloosmeijer"],
                                 "punti_tua": 59.5, "punti_consigliata": 64.0, "differenza": -4.5, "esito": "consigliata"],
                            ]],
         ])

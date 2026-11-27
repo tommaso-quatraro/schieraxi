@@ -17,7 +17,8 @@ struct PrimoAvvioView: View {
                 Carta {
                     VStack(alignment: .leading, spacing: 12) {
                         Label("Indirizzo del server", systemImage: "server.rack").font(.headline)
-                        Text("È l'indirizzo con cui apri SchieraXI dal browser, per esempio \(Config.esempioIndirizzo). Deve cominciare con https://. Resta solo su questo telefono e puoi cambiarlo in Impostazioni.")
+                        // «su questo dispositivo», anche sull'iPad (#955), dal catalogo comune
+                        Text(Catalogo.Accesso.indirizzoSpiega(esempio: Config.esempioIndirizzo))
                             .font(.footnote).foregroundStyle(Color.testoSecondario)
                         ProvaServerView()
                     }

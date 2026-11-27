@@ -190,5 +190,10 @@
   "accesso.recupero_codice_email_spiega": {
     "it": "Scrivi il codice arrivato a {email} e scegli la nuova password.",
     "en": "Enter the code sent to {email} and choose the new password."
+  },
+  "accesso.indirizzo_spiega": {
+    "it": "È l'indirizzo con cui apri SchieraXI dal browser, per esempio {esempio}. Deve cominciare con https://. Resta solo su questo dispositivo e puoi cambiarlo in Impostazioni.",
+    "en": "It is the address you use to open SchieraXI in the browser, for example {esempio}. It must start with https://. It stays only on this device and you can change it in Settings.",
+    "nota": "solo l'app per iPhone e iPad: sotto «Indirizzo del server» nel primo avvio (#955; prima diceva «questo telefono» anche sull'iPad). La web non lo chiede: è già all'indirizzo"
   }
 }
