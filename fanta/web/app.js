@@ -38,7 +38,8 @@ function esc(x) {
   return String(x ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 const sigla = s => esc(SIGLE[s] || (s || "").slice(0, 3).toUpperCase());
-const num = (x, d = 1) => (x === null || x === undefined || Number.isNaN(x)) ? "–" : (s => LINGUA === "it" ? s.replace(".", ",") : s)(Number(x).toFixed(d));
+// toFixed arrotonda come il server (frasi.arrotonda) e l'iPhone: il valore vero del numero, il mezzo lontano dallo zero; mai «-0,0»
+const num = (x, d = 1) => (x === null || x === undefined || Number.isNaN(x)) ? "–" : (s => LINGUA === "it" ? s.replace(".", ",") : s)(Number(x).toFixed(d).replace(/^-(?=[0.]*$)/, ""));
 const perc = x => `${Math.round((x || 0) * 100)}%`;
 // «al 98%», «all'83%»: l'articolo davanti a un numero che si legge con la vocale (8, 11, 80-89, 800..., 1, 1100...), come Precisione.alPercento dell'iPhone; in inglese il numero e basta
 const alPercento = x => { const s = String(x); return typeof LINGUA !== "undefined" && LINGUA === "en" ? s + "%" : (s.startsWith("8") || x === 1 || x === 11 || (s.startsWith("11") && s.length === 4) ? "all'" : "al ") + s + "%"; };
@@ -2635,7 +2636,7 @@ const virgola = x => (LINGUA === "it" ? String(x).replace(".", ",") : String(x))
 function dettagliPrecisione(p, conConfronto) {
   if (!p || !p.giornate) return "";
   const n = x => (x == null || !isFinite(Number(x)) ? null : Number(x));
-  const v = x => (n(x) == null ? "–" : virgola(n(x).toFixed(1)));
+  const v = x => num(n(x));
   // il plurale scelto sul numero come è scritto da `v` (#833): il singolare solo per «1», e `v` scrive sempre un decimale, quindi
   // «1,0 punti» come «1,5 punti» (prima «1,0 punto in più»). Come `regPunti`
   const tpScritto = (chiave, scritto, valori) => t(`${chiave}.${scritto === "1" ? "one" : "other"}`, valori);

@@ -15,17 +15,19 @@ riduce a `str` semplice (la chiave si perde): per le frasi composte si usa un'al
 a loro volta `Frase`, come in `dafare.svincolato_motivo`).
 
 Parametri: testi (nomi, squadre), interi, numeri decimali (nel JSON sono testo con il punto e UNA cifra, «1.5»; nel testo italiano
-la virgola), altre `Frase`. Nel testo un numero negativo ha il meno tipografico («−0,4», mai «-0,4»); nel JSON resta il trattino
-(«-0.4»), che ogni linguaggio legge come numero. Una differenza tra due numeri scritti nella stessa frase si passa con
-`differenza(a, b)`: è la differenza dei due numeri come si leggono e ha sempre il segno («+0,6», «−0,6»; nel JSON «+0.6», «-0.6»).
+la virgola; arrotondati con `arrotonda`, la regola della web e dell'iPhone), altre `Frase`. Nel testo un numero negativo ha il
+meno tipografico («−0,4», mai «-0,4»); nel JSON resta il trattino («-0.4»), che ogni linguaggio legge come numero. Una differenza
+tra due numeri scritti nella stessa frase si passa con `differenza(a, b)`: è la differenza dei due numeri come si leggono e ha sempre il segno («+0,6», «−0,6»; nel JSON «+0.6», «-0.6»).
 Plurali: le chiavi `x.one` e `x.other` con il parametro `n` (uno solo = `one`).
 Il modello italiano di ogni chiave sta in `CATALOGO`; `tests/test_frasi.py` controlla che `fanta/web/testi.js` abbia la stessa
 chiave, gli stessi segnaposto e la traduzione inglese.
 """
 from __future__ import annotations
 
+import math
 import numbers
 import re
+from decimal import ROUND_HALF_UP, Context, Decimal
 
 from .frasi_avvisi import NOTIFICHE
 
@@ -508,6 +510,18 @@ CATALOGO: dict[str, str] = {
 
 E_ELENCO = {"it": " e ", "en": " and "}
 MENO = "−"          # «−», il meno tipografico: come `segno` e `numMeno` della web e `Formato.conSegno` dell'iPhone
+_CIFRE_DI_UN_FLOAT = Context(prec=400)    # la parte intera di qualunque float ci sta: `quantize` non va mai in errore
+
+
+def arrotonda(x: numbers.Real, cifre: int = 1) -> float:
+    """Il numero come si scrive dappertutto (frasi, `num` e `segno` della web, `Formato.decimali` dell'iPhone): `cifre` decimali
+    sul valore vero del numero in memoria, il mezzo lontano dallo zero, come `toFixed` della web. 6,25 → 6,3 e −6,25 → −6,3
+    (`round` di Python farebbe 6,2); 6,35, che in memoria è 6,3499…, → 6,3 (moltiplicando per 10 farebbe 63,5 tondo e 6,4).
+    Un valore non finito resta com'è."""
+    x = float(x)
+    if not math.isfinite(x):
+        return x
+    return float(Decimal(x).quantize(Decimal(1).scaleb(-cifre), rounding=ROUND_HALF_UP, context=_CIFRE_DI_UN_FLOAT))
 
 
 class ConSegno(float):
@@ -516,16 +530,16 @@ class ConSegno(float):
 
 
 def differenza(a, b) -> ConSegno:
-    """`a − b` come la legge l'utente: la differenza dei due numeri ARROTONDATI come si scrivono (una cifra), con il segno.
-    Così «vale 72,7 punti attesi; con i due invertiti 72,1 (−0,6)» torna sempre: la differenza vera (72,66 − 72,14 = 0,52)
+    """`a − b` come la legge l'utente: la differenza dei due numeri ARROTONDATI come si scrivono (una cifra, `arrotonda`), con il
+    segno. Così «vale 72,7 punti attesi; con i due invertiti 72,1 (−0,6)» torna sempre: la differenza vera (72,66 − 72,14 = 0,52)
     arrotondata da sola darebbe «0,5»."""
-    return ConSegno(round(round(float(a), 1) - round(float(b), 1), 1))
+    return ConSegno(round(arrotonda(a) - arrotonda(b), 1))
 
 
 def _segno_e_cifre(valore: numbers.Real) -> tuple[str, str]:
-    """(segno, cifre senza segno) di un numero: gli interi come sono, i decimali con UNA cifra e il punto. Segno «-» per i negativi,
-    «+» per i positivi `ConSegno`, nessuno se le cifre valgono zero («0.0», mai «-0.0»)."""
-    cifre = str(abs(int(valore))) if isinstance(valore, numbers.Integral) else f"{abs(float(valore)):.1f}"
+    """(segno, cifre senza segno) di un numero: gli interi come sono, i decimali con UNA cifra (`arrotonda`) e il punto. Segno «-»
+    per i negativi, «+» per i positivi `ConSegno`, nessuno se le cifre valgono zero («0.0», mai «-0.0»)."""
+    cifre = str(abs(int(valore))) if isinstance(valore, numbers.Integral) else f"{abs(arrotonda(valore)):.1f}"
     if not re.search(r"[1-9]", cifre):
         return "", cifre
     return ("-" if valore < 0 else "+" if isinstance(valore, ConSegno) else ""), cifre
