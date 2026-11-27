@@ -363,10 +363,11 @@ function alRitornoDellaRete(riprova) {
 // `daSalvare(dati)` (facoltativo): true, la risposta si salva al posto della copia; false, non è un dato da ritrovare senza rete (la
 // domanda della squadra della Formazione, revisione della #929): non si salva, e la copia di prima, che non vale più, si toglie;
 // null, la risposta è a metà (la Formazione senza la scelta salvata, che non si è letta): non si salva e la copia di prima resta.
-// `inPagina` (facoltativo): la schermata già in pagina ({ pronta(), sola() }), che si rilegge da sola (la Formazione alla scadenza e
-// al ritorno in primo piano): si chiede al server lasciando la pagina com'è, senza la copia né il caricamento; con i dati uguali alla
-// copia non si ridisegna niente, con dati diversi sì; la copia, con la sua nota, compare solo se il server non risponde (senza copia
-// la pagina resta com'è). Prima la rilettura ripassava dalla copia: «Dati salvati il…» e comandi spenti (revisione della #978).
+// `inPagina` (facoltativo): la schermata già in pagina ({ pronta(), sola(), dati }: `dati` sono quelli con cui è stata disegnata), che
+// si rilegge da sola (la Formazione alla scadenza e al ritorno in primo piano): si chiede al server lasciando la pagina com'è, senza
+// la copia né il caricamento; con i dati uguali a quelli disegnati non si ridisegna niente, con dati diversi sì; la copia, con la sua
+// nota, compare solo se il server non risponde (senza copia la pagina resta com'è). Prima la rilettura ripassava dalla copia: «Dati
+// salvati il…» e comandi spenti (revisione della #978).
 async function caricaConCache(chiave, percorso, mostra, testo, { daSalvare = () => true, inPagina = null } = {}) {
   const mia = nuovaRichiesta();
   alRitornoDellaRete(null);
@@ -382,7 +383,10 @@ async function caricaConCache(chiave, percorso, mostra, testo, { daSalvare = () 
       if (!ancoraValida(mia)) return false;
       const copia = daSalvare(dati);
       if (copia === true) salvaCache(chiave, dati); else if (copia === false) rimuoviCache(chiave);
-      if (!salvata || JSON.stringify(salvata.dati) !== JSON.stringify(dati)) { mostra(dati, { sostituisce: !!salvata || !!inPagina }); return true; }
+      // si confronta con i dati disegnati: quelli della pagina (`inPagina.dati`) o la copia appena mostrata. Non con la copia salvata
+      // per la pagina in vista: è una sola per account, e un'altra scheda può averla già aggiornata (revisione della #978)
+      const mostrati = inPagina ? inPagina.dati : salvata ? salvata.dati : null;
+      if (!mostrati || JSON.stringify(mostrati) !== JSON.stringify(dati)) { mostra(dati, { sostituisce: !!salvata || !!inPagina }); return true; }
       const b = $("#nota-cache");
       if (b && b.contains(document.activeElement)) $("#titolo-pagina").focus({ preventScroll: true });   // il fuoco era su «Riprova», che sparisce
       if (b) b.remove();
@@ -1692,7 +1696,8 @@ function mostraFormazione(b, squadra, opz = {}) {
   }
   // Per caricaConCache: i dati nuovi sono uguali alla copia in pagina, i comandi spenti si accendono dove sono (niente ridisegno).
   // Se la scelta non era stata letta nemmeno stavolta, ora lo si dice. `sola()`: i comandi che scrivono sono spenti.
-  const vista = { sola: () => stato.scelta === sc && sc.sola, pronta() {
+  // `dati`: quelli con cui la Formazione è disegnata, per il confronto delle riletture da sole (caricaConCache, `inPagina`)
+  const vista = { dati: b, sola: () => stato.scelta === sc && sc.sola, pronta() {
     if (stato.scelta === sc) sc.letta = Date.now();         // i dati in pagina sono quelli appena letti
     if (stato.scelta !== sc || !sc.sola) return;
     sc.copia = false;
@@ -1705,7 +1710,9 @@ function mostraFormazione(b, squadra, opz = {}) {
   if (o && !squadra) {
     const quandoChiude = scadenzaDi(o), fine = parseData(quandoChiude), chiave = `${f.giornata}/${quandoChiude}`;
     const ancoraQui = () => stato.scelta === sc && stato.vista === "formazione" && !stato.squadraVista;
-    const rileggiDaSola = () => vistaFormazione(vista);
+    // la rilettura conta da quando parte: con il server lento (risponde «sto calcolando» fino a circa due minuti, e intanto riprova
+    // da solo) un altro ritorno sull'app non ne fa partire un'altra (revisione della #978)
+    const rileggiDaSola = () => { sc.letta = Date.now(); vistaFormazione(vista); };
     // una volta per scadenza: con i dati uguali la pagina non si ridisegna, e il timer di questa Formazione resterebbe acceso
     const rileggiPerScadenza = () => { clearTimeout(timerScadenza); scadenzaRiletta = chiave; rileggiDaSola(); };
     const manca = fine && !chiusa ? fine - Date.now() : NaN;

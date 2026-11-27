@@ -152,7 +152,8 @@ pagina comandato dal test con `clock.install`, `fast_forward` e `set_system_time
   a dati appena letti né a ogni ritorno; dopo un salvataggio riuscito i dati contano come appena letti;
 - la rilettura chiede prima al server con la pagina com'è (niente copia tenuta sul telefono né comandi spenti, e con i dati
   uguali non ridisegna niente: il riquadro della copia a mano resta); la copia, con la nota e «Riprova», solo se il server non
-  risponde.
+  risponde; i dati nuovi si confrontano con quelli disegnati, non con la copia che un'altra scheda può aver già aggiornato (due
+  schede nello stesso browser); a rilettura in corso (server che non risponde ancora) altri ritorni non ne fanno partire altre.
 
 `test_fasi_giornata.py`, la giornata in corso e quella finita ai bordi (#895), con la risposta registrata di /api/oggi (o di
 /api/giocatore) cambiata solo nel pezzo che serve:

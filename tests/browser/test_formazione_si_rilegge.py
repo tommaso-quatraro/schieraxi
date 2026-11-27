@@ -9,6 +9,7 @@ la scadenza passata.
 L'orologio della pagina qui è comandato dal test (`clock.install`): parte dal momento scelto e si porta avanti con
 `clock.fast_forward` (i timer scaduti partono una volta) o `clock.set_system_time` (cambia l'ora senza far partire i timer).
 """
+import json
 from urllib.parse import urlsplit
 
 import pytest
@@ -147,6 +148,45 @@ def test_la_rilettura_al_ritorno_chiede_al_server_senza_ripassare_dalla_copia_sa
     assert principale(web).locator("#nota-cache").count() == 0
     assert riquadro.is_visible(), "con i dati uguali la pagina si è ridisegnata"
     assert not web.errori_mostrati() and not web.errori_console
+
+
+def test_la_rilettura_confronta_i_dati_nuovi_con_quelli_in_pagina_non_con_la_copia_di_un_altra_scheda(web):
+    """Difetto visto in revisione (#978): la rilettura confrontava i dati del server con la copia tenuta nel browser, una sola per
+    account e di tutte le schede. La scheda A aperta alle 15:10; un'altra scheda alle 15:25 aggiorna la copia con la scadenza
+    spostata; tornando su A i dati erano «uguali alla copia» e A restava con quelli delle 15:10 (segnati come appena letti)."""
+    solo(web, "prima")
+    _orologio(web, "2026-10-27T15:10:00")
+    web.apri("/")
+    assert "18:20" in _testa(web)
+    _avanti(web, 15 * 60_000)
+    oggi = web.registrata("/api/oggi")
+    spostata = {**oggi, "scadenza": "2026-10-27 18:40", "inizio": "2026-10-27 18:50"}
+    web.pagina.context.route(lambda u: urlsplit(u).path == "/api/oggi",
+                             lambda r: r.fulfill(status=200, content_type="application/json; charset=utf-8", body=json.dumps(spostata)))
+    altra = web.pagina.context.new_page()                           # la scheda B: legge i dati nuovi e aggiorna la copia
+    altra.goto(web.server.indirizzo + "/", wait_until="load")
+    altra.locator(".tg-scadenza").filter(has_text="18:40").wait_for(timeout=10000)
+    altra.wait_for_load_state("networkidle")
+    _torna_in_primo_piano(web)                                      # di nuovo su A
+    assert "18:40" in _testa(web), f"la scheda A mostra ancora i dati di prima: {_testa(web)}"
+    altra.close()
+
+
+def test_a_rilettura_in_corso_un_altro_ritorno_non_ne_fa_partire_un_altra(web):
+    """Difetto visto in revisione (#978): la rilettura contava come fatta solo a lettura finita. Con il server lento (risponde
+    «sto calcolando» per un paio di minuti) ogni ritorno sull'app ne faceva partire una nuova."""
+    solo(web, "prima")
+    _orologio(web, "2026-10-27T15:10:00")
+    web.apri("/")
+    _avanti(web, 15 * 60_000)
+    fermi = []
+    web.pagina.route(lambda u: urlsplit(u).path == "/api/formazione", lambda r: fermi.append(r))   # il server non risponde ancora
+    _torna_in_primo_piano(web)
+    _aspetta_che(lambda: len(fermi) == 1)
+    for _ in range(3):
+        web.pagina.evaluate(TORNA_IN_PRIMO_PIANO)
+    web.pagina.wait_for_timeout(500)
+    assert len(fermi) == 1, f"{len(fermi)} riletture insieme"
 
 
 def test_se_il_server_non_risponde_alla_rilettura_compare_la_copia_con_la_nota(web):
