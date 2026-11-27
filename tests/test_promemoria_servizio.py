@@ -4,7 +4,11 @@ sempre (`script/server/promemoria.sh`, ogni 10 minuti) con i calcoli che ha già
 fermo il segno invecchia e il cron torna a fare il giro come prima. Orologio finto, cartelle temporanee, notifiche finte."""
 import json
 import logging
+import sqlite3
+import threading
+import time
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 
@@ -38,16 +42,20 @@ def acceso(monkeypatch, tmp_path):
     return tmp_path / "segno.json"
 
 
-def _gira(segno, da: datetime, a: datetime, giro=None):
-    """Fa girare il thread del servizio con l'orologio finto da `da` ad `a`: le ore dei giri fatti e il Fermo."""
+def _gira(segno, da: datetime, a: datetime, guasti=()):
+    """Fa girare il thread del servizio con l'orologio finto da `da` ad `a`: le ore dei giri fatti e il Fermo. Nei minuti di
+    `guasti` («HH:MM») il giro finto va in errore, come con il database degli account bloccato."""
     orologio, fatti = [da], []
     fermo = Fermo(orologio, a)
+    fermo.ricevuti = []
 
-    def giro_finto(db):
+    def giro_finto(db, fermo_del_giro):
         fatti.append(orologio[0])
+        fermo.ricevuti.append(fermo_del_giro)
+        if orologio[0].strftime("%H:%M") in guasti:
+            raise sqlite3.OperationalError("database is locked: cartella-di-amico1")
         return {}, {}
-    avvisi_utenti.sorveglia_promemoria(fermo, lambda: DbFinto(), adesso=lambda: orologio[0], file=segno,
-                                       giro=giro or giro_finto, ritardo=0)
+    avvisi_utenti.sorveglia_promemoria(fermo, lambda: DbFinto(), adesso=lambda: orologio[0], file=segno, giro=giro_finto, ritardo=0)
     return fatti, fermo
 
 
@@ -70,18 +78,34 @@ def test_il_servizio_fa_il_giro_subito_e_poi_ai_minuti_tondi_come_il_cron(acceso
     assert all(f.second == 0 for f in fatti[1:])                        # pochi istanti dopo il minuto tondo, non un minuto dopo
     assert max(fermo.attese) <= 60                                      # si riguarda l'ora almeno ogni minuto (cambi d'ora, sospensioni)
     assert _segno(acceso) == datetime(2026, 11, 28, 20, 50)             # il segno ha l'ora dell'ultimo giro (al secondo)
+    assert all(f is fermo for f in fermo.ricevuti)                      # il giro sa quando il servizio si chiude (fra un utente e l'altro)
 
 
-def test_un_giro_in_errore_non_ferma_i_giri_dopo_e_finisce_nel_registro(acceso, caplog):
-    volte = []
-
-    def rotto(db):
-        volte.append(1)
-        raise OSError("disco pieno: cartella-di-amico1")
+def test_un_giro_in_errore_non_lascia_il_segno_e_il_cron_subentra(acceso, caplog):
+    """Il segno vuol dire «giro riuscito». Se il giro va in errore (qui sempre, dalle 20:30) il segno resta quello dell'ultimo
+    giro riuscito e il cron rifà il giro appena è vecchio: i promemoria di quell'ora non si perdono."""
+    acceso.write_text(json.dumps({"giro": "2026-11-28T20:20:00"}), encoding="utf-8")       # l'ultimo giro riuscito
+    guasti = [f"20:{m}" for m in range(30, 42)]
     with caplog.at_level(logging.WARNING):
-        _gira(acceso, datetime(2026, 11, 28, 20, 29, 50), datetime(2026, 11, 28, 20, 41), giro=rotto)
-    assert len(volte) == 3                                              # 20:29, 20:30 e 20:40: il thread va avanti
-    assert "OSError" in caplog.text and "amico1" not in caplog.text     # il tipo dell'errore, mai il messaggio (può avere dati)
+        fatti, _ = _gira(acceso, datetime(2026, 11, 28, 20, 30, 0, 500000), datetime(2026, 11, 28, 20, 41), guasti=guasti)
+    assert _segno(acceso) == datetime(2026, 11, 28, 20, 20)
+    fare, riga = avvisi_utenti.promemoria_dal_cron(datetime(2026, 11, 28, 20, 40, 3), acceso)
+    assert fare is True and "20 minuti" in riga                          # alle 20:40 lo fa il cron, e lo scrive
+    assert len(fatti) == 11                                             # il servizio riprova ogni minuto, dalle 20:30 alle 20:40
+    assert "OperationalError" in caplog.text and "amico1" not in caplog.text     # il tipo dell'errore, mai il messaggio (dati)
+
+
+def test_senza_nessun_giro_riuscito_il_cron_fa_ogni_giro(acceso):
+    sempre = [f"{h}:{m:02d}" for h in (19, 20) for m in range(60)]
+    _gira(acceso, datetime(2026, 11, 28, 19, 59, 50), datetime(2026, 11, 28, 20, 51), guasti=sempre)
+    assert not acceso.exists()
+    assert avvisi_utenti.promemoria_dal_cron(datetime(2026, 11, 28, 20, 10, 3), acceso) == (True, "")
+
+
+def test_dopo_un_giro_in_errore_si_riprova_al_minuto_dopo_non_al_turno_dopo(acceso):
+    fatti, _ = _gira(acceso, datetime(2026, 11, 28, 20, 30, 0, 500000), datetime(2026, 11, 28, 20, 39, 30), guasti=["20:30"])
+    assert [f.strftime("%H:%M") for f in fatti] == ["20:30", "20:31"]   # riuscito alle 20:31: fino alle 20:40 niente altri giri
+    assert _segno(acceso) == datetime(2026, 11, 28, 20, 31)
 
 
 def test_con_il_pianificatore_spento_niente_giri_e_il_segno_sparisce(acceso, monkeypatch):
@@ -168,3 +192,40 @@ def test_il_cron_con_il_segno_vecchio_fa_il_giro_e_lo_dice(mondo, registro, monk
     monkeypatch.setattr(cli, "_avvisi_per_utente", lambda f: chiamate.append(f))
     cli.cmd_promemoria(None)
     assert chiamate == ["promemoria"] and "40 minuti" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------- riavvio del servizio a metà giro (un'installazione alle 19:40)
+def test_il_giro_si_ferma_fra_un_utente_e_l_altro_quando_il_servizio_si_chiude(tmp_path, monkeypatch, caplog):
+    """Chi è a metà finisce (invio e stato «mandato»), chi viene dopo non comincia: lo serve il servizio nuovo, senza doppioni."""
+    fermo = threading.Event()
+    attivi = [SimpleNamespace(utente=SimpleNamespace(id=i, nome_utente=nome),
+                              ctx=SimpleNamespace(regole=None, stato_promemoria=tmp_path / f"{nome}-promemoria.json"))
+              for i, nome in ((1, "anna"), (2, "bruno"), (3, "carla"))]
+    monkeypatch.setattr(avvisi_utenti.regole, "carica", lambda percorso: None)
+
+    def promemoria(a, db, r, adesso):
+        if a.utente.nome_utente == "anna":
+            fermo.set()                       # la chiusura arriva mentre il servizio manda il promemoria ad anna
+        return ["mandato"]
+    monkeypatch.setitem(avvisi_utenti._LAVORI, "promemoria", promemoria)
+    with caplog.at_level(logging.WARNING):
+        esiti, errori = avvisi_utenti.esegui("promemoria", None, UN_ORA_PRIMA, attivi=attivi, fermo=fermo)
+    assert esiti == {"anna": ["mandato"]} and errori == {}
+    assert "2 utenti al prossimo giro" in caplog.text
+
+
+def test_alla_chiusura_il_servizio_aspetta_la_fine_del_giro_dei_promemoria(dati_isolati, monkeypatch):
+    from fastapi.testclient import TestClient
+    from fanta import server
+    monkeypatch.setattr(server.riscaldamento, "attivo", lambda: False)
+    monkeypatch.setenv("FANTA_LIVE", "0")
+    finito = threading.Event()
+
+    def giro_in_corso(fermo, apri_db):
+        fermo.wait()                          # la chiusura arriva mentre il giro lavora per un utente
+        time.sleep(0.5)                       # che finisce: invio e stato «mandato»
+        finito.set()
+    monkeypatch.setattr(server.avvisi_utenti, "sorveglia_promemoria", giro_in_corso)
+    with TestClient(server.app):
+        pass
+    assert finito.is_set()                    # chiuso solo dopo: il servizio nuovo non rimanda lo stesso promemoria

@@ -74,8 +74,9 @@ async def _ciclo(_):
     threading.Thread(target=pianificatore.sorveglia, args=(fermo, _leghe_attive, _db, _aggiorna_leggero, _dopo_giro_leggero),
                      kwargs={"risultati": _risultati_leggeri},       # e risultati e voti la sera stessa, dopo le partite
                      name="pianificatore", daemon=True).start()          # giri in più vicino alla scadenza (FANTA_PIANIFICATORE=0 lo spegne)
-    threading.Thread(target=avvisi_utenti.sorveglia_promemoria, args=(fermo, _db),
-                     name="promemoria", daemon=True).start()            # promemoria della scadenza con gli account (spento: li fa il cron)
+    promemoria = threading.Thread(target=avvisi_utenti.sorveglia_promemoria, args=(fermo, _db),
+                                  name="promemoria", daemon=True)        # promemoria della scadenza con gli account (spento: li fa il cron)
+    promemoria.start()
     threading.Thread(target=copia_scadenza.sorveglia, args=(fermo, lambda: copia_scadenza.contesti(_contesto_locale), _db),
                      name="copia-scadenza", daemon=True).start()       # copia della consigliata alla scadenza per ogni utente (FANTA_COPIA_SCADENZA=0 la spegne)
     # risultati in diretta: un solo raccoglitore per tutto il servizio, sempre avviato; a ogni giro `live.sorveglia` guarda la funzione
@@ -86,9 +87,19 @@ async def _ciclo(_):
         yield
     finally:
         fermo.set()
+        # un riavvio (per esempio un'installazione alle 19:40, quando parte il promemoria di un'ora prima delle 20:45) non deve
+        # cadere fra l'invio di un promemoria e il suo stato «mandato»: il servizio nuovo lo rimanderebbe. Il giro finisce l'utente a
+        # cui è arrivato e si ferma (`fermo` in avvisi_utenti.esegui); qui lo si aspetta, al massimo ATTESA_CHIUSURA_PROMEMORIA.
+        await run_in_threadpool(promemoria.join, ATTESA_CHIUSURA_PROMEMORIA)
+        if promemoria.is_alive():
+            logging.getLogger("uvicorn.error").warning("Promemoria: il giro non è finito in %d secondi, il servizio si chiude lo stesso",
+                                                       ATTESA_CHIUSURA_PROMEMORIA)
         uso.salva()
 
 
+# secondi: il lavoro di un utente nel giro dei promemoria (due invii da limiti.MAX_SECONDI_INVIO e un calcolo già in memoria), dentro
+# i 90 secondi che systemd dà di norma a un servizio per fermarsi prima di chiuderlo a forza
+ATTESA_CHIUSURA_PROMEMORIA = 60
 app = FastAPI(title="SchieraXI", lifespan=_ciclo)
 app.add_middleware(GZipMiddleware, minimum_size=800, compresslevel=5)     # risposte più leggere; livello 5: meno della metà della CPU del 9 per lo 0,5-2% di byte in più (1 solo processore sul server)
 MAX_FILE = 5 * 1024 * 1024

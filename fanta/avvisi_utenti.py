@@ -179,7 +179,8 @@ def _scrivi_giro(file: Path, funzione: str, serviti: dict[str, int]) -> bool:
 
 def esegui(funzione: str, db: sqlite3.Connection, adesso: datetime | None = None,
            attivi: list[Attivo] | None = None, *, max_secondi: float | None = None,
-           orologio: Callable[[], float] = time.monotonic, file_giro: Path | None = None) -> tuple[dict[str, list[str]], dict[str, str]]:
+           orologio: Callable[[], float] = time.monotonic, file_giro: Path | None = None,
+           fermo: threading.Event | None = None) -> tuple[dict[str, list[str]], dict[str, str]]:
     """Esegue `funzione` (una di FUNZIONI) per ogni utente attivo. Restituisce ({nome utente: righe mandate}, {nome utente: errore}).
     Dell'errore si dice solo il tipo (niente dati personali nei log). Un utente può stare in tutti e due: un pezzo dei suoi avvisi
     non è riuscito e il resto è partito. Ogni utente in errore lascia anche una riga nel registro, con il suo numero.
@@ -192,7 +193,9 @@ def esegui(funzione: str, db: sqlite3.Connection, adesso: datetime | None = None
     serve sempre); chi resta passa al giro dopo. L'ordine è a rotazione: prima chi è stato servito meno di recente (o mai), in fondo
     chi è stato servito per ultimo. Ogni utente si segna come servito PRIMA del suo lavoro, così se il giro si ferma mentre lavora
     per lui, al giro dopo va in fondo. L'ordine sta in `file_giro` (di base FILE_GIRO nella cartella degli account; con `attivi`
-    indicato da chi chiama, solo se si passa `file_giro`)."""
+    indicato da chi chiama, solo se si passa `file_giro`).
+    `fermo` (il giro del servizio): quando il servizio si chiude, il giro finisce il lavoro dell'utente a cui è arrivato (invio e
+    stato «mandato») e non comincia quello degli altri, che passano al giro dopo (del servizio nuovo o del cron)."""
     lavoro = _LAVORI[funzione]
     inizio = orologio()
     limite = secondi_del_giro(funzione) if max_secondi is None else max_secondi
@@ -209,6 +212,9 @@ def esegui(funzione: str, db: sqlite3.Connection, adesso: datetime | None = None
     esiti: dict[str, list[str]] = {}
     errori: dict[str, str] = {}
     for n, a in enumerate(ordinati):
+        if fermo is not None and fermo.is_set():
+            LOG.warning("Avvisi (%s): servizio in chiusura, %d utenti al prossimo giro", funzione, len(ordinati) - n)
+            break
         if n and orologio() - inizio > limite:
             LOG.warning("Avvisi (%s): tempo del giro finito, %d utenti al prossimo giro", funzione, len(ordinati) - n)
             break
@@ -239,11 +245,13 @@ def esegui(funzione: str, db: sqlite3.Connection, adesso: datetime | None = None
 # Il giro dei promemoria (cron `script/server/promemoria.sh`, ogni 10 minuti) caricava il modello in un processo a parte e rifaceva
 # previsioni e formazione di ogni utente proprio mentre il servizio, nell'ora prima della scadenza, rifà le stesse cose (giri delle
 # probabili a 60, 30 e 15 minuti, pianificatore.py). Con gli account lo fa il servizio, negli stessi minuti tondi del cron, con i
-# calcoli che ha già in memoria (riscaldamento.py). All'inizio di ogni giro segna l'ora in FILE_SEGNO; il comando `promemoria` del
-# cron, con un segno di meno di SEGNO_FRESCO, non rifà il giro. Servizio fermo o giro bloccato: il segno invecchia e il cron torna a
-# fare il giro come prima, così i promemoria arrivano lo stesso. Due giri insieme non mandano doppioni: blocco per utente e stato
-# di «cosa ho già mandato» (`blocco_avvisi`). FANTA_PIANIFICATORE=0 (come nell'ambiente di prova) spegne anche questo giro.
-FILE_SEGNO = "promemoria-servizio.json"    # nella cartella degli account: {"giro": ora dell'ultimo giro cominciato dal servizio}
+# calcoli che ha già in memoria (riscaldamento.py). Dopo ogni giro riuscito segna in FILE_SEGNO l'ora in cui l'ha cominciato; il
+# comando `promemoria` del cron, con un segno di meno di SEGNO_FRESCO, non rifà il giro. Servizio fermo, giro bloccato o giri in
+# errore: il segno invecchia e il cron torna a fare il giro come prima, così i promemoria arrivano lo stesso. Due giri insieme non
+# mandano doppioni: blocco per utente e stato di «cosa ho già mandato» (`blocco_avvisi`). Alla chiusura il servizio aspetta la fine
+# del lavoro dell'utente in corso (server._ciclo, `fermo` in `esegui`). FANTA_PIANIFICATORE=0 (come nell'ambiente di prova) spegne
+# anche questo giro.
+FILE_SEGNO = "promemoria-servizio.json"    # nella cartella degli account: {"giro": inizio dell'ultimo giro riuscito del servizio}
 OGNI_MINUTI = 10                           # come il cron (*/10): stessi orari, quindi stesse finestre dei promemoria
 SEGNO_FRESCO = timedelta(minutes=15)       # il cron gira negli stessi minuti del servizio: un giro saltato dal servizio e lo rifà lui
 ATTESA_MASSIMA = 60.0                      # secondi: l'ora si riguarda almeno ogni minuto (cambio dell'ora legale, sospensioni)
@@ -260,7 +268,7 @@ def _file_segno(file: Path | None) -> Path:
 
 
 def _ora_del_segno(file: Path | None) -> datetime | None:
-    """L'ora dell'ultimo giro cominciato dal servizio, o None se il segno non c'è o non si legge (vale come nessun segno)."""
+    """L'ora dell'ultimo giro riuscito del servizio, o None se il segno non c'è o non si legge (vale come nessun segno)."""
     try:
         ora = datetime.fromisoformat(json.loads(_file_segno(file).read_text(encoding="utf-8"))["giro"])
     except (OSError, ValueError, TypeError, KeyError):
@@ -269,9 +277,10 @@ def _ora_del_segno(file: Path | None) -> datetime | None:
 
 
 def promemoria_dal_cron(adesso: datetime | None = None, file: Path | None = None) -> tuple[bool, str]:
-    """(il comando `promemoria` del cron fa il giro?, riga per il registro del cron o ""). No se il servizio ha cominciato un giro
-    da meno di SEGNO_FRESCO. Sì, senza dire niente, se il segno non c'è (servizio senza promemoria, o spento apposta) o è «nel
-    futuro» (l'ora legale è tornata indietro); sì, con una riga, se il segno è vecchio: il servizio è fermo o il suo giro non gira."""
+    """(il comando `promemoria` del cron fa il giro?, riga per il registro del cron o ""). No se il servizio ha fatto un giro
+    riuscito da meno di SEGNO_FRESCO. Sì, senza dire niente, se il segno non c'è (servizio senza promemoria, spento apposta, o
+    nessun giro riuscito) o è «nel futuro» (l'ora legale è tornata indietro); sì, con una riga, se il segno è vecchio: il servizio
+    è fermo o i suoi giri non riescono."""
     adesso = adesso or datetime.now()
     segno = _ora_del_segno(file)
     if segno is None or segno > adesso:
@@ -293,16 +302,21 @@ def _attesa(adesso: datetime) -> float:
     return min((dopo - adesso).total_seconds() + 0.5, ATTESA_MASSIMA)
 
 
-def _giro_promemoria(db: sqlite3.Connection) -> tuple[dict[str, list[str]], dict[str, str]]:
-    return esegui("promemoria", db)          # senza `adesso`: l'ora di ogni utente si prende dopo il suo blocco (vedi `esegui`)
+def _giro_promemoria(db: sqlite3.Connection, fermo: threading.Event) -> tuple[dict[str, list[str]], dict[str, str]]:
+    # senza `adesso`: l'ora di ogni utente si prende dopo il suo blocco (vedi `esegui`); `fermo`: alla chiusura si ferma fra due utenti
+    return esegui("promemoria", db, fermo=fermo)
 
 
 def sorveglia_promemoria(fermo: threading.Event, apri_db: Callable[[], sqlite3.Connection],
                          adesso: Callable[[], datetime] = datetime.now, file: Path | None = None,
-                         giro: Callable[[sqlite3.Connection], tuple] = _giro_promemoria, ritardo: float = 5.0) -> None:
+                         giro: Callable[[sqlite3.Connection, threading.Event], tuple] = _giro_promemoria,
+                         ritardo: float = 5.0) -> None:
     """Il thread del servizio. Spento (`promemoria_nel_servizio`): toglie il segno (con gli account) e finisce, il giro resta al
     cron. Acceso: un giro subito (dopo `ritardo` secondi: le prime richieste passano prima) e poi uno a ogni turno di OGNI_MINUTI
-    minuti, mezzo secondo dopo il minuto tondo. Un giro in errore lascia una riga nel registro (solo il tipo) e non ferma i dopo.
+    minuti, mezzo secondo dopo il minuto tondo.
+    Il segno si scrive solo dopo un giro riuscito e finito (non interrotto dalla chiusura del servizio): vuol dire «i promemoria di
+    questo turno sono partiti». Un giro in errore lascia una riga nel registro (solo il tipo), niente segno, e si riprova al minuto
+    dopo invece che al turno dopo; se continua a non riuscire il segno invecchia e il giro lo rifà il cron.
     Quanti promemoria sono partiti va nel registro del servizio, con il numero dell'utente e mai il nome."""
     if not promemoria_nel_servizio():
         if account.multiutente():
@@ -315,18 +329,32 @@ def sorveglia_promemoria(fermo: threading.Event, apri_db: Callable[[], sqlite3.C
     while not fermo.is_set():
         ora = adesso()
         if _turno(ora) != fatto:              # «diverso», non «dopo»: anche quando l'ora legale torna indietro
-            fatto = _turno(ora)
             try:
-                scrivi_sicuro(_file_segno(file), json.dumps({"giro": ora.isoformat(timespec="seconds")}))
                 db = apri_db()
                 try:
-                    esiti, _ = giro(db)       # gli errori di un utente li scrive già `esegui` nel registro
+                    esiti, _ = giro(db, fermo)    # gli errori di un utente li scrive già `esegui` nel registro
                 finally:
                     db.close()
-                _registra_mandati(esiti)
             except Exception as e:  # noqa: BLE001 - il thread deve continuare; nel registro solo il tipo, mai i dati
-                LOG.warning("Promemoria nel servizio: giro non riuscito (%s)", type(e).__name__)
+                LOG.warning("Promemoria nel servizio: giro non riuscito (%s), si riprova fra un minuto", type(e).__name__)
+            else:
+                fatto = _turno(ora)
+                _dopo_il_giro(ora, esiti, file, finito=not fermo.is_set())
         fermo.wait(_attesa(adesso()))
+
+
+def _dopo_il_giro(ora: datetime, esiti: dict[str, list[str]], file: Path | None, finito: bool) -> None:
+    """Dopo un giro riuscito: il segno (solo se il giro è finito: interrotto dalla chiusura del servizio, gli utenti rimasti li
+    serve il giro dopo) e le righe dei promemoria partiti. Se uno dei due non si scrive, una riga nel registro e si va avanti."""
+    if finito:
+        try:
+            scrivi_sicuro(_file_segno(file), json.dumps({"giro": ora.isoformat(timespec="seconds")}))
+        except OSError as e:
+            LOG.warning("Promemoria nel servizio: segno non scritto (%s), il prossimo giro lo rifà anche il cron", type(e).__name__)
+    try:
+        _registra_mandati(esiti)
+    except Exception as e:  # noqa: BLE001 - i promemoria sono partiti: manca solo la riga che li conta
+        LOG.warning("Promemoria nel servizio: avvisi partiti non contati nel registro (%s)", type(e).__name__)
 
 
 def _registra_mandati(esiti: dict[str, list[str]]) -> None:
