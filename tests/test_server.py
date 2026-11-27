@@ -749,7 +749,7 @@ def test_osservati_solo_giocatori_del_listone(client, tmp_path, monkeypatch, lis
     file = tmp_path / "oss.json"
     monkeypatch.setattr(server.osservati, "FILE_OSSERVATI", file)
     r = client.put("/api/osservati/123456")
-    assert r.status_code == 404 and r.json()["detail"] == "Giocatore non trovato nel listone"
+    assert r.status_code == 404 and r.json()["detail"] == "Giocatore non trovato nel listone."
     assert not file.exists()                                             # niente salvato
     # codici non validi già salvati (versioni vecchie): in lettura si ignorano senza errori...
     file.write_text(json.dumps([123456, 5, 654321]), encoding="utf-8")
@@ -853,7 +853,7 @@ def test_formazione_non_valida_ha_il_codice(client, monkeypatch):
     rosa = NS(mia_squadra="Mia", squadra=lambda nome: NS(giocatori=[NS(id=i) for i in ids]) if nome == "Mia" else None)
     monkeypatch.setattr(server, "_rose", lambda *a: rosa)
     r = client.post("/api/formazione/valuta", json={"titolari": [1, 2, 3], "giornata": 9})
-    assert r.status_code == 400 and r.json() == {"detail": "Servono 11 titolari diversi, tutti della rosa", "codice": "formazione_non_valida"}
+    assert r.status_code == 400 and r.json() == {"detail": "Servono 11 titolari diversi, tutti della rosa.", "codice": "formazione_non_valida"}
     r = client.post("/api/formazione/valuta", json={"titolari": [1, 2, 3, 4, 5, 8, 9, 10, 13, 14, 15], "giornata": 9})   # due portieri
     assert r.status_code == 400 and r.json()["codice"] == "formazione_non_valida" and "non è ammesso" in r.json()["detail"]
     r = client.post("/api/formazione/valuta", json={"titolari": [1], "squadra": "Altra", "giornata": 9})

@@ -14,7 +14,7 @@ Sigle usate qui:
 ## 1. Regole generali
 
 1. **Base**: tutte le rotte stanno sotto `<indirizzo del server>/api/`. Corpo e risposta sono JSON, salvo dove dice altro (file, testo, risposte in formato `text/plain`).
-2. **Intestazione `X-Fanta: 1`**: obbligatoria in ogni richiesta che non è `GET` o `HEAD`. Senza, risposta `403` con `{"detail": "Richiesta non permessa"}`.
+2. **Intestazione `X-Fanta: 1`**: obbligatoria in ogni richiesta che non è `GET` o `HEAD`. Senza, risposta `403` con `{"detail": "Richiesta non permessa."}`.
    Le richieste dal browser che arrivano da un altro sito vengono rifiutate con lo stesso 403 (si guarda `Sec-Fetch-Site`, oppure `Origin`).
    Eccezione: `POST /api/squadre/immagine/condivisa` (vedi sezione 6).
 3. **Sessione**: con gli account accesi (`FANTA_MULTIUTENTE=1`), ogni `/api/` senza sessione valida risponde `401`:
@@ -62,7 +62,7 @@ Sigle usate qui:
    `python -m fanta utente-blocca`, `utente-sblocca` e `utente-elimina`; nel contare «l'ultimo amministratore» (eliminare,
    declassare, bloccare) gli amministratori bloccati non contano.
 5. **Token del widget** (`Authorization: Bearer fw_...`): vale solo per `GET /api/oggi`, `GET /api/widget` e `GET /api/live`. Ogni altra rotta o metodo risponde `403` con `{"detail": "Questo accesso serve solo al widget"}`. Se il token è scaduto, revocato o sbagliato, la richiesta è trattata come una senza token: con gli account accesi, quindi, `401` se non c'è una sessione. Con il token, `/api/oggi` non mostra le voci di `da_fare` riservate all'amministratore. Nasce con `POST /api/account/token-widget` e dura 90 giorni. Cambiare la password o «esci da tutti» lo revoca; dal 20/11/2026 (#843) anche il cambio dell'email confermato con `POST /api/account/email/conferma` (quando prende il posto di un'altra email), tranne il token legato alla sessione che conferma; un token senza legame si revoca. Dal 20/11/2026 (#814) il token resta legato alla sessione che l'ha chiesto, e `POST /api/account/esci` da quella sessione lo revoca; l'uscita da un'altra sessione dello stesso account no. Dal 26/11/2026 c'è un token per sessione, non più uno per account: lo stesso account su iPhone e iPad ha due token, uno per widget; un `POST /api/account/token-widget` prende il posto solo del token della stessa sessione, toglie i token dello stesso utente già scaduti o legati a sessioni revocate o scadute e ne tiene al massimo 10 per utente (oltre, via quello usato meno di recente); `GET`/`DELETE /api/account/token-widget` guardano solo il token della sessione che chiede. Prima il token chiesto da un secondo dispositivo spegneva quello del primo (`401`, «Tocca per collegare»). I token nati prima del #814 restano senza legame: valgono finché scadono o finché si esce (`POST /api/account/esci` da qualsiasi sessione dell'account li toglie, perché non si sa di quale dispositivo siano; chi li usava prende un `401` e l'app ne chiede uno nuovo). Una sessione scaduta da sola (`401`) non revoca subito il suo token: se ne va al prossimo `POST` dello stesso utente.
-6. **Errori**: sempre `{"detail": "testo in italiano"}`. Vedi la tabella della sezione 8.
+6. **Errori**: sempre `{"detail": "testo in italiano"}`. Dal 27/11/2026 i messaggi per chi usa l'app finiscono con il punto («La password non è giusta.»; prima alcuni sì e altri no): un client li mostra così come sono, senza confrontarne il testo esatto. Vedi la tabella della sezione 8.
 7. **ETag e If-Match**: le risorse personali hanno un `ETag` (una impronta del contenuto). Chi scrive può mandare l'ETag letto nell'intestazione `If-Match`. Se nel frattempo è cambiato, `412`. Senza `If-Match` la scrittura va comunque (i client vecchi non si rompono).
    Risorse con ETag: regole, avvisi, osservati, scelta di una giornata, rose (squadre, rosa, scritture delle rose e dei crediti).
 7b. **Lingua e cache**: le `GET /api/` con risposta JSON hanno `Vary: Accept-Language`. Con `Accept-Language: en`, se le note sugli infortuni vengono tradotte, l'`ETag` ha il suffisso `-en` (es. `"abc-en"`) e `If-None-Match` si confronta con quello: un ETag preso dalla risposta italiana non dà `304`. Le risposte da scaricare (`/api/backup`) non cambiano. In `If-Match` (scritture) invece `"abc-en"` vale come `"abc"`: è la stessa versione dei dati in un'altra lingua (dal 2/11/2026; prima dava `412`).
@@ -114,7 +114,7 @@ Sigle usate qui:
 
 ## 2. Account (`fanta/rotte_account.py`)
 
-Tutte le rotte sotto `/api/account/` rispondono `404` con `{"detail": "Gli account non sono attivi"}` se gli account sono spenti (tranne `me`, che risponde sempre).
+Tutte le rotte sotto `/api/account/` rispondono `404` con `{"detail": "Gli account non sono attivi."}` se gli account sono spenti (tranne `me`, che risponde sempre).
 
 | Metodo e percorso | Corpo | Risposta principale |
 |---|---|---|

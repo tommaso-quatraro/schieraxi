@@ -58,12 +58,12 @@ def estensione_da_contenuto(dati: bytes) -> str | None:
 
 def salva(nome: str, tipo: str, dati: bytes, cartella: Path | None = None) -> Path:
     if tipo not in TIPI:
-        raise ValueError("Tipo di immagine non valido: stemma o maglia")
+        raise ValueError("Tipo di immagine non valido: stemma o maglia.")
     if len(dati) > MAX_BYTE:
         raise ValueError("Immagine troppo grande (massimo 4 MB)")
     estensione = estensione_da_contenuto(dati)
     if estensione is None:
-        raise ValueError("Formato non supportato: usa PNG, JPEG o WebP")
+        raise ValueError("Formato non supportato: usa PNG, JPEG o WebP.")
     cartella = cartella or CARTELLA
     destinazione = cartella / f"{slug(nome)}-{tipo}{estensione}"
     scrivi_sicuro_byte(destinazione, dati)      # se il disco si riempie a metà, quella di prima resta intera (#781)
@@ -123,7 +123,7 @@ def pulisci(nomi: list[str], cartella: Path | None = None) -> int:
 def rimuovi(nome: str, tipo: str, cartella: Path | None = None) -> bool:
     """Toglie stemma o maglia di una squadra. Vero se c'era qualcosa da togliere."""
     if tipo not in TIPI:
-        raise ValueError("Tipo di immagine non valido: stemma o maglia")
+        raise ValueError("Tipo di immagine non valido: stemma o maglia.")
     tolto = False
     while (p := percorso(nome, tipo, cartella)) is not None:
         p.unlink(missing_ok=True)
@@ -146,7 +146,7 @@ def salva_in_attesa(dati: bytes, cartella: Path | None = None) -> Path:
         raise ValueError("Immagine troppo grande (massimo 4 MB)")
     estensione = estensione_da_contenuto(dati)
     if estensione is None:
-        raise ValueError("Formato non supportato: usa PNG, JPEG o WebP")
+        raise ValueError("Formato non supportato: usa PNG, JPEG o WebP.")
     cartella = cartella or CARTELLA
     destinazione = cartella / f"_in-attesa{estensione}"
     scrivi_sicuro_byte(destinazione, dati)      # come `salva`: quella di prima resta finché la nuova non è scritta tutta

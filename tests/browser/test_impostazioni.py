@@ -803,13 +803,13 @@ def test_la_mia_squadra_non_salvata_si_riprova_con_la_stessa_squadra(web):
         s["mia"] = False
     web.risposta("/api/squadre", squadre)
     web.risposta("/api/stato", {**web.registrata("/api/stato"), "mia_squadra": None})
-    web.risposta("/api/mia-squadra", {"detail": "Squadra non trovata"}, stato=400)
+    web.risposta("/api/mia-squadra", {"detail": "Squadra non trovata."}, stato=400)
     salvate = _scritture(web, "/api/mia-squadra")
     web.apri("/?vista=impostazioni&gruppo=squadra")
     menu = principale(web).get_by_role("combobox", name="La tua squadra")
     nome = squadre[0]["nome"]
     menu.select_option(nome)
-    web.pagina.get_by_role("status").filter(has_text="Squadra non trovata").first.wait_for(timeout=10000)
+    web.pagina.get_by_role("status").filter(has_text="Squadra non trovata.").first.wait_for(timeout=10000)
     web.aspetta()
     assert menu.input_value() == "", "dopo l'errore il menu resta sulla squadra non salvata"
     menu.select_option(nome)
@@ -2563,7 +2563,7 @@ def test_salva_del_nome_resta_spento_finche_la_richiesta_non_torna(web):
     """Doppio tocco su «Salva» del nome della squadra (#833): il secondo mandava il nome vecchio, già cambiato, e compariva «Squadra
     non trovata» anche se il nome era salvato. Finché la richiesta è in corso il pulsante è spento: parte una richiesta sola."""
     solo(web, "prima")
-    tenute, mandate = _rinomina(web, [(404, {"detail": "Squadra non trovata"})])
+    tenute, mandate = _rinomina(web, [(404, {"detail": "Squadra non trovata."})])
     salva = _salva_nome(web)
     salva.click(timeout=10000)
     assert len(tenute) == 1
@@ -2573,7 +2573,7 @@ def test_salva_del_nome_resta_spento_finche_la_richiesta_non_torna(web):
     web.pagina.locator("#avviso").filter(has_text="Nome salvato").wait_for(timeout=10000)
     web.aspetta()
     assert len(mandate) == 1, mandate
-    assert web.pagina.get_by_text("Squadra non trovata").count() == 0
+    assert web.pagina.get_by_text("Squadra non trovata.").count() == 0
 
 
 def test_salva_del_nome_si_riaccende_se_il_salvataggio_non_riesce(web):

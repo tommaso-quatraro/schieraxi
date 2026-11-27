@@ -234,7 +234,7 @@ def leggi_griglie(percorso: Path) -> list[tuple[str, list[list[str]]]]:
         try:
             wb = openpyxl.load_workbook(percorso, read_only=True, data_only=True)
         except (zipfile.BadZipFile, KeyError, OSError, ValueError):
-            raise ValueError("File Excel non leggibile: è rovinato o protetto da password") from None
+            raise ValueError("File Excel non leggibile: è rovinato o protetto da password.") from None
         try:
             return Fogli(((ws.title, [[_testo(v)[:MAX_TESTO_CELLA] for v in r]
                                       for r in ws.iter_rows(max_row=MAX_RIGHE, max_col=MAX_COLONNE, values_only=True)])

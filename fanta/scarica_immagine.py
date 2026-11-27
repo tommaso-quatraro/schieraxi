@@ -48,24 +48,24 @@ def indirizzo_pubblico(testo: str) -> bool:
 def _scomponi(url: str) -> tuple[str, int, str]:
     url = (url or "").strip()
     if not url or len(url) > MAX_URL or any(ord(c) < 33 or ord(c) == 127 for c in url):
-        raise ValueError("Indirizzo non valido: incolla un indirizzo web completo che inizia con https://")
+        raise ValueError("Indirizzo non valido: incolla un indirizzo web completo che inizia con https://.")
     try:
         parti = urlsplit(url)
         porta = parti.port
     except ValueError:
-        raise ValueError("Indirizzo non valido: incolla un indirizzo web completo che inizia con https://") from None
+        raise ValueError("Indirizzo non valido: incolla un indirizzo web completo che inizia con https://.") from None
     if parti.scheme.lower() != "https":
-        raise ValueError("Per sicurezza accetto solo indirizzi che iniziano con https://")
+        raise ValueError("Per sicurezza accetto solo indirizzi che iniziano con https://.")
     if parti.username is not None or parti.password is not None:
-        raise ValueError("L'indirizzo non può contenere nome utente o password")
+        raise ValueError("L'indirizzo non può contenere nome utente o password.")
     if not parti.hostname:
-        raise ValueError("Indirizzo non valido: manca il nome del sito")
+        raise ValueError("Indirizzo non valido: manca il nome del sito.")
     if porta not in (None, 443):
-        raise ValueError("Accetto solo indirizzi sulla porta normale di https")
+        raise ValueError("Accetto solo indirizzi sulla porta normale di https.")
     try:
         host = parti.hostname.encode("idna").decode("ascii")
     except UnicodeError:
-        raise ValueError("Indirizzo non valido: nome del sito non riconosciuto") from None
+        raise ValueError("Indirizzo non valido: nome del sito non riconosciuto.") from None
     percorso = (parti.path or "/") + (f"?{parti.query}" if parti.query else "")
     # lettere accentate incollate così come sono (non ancora «%C3%A0»): la richiesta HTTP vuole solo ASCII; le «%xx» già presenti restano
     return host, 443, quote(percorso, safe="/%:@!$&'()*+,;=?-._~")
@@ -75,7 +75,7 @@ def _risolvi(host: str, porta: int) -> list[str]:
     try:
         trovati = socket.getaddrinfo(host, porta, type=socket.SOCK_STREAM)
     except (OSError, UnicodeError):
-        raise ValueError("Non trovo il sito di quell'indirizzo: controlla di averlo scritto bene") from None
+        raise ValueError("Non trovo il sito di quell'indirizzo: controlla di averlo scritto bene.") from None
     visti: list[str] = []
     for *_, indirizzo in trovati:
         if indirizzo[0] not in visti:
@@ -187,13 +187,13 @@ def scarica(url: str, *, risolvi=_risolvi, apri=_apri, orologio=time.monotonic) 
     fine = orologio() + TEMPO_TOTALE
     for giro in range(MAX_REDIRECT + 1):
         if orologio() > fine:
-            raise ValueError("Il sito è troppo lento: riprova più tardi")
+            raise ValueError("Il sito è troppo lento: riprova più tardi.")
         host, porta, percorso = _scomponi(url)
         indirizzi = risolvi(host, porta)
         if not indirizzi:
-            raise ValueError("Non trovo il sito di quell'indirizzo: controlla di averlo scritto bene")
+            raise ValueError("Non trovo il sito di quell'indirizzo: controlla di averlo scritto bene.")
         if not all(indirizzo_pubblico(i) for i in indirizzi):
-            raise ValueError("Quell'indirizzo porta a una rete privata o interna: non lo scarico")
+            raise ValueError("Quell'indirizzo porta a una rete privata o interna: non lo scarico.")
         risposta, ultimo_errore = None, None
         for ip in indirizzi[:3]:
             if orologio() > fine:
@@ -204,18 +204,18 @@ def scarica(url: str, *, risolvi=_risolvi, apri=_apri, orologio=time.monotonic) 
             except (OSError, http.client.HTTPException, ssl.SSLError) as e:
                 ultimo_errore = e
         if risposta is None:
-            raise ValueError("Non riesco a collegarmi al sito (o il suo certificato non è valido): riprova più tardi") from ultimo_errore
+            raise ValueError("Non riesco a collegarmi al sito (o il suo certificato non è valido): riprova più tardi.") from ultimo_errore
         try:
             if risposta.status in _REDIRECT:
                 destinazione = risposta.headers.get("Location")
                 if not destinazione:
-                    raise ValueError("Il sito ha mandato un reindirizzamento senza destinazione")
+                    raise ValueError("Il sito ha mandato un reindirizzamento senza destinazione.")
                 if giro >= MAX_REDIRECT:
                     raise ValueError("L'indirizzo rimanda ad altri indirizzi troppe volte")
                 url = urljoin(f"https://{host}{percorso}", destinazione.strip())
                 continue
             if risposta.status != 200:
-                raise ValueError(f"Il sito ha risposto con un errore ({risposta.status}): controlla che l'immagine sia pubblica")
+                raise ValueError(f"Il sito ha risposto con un errore ({risposta.status}): controlla che l'immagine sia pubblica.")
             try:
                 dichiarata = int(risposta.headers.get("Content-Length") or 0)
             except ValueError:
@@ -225,16 +225,16 @@ def scarica(url: str, *, risolvi=_risolvi, apri=_apri, orologio=time.monotonic) 
             pezzi, totale = [], 0
             while True:
                 if orologio() > fine:
-                    raise ValueError("Il sito è troppo lento: riprova più tardi")
+                    raise ValueError("Il sito è troppo lento: riprova più tardi.")
                 try:
                     if hasattr(risposta, "leggi_entro"):
                         pezzo = risposta.leggi_entro(PEZZO, fine - orologio())
                     else:
                         pezzo = risposta.read(PEZZO)
                 except TimeoutError:
-                    raise ValueError("Il sito è troppo lento: riprova più tardi") from None
+                    raise ValueError("Il sito è troppo lento: riprova più tardi.") from None
                 except (OSError, http.client.HTTPException):
-                    raise ValueError("Il sito ha interrotto il trasferimento: riprova più tardi") from None
+                    raise ValueError("Il sito ha interrotto il trasferimento: riprova più tardi.") from None
                 if not pezzo:
                     break
                 totale += len(pezzo)
@@ -244,7 +244,7 @@ def scarica(url: str, *, risolvi=_risolvi, apri=_apri, orologio=time.monotonic) 
             dati = b"".join(pezzi)
             estensione = immagini.estensione_da_contenuto(dati)
             if estensione is None:
-                raise ValueError("Quell'indirizzo non porta a un'immagine PNG, JPEG o WebP (forse è una pagina web: apri l'immagine da sola e copia quell'indirizzo)")
+                raise ValueError("Quell'indirizzo non porta a un'immagine PNG, JPEG o WebP (forse è una pagina web: apri l'immagine da sola e copia quell'indirizzo).")
             return dati, estensione
         finally:
             risposta.close()

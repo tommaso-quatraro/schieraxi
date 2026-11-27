@@ -83,7 +83,7 @@ def mercato(db: sqlite3.Connection, regole: Regole, rose: Rose, nome: str | None
     filtro (serve a stimare quanto valgono i crediti, `scambi_multi.tasso_da_mercato`: lì contano i numeri, non i consigli)."""
     s = rose.squadra(nome or rose.mia_squadra or "")
     if not s:
-        raise ValueError("Squadra non trovata: indica la tua squadra in «La mia squadra»")
+        raise ValueError("Squadra non trovata: indica la tua squadra in «La mia squadra».")
     v = consigli.valori_scambi(db, regole)
     mie = [g.id for g in s.giocatori if g.id is not None and g.id in v.info.index]
     occupati = {g.id for sq in rose.squadre for g in sq.giocatori if g.id is not None}
@@ -295,7 +295,7 @@ def formazione_di_oggi(db: sqlite3.Connection, regole: Regole, rose: Rose) -> di
     rinvii) una formazione vuota, e il resto della schermata si mostra lo stesso. Può alzare InCalcolo (202)."""
     s = rose.squadra(rose.mia_squadra or "")
     if not s:
-        raise ValueError("Indica la tua squadra in «La mia squadra»")
+        raise ValueError("Indica la tua squadra in «La mia squadra».")
     try:
         return consigli.formazione(db, regole, rose)
     except ValueError:
@@ -313,7 +313,7 @@ def oggi(db: sqlite3.Connection, regole: Regole, rose: Rose, adesso: datetime | 
     adesso = adesso or datetime.now()
     s = rose.squadra(rose.mia_squadra or "")
     if not s:
-        raise ValueError("Indica la tua squadra in «La mia squadra»")
+        raise ValueError("Indica la tua squadra in «La mia squadra».")
     stagione = consigli.stagione_corrente()
     if consigli.stagione_finita(db, stagione, adesso):          # niente giornata da giocare: il riepilogo dell'ultima, poi la frase (#656)
         return oggi_campionato_finito(db, regole, rose, stagione, adesso, file_scelte, file_diario)

@@ -165,7 +165,7 @@ class LimiteCorpo:
             return await self.app(scope, receive, send)
         tetto = _tetto_corpo(scope.get("path", ""))
         letti, superato, mandata = 0, False, False
-        rifiuto = JSONResponse(status_code=413, content={"detail": "Richiesta troppo grande"},
+        rifiuto = JSONResponse(status_code=413, content={"detail": "Richiesta troppo grande."},
                                headers={"Connection": "close", "Cache-Control": "no-store"} | SICUREZZA)
 
         async def ricevi():
@@ -320,7 +320,7 @@ async def _risposta(request: Request, chiama):
     # resta il controllo «dallo stesso sito» e serve la sessione (vedi `riceve_immagine_condivisa`).
     senza_x_fanta = request.url.path == PERCORSO_CONDIVISIONE and request.method == "POST"
     if request.method not in ("GET", "HEAD") and ((request.headers.get("x-fanta") != "1" and not senza_x_fanta) or _da_un_altro_sito(request)):
-        return JSONResponse(status_code=403, content={"detail": "Richiesta non permessa"})
+        return JSONResponse(status_code=403, content={"detail": "Richiesta non permessa."})
     limite = _tetto_corpo(request.url.path)
     lunghezza = request.headers.get("content-length")
     try:
@@ -328,7 +328,7 @@ async def _risposta(request: Request, chiama):
     except ValueError:
         troppo_grande = True
     if troppo_grande:
-        return JSONResponse(status_code=413, content={"detail": "Richiesta troppo grande"})
+        return JSONResponse(status_code=413, content={"detail": "Richiesta troppo grande."})
     if limite == LIMITE_ACCOUNT and lunghezza is None and "chunked" in request.headers.get("transfer-encoding", "").lower():
         return JSONResponse(status_code=411, content={"detail": "Manca la lunghezza della richiesta"})
     # Con FANTA_MULTIUTENTE=1 ogni /api/ senza sessione valida si ferma qui (401); spento non succede niente.
@@ -397,7 +397,7 @@ def _errore_imprevisto(request: Request, e: Exception) -> JSONResponse:
     import traceback
     if isinstance(e, sqlite3.OperationalError) and any(p in str(e).lower() for p in ("locked", "busy")):
         account.evento("database_occupato", percorso=request.url.path)       # momentaneo: l'app riprova da sola dopo Retry-After
-        return JSONResponse(status_code=503, content={"detail": "Il server è molto occupato: riprova fra qualche secondo"},
+        return JSONResponse(status_code=503, content={"detail": "Il server è molto occupato: riprova fra qualche secondo."},
                             headers={"Retry-After": "3", "Cache-Control": "no-store"})
     if _disco_pieno(e):
         logging.getLogger("uvicorn.error").error("Disco pieno: scrittura non riuscita (rotta %s, %s)",
@@ -491,7 +491,7 @@ def _regole(ctx: Contesto) -> regole.Regole:
     return regole.carica(ctx.regole)
 
 
-NESSUNA_ROSA = "Nessuna rosa importata: importale con «Aggiorna le rose»"
+NESSUNA_ROSA = "Nessuna rosa importata: importale con «Aggiorna le rose»."
 
 
 def _rose(ctx: Contesto) -> lega.Rose:
@@ -1293,7 +1293,7 @@ def osserva(request: Request, response: Response, i: int = FPath(ge=1, le=MAX_ID
     db = _db()
     try:
         if not osservati.nel_listone(db, [i]):
-            raise HTTPException(404, "Giocatore non trovato nel listone")
+            raise HTTPException(404, "Giocatore non trovato nel listone.")
         with versioni.blocco("osservati"):
             versioni.controlla(request, versioni.etag_file(ctx.osservati))
             elenco = osservati.aggiungi(i, ctx.osservati, validi=osservati.nel_listone(db, osservati.leggi(ctx.osservati)))
@@ -1365,9 +1365,9 @@ def _imposta_crediti(dati: CreditiSquadre, ctx: Contesto):
     nomi_ = {s.nome for s in r.squadre}
     for nome, c in dati.crediti.items():
         if nome not in nomi_:
-            raise ValueError(f"Squadra non trovata: {nome}")
+            raise ValueError(f"Squadra non trovata: {nome}.")
         if c < 0 or c > 100000:
-            raise ValueError(f"Crediti non validi per {nome}")
+            raise ValueError(f"Crediti non validi per {nome}.")
     for s in r.squadre:
         if s.nome in dati.crediti:
             s.crediti_residui = dati.crediti[s.nome]
@@ -1420,7 +1420,7 @@ def diario_schierata(dati: SchierataDiario, request: Request, response: Response
         with versioni.blocco("scelte"):
             versioni.controlla(request, _etag_scelta(ctx, dati.giornata))
             if repr(_regole(ctx)) != firma_regole or (consigli._impronta_rose(_rose(ctx)), _rose(ctx).mia_squadra) != firma_rose:
-                raise HTTPException(409, "Le regole o la rosa sono cambiate mentre calcolavo: riprova")
+                raise HTTPException(409, "Le regole o la rosa sono cambiate mentre calcolavo: riprova.")
             diario.scrivi_schierata(voce, scelti, dati.giornata, dati.tipo, ctx.diario, ctx.scelte)
             response.headers["ETag"] = _etag_scelta(ctx, dati.giornata)
         return diario.per_i_client(voce)                                   # una copia: la voce in cache tiene l'impronta dei voti
@@ -1807,7 +1807,7 @@ def _lista_id(testo: str) -> list[int]:
     try:
         return [int(x) for x in testo.split(",") if x.strip()]
     except ValueError:
-        raise HTTPException(400, "Elenco di giocatori non valido") from None
+        raise HTTPException(400, "Elenco di giocatori non valido.") from None
 
 
 @app.get("/api/scambi/proposte")
@@ -1816,11 +1816,11 @@ def proposte_scambi(con: str | None = None, due: bool = False, fino_a: int | Non
     Gli scambi più grandi del 1 contro 1 si cercano con una squadra alla volta."""
     r_ose, r = _rose(ctx), _regole(ctx)
     if not r_ose.mia_squadra:
-        raise ValueError("Indica prima la tua squadra in «La mia squadra»")
+        raise ValueError("Indica prima la tua squadra in «La mia squadra».")
     if fino_a is not None and not 2 <= fino_a <= scambi_multi.MAX_PER_LATO:
         raise ValueError(f"fino_a deve essere un numero da 2 a {scambi_multi.MAX_PER_LATO}")
     if (due or fino_a) and not con:
-        raise ValueError("Gli scambi più grandi dell'1 contro 1 si cercano con una squadra alla volta: scegline una")
+        raise ValueError("Gli scambi più grandi dell'1 contro 1 si cercano con una squadra alla volta: scegline una.")
     chiave = (con, bool(due), fino_a or 0, consigli._impronta_rose(r_ose))
     if not limiti.gia_contata_oggi(ctx, "scambi", chiave):      # una ricerca identica a una di oggi non costa: passa anche a tetto finito
         limiti.controlla(ctx, "scambi")
@@ -1855,7 +1855,7 @@ def analizza_scambio(request: Request, con: str, do: str, ricevo: str, conguagli
     from . import scambi
     r_ose, r = _rose(ctx), _regole(ctx)
     if not r_ose.mia_squadra:
-        raise ValueError("Indica prima la tua squadra in «La mia squadra»")
+        raise ValueError("Indica prima la tua squadra in «La mia squadra».")
     da, a = _lista_id(do), _lista_id(ricevo)
     # tetto al minuto per utente e analisi contemporanee limitate (la stessa analisi ripetuta, come fa l'app sul 202, non conta);
     # con il posto preso non si aspetta un calcolo in coda (#907): 202 subito e posto libero
@@ -1897,7 +1897,7 @@ def _analisi_da_testo(trovati: dict, r, r_ose, request: Request) -> dict:
         finally:
             db.close()
         if not completa["valido"]:
-            raise ValueError(f"Così com'è lo scambio non si può fare: {'; '.join(completa['problemi'])}") from None
+            raise ValueError(f"Così com'è lo scambio non si può fare: {'; '.join(completa['problemi'])}.") from None
         return completa
 
 
@@ -1907,7 +1907,7 @@ def scambio_da_testo(dati: OffertaTesto, request: Request, ctx: Contesto = Depen
     from . import scambi
     r_ose, r = _rose(ctx), _regole(ctx)
     if not r_ose.mia_squadra:
-        raise ValueError("Indica prima la tua squadra in «La mia squadra»")
+        raise ValueError("Indica prima la tua squadra in «La mia squadra».")
     trovati = scambi.riconosci_nel_testo(dati.testo[:4000], r_ose, r_ose.mia_squadra, dati.con)
     nomi_ = {g.id: g.nome for s in r_ose.squadre for g in s.giocatori if g.id is not None}
     risposta = {"con": trovati["con"], "do": [nomi_[i] for i in trovati["do"]], "ricevo": [nomi_[i] for i in trovati["ricevo"]],
@@ -1960,7 +1960,7 @@ def _salva_immagine(squadra: str, tipo: str, dati: bytes, ctx: Contesto) -> dict
     with _scrittura_rose:
         s = _rose(ctx).squadra(squadra)
         if not s:
-            raise HTTPException(404, "Squadra non trovata")
+            raise HTTPException(404, "Squadra non trovata.")
         limiti.controlla_spazio(ctx, len(dati))
         immagini.salva(s.nome, tipo, dati, ctx.immagini)
         return {"squadra": s.nome, "tipo": tipo, "immagini": immagini.presenti(s.nome, ctx.immagini)}
@@ -1972,7 +1972,7 @@ def togli_immagine_squadra(squadra: str, tipo: str, ctx: Contesto = Depends(lega
     with _scrittura_rose:
         s = _rose(ctx).squadra(squadra)
         if not s:
-            raise HTTPException(404, "Squadra non trovata")
+            raise HTTPException(404, "Squadra non trovata.")
         immagini.rimuovi(s.nome, tipo, ctx.immagini)
         return {"squadra": s.nome, "tipo": tipo, "immagini": immagini.presenti(s.nome, ctx.immagini)}
 
@@ -1988,9 +1988,9 @@ def immagine_squadra_da_url(corpo: DaUrl, ctx: Contesto = Depends(lega_corrente)
     """Scarica stemma o maglia da un indirizzo https pubblico (vedi `scarica_immagine.py`: niente reti private, tetto 4 MB)."""
     s = _rose(ctx).squadra(corpo.squadra)
     if not s:
-        raise HTTPException(404, "Squadra non trovata")
+        raise HTTPException(404, "Squadra non trovata.")
     if corpo.tipo not in immagini.TIPI:
-        raise HTTPException(400, "Tipo di immagine non valido: stemma o maglia")
+        raise HTTPException(400, "Tipo di immagine non valido: stemma o maglia.")
     limiti.controlla(ctx, "immagini_url")
     limiti.distanzia_download(ctx)
     limiti.conta(ctx, "immagini_url")             # si conta prima: anche i tentativi sbagliati fanno lavorare il server
@@ -2033,7 +2033,7 @@ def rosa(response: Response, squadra: str | None = None, ctx: Contesto = Depends
     response.headers["ETag"] = versioni.etag_file(ctx.rose)
     s = r.squadra(squadra or r.mia_squadra or "")
     if not s:
-        raise HTTPException(404, "Squadra non trovata")
+        raise HTTPException(404, "Squadra non trovata.")
     db = _db()
     try:
         prev, schede = None, {}
@@ -2092,7 +2092,7 @@ def rinomina_squadra(dati: NomeSquadra, request: Request, response: Response, ct
         r = _rose(ctx)
         s = next((x for x in r.squadre if x.nome.lower() == dati.nome.strip().lower()), None)
         if s is None:
-            raise HTTPException(404, "Squadra non trovata")
+            raise HTTPException(404, "Squadra non trovata.")
         if any(x is not s and x.nome.lower() == nuovo.lower() for x in r.squadre):
             raise HTTPException(409, NOME_SQUADRA_DOPPIO)
         simile = next((x for x in r.squadre if x is not s and immagini.slug(x.nome) == immagini.slug(nuovo)), None)
@@ -2125,7 +2125,7 @@ def imposta_mia_squadra(dati: MiaSquadra, request: Request, response: Response, 
         r = _rose(ctx)
         s = r.squadra(dati.nome)
         if not s:
-            raise HTTPException(404, "Squadra non trovata")
+            raise HTTPException(404, "Squadra non trovata.")
         r.mia_squadra = s.nome
         lega.salva(r, ctx.rose)
         response.headers["ETag"] = versioni.etag_file(ctx.rose)
@@ -2444,7 +2444,7 @@ def importa_per_conto_di(utente_id: int, griglie, sostituisci_tutto: bool, da_ch
         raise HTTPException(409, "Questa funzione serve solo con gli account attivi: accendi FANTA_MULTIUTENTE=1 sul server")
     with contextlib.closing(account.apri()) as db:
         if account.trova(db, utente_id) is None:
-            raise HTTPException(404, "Utente non trovato")
+            raise HTTPException(404, "Utente non trovato.")
         account.limite.consuma(db, account._chiave("importa-per-conto-di"), *IMPORTAZIONI_PER_CONTO_DI)
     importa_sicuro.controlla_griglie(griglie)
     ctx = Contesto.per_utente(utente_id)
@@ -2503,11 +2503,11 @@ def _leggi_file(file: UploadFile, ctx: Contesto) -> tuple[bytes, str]:
     estensione = Path(file.filename or "").suffix.lower()
     contenuto = file.file.read(MAX_FILE + 1)
     if len(contenuto) > MAX_FILE:
-        raise HTTPException(400, "File troppo grande (massimo 5 MB): carica solo le rose")
+        raise HTTPException(400, "File troppo grande (massimo 5 MB): carica solo le rose.")
     if not contenuto.strip():
-        raise HTTPException(400, "Il file è vuoto")
+        raise HTTPException(400, "Il file è vuoto.")
     if ctx.utente_id is not None and estensione == ".xlsm":     # file di altri: controlli in più (vedi importa_sicuro.py)
-        raise HTTPException(400, "I file con macro (.xlsm) non sono ammessi: salvalo come Excel normale (.xlsx)")
+        raise HTTPException(400, "I file con macro (.xlsm) non sono ammessi: salvalo come Excel normale (.xlsx).")
     return contenuto, estensione
 
 
@@ -2652,7 +2652,7 @@ def scrivi_avvisi(dati: ImpostazioniAvvisi, request: Request, response: Response
         nuove = {**notifiche.impostazioni(ctx.impostazioni_avvisi), **dati.model_dump(exclude_unset=True)}
         if nuove.get("silenzio") and nuove.get("silenzio_da") == nuove.get("silenzio_a"):
             raise HTTPException(422, "Le ore tranquille non possono iniziare e finire alla stessa ora: scegli due ore diverse "
-                                     "(per esempio dalle 23 alle 7) oppure spegni l'interruttore")
+                                     "(per esempio dalle 23 alle 7) oppure spegni l'interruttore.")
         salvate = notifiche.salva_impostazioni(nuove, ctx.impostazioni_avvisi)
         response.headers["ETag"] = _etag_avvisi(ctx)
     return _stato_avvisi(ctx, salvate)
@@ -2794,14 +2794,14 @@ def correggi_giocatore(dati: CorrezioneGiocatore, request: Request, response: Re
     calciatori, _ = listone.carica()
     c = next((x for x in calciatori if x.id == dati.id), None)
     if c is None:
-        raise HTTPException(404, "Giocatore non trovato nel listone")
+        raise HTTPException(404, "Giocatore non trovato nel listone.")
     with _scrittura_rose:
         versioni.controlla(request, versioni.etag_file(ctx.rose))
         r = _rose(ctx)
         s = r.squadra(dati.squadra)
         g = next((x for x in s.giocatori if x.nome == dati.nome and x.riconosciuto != "esatto"), None) if s else None
         if g is None:
-            raise HTTPException(404, "Quel giocatore non c'è più nella rosa: ricarica la pagina")
+            raise HTTPException(404, "Quel giocatore non c'è più nella rosa: ricarica la pagina.")
         g.testo = g.testo or (g.nome if g.nome != c.nome else None)        # il nome scritto nel file: alla prossima importazione
         g.id, g.nome, g.ruolo, g.squadra, g.riconosciuto, g.avviso = c.id, c.nome, c.ruolo, c.squadra, "manuale", ""
         lega.salva(r, ctx.rose)
@@ -2812,7 +2812,7 @@ def correggi_giocatore(dati: CorrezioneGiocatore, request: Request, response: Re
 # ---------------- procedura guidata (solo con gli account) ----------------
 def _con_account() -> None:
     if not account.multiutente():
-        raise HTTPException(404, "Gli account non sono attivi")
+        raise HTTPException(404, "Gli account non sono attivi.")
 
 
 def _ha_rose(ctx: Contesto) -> bool:
@@ -3072,7 +3072,7 @@ def leggi_icona(ctx: Contesto = Depends(lega_corrente)):
 def scegli_icona(dati: SceltaIcona, ctx: Contesto = Depends(lega_corrente)):
     """Sceglie il colore dell'icona. Su iPhone l'icona sulla Home cambia solo quando si riaggiunge l'app alla Home."""
     if dati.nome not in TEMI_ICONA:
-        raise ValueError("Icona non valida")
+        raise ValueError("Icona non valida.")
     ctx.icona.parent.mkdir(parents=True, exist_ok=True)
     scrivi_sicuro(ctx.icona, json.dumps({"nome": dati.nome}))
     return {"scelta": dati.nome, "elenco": TEMI_ICONA}
@@ -3082,7 +3082,7 @@ def scegli_icona(dati: SceltaIcona, ctx: Contesto = Depends(lega_corrente)):
 def icona_maskable(dim: int, request: Request):
     """Variante «maskable» per Android (il sistema la ritaglia come vuole): stesso tema scelto, disegno nella zona sicura."""
     if dim not in (192, 512):
-        raise HTTPException(404, "Dimensione non disponibile")
+        raise HTTPException(404, "Dimensione non disponibile.")
     if not account.multiutente():
         scelta = _icona_scelta(_contesto_locale().icona)
     else:
@@ -3095,7 +3095,7 @@ def icona_maskable(dim: int, request: Request):
 def icona_dell_app(dim: int, request: Request):
     """L'icona dell'app (per la Home, il manifest e le schede): è quella scelta, nella dimensione richiesta."""
     if dim not in (180, 192, 512):
-        raise HTTPException(404, "Dimensione non disponibile")
+        raise HTTPException(404, "Dimensione non disponibile.")
     if not account.multiutente():
         scelta = _icona_scelta(_contesto_locale().icona)
     else:                                                    # la pagina di accesso e il manifest non hanno sessione: icona di base

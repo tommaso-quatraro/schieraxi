@@ -100,7 +100,7 @@ class Occupato(Exception):
     """Troppi calcoli già in coda: meglio dire «riprova fra poco» che accumulare lavoro senza fine (un utente non deve poter intasare il server)."""
 
     def __init__(self, riprova_tra: int = 10):
-        super().__init__("Il server ha molti calcoli in coda: riprova fra qualche secondo")
+        super().__init__("Il server ha molti calcoli in coda: riprova fra qualche secondo.")
         self.riprova_tra = riprova_tra
 
 

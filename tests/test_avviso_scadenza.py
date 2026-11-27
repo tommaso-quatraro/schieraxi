@@ -53,7 +53,7 @@ class Finto:
 
     def valuta(self, db, regole, rose, titolari, *a, **k):
         if any(int(i) not in NOMI for i in titolari):
-            raise ValueError("Servono 11 titolari diversi, tutti della rosa")
+            raise ValueError("Servono 11 titolari diversi, tutti della rosa.")
         return {"modulo": self.moduli.get(frozenset(int(i) for i in titolari), "4-3-3"), "punteggio_atteso": self.valore(titolari)}
 
     def cambia(self, versione, esce=None, entra=None, stato=None, bonus=None, modulo=None):

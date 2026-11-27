@@ -101,9 +101,9 @@ final class LegaViewModelTests: XCTestCase {
     }
 
     func testAggiornamentoNonPartito() async {
-        let vm = AggiornaDatiViewModel(server: ServerDiProva.chePrecipita(.server("Richiesta non permessa")))
+        let vm = AggiornaDatiViewModel(server: ServerDiProva.chePrecipita(.server("Richiesta non permessa.")))
         await vm.avvia()
-        XCTAssertEqual(vm.messaggio, "Richiesta non permessa")
+        XCTAssertEqual(vm.messaggio, "Richiesta non permessa.")
         XCTAssertFalse(vm.inCorso)
     }
 

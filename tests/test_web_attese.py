@@ -35,14 +35,15 @@ def test_un_secondo_e_la_frase_senza_l_invito_a_riprovare():
     che il pulsante già dice (#940, come l'iPhone): mai «Troppi tentativi: riprova più tardi (riprova tra 24 secondi)»."""
     testi = codice_web.leggi("testi.js")
     codice = testi + APP[APP.index("const attesaTesto"):APP.index("const errore =")] + """
-console.log(JSON.stringify([attesaTesto(1), attesaTesto(2), senzaInvitoARiprovare("Troppi tentativi: riprova più tardi"),
-  senzaInvitoARiprovare("Troppi tentativi sbagliati: aspetta prima di riprovare"),
-  senzaInvitoARiprovare("Troppi tentativi in questo momento: riprova tra qualche secondo"),
-  senzaInvitoARiprovare("Per oggi le iscrizioni sono chiuse: riprova domani"), senzaInvitoARiprovare("Too many attempts: try again later"),
-  senzaInvitoARiprovare("Riprova tra poco."), senzaInvitoARiprovare("Calma")]));
+console.log(JSON.stringify([attesaTesto(1), attesaTesto(2), senzaInvitoARiprovare("Troppi tentativi: riprova più tardi."),
+  senzaInvitoARiprovare("Troppi tentativi sbagliati: aspetta prima di riprovare."),
+  senzaInvitoARiprovare("Troppi tentativi in questo momento: riprova tra qualche secondo."),
+  senzaInvitoARiprovare("Per oggi le iscrizioni sono chiuse: riprova domani."), senzaInvitoARiprovare("Too many attempts: try again later."),
+  senzaInvitoARiprovare("Riprova tra poco."), senzaInvitoARiprovare("Calma"),
+  senzaInvitoARiprovare("Troppi tentativi: riprova più tardi")]));
 """
     r = subprocess.run(["node", "-"], input=codice, capture_output=True, text=True, encoding="utf-8")
     assert r.returncode == 0, r.stderr
     assert json.loads(r.stdout) == ["1 secondo", "2 secondi", "Troppi tentativi.", "Troppi tentativi sbagliati.",
                                     "Troppi tentativi in questo momento.", "Per oggi le iscrizioni sono chiuse.", "Too many attempts.",
-                                    "", "Calma."]
+                                    "", "Calma.", "Troppi tentativi."]          # l'ultimo: un server di prima, senza il punto

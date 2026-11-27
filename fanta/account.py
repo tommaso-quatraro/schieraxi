@@ -478,7 +478,7 @@ def _applica_migrazioni(db: sqlite3.Connection, versione: int) -> None:
             raise
 
 
-OCCUPATO ="Il server è molto occupato: riprova fra qualche secondo"
+OCCUPATO ="Il server è molto occupato: riprova fra qualche secondo."
 ATTESA_DATABASE = 15.0                       # secondi: quanto si aspetta il proprio turno sul database prima di dire «occupato»
 _blocco_migrazioni = threading.Lock()
 
@@ -591,7 +591,7 @@ ATTESE_MASSIME = 20                          # richieste non note che possono as
 _prenotati = 0                               # richieste non note che adesso hanno un posto in fila (vedi `posto_per_il_calcolo`)
 _blocco_prenotati = threading.Lock()
 _in_fila = threading.local()                 # questa richiesta (questo thread) ha già il suo posto: non si conta due volte
-OCCUPATO = "Il server è molto occupato: riprova fra qualche secondo"
+OCCUPATO = "Il server è molto occupato: riprova fra qualche secondo."
 
 
 @contextlib.contextmanager
@@ -737,11 +737,11 @@ def cambia_maiuscole(db: sqlite3.Connection, utente_id: int, nome: str) -> Utent
     """Cambia solo le maiuscole del proprio nome: le lettere devono restare le stesse (per l'accesso non cambia niente)."""
     riga = db.execute("SELECT nome_utente FROM utenti WHERE id = ?", (utente_id,)).fetchone()
     if riga is None:
-        raise ErroreAccount("Account non trovato", 404)
+        raise ErroreAccount("Account non trovato.", 404)
     nuovo = nome_da_mostrare(nome, riga["nome_utente"])
     pulito = unicodedata.normalize("NFKC", nome[:100]).strip() if isinstance(nome, str) else ""
     if nuovo != pulito:
-        raise ErroreAccount("Puoi cambiare solo le maiuscole e le minuscole: le lettere devono restare le stesse")
+        raise ErroreAccount("Puoi cambiare solo le maiuscole e le minuscole: le lettere devono restare le stesse.")
     db.execute("UPDATE utenti SET nome_visualizzato = ? WHERE id = ?", (nuovo, utente_id))
     db.commit()
     return trova(db, utente_id)
@@ -751,24 +751,24 @@ def valida_nome(nome: str) -> str:
     n = normalizza_nome(nome)
     if not _NOME.fullmatch(n):
         raise ErroreAccount("Il nome utente deve avere da 3 a 32 caratteri: lettere senza accenti, numeri, punto, trattino o "
-                            "trattino basso, e cominciare con una lettera o un numero")
+                            "trattino basso, e cominciare con una lettera o un numero.")
     return n
 
 
 def valida_password(password: str, nome_utente: str = "") -> None:
     if not isinstance(password, str) or len(normalizza_password(password)) < PASSWORD_MIN:
-        raise ErroreAccount(f"La password deve avere almeno {PASSWORD_MIN} caratteri")
+        raise ErroreAccount(f"La password deve avere almeno {PASSWORD_MIN} caratteri.")
     password = normalizza_password(password)
     if len(password) > PASSWORD_MAX:
-        raise ErroreAccount(f"La password può avere al massimo {PASSWORD_MAX} caratteri")
+        raise ErroreAccount(f"La password può avere al massimo {PASSWORD_MAX} caratteri.")
     if any(unicodedata.category(c) in ("Cc", "Cf", "Cs") for c in password):
-        raise ErroreAccount("La password contiene caratteri invisibili o di controllo: usa solo caratteri che si vedono")
+        raise ErroreAccount("La password contiene caratteri invisibili o di controllo: usa solo caratteri che si vedono.")
     p, nome = password.casefold(), normalizza_nome(nome_utente)
     contiene_il_nome = bool(nome) and any(x in p and len(p) < len(nome) + 6 for x in (nome, nome[::-1]))   # il nome (anche al contrario) con poco intorno
     radice = re.sub(r"^[\d\W_]+|[\d\W_]+$", "", p)                                # «Password2026!» -> «password»
     if (p in BANALI or radice in BANALI or radice in RADICI_BANALI or len(set(p)) < 4 or p.isdigit() or contiene_il_nome
             ):
-        raise ErroreAccount("Password troppo banale: scegline una meno prevedibile (per esempio tre parole a caso)")
+        raise ErroreAccount("Password troppo banale: scegline una meno prevedibile (per esempio tre parole a caso).")
 
 
 # ---------------------------------------------------------------- limiti di tentativi
@@ -863,7 +863,7 @@ class Limite:
         adesso = _orologio()
         quanti, primo, _ = self._recenti(db, chiave, finestra, adesso)
         if quanti >= massimo:
-            raise ErroreAccount("Troppi tentativi: riprova più tardi", 429, max(1, math.ceil(finestra - (adesso - primo))))
+            raise ErroreAccount("Troppi tentativi: riprova più tardi.", 429, max(1, math.ceil(finestra - (adesso - primo))))
 
     def aggiungi(self, db: sqlite3.Connection, *chiavi: str) -> None:
         adesso = _orologio()
@@ -879,7 +879,7 @@ class Limite:
         try:
             quanti, primo, _ = self._recenti(db, chiave, finestra, adesso)
             if quanti >= massimo:
-                raise ErroreAccount("Troppi tentativi: riprova più tardi", 429, max(1, math.ceil(finestra - (adesso - primo))))
+                raise ErroreAccount("Troppi tentativi: riprova più tardi.", 429, max(1, math.ceil(finestra - (adesso - primo))))
             db.execute("INSERT INTO tentativi (chiave, quando) VALUES (?, ?)", (chiave, adesso))
             db.commit()
         except BaseException:
@@ -899,13 +899,13 @@ class Limite:
                 if massimo is not None:
                     quanti, primo, _ = self._recenti(db, chiave, finestra, adesso)
                     if quanti >= massimo:
-                        raise ErroreAccount("Troppi tentativi: riprova più tardi", 429, max(1, math.ceil(finestra - (adesso - primo))))
+                        raise ErroreAccount("Troppi tentativi: riprova più tardi.", 429, max(1, math.ceil(finestra - (adesso - primo))))
             if crescente:
                 quanti, _, ultimo = self._recenti(db, crescente, 3600, adesso)
                 if quanti >= 5:
                     resta = min(900, 30 * 2 ** min(quanti - 5, 20)) - (adesso - ultimo)
                     if resta > 0:
-                        raise ErroreAccount("Troppi tentativi sbagliati: aspetta prima di riprovare", 429, math.ceil(resta))
+                        raise ErroreAccount("Troppi tentativi sbagliati: aspetta prima di riprovare.", 429, math.ceil(resta))
             righe = []
             for chiave in [c for c, _, _ in controlli] + ([crescente] if crescente else []):
                 righe.append(db.execute("INSERT INTO tentativi (chiave, quando) VALUES (?, ?)", (chiave, adesso)).lastrowid)
@@ -1058,7 +1058,7 @@ def _rallenta(db: sqlite3.Connection, chiave: str) -> None:
     if quanti > massimo:
         attesa = min(RITARDO_SOTTO_ATTACCO[1], RITARDO_SOTTO_ATTACCO[0] * (quanti // massimo))
         if not _rallentati.acquire(blocking=False):
-            raise ErroreAccount("Troppi tentativi in questo momento: riprova tra qualche secondo", 429, math.ceil(attesa) + 1)
+            raise ErroreAccount("Troppi tentativi in questo momento: riprova tra qualche secondo.", 429, math.ceil(attesa) + 1)
         try:
             _dormi(attesa)
         finally:
@@ -1090,7 +1090,7 @@ def uno_alla_volta(ip: str | None):
         return
     with _blocco_in_corso:
         if _in_corso[ip]:
-            raise ErroreAccount("Una richiesta alla volta: aspetta la risposta della precedente", 429, 2)
+            raise ErroreAccount("Una richiesta alla volta: aspetta la risposta della precedente.", 429, 2)
         _in_corso[ip] += 1
     try:
         yield
@@ -1140,7 +1140,7 @@ def _altri_amministratori_attivi(db: sqlite3.Connection, utente_id: int) -> int:
 
 
 BLOCCATO = "Questo account è bloccato: chiedi a chi gestisce SchieraXI."
-AMMINISTRATORE_DAL_SERVER = "Un amministratore si blocca, si sblocca o si elimina solo sul server, dalla riga di comando"
+AMMINISTRATORE_DAL_SERVER = "Un amministratore si blocca, si sblocca o si elimina solo sul server, dalla riga di comando."
 
 
 def utente_comune(db: sqlite3.Connection, utente_id: int) -> Utente:
@@ -1148,7 +1148,7 @@ def utente_comune(db: sqlite3.Connection, utente_id: int) -> Utente:
     Un amministratore si gestisce solo sul server, con i comandi `utente-blocca`, `utente-sblocca`, `utente-elimina`."""
     utente = trova(db, utente_id)
     if utente is None:
-        raise ErroreAccount("Account non trovato", 404)
+        raise ErroreAccount("Account non trovato.", 404)
     if utente.amministratore:
         raise ErroreAccount(AMMINISTRATORE_DAL_SERVER, 403)
     return utente
@@ -1159,7 +1159,7 @@ def negato_bloccato(nome: str, **campi) -> None:
     cambi, una riga nel registro di sicurezza e il 403 con `codice: account_bloccato`."""
     evento("accesso_negato_bloccato", nome=nome, **campi)
     raise ErroreAccount(BLOCCATO, 403, codice="account_bloccato")
-ULTIMO_AMMINISTRATORE_BLOCCO = "Non posso bloccare l'ultimo amministratore: prima promuovi un altro account"
+ULTIMO_AMMINISTRATORE_BLOCCO = "Non posso bloccare l'ultimo amministratore: prima promuovi un altro account."
 
 
 def blocca(db: sqlite3.Connection, utente_id: int, bloccato: bool = True, adesso: datetime | None = None, **chi) -> int:
@@ -1173,7 +1173,7 @@ def blocca(db: sqlite3.Connection, utente_id: int, bloccato: bool = True, adesso
     try:
         riga = db.execute("SELECT * FROM utenti WHERE id = ?", (utente_id,)).fetchone()
         if riga is None:
-            raise ErroreAccount("Account non trovato", 404)
+            raise ErroreAccount("Account non trovato.", 404)
         if bool(riga["bloccato"]) == bloccato:
             db.rollback()
             return 0
@@ -1219,12 +1219,12 @@ def crea_invito(db: sqlite3.Connection, etichetta: str, amministratore: bool = F
     nel database resta solo il suo hash. L'etichetta serve a ricordare per chi era (per esempio il nome dell'amico).
     Un invito da amministratore è sempre monouso."""
     if isinstance(usi_max, bool) or not isinstance(usi_max, int) or not 1 <= usi_max <= MAX_USI_INVITO:
-        raise ErroreAccount(f"Gli usi dell'invito vanno da 1 a {MAX_USI_INVITO}")
+        raise ErroreAccount(f"Gli usi dell'invito vanno da 1 a {MAX_USI_INVITO}.")
     if amministratore and usi_max != 1:
-        raise ErroreAccount("Un invito da amministratore si può usare una volta sola")
+        raise ErroreAccount("Un invito da amministratore si può usare una volta sola.")
     etichetta = (etichetta or "").strip() if isinstance(etichetta, str) else ""
     if not etichetta or len(etichetta) > 60 or any(unicodedata.category(c) == "Cc" for c in etichetta):
-        raise ErroreAccount("Serve un'etichetta di al massimo 60 caratteri (per ricordare per chi è l'invito)")
+        raise ErroreAccount("Serve un'etichetta di al massimo 60 caratteri (per ricordare per chi è l'invito).")
     limite.consuma(db, _chiave("crea-invito"), 30, ORA)
     adesso = _ora(adesso)
     codice = nuovo_codice(20)
@@ -1261,16 +1261,16 @@ def posti_negli_inviti(db: sqlite3.Connection, adesso: datetime | None = None) -
 def revoca_invito(db: sqlite3.Connection, invito_id: int) -> None:
     """Annulla un invito: chi ha già un account lo tiene, ma il codice non vale più. Non si cancella: resta nell'elenco."""
     if db.execute("UPDATE inviti SET revocato = 1 WHERE id = ?", (invito_id,)).rowcount != 1:
-        raise ErroreAccount("Invito non trovato", 404)
+        raise ErroreAccount("Invito non trovato.", 404)
     db.commit()
     evento("invito_revocato", id=invito_id)
 
 
-INVITO_NON_VALIDO = "Invito non valido o scaduto"
-AL_COMPLETO = "Iscrizioni chiuse: siamo al completo"
-CHIUSE_PER_OGGI = "Per oggi le iscrizioni sono chiuse: riprova domani"
-NOME_PRESO = "Questo nome utente è già preso: scegline un altro"
-TRAPPOLA = "Registrazione non riuscita: ricarica la pagina e riprova"
+INVITO_NON_VALIDO = "Invito non valido o scaduto."
+AL_COMPLETO = "Iscrizioni chiuse: siamo al completo."
+CHIUSE_PER_OGGI = "Per oggi le iscrizioni sono chiuse: riprova domani."
+NOME_PRESO = "Questo nome utente è già preso: scegline un altro."
+TRAPPOLA = "Registrazione non riuscita: ricarica la pagina e riprova."
 
 
 def controlla_posti(db: sqlite3.Connection) -> None:
@@ -1457,7 +1457,7 @@ def _registra(db, nome_utente, password, invito, ip, dispositivo, adesso, termin
     return utente, _apri_sessione(db, utente.id, dispositivo, adesso), recupero
 
 
-ACCESSO_SBAGLIATO = "Nome utente o password sbagliati"
+ACCESSO_SBAGLIATO = "Nome utente o password sbagliati."
 
 
 def accedi(db: sqlite3.Connection, nome_utente: str, password: str, ip: str | None = None, dispositivo: str = "",
@@ -1769,8 +1769,8 @@ def _avvisa_password_cambiata(db: sqlite3.Connection, utente_id: int, adesso: da
 
 # La password sbagliata con le parole del campo (#940): «Password attuale» c'è solo nel cambio della password; nelle altre conferme
 # (elimina l'account, nuovo codice di recupero, email, Google, esci da tutti con la password) il campo è «La tua password».
-PASSWORD_SBAGLIATA = "La password non è giusta"
-PASSWORD_ATTUALE_SBAGLIATA = "La password attuale non è giusta"
+PASSWORD_SBAGLIATA = "La password non è giusta."
+PASSWORD_ATTUALE_SBAGLIATA = "La password attuale non è giusta."
 
 
 def _controlla_password_attuale(db: sqlite3.Connection, utente_id: int, attuale: str, sessione: str | None = None,
@@ -1787,7 +1787,7 @@ def _controlla_password(db: sqlite3.Connection, utente_id: int, attuale: str, se
         from . import social
         if social.riconfermato_di_recente(db, utente_id, sessione):
             return riga
-        raise ErroreAccount("Conferma prima con Google", 403, codice="serve_riconferma")
+        raise ErroreAccount("Conferma prima con Google.", 403, codice="serve_riconferma")
     if riga is None or not verifica_password(attuale if isinstance(attuale, str) else "", riga["password_hash"]):
         evento("password_attuale_sbagliata", nome=riga["nome_utente"] if riga else None)
         raise ErroreAccount(messaggio, 403)
@@ -1895,7 +1895,7 @@ def elimina(db: sqlite3.Connection, utente_id: int, **chi) -> None:
     try:
         riga = db.execute("SELECT nome_utente, ruolo FROM utenti WHERE id = ?", (utente_id,)).fetchone()
         if riga and riga["ruolo"] == "amministratore" and not _altri_amministratori_attivi(db, utente_id):
-            raise ErroreAccount("Non posso eliminare l'ultimo amministratore: prima promuovi un altro account")
+            raise ErroreAccount("Non posso eliminare l'ultimo amministratore: prima promuovi un altro account.")
         db.execute("DELETE FROM utenti WHERE id = ?", (utente_id,))
         db.commit()
     except BaseException:
@@ -1918,12 +1918,12 @@ def imposta_ruolo(db: sqlite3.Connection, nome_utente: str, ruolo: str) -> Utent
     try:
         riga = db.execute("SELECT * FROM utenti WHERE nome_utente = ?", (normalizza_nome(nome_utente),)).fetchone()
         if riga is None:
-            raise ErroreAccount("Account non trovato", 404)
+            raise ErroreAccount("Account non trovato.", 404)
         if riga["ruolo"] == ruolo:
             db.rollback()
             return _utente(riga)                     # già così: niente da fare
         if riga["ruolo"] == "amministratore" and not _altri_amministratori_attivi(db, riga["id"]):
-            raise ErroreAccount("Non posso declassare l'ultimo amministratore: prima promuovi un altro account")
+            raise ErroreAccount("Non posso declassare l'ultimo amministratore: prima promuovi un altro account.")
         db.execute("UPDATE utenti SET ruolo = ? WHERE id = ?", (ruolo, riga["id"]))
         db.commit()
     except BaseException:
@@ -1941,7 +1941,7 @@ def crea_reset(db: sqlite3.Connection, nome_utente: str, adesso: datetime | None
     limite.consuma(db, _chiave("crea-reset"), 30, ORA)
     riga = db.execute("SELECT id FROM utenti WHERE nome_utente = ?", (normalizza_nome(nome_utente),)).fetchone()
     if riga is None:
-        raise ErroreAccount("Utente non trovato", 404)
+        raise ErroreAccount("Utente non trovato.", 404)
     codice = nuovo_codice(20)
     db.execute("UPDATE reset_password SET usato = 1 WHERE utente_id = ?", (riga["id"],))          # il nuovo annulla i vecchi
     db.execute("INSERT INTO reset_password (utente_id, codice_hash, creato, scade) VALUES (?, ?, ?, ?)",
@@ -1973,7 +1973,7 @@ def _recupera(db, nome_utente, codice, nuova, ip, adesso, fidato=None, tieni_pus
     buono_recupero = hmac.compare_digest(riga["recupero_hash"] if riga else _hash_codice("-"), h) and riga is not None
     if not (buono_reset or buono_recupero):
         _fallimento("recupero", nome, ip)
-        raise ErroreAccount("Nome utente o codice non validi", 403)
+        raise ErroreAccount("Nome utente o codice non validi.", 403)
     if riga["bloccato"]:                             # codice giusto ma account bloccato: niente password nuova (il tentativo resta contato)
         negato_bloccato(nome, via="recupero")
     limite.annulla(db, righe)                        # codice giusto: il tentativo non conta come sbagliato
@@ -1985,7 +1985,7 @@ def _recupera(db, nome_utente, codice, nuova, ip, adesso, fidato=None, tieni_pus
         segnato = db.execute("UPDATE reset_password SET usato = 1 WHERE id = ? AND usato = 0", (buono_reset[0]["id"],))
         if segnato.rowcount != 1:                    # usato un attimo prima da un'altra richiesta
             db.rollback()
-            raise ErroreAccount("Nome utente o codice non validi", 403)
+            raise ErroreAccount("Nome utente o codice non validi.", 403)
         cambio = db.execute("UPDATE utenti SET password_hash = ?, recupero_hash = ?, senza_password = 0 WHERE id = ?",
                             (password_hash, _hash_codice(nuovo), riga["id"]))
     else:                                            # il codice di recupero vale una volta sola anche con richieste insieme
@@ -1993,7 +1993,7 @@ def _recupera(db, nome_utente, codice, nuova, ip, adesso, fidato=None, tieni_pus
                             (password_hash, _hash_codice(nuovo), riga["id"], h))
     if cambio.rowcount != 1:
         db.rollback()
-        raise ErroreAccount("Nome utente o codice non validi", 403)
+        raise ErroreAccount("Nome utente o codice non validi.", 403)
     db.commit()
     limite.azzera(db, _chiave("recupero", nome, ip or "-"))
     esci_da_tutti(db, riga["id"], scollega_social=True, tieni_push=tieni_push)

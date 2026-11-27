@@ -474,7 +474,7 @@ def formazione(db: sqlite3.Connection, regole: Regole, rose: Rose, nome_squadra:
     deve andare bene anche per l'ora vera (`_si_ricorda`)."""
     s = rose.squadra(nome_squadra or rose.mia_squadra or "")
     if not s:
-        raise ValueError("Squadra non trovata: indica la tua squadra in «La mia squadra»")
+        raise ValueError("Squadra non trovata: indica la tua squadra in «La mia squadra».")
     stagione = stagione_corrente()
     giornata = giornata or giornata_da_giocare(db, stagione, regole, adesso)
     if giornata is None:
@@ -555,7 +555,7 @@ def _calcola_formazione(s, prev, giornata, con_probabili, regole, simulazioni, f
     try:
         f = fz.migliore(candidati, regole, simulazioni, valutatore=val, **vincoli)
     except ValueError:
-        raise FormazioneImpossibile("Non si riesce a formare una squadra: in qualche ruolo nessuno gioca questa giornata") from None
+        raise FormazioneImpossibile("Non si riesce a formare una squadra: in qualche ruolo nessuno gioca questa giornata.") from None
     livelli = []
     for rischio, nome, peso, inclinazione, descrizione in fz.LIVELLI_RISCHIO:
         fl = f if (peso, inclinazione) == (fz.PESO_BASE, (0.0, 0.0)) else fz.migliore(
@@ -1119,7 +1119,7 @@ def valuta(db: sqlite3.Connection, regole: Regole, rose: Rose, titolari: list[in
     `adesso`: l'ora con cui si chiede la consigliata (vedi `formazione`)."""
     s = rose.squadra(nome_squadra or rose.mia_squadra or "")
     if not s:
-        raise ValueError("Squadra non trovata: indica la tua squadra in «La mia squadra»")
+        raise ValueError("Squadra non trovata: indica la tua squadra in «La mia squadra».")
     if giornata is None and adesso is not None:     # con l'ora data la giornata si cerca con quella (senza: `previsioni`, ora vera)
         giornata = giornata_da_giocare(db, stagione_corrente(), regole, adesso)
         if giornata is None:
@@ -1374,7 +1374,7 @@ def confronto(db: sqlite3.Connection, regole: Regole, id_a: int, id_b: int, gior
     risultato = []
     for i in (id_a, id_b):
         if i not in prev.index:
-            raise ValueError(frasi.elidi_ordinali(f"Giocatore {i} senza previsione per la {frasi.nome_giornata(giornata, serie_a_a_lega(giornata, regole))} (la sua squadra non gioca?)"))
+            raise ValueError(frasi.elidi_ordinali(f"Giocatore {i} senza previsione per la {frasi.nome_giornata(giornata, serie_a_a_lega(giornata, regole))} (la sua squadra non gioca?)."))
         risultato.append(scheda_previsione(i, prev.loc[i]))
     a, b = risultato
     spiegazione = spiega(prev.loc[id_a], prev.loc[id_b], regole)
