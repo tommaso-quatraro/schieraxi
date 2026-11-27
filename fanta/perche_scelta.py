@@ -32,7 +32,7 @@ from __future__ import annotations
 
 from . import formazione as fz
 from .etichette import percento
-from .frasi import F, Frase, da_json
+from .frasi import F, Frase, arrotonda, da_json
 from .notifiche import SOGLIA_AVVISO_PUNTI
 
 PARI = 0.04          # come il Confronto (`consigli._in_formazione`): sotto questa differenza le due formazioni valgono lo stesso
@@ -41,8 +41,8 @@ NON_PROPRI = ("gioca", "partita", "altro", "rinvio")     # motivi del «perché 
 
 
 def _uno(x: float) -> float:
-    """Il numero come si legge a schermo, con un decimale."""
-    return float(f"{x:.1f}")
+    """Il numero come si legge a schermo e nella frase, con un decimale (`arrotonda`, la regola con cui la frase lo scrive)."""
+    return arrotonda(x)
 
 
 def _motivo_proprio(perche_numero) -> str | None:

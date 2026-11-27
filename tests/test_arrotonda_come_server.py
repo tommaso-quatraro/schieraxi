@@ -51,6 +51,17 @@ def test_la_differenza_della_frase_e_quella_dei_numeri_scritti():
     assert frasi._it(frasi.differenza(6.35, 7.5)) == "−1,2"          # 6,3 − 7,5
 
 
+def test_il_punteggio_della_formazione_e_scritto_come_la_frase_accanto():
+    """`punteggio_atteso` di ogni modulo (testata della Formazione) con la regola delle frasi che nominano lo stesso numero
+    («varrebbe 72,1 invece di 72,3», `differenza`): con `round` di Python 72,25 era «72,2» in testata e «72,3» nella frase."""
+    from types import SimpleNamespace
+
+    from fanta import consigli
+    modulo = SimpleNamespace(modulo="3-4-3", atteso=72.25, dev=5.0, titolari=[], panchina=[])
+    assert consigli._moduli([modulo], None)[0]["punteggio_atteso"] == 72.3
+    assert frasi._it(72.25) == "72,3"
+
+
 def test_diario_e_perche_della_scelta_contano_sui_numeri_scritti():
     """Le differenze del diario (`_letto`) e i confronti del perché della scelta (`_uno`: mai «72,1 invece di 72,1», #659) partono
     dai numeri come li scrive la frase."""

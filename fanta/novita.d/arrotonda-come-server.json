@@ -1,0 +1,19 @@
+{
+  "titolo": "Gli stessi numeri con la virgola su iPhone, web e nelle frasi",
+  "voci": [
+    "Sull'iPhone e nel widget un fantavoto atteso come 6,35 si legge «6,3», come sulla web: prima l'iPhone scriveva «6,4». Capitava a circa due numeri su cinque tra quelli che finiscono con il 5 (6,35, 5,55, 7,05, 8,45…), anche nella tabella degli 11 della Formazione.",
+    "Le differenze scritte accanto ai numeri, come «Meglio del previsto: Rossi (+1,2)» in Giornate, tornano sempre con i due numeri che leggi.",
+    "Sulla web un numero appena sotto lo zero si scrive «0,0», non più «-0,0»."
+  ],
+  "titolo_en": "The same decimal numbers on iPhone, web and in sentences",
+  "voci_en": [
+    "On the iPhone and in the widget an expected fantavoto like 6.35 reads «6.3», as on the web: before, the iPhone wrote «6.4». It happened to about two numbers in five among those ending in 5 (6.35, 5.55, 7.05, 8.45…), also in the table of the 11 in the Lineup.",
+    "The differences written next to the numbers, like «Better than expected: Rossi (+1.2)» in Matchdays, always match the two numbers you read.",
+    "On the web a number just below zero is written «0.0», no longer «-0.0»."
+  ],
+  "tecnico": [
+    "Una regola sola, frasi.arrotonda(x, cifre=1): Decimal(x).quantize(ROUND_HALF_UP), cioè il valore vero del float con il mezzo lontano dallo zero, come toFixed della web (era già diario._letto, che ora la usa). La usano anche _segno_e_cifre (i numeri dentro le frasi, prima f\"{x:.1f}\", al pari sui casi esatti: 6,25 → «6,2»), frasi.differenza (prima round di Python), perche_scelta._uno (che deve restare uguale a come la frase scrive il numero, #659) e i punteggio_atteso di consigli.py (prima round(x, 1)): cambiano solo i valori esattamente a metà, come 72,25, che ora si scrivono 72,3 dappertutto. Nessun numero del calcolo cambia.",
+    "iPhone: Formato.decimali moltiplicava per 10 e arrotondava il prodotto già arrotondato dal calcolatore (6,35 × 10 = 63,5 tondo → «6,4»); ora, quando il prodotto cade proprio a metà, decide il resto esatto del prodotto (addingProduct). Simulato con le stesse operazioni contro Decimal su 510.006 numeri: nessuna differenza (prima 8.412).",
+    "Web: num toglie il meno da «-0.0» (toFixed lo lascia), e dettagliPrecisione passa da num. Provati con node contro le frasi del server su tutti i numeri con due decimali fra −20 e 20 (tests/test_arrotonda_come_server.py); gli stessi casi in ios/Tests/SchieraxiTests/ArrotondaComeIlServerTests.swift."
+  ]
+}

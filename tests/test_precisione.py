@@ -184,8 +184,9 @@ def test_web_disegna_la_carta_senza_buchi(lingua):
     pieno = precisione.riassunto([_voce(g, gioc, reale=60.0 + g, tua=55.0) for g in range(4, 14)])
     poco = precisione.riassunto([_voce(4, [], reale=70.0)])
     al_percento = next(r for r in APP.splitlines() if r.startswith("const alPercento = "))
+    num = next(r for r in APP.splitlines() if r.startswith("const num = "))       # i numeri della carta passano da `num`
     prova = (TESTI + "\nconst virgola = x => (LINGUA === 'it' ? String(x).replace('.', ',') : String(x));\n" + al_percento + "\n"
-             + _funzione("nomeGiornata") + next(r for r in APP.splitlines() if r.startswith("const elidiOrdinali = ")) + "\n"
+             + num + "\n" + _funzione("nomeGiornata") + next(r for r in APP.splitlines() if r.startswith("const elidiOrdinali = ")) + "\n"
              + _funzione("dettagliPrecisione") + f"""
     LINGUA = "{lingua}";
     console.log(JSON.stringify([dettagliPrecisione({json.dumps(pieno)}, true), dettagliPrecisione({json.dumps(poco)}, true),

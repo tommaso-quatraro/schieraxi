@@ -18,7 +18,6 @@ import threading
 import time
 from dataclasses import asdict
 from datetime import datetime
-from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import pandas as pd
@@ -28,7 +27,7 @@ from . import indicatori_consiglio as ic
 from . import verifica_consiglio as vc
 from . import formazione as fz
 from .blocco import BloccoFile
-from .frasi import F, ConSegno, elenco as elenco_frasi, nome_giornata
+from .frasi import F, ConSegno, arrotonda, elenco as elenco_frasi, nome_giornata
 from .lega import Rose
 from .modello import Dati, Parametri, previsioni
 from .percorsi import RADICE, chiavi_vecchie, scrivi_sicuro
@@ -1097,9 +1096,9 @@ def _numero(x) -> float | None:
 
 
 def _letto(x: float) -> float:
-    """Il numero come lo scrive la pagina: una cifra, come `toFixed(1)` della web (il mezzo lontano dallo zero, sul valore vero del
-    numero: 6,25 → 6,3; 5,55, che è 5,5499…, → 5,5). `round` di Python farebbe 6,2."""
-    return float(Decimal(x).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+    """Il numero come lo scrive la pagina: una cifra, con la regola di `frasi.arrotonda` (la stessa della web e dell'iPhone: il mezzo
+    lontano dallo zero, sul valore vero del numero: 6,25 → 6,3; 5,55, che è 5,5499…, → 5,5). `round` di Python farebbe 6,2."""
+    return arrotonda(x)
 
 
 def _formazione_che_conta(voce: dict) -> tuple[str, dict] | None:
