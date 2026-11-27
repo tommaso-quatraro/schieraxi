@@ -2,16 +2,15 @@ import Foundation
 import Testing
 @testable import Schieraxi
 
-/// La consigliata della demo è davvero quella da schierare (#944, punto 2). Sul server una consigliata già mostrata resta finché
-/// la migliore non vale almeno `SOGLIA_CAMBIO_PUNTI` (1 punto atteso) in più, e sotto quella soglia il cambio di un titolare in
-/// dubbio non si propone (`da_fare.SOGLIA_CAMBIO`). Quindi nessun cambio di un titolare con un altro giocatore della rosa può
-/// dare un punto o più: prima la Formazione diceva «È la consigliata» e «Sostituisci» su Marténi dava Lemão a +1,5.
+/// La consigliata della demo è davvero la migliore (#944, punto 2, e revisione della #955). La Formazione dice «È la consigliata»:
+/// nessun cambio di un titolare con un altro della rosa, e nessuna formazione della rosa in un modulo della lega, deve avere più
+/// punti attesi. Prima «Sostituisci» su Marténi dava Lemão a +1,5, e mettere Dimarzi (7,5) al posto di Buonvicini (6,5) o di
+/// Marténi dava fino a +0,7, con Dimarzi in panchina. I conti come li fa il server: punti attesi delle due formazioni a una cifra,
+/// poi la differenza; un pari (0,0) va bene, un numero sopra lo zero no.
 /// Dati inventati: quelli di `LegaDemo.swift` e `DatiDemo.swift`, nello stesso istante fisso.
 struct DemoConsigliataTests {
     static let adesso = Date(timeIntervalSinceReferenceDate: 815_000_000)
     static let demo = FinteServer.demoFissata(adesso: adesso)
-    /// `SOGLIA_CAMBIO_PUNTI` di fanta/consigli.py.
-    static let soglia = 1.0
 
     /// Il numero di un cambio come lo scrive il server: i punti attesi delle due formazioni a una cifra, poi la differenza.
     private func tondo(_ x: Double) -> Double { (x * 10).rounded() / 10 }
@@ -26,8 +25,8 @@ struct DemoConsigliataTests {
         return try #require(regole["moduli"] as? [String], "le regole della demo non hanno i moduli")
     }
 
-    @Test("Nessun cambio di un titolare con un altro della rosa vale un punto atteso o più (anche cambiando modulo)")
-    func nessunCambioSopraLaSoglia() async throws {
+    @Test("Nessun cambio di un titolare con un altro della rosa dà più punti attesi (anche cambiando modulo)")
+    func nessunCambioMigliore() async throws {
         let f = try await formazione()
         let moduli = try await moduliDellaLega()
         let schede = try #require(f.schede, "la Formazione della demo non ha le schede della rosa")
@@ -40,25 +39,25 @@ struct DemoConsigliataTests {
 
         let altri = schede.values.filter { !titolari.contains($0.id) && ($0.puntiAttesi ?? 0) > 0 }
         try #require(!altri.isEmpty, "nella demo nessuno fuori dagli 11 può entrare")
-        var sopra: [String] = []
+        var meglio: [String] = []
         for entra in altri {
             // come `chi_prende_il_posto` e `chi_lascia_il_posto` del server: portiere solo per portiere, modulo della lega
             for esce in titolari where (ruolo(esce) == "P") == (entra.ruolo == "P") {
                 let dopo = titolari.map { $0 == esce ? entra.id : $0 }
                 guard moduli.contains(ModuloTitolari.modulo(ruoli: dopo.map(ruolo))) else { continue }
                 let differenza = tondo(tondo(dopo.reduce(0) { $0 + punti($1) }) - prima)
-                if differenza >= Self.soglia {
-                    sopra.append("\(entra.nome) al posto di \(nome(esce)): \(Formato.conSegno(differenza))")
+                if differenza > 0 {
+                    meglio.append("\(entra.nome) al posto di \(nome(esce)): \(Formato.conSegno(differenza))")
                 }
             }
         }
-        #expect(sopra.isEmpty, "la consigliata della demo lascia fuori cambi da un punto o più: \(sopra.sorted())")
+        #expect(meglio.isEmpty, "la consigliata della demo lascia fuori cambi che rendono di più: \(meglio.sorted())")
     }
 
     /// Anche con più cambi insieme (revisione della #955: Dimarzi e Di Corvara nel 4-4-2 davano +1,13): per ogni modulo della lega
-    /// la formazione migliore della rosa, i più attesi di ogni ruolo, non vale un punto o più della consigliata.
-    @Test("Nessuna formazione della rosa, in nessun modulo della lega, vale un punto atteso o più della consigliata")
-    func nessunaFormazioneSopraLaSoglia() async throws {
+    /// la formazione migliore della rosa, i più attesi di ogni ruolo, non ha più punti della consigliata.
+    @Test("Nessuna formazione della rosa, in nessun modulo della lega, ha più punti attesi della consigliata")
+    func nessunaFormazioneMigliore() async throws {
         let f = try await formazione()
         let moduli = try await moduliDellaLega()
         let schede = try #require(f.schede, "la Formazione della demo non ha le schede della rosa")
@@ -69,20 +68,20 @@ struct DemoConsigliataTests {
             return punti.count >= n ? punti.prefix(n).reduce(0, +) : nil
         }
         let consigliata = tondo(f.punteggioAtteso)
-        var sopra: [String] = []
+        var meglio: [String] = []
         for modulo in moduli {
             let numeri = modulo.split(separator: "-").compactMap { Int($0) }
             try #require(numeri.count == 3, "modulo strano nelle regole della demo: \(modulo)")
             guard let p = migliori("P", 1), let d = migliori("D", numeri[0]), let c = migliori("C", numeri[1]),
                   let a = migliori("A", numeri[2]) else { continue }
             let differenza = tondo(tondo(p + d + c + a) - consigliata)
-            if differenza >= Self.soglia { sopra.append("\(modulo): \(Formato.conSegno(differenza))") }
+            if differenza > 0 { meglio.append("\(modulo): \(Formato.conSegno(differenza))") }
         }
-        #expect(sopra.isEmpty, "formazioni della rosa da un punto o più sopra la consigliata: \(sopra)")
+        #expect(meglio.isEmpty, "formazioni della rosa con più punti attesi della consigliata: \(meglio)")
     }
 
-    @Test("«Sostituisci» della demo (Marténi): nessun compagno di ruolo vale un punto atteso o più")
-    func sostituisciSottoLaSoglia() async throws {
+    @Test("«Sostituisci» della demo (Marténi): nessun compagno di ruolo rende di più")
+    func sostituisciNessunoMeglio() async throws {
         let f = try await formazione()
         let titolari = f.titolari.map(\.id)
         let r: RispostaSostituisci = try await Self.demo.posta(
@@ -90,11 +89,11 @@ struct DemoConsigliataTests {
             RichiestaSostituisci(esce: FinteServer.esceSostituisci, titolari: titolari, giornata: f.giornata))
         let differenze = (r.entrate ?? []).compactMap(\.differenza)
         try #require(!differenze.isEmpty, "«Sostituisci» della demo non propone nessuno")
-        #expect(differenze.allSatisfy { $0 < Self.soglia }, "differenze di «Sostituisci»: \(differenze)")
+        #expect(differenze.allSatisfy { $0 <= 0 }, "differenze di «Sostituisci»: \(differenze)")
     }
 
-    @Test("«Metti in campo» della demo (Dimarzi): nessuna uscita vale un punto atteso o più")
-    func mettiInCampoSottoLaSoglia() async throws {
+    @Test("«Metti in campo» della demo (Dimarzi): nessuna uscita rende di più")
+    func mettiInCampoNessunoMeglio() async throws {
         let f = try await formazione()
         let titolari = f.titolari.map(\.id)
         let r: RispostaMettiInCampo = try await Self.demo.posta(
@@ -102,6 +101,6 @@ struct DemoConsigliataTests {
             RichiestaMettiInCampo(entra: FinteServer.entraMettiInCampo, titolari: titolari, giornata: f.giornata))
         let differenze = (r.uscite ?? []).compactMap(\.differenza)
         try #require(!differenze.isEmpty, "«Metti in campo» della demo non propone nessuno")
-        #expect(differenze.allSatisfy { $0 < Self.soglia }, "differenze di «Metti in campo»: \(differenze)")
+        #expect(differenze.allSatisfy { $0 <= 0 }, "differenze di «Metti in campo»: \(differenze)")
     }
 }
