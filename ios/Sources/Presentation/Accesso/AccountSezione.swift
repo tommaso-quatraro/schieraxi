@@ -496,7 +496,9 @@ struct FoglioNuovoCodice: View {
     }
 }
 
-/// Elimina l'account e tutti i suoi dati: password e una conferma esplicita (come il `confirm` della web). Non si può annullare.
+/// Elimina l'account e tutti i suoi dati: prima il server controlla la password (o la riconferma con Google), poi una conferma
+/// esplicita (come il `confirm` della web, #940: prima arrivava anche con la password sbagliata). Non si può annullare. Dopo,
+/// la schermata di accesso dice che account e dati non ci sono più.
 struct FoglioElimina: View {
     @EnvironmentObject private var sessione: SessioneAccount
     @Environment(\.dismiss) private var chiudi
@@ -522,7 +524,7 @@ struct FoglioElimina: View {
             }
             if let errore { Section { Text(errore).foregroundStyle(Color.attenzione) } }
             Section {
-                Button(role: .destructive) { chiediConferma = true } label: {
+                Button(role: .destructive) { Task { await controlla() } } label: {
                     Text(sessione.inCorso ? "Un attimo…" : TestiAccount.elimina).frame(maxWidth: .infinity, minHeight: Tema.areaTocco)
                 }
                 .disabled((sessione.senzaPassword ? !riconfermato : password.isEmpty) || sessione.inCorso)
@@ -538,13 +540,28 @@ struct FoglioElimina: View {
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Annulla") { chiudi() } } }
     }
 
+    /// Primo passo: la password giusta apre la domanda; quella sbagliata (o la riconferma scaduta) resta un errore nel foglio.
+    private func controlla() async {
+        errore = nil
+        do {
+            try await sessione.controllaPerEliminare(password: password)
+            chiediConferma = true
+        } catch {
+            mostra(error)
+        }
+    }
+
     private func elimina() async {
         do {
             try await sessione.elimina(password: password)
         } catch {
-            if case ErroreApi.codificato("serve_riconferma", _) = error { riconfermato = false }
-            errore = SchermataAccesso.testoErrore(error)
+            mostra(error)
         }
+    }
+
+    private func mostra(_ error: Error) {
+        if case ErroreApi.codificato("serve_riconferma", _) = error { riconfermato = false }
+        errore = SchermataAccesso.testoErrore(error)
     }
 }
 

@@ -75,7 +75,11 @@ struct ScegliNomeGoogleView: View {
                 }
                 .foregroundStyle(Color.testoSecondario)
             } footer: {
-                if let problemaNome { Text(problemaNome).foregroundStyle(Color.attenzione) }
+                // le regole del nome prima di sbagliare, come la web (#940); sotto, il problema di quello scritto
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(Catalogo.Accesso.nomeUtenteAiuto).foregroundStyle(Color.testoSecondario)
+                    if let problemaNome { Text(problemaNome).foregroundStyle(Color.attenzione) }
+                }
             }
             if nuovo.serveInvito {
                 Section {

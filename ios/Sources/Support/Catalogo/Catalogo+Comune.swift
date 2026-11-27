@@ -40,5 +40,25 @@ extension Catalogo {
         static func cacheErrore(errore: String, giorno: String, ora: String) -> String {
             "\(errore) (dati salvati il \(giorno) alle \(ora), potrebbero non essere aggiornati)."
         }
+
+        /// `comune.attesa_secondi.one`, `comune.attesa_secondi.other`
+        static func attesaSecondi(_ n: Int) -> String {
+            n == 1 ? "\(n) secondo" : "\(n) secondi"
+        }
+
+        /// `comune.attesa_minuti`
+        static func attesaMinuti(n: String) -> String {
+            "\(n) minuti"
+        }
+
+        /// `comune.attesa_ora`
+        static func attesaOra(n: String) -> String {
+            "circa \(n) ora"
+        }
+
+        /// `comune.attesa_ore`
+        static func attesaOre(n: String) -> String {
+            "circa \(n) ore"
+        }
     }
 }

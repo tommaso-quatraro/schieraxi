@@ -55,13 +55,17 @@ Con le iscrizioni aperte il modulo non chiede codici: un amico che deve gestire 
 
 ### Con gli inviti
 
-Per far entrare tutta una chat di amici con un solo link crea un **invito di gruppo** sul server:
-`.venv/bin/python -m fanta invito --etichetta "Lega" --usi 12` (fino a 30 persone, vale 7 giorni; il codice si vede una volta sola) e
-manda nella chat `https://<indirizzo-del-server>/?invito=<codice>`.
-
 **Impostazioni › Gestione › Nuovo invito** crea il link da mandare (**Condividi l'invito** o **Copia il messaggio**): apre la
 registrazione con il codice già scritto e vale 7 giorni. Sotto c'è anche il codice, per chi usa l'app per iPhone. L'etichetta
-serve a ricordare per chi era; con la casella **Il nuovo account sarà amministratore** chi entra gestisce l'app anche lui.
+serve a ricordare per chi era; con la casella **Il nuovo account sarà amministratore** chi entra gestisce l'app anche lui (solo con
+**Quante persone** a 1).
+
+Per far entrare tutta una chat di amici con un solo link crea un **invito di gruppo**: in **Quante persone** scrivi quanti
+sono (con **+** e **−**, da 1 a 30), poi **Crea l'invito**. L'esito dice per quante persone vale (per esempio «Invito per «Lega»,
+valido 7 giorni, per 12 persone.») e il link si manda nella chat. Ognuno si registra con lo stesso link finché ci sono posti; in
+**Inviti aperti** l'invito dice quanti posti restano. Dal server si fa lo stesso con
+`.venv/bin/python -m fanta invito --etichetta "Lega" --usi 12` (il codice si vede una volta sola), da mandare come
+`https://<indirizzo-del-server>/?invito=<codice>`.
 
 Se tutti i posti sono presi (per esempio «4 utenti su 4»), sopra **Crea l'invito** c'è l'avviso **Posti pieni**: l'invito si
 può creare lo stesso, ma chi lo riceve trova le registrazioni chiuse finché il numero massimo di utenti non sale. Se i posti
@@ -100,7 +104,8 @@ Chi è già entrato con quell'invito tiene il suo account. Gli inviti usati, sca
   Sul server, via ssh, dalla cartella dell'app, gli stessi passi con la conferma del nome (anche per gli amministratori):
   `.venv/bin/python -m fanta utente-blocca <nome>`, `utente-sblocca <nome>` e `utente-elimina <nome>`.
 - **Errori recenti**: le richieste dall'ultimo riavvio con le rifiutate e gli errori del server, tempo medio e massimo, gli
-  eventi di sicurezza con il loro nome in parole, le richieste più lente con accanto al percorso tecnico il nome della parte
+  eventi di sicurezza con il loro nome in parole e, quando c'è, di chi sono (per esempio «Uscita da tutti i dispositivi · luca»),
+  le richieste più lente con accanto al percorso tecnico il nome della parte
   (per esempio «Formazione (/api/oggi)»). Ore nell'ora italiana. Le richieste senza nessun accesso verso le parti dell'app (di
   solito dalla pagina prima dell'ingresso) sono dette a parte; un accesso con un codice o una sessione che non vale, o una
   richiesta a una parte riservata, resta fra le rifiutate. Nessuna password e nessun dato delle richieste.

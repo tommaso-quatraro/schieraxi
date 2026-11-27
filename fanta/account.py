@@ -1755,12 +1755,20 @@ def _avvisa_password_cambiata(db: sqlite3.Connection, utente_id: int, adesso: da
         posta.invia(posta.modello_password_cambiata(riga["email"], posta.ora_italiana(adesso)))
 
 
-def _controlla_password_attuale(db: sqlite3.Connection, utente_id: int, attuale: str, sessione: str | None = None) -> sqlite3.Row:
+# La password sbagliata con le parole del campo (#940): «Password attuale» c'è solo nel cambio della password; nelle altre conferme
+# (elimina l'account, nuovo codice di recupero, email, Google, esci da tutti con la password) il campo è «La tua password».
+PASSWORD_SBAGLIATA = "La password non è giusta"
+PASSWORD_ATTUALE_SBAGLIATA = "La password attuale non è giusta"
+
+
+def _controlla_password_attuale(db: sqlite3.Connection, utente_id: int, attuale: str, sessione: str | None = None,
+                                messaggio: str = PASSWORD_SBAGLIATA) -> sqlite3.Row:
     with posto_per_il_calcolo():                     # prima del tetto: a fila piena il tentativo non si conta
-        return _controlla_password(db, utente_id, attuale, sessione)
+        return _controlla_password(db, utente_id, attuale, sessione, messaggio)
 
 
-def _controlla_password(db: sqlite3.Connection, utente_id: int, attuale: str, sessione: str | None) -> sqlite3.Row:
+def _controlla_password(db: sqlite3.Connection, utente_id: int, attuale: str, sessione: str | None,
+                        messaggio: str = PASSWORD_SBAGLIATA) -> sqlite3.Row:
     limite.consuma(db, _chiave("password-attuale", utente_id), 10, ORA)
     riga = db.execute("SELECT * FROM utenti WHERE id = ?", (utente_id,)).fetchone()
     if riga is not None and riga["senza_password"]:      # entrato solo con Google: al posto della password vale la riconferma recente
@@ -1770,7 +1778,7 @@ def _controlla_password(db: sqlite3.Connection, utente_id: int, attuale: str, se
         raise ErroreAccount("Conferma prima con Google", 403, codice="serve_riconferma")
     if riga is None or not verifica_password(attuale if isinstance(attuale, str) else "", riga["password_hash"]):
         evento("password_attuale_sbagliata", nome=riga["nome_utente"] if riga else None)
-        raise ErroreAccount("La password attuale non è giusta", 403)
+        raise ErroreAccount(messaggio, 403)
     return riga
 
 
@@ -1787,7 +1795,7 @@ def cambia_password(db: sqlite3.Connection, utente_id: int, attuale: str, nuova:
     riceve il token come cookie, le app nella risposta; il codice si mostra una volta sola."""
     adesso = _ora(adesso)
     with posto_per_il_calcolo():                     # un posto solo per i due calcoli (password attuale e nuova)
-        riga = _controlla_password_attuale(db, utente_id, attuale)
+        riga = _controlla_password_attuale(db, utente_id, attuale, messaggio=PASSWORD_ATTUALE_SBAGLIATA)
         valida_password(nuova, riga["nome_utente"])
         password_hash = hash_password(nuova)
     codice = nuovo_codice(20)
@@ -1813,7 +1821,8 @@ def esci_da_tutti_i_dispositivi(db: sqlite3.Connection, utente_id: int, password
         db.execute("UPDATE utenti SET recupero_hash = ? WHERE id = ?", (_hash_codice(codice), utente_id))
         db.commit()
     chiuse = esci_da_tutti(db, utente_id, scollega_social=True)
-    evento("esci_da_tutti")
+    riga = db.execute("SELECT nome_utente FROM utenti WHERE id = ?", (utente_id,)).fetchone()
+    evento("esci_da_tutti", nome=riga["nome_utente"] if riga else None)      # in Gestione › Errori recenti: di chi è (#940)
     return chiuse, codice
 
 

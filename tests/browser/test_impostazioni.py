@@ -1971,7 +1971,7 @@ def test_con_i_posti_pieni_l_avviso_si_legge_prima_di_creare_l_invito(web):
     avviso.wait_for(timeout=10000)
     crea = carta.get_by_role("button", name="Crea l'invito")
     assert avviso.bounding_box()["y"] < crea.bounding_box()["y"], "l'avviso va letto prima del pulsante"
-    assert carta.inner_text().count("Un codice che vale una volta sola e per 7 giorni") == 1, carta.inner_text()   # sotto «Nuovo invito», una volta
+    assert carta.inner_text().count("Un codice che vale 7 giorni") == 1, carta.inner_text()   # sotto «Nuovo invito», una volta
     assert POSTI_PIENI in " ".join(avviso.inner_text().split())
     carta.get_by_label("Etichetta").fill("Sara")
     tocca(web, crea)
@@ -2129,7 +2129,7 @@ def test_con_le_iscrizioni_aperte_gestione_non_ha_gli_inviti(web, larghezza, tem
     assert carta.get_by_role("button", name="Crea l'invito").count() == 0
     assert carta.get_by_role("heading", name="Nuovo invito").count() == 0 and carta.get_by_role("heading", name="Inviti aperti").count() == 0
     testo = carta.inner_text()                                                     # nessuna frase sugli inviti, nemmeno altrove
-    assert "invito" not in testo.lower() and "Un codice che vale una volta sola e per 7 giorni" not in testo, testo
+    assert "invito" not in testo.lower() and "Un codice che vale 7 giorni" not in testo, testo
     assert carta.get_by_role("heading", name="Password dimenticata").is_visible()
     carta.get_by_text("Amico 3", exact=False).wait_for(timeout=10000)
     assert not [r for r in arrivate if "/api/admin/inviti" in r], arrivate
@@ -2266,13 +2266,15 @@ def test_un_rifiuto_del_server_non_fa_rileggere_lo_stato_d_avvio(web):
 
 
 def elimina_l_account(web, stato: int):
-    """In Il tuo account, «Elimina l'account» aperto, con la password scritta e la conferma accettata; la rotta risponde con
-    `stato`. Restituisce le disiscrizioni dagli avvisi mandate al server e il pulsante da toccare."""
+    """In Il tuo account, «Elimina l'account» aperto, con la password scritta e la conferma accettata; il controllo della password
+    (#940) dice di sì e l'eliminazione risponde con `stato` (403: la password non vale più quando arriva, come un cambio da un altro
+    dispositivo fra i due passi). Restituisce le disiscrizioni dagli avvisi mandate al server e il pulsante da toccare."""
     da_utente(web)
     web.memoria({"account": json.dumps(UTENTE["utente"])})
     iscrizione_gia_qui(web)
     web.risposta("/api/push/disiscrivi", {"dispositivi": 0})
     disiscritte = _scritture(web, "/api/push/disiscrivi")
+    web.risposta("/api/account/elimina/controlla", {"ok": True})
     web.risposta("/api/account/elimina", {"detail": "La password non va bene."} if stato == 403 else {"ok": True}, stato=stato)
     web.apri("/?vista=impostazioni&gruppo=account")
     tocca(web, principale(web).get_by_text("Elimina l'account", exact=True))
