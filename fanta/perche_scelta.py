@@ -32,7 +32,7 @@ from __future__ import annotations
 
 from . import formazione as fz
 from .etichette import percento
-from .frasi import F, Frase, da_json
+from .frasi import F, Frase, arrotonda, da_json
 from .notifiche import SOGLIA_AVVISO_PUNTI
 
 PARI = 0.04          # come il Confronto (`consigli._in_formazione`): sotto questa differenza le due formazioni valgono lo stesso
@@ -41,8 +41,14 @@ NON_PROPRI = ("gioca", "partita", "altro", "rinvio")     # motivi del «perché 
 
 
 def _uno(x: float) -> float:
-    """Il numero come si legge a schermo, con un decimale."""
-    return float(f"{x:.1f}")
+    """Il numero come si legge a schermo e nella frase, con un decimale (`arrotonda`, la regola con cui la frase lo scrive)."""
+    return arrotonda(x)
+
+
+def _fv_mostrato(mu: float) -> float:
+    """Il fantavoto atteso come lo manda la scheda del giocatore (`fv_atteso` = round(mu, 2), `consigli.scheda_previsione`): la
+    tabella lo scrive da lì, quindi la riga lo confronta e lo scrive da lì (mu 6,2496 è 6,25 nella scheda e «6,3» a schermo)."""
+    return round(float(mu), 2)
 
 
 def _motivo_proprio(perche_numero) -> str | None:
@@ -77,8 +83,9 @@ def motivo(t: fz.Giocatore, altro: fz.Giocatore, attuale: float, invertita: floa
     proprio = _motivo_proprio(perche_numero)
     if percento(t.p) > percento(altro.p):
         return F("scelta.piu_sicuro", altro=altro.nome, pt=percento(t.p), pa=percento(altro.p))
-    if _uno(t.mu) > _uno(altro.mu):
-        return F("scelta.fantavoto_piu_alto", altro=altro.nome, mu_t=t.mu, mu_a=altro.mu)
+    mu_t, mu_a = _fv_mostrato(t.mu), _fv_mostrato(altro.mu)
+    if _uno(mu_t) > _uno(mu_a):
+        return F("scelta.fantavoto_piu_alto", altro=altro.nome, mu_t=mu_t, mu_a=mu_a)
     if proprio:
         return F("scelta.motivo", altro=altro.nome, motivo=proprio)
     return F("scelta.pari", altro=altro.nome, attuale=attuale, invertita=invertita)

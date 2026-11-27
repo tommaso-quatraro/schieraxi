@@ -511,8 +511,10 @@ def controlla_spazio(ctx, in_arrivo: int = 0, consiglio: str = "Prova con immagi
         raise ErroreAccount(f"Hai finito lo spazio per i tuoi dati ({MAX_BYTE_UTENTE // (1024 * 1024)} MB). {consiglio}", 413)
 
 
-def controlla_rose(ctx, rose) -> None:
-    """Dopo l'importazione: non più di 20 squadre e di 40 giocatori per squadra. Alza ErroreAccount (413) prima di salvare."""
+def controlla_rose(ctx, rose, lette=()) -> None:
+    """Dopo l'importazione: non più di 20 squadre e di 40 giocatori per squadra. Alza ErroreAccount (413) prima di salvare.
+    `lette`: le squadre lette dal file (rose.SquadraLetta). Se in quella troppo grande c'è il nome di un club che forse è una
+    fantasquadra chiamata così (`club_dubbi`, «Roma»), il messaggio dice quale: è il motivo più probabile."""
     if ctx.utente_id is None:
         return
     if len(rose.squadre) > MAX_SQUADRE:
@@ -520,5 +522,10 @@ def controlla_rose(ctx, rose) -> None:
                             "Controlla il file: forse ci sono righe che non sono squadre.", 413)
     for s in rose.squadre:
         if len(s.giocatori) > MAX_GIOCATORI_SQUADRA:
+            club = next((x.club_dubbi[0] for x in lette if x.nome == s.nome and x.club_dubbi), None)
+            if club:
+                raise ErroreAccount(f"«{s.nome[:40]}» ha {len(s.giocatori)} giocatori: il massimo è {MAX_GIOCATORI_SQUADRA}. "
+                                    f"Forse «{club[:40]}» è una vostra squadra: si chiama come una squadra di Serie A e l'ho preso "
+                                    "per quella. Lascia una riga vuota prima del suo nome e riprova.", 413)
             raise ErroreAccount(f"«{s.nome[:40]}» ha {len(s.giocatori)} giocatori: il massimo è {MAX_GIOCATORI_SQUADRA}. "
                                 "Controlla il file: forse due squadre sono finite insieme.", 413)
