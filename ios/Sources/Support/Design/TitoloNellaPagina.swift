@@ -3,14 +3,15 @@ import SwiftUI
 /// Il titolo intero della pagina, in cima alla lista o alla colonna che scorre. C'è solo con il testo grande
 /// (`TitoloPagina.soglia`), quando la barra mostra il titolo piccolo: va a capo invece di tagliarsi e scorre con la pagina.
 /// Il testo arriva da `.titoloPagina(_:)` della pagina. Con il testo normale non occupa spazio, nemmeno una riga vuota
-/// nella lista.
+/// nella lista. Nelle pagine a colonna dell'iPad c'è anche con il testo normale, in cima alla colonna (#930).
 struct TitoloNellaPagina: View {
     @Environment(\.titoloPagina) private var titolo
     @Environment(\.dynamicTypeSize) private var dimensione
+    @Environment(\.titoloNellaColonna) private var inColonna
 
     var body: some View {
-        if let titolo, TitoloPagina.nellaPagina(dimensione) {
-            let voce = TitoloPagina.voceNellaPagina(dimensione)
+        if let titolo, TitoloPagina.nellaPagina(dimensione, inColonna: inColonna) {
+            let voce = TitoloPagina.voceNellaPagina(dimensione, inColonna: inColonna)
             Text(titolo)
                 .font(.largeTitle.bold())
                 .dynamicTypeSize(...TitoloPagina.tetto)
