@@ -23,7 +23,10 @@ struct DemoSchedaVotiTests {
         (riga[chiave] as? NSNumber)?.doubleValue ?? 0
     }
 
-    private func dueCifre(_ x: Double) -> Double { (x * 100).rounded() / 100 }
+    /// Il numero letto è il conto esatto arrotondato a due cifre, come lo scrive il server: dista al più mezzo centesimo. Non
+    /// `==` con l'arrotondamento rifatto qui: `JSONSerialization` legge «0.07» come numero decimale e `doubleValue` si scosta di
+    /// qualche miliardesimo (0.07000000000000003, corsa 45951928006), e vicino a un mezzo centesimo l'arrotondamento può cambiare.
+    private func dueCifreDi(_ letto: Double, _ esatto: Double) -> Bool { abs(letto - esatto) <= 0.0051 }
 
     /// Il fantavoto di una giornata come `punteggio.fantavoto` del server, con i bonus delle regole della demo. Nil senza voto.
     private func fantavoto(_ riga: [String: Any], ruolo: String, bonus: [String: Any]) -> Double? {
@@ -74,9 +77,9 @@ struct DemoSchedaVotiTests {
             let n = Double(con.count)
             #expect(st["presenze"] as? Int == voti.count, "giocatore \(id): presenze")
             #expect(st["con_voto"] as? Int == con.count, "giocatore \(id): partite con il voto")
-            #expect(numero(st, "media_voto") == dueCifre(con.reduce(0) { $0 + numero($1, "voto") } / n),
+            #expect(dueCifreDi(numero(st, "media_voto"), con.reduce(0) { $0 + numero($1, "voto") } / n),
                     "giocatore \(id): la media voto non è quella dei voti")
-            #expect(numero(st, "fantamedia") == dueCifre(con.reduce(0) { $0 + numero($1, "fv") } / n),
+            #expect(dueCifreDi(numero(st, "fantamedia"), con.reduce(0) { $0 + numero($1, "fv") } / n),
                     "giocatore \(id): la fantamedia non è quella dei fantavoti")
             for chiave in ["gol", "assist", "ammonizioni", "espulsioni", "gol_subiti", "rig_segnati", "rig_parati"] {
                 #expect(numero(st, chiave) == voti.reduce(0) { $0 + numero($1, chiave) }, "giocatore \(id): \(chiave)")
@@ -132,9 +135,9 @@ struct DemoSchedaVotiTests {
             let golMenoXg = numero(a, "gol") - numero(a, "xg")
             let assistMenoXa = numero(a, "assist") - numero(a, "xa")
             let extra = (golRuolo * golMenoXg + numero(bonus, "assist") * assistMenoXa) / numero(st, "con_voto")
-            #expect(numero(r, "gol_meno_xg") == dueCifre(golMenoXg), "giocatore \(id): gol meno gol attesi")
-            #expect(numero(r, "assist_meno_xa") == dueCifre(assistMenoXa), "giocatore \(id): assist meno assist attesi")
-            #expect(numero(r, "sovra_rendimento") == dueCifre(extra), "giocatore \(id): punti a partita")
+            #expect(dueCifreDi(numero(r, "gol_meno_xg"), golMenoXg), "giocatore \(id): gol meno gol attesi")
+            #expect(dueCifreDi(numero(r, "assist_meno_xa"), assistMenoXa), "giocatore \(id): assist meno assist attesi")
+            #expect(dueCifreDi(numero(r, "sovra_rendimento"), extra), "giocatore \(id): punti a partita")
         }
     }
 }

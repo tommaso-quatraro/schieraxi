@@ -36,7 +36,7 @@ struct DemoConsigliataTests {
         func nome(_ id: Int) -> String { schede[String(id)]?.nome ?? String(id) }
         func ruolo(_ id: Int) -> String { schede[String(id)]?.ruolo ?? "" }
         let prima = tondo(titolari.reduce(0) { $0 + punti($1) })
-        #expect(prima == tondo(f.punteggioAtteso), "i punti della consigliata sono la somma di quelli dei titolari")
+        #expect(abs(prima - tondo(f.punteggioAtteso)) < 0.05, "i punti della consigliata sono la somma di quelli dei titolari")
 
         let altri = schede.values.filter { !titolari.contains($0.id) && ($0.puntiAttesi ?? 0) > 0 }
         try #require(!altri.isEmpty, "nella demo nessuno fuori dagli 11 può entrare")
