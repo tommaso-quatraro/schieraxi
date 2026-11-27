@@ -57,6 +57,9 @@ final class Caricatore<T: Decodable>: ObservableObject {
     /// Perché l'ultimo aggiornamento non è riuscito: nil se il server non era raggiungibile (rete, tempo scaduto) o se è andato bene;
     /// altrimenti il messaggio dell'errore (limite, guasto del server...), da mostrare nella striscia dei dati salvati.
     private(set) var motivoDatiSalvati: String?
+    /// L'errore dell'ultima lettura non riuscita (nil dopo una risposta): `errore` è solo la frase, qui si vede che guasto era (la
+    /// rete, una risposta 5xx senza il JSON del server, un rifiuto con il suo motivo). Lo usa «La mia squadra» spenta (#974).
+    private(set) var ultimoErrore: Error?
     /// Cresce a ogni lettura che parte: una lettura annullata rimette lo stato di prima solo se nel frattempo non ne è partita
     /// un'altra (decide quella).
     private var letture = 0
@@ -73,6 +76,7 @@ final class Caricatore<T: Decodable>: ObservableObject {
         var scaricatoIl: Date?
         var dallaCache = false
         var motivo: String?
+        var ultimoErrore: Error?
     }
 
     var dato: T? { stato.dato }
@@ -144,6 +148,7 @@ final class Caricatore<T: Decodable>: ObservableObject {
             scaricatoIl = Date()
             dallaCache = false
             motivoDatiSalvati = nil
+            ultimoErrore = nil
             risposte += 1
             stato = .loaded(nuovo)
             ricordaFermo(richiesto)
@@ -160,6 +165,7 @@ final class Caricatore<T: Decodable>: ObservableObject {
                 return
             }
             motivoDatiSalvati = DatiVecchi.eDiRete(error) ? nil : error.localizedDescription
+            ultimoErrore = error
             stato = .failed(error.localizedDescription, inAttesa)   // restano gli ultimi dati, con la loro data
             ricordaFermo(richiesto)
             // senza rete resta la copia: quando il telefono ritrova la rete si riprova da soli, una volta, come la web
@@ -169,7 +175,7 @@ final class Caricatore<T: Decodable>: ObservableObject {
 
     private func ricordaFermo(_ richiesta: String) {
         fermo = Fermo(stato: stato, richiesta: richiesta, percorsoDelDato: percorsoDelDato, scaricatoIl: scaricatoIl,
-                      dallaCache: dallaCache, motivo: motivoDatiSalvati)
+                      dallaCache: dallaCache, motivo: motivoDatiSalvati, ultimoErrore: ultimoErrore)
     }
 
     /// Dopo una lettura annullata: lo stato fermo di prima, se era della stessa risorsa e aveva dei dati. Altrimenti i dati a video
@@ -185,6 +191,7 @@ final class Caricatore<T: Decodable>: ObservableObject {
             if let f = fermoQui, let errore = f.stato.errore {
                 v.stato = .failed(errore, dato)
                 v.motivo = f.motivo
+                v.ultimoErrore = f.ultimoErrore
             }
             prima = v
         } else {
@@ -194,6 +201,7 @@ final class Caricatore<T: Decodable>: ObservableObject {
         scaricatoIl = prima.scaricatoIl
         dallaCache = prima.dallaCache
         motivoDatiSalvati = prima.motivo
+        ultimoErrore = prima.ultimoErrore
         stato = prima.stato          // una volta sola: chi segue lo stato non vede passaggi in mezzo
         ricordaFermo(richiesto)
     }

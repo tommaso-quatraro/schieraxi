@@ -291,27 +291,32 @@ enum AnteprimaLogica {
     }
 
     private static let ordineRuoli = ["P", "D", "C", "A"]
+    /// I nomi dei ruoli, al singolare e al plurale, dal catalogo (`ruolo.*`, come `NOME_RUOLO_1` e `NOMI_RUOLO` della web).
     private static let nomiRuolo: [String: (String, String)] = [
-        "P": ("portiere", "portieri"), "D": ("difensore", "difensori"), "C": ("centrocampista", "centrocampisti"), "A": ("attaccante", "attaccanti"),
+        "P": (Catalogo.Ruolo.p1, Catalogo.Ruolo.pPl), "D": (Catalogo.Ruolo.d1, Catalogo.Ruolo.dPl),
+        "C": (Catalogo.Ruolo.c1, Catalogo.Ruolo.cPl), "A": (Catalogo.Ruolo.a1, Catalogo.Ruolo.aPl),
     ]
 
+    /// Il ruolo in minuscolo, come `arProblemi` della web: «portiere», «difensori».
     static func ruolo(_ r: String?, _ n: Int = 1) -> String {
         guard let r, let nomi = nomiRuolo[r.uppercased()] else { return r ?? "" }
-        return n == 1 ? nomi.0 : nomi.1
+        return (n == 1 ? nomi.0 : nomi.1).lowercased()
     }
 
-    /// I problemi di una rosa a parole: «Manca 1 portiere», «Mancano 2 difensori», «1 attaccante in più», «1 giocatore senza ruolo».
+    /// I problemi di una rosa a parole, come `arProblemi` della web (`ar.manca`, `ar.mancano`, `ar.in_piu`, `ar.senza_ruolo`):
+    /// «Manca 1 portiere», «Mancano 2 difensori», «1 attaccante in più», «1 giocatore senza ruolo».
     static func problemi(_ s: SquadraAnteprima) -> [String] {
         var fuori: [String] = []
         for r in ordineRuoli + s.mancano.keys.filter({ !ordineRuoli.contains($0) }).sorted() {
             guard let n = s.mancano[r], n > 0 else { continue }
-            fuori.append("\(n == 1 ? "Manca" : "Mancano") \(n) \(ruolo(r, n))")
+            let nome = ruolo(r, n)
+            fuori.append(n == 1 ? Catalogo.Ar.manca(n: String(n), ruolo: nome) : Catalogo.Ar.mancano(n: String(n), ruolo: nome))
         }
         for r in ordineRuoli + s.inPiu.keys.filter({ !ordineRuoli.contains($0) }).sorted() {
             guard let n = s.inPiu[r], n > 0 else { continue }
-            fuori.append("\(n) \(ruolo(r, n)) in più")
+            fuori.append(Catalogo.Ar.inPiu(n: String(n), ruolo: ruolo(r, n)))
         }
-        if s.senzaRuolo > 0 { fuori.append("\(Formato.giocatori(s.senzaRuolo)) senza ruolo") }
+        if s.senzaRuolo > 0 { fuori.append(Catalogo.Ar.senzaRuolo(s.senzaRuolo)) }
         return fuori
     }
 

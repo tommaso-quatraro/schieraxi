@@ -130,5 +130,17 @@ extension Catalogo {
 
         /// `lega.controlla_regole`
         static let controllaRegole = "Controlla le regole"
+
+        /// `lega.rimuovi`
+        static let rimuovi = "Rimuovi"
+
+        /// `lega.stemma_rimosso`
+        static let stemmaRimosso = "Stemma rimosso"
+
+        /// `lega.maglia_rimossa`
+        static let magliaRimossa = "Maglia rimossa"
+
+        /// `lega.apri_file_con`
+        static let apriFileCon = "Puoi anche aprire il file con SchieraXI da File, Mail o dal menu Condividi."
     }
 }

@@ -89,6 +89,16 @@ enum RegoleLogica {
         fasce.sorted { $0.media < $1.media }.filter { media >= $0.media }.last?.bonus ?? 0
     }
 
+    /// Il valore dopo un tocco su + (`su`) o − di una riga delle regole, dentro i limiti, come la web (#911): + va al primo multiplo
+    /// del passo sopra il valore, − al primo sotto, come su un righello. Da 1,25 con i passi da 0,5 + dà 1,5 e − 1,0 (prima 1,75 e
+    /// 0,75); da un valore già sui passi ci si sposta di un passo. Il margine assorbe gli errori della divisione con la virgola mobile.
+    static func passoSuccessivo(_ valore: Double, passo: Double, su: Bool, minimo: Double, massimo: Double) -> Double {
+        guard passo > 0 else { return min(massimo, max(minimo, valore)) }
+        let quoziente = valore / passo
+        let multiplo = su ? (quoziente + 1e-9).rounded(.down) + 1 : (quoziente - 1e-9).rounded(.up) - 1
+        return min(massimo, max(minimo, multiplo * passo))
+    }
+
     /// Media di portiere e tre difensori: la somma dei quattro voti divisa per 4.
     static func mediaDifesa(_ voti: [Double]) -> Double {
         voti.isEmpty ? 0 : voti.reduce(0, +) / Double(voti.count)
@@ -102,23 +112,27 @@ enum RegoleLogica {
         return nuove
     }
 
-    /// Controlla e sistema le regole prima di salvarle (come la web app). Lancia un errore con il motivo in italiano.
+    /// Controlla e sistema le regole prima di salvarle, come la web (`salva` di `vistaRegole`): le frasi del catalogo
+    /// (`regole.scegli_almeno_modulo`, `regole.due_fasce_hanno`) e il nome della lega senza spazi ai lati (`value.trim()`), che
+    /// vuoto diventa «La mia lega» (`regole.mia_lega`). Lancia un errore con il motivo.
     static func preparaPerSalvataggio(_ regole: JSONValue) throws -> JSONValue {
         var r = regole
         guard let moduli = r.valore("moduli")?.elenco, !moduli.isEmpty else {
-            throw ErroreRegole.messaggio("Scegli almeno un modulo.")
+            throw ErroreRegole.messaggio(Catalogo.Regole.scegliAlmenoModulo)
         }
         let medie = fasce(r).map(\.media)
         if Set(medie).count != medie.count {
-            throw ErroreRegole.messaggio("Due fasce hanno la stessa media: toglierne una.")
+            throw ErroreRegole.messaggio(Catalogo.Regole.dueFasceHanno)
         }
         // Con i posti fissi per ruolo il numero in panchina è la somma dei posti.
         if case .oggetto(let posti)? = r.valore("panchina.posti") {
             let totale = ["P", "D", "C", "A"].reduce(0.0) { $0 + (posti[$1]?.numero ?? 0) }
             r.imposta("panchina.numero", .numero(totale))
         }
-        if let nome = r.valore("nome_lega")?.testo, nome.trimmingCharacters(in: .whitespaces).isEmpty {
-            r.imposta("nome_lega", .testo("La mia lega"))
+        // un server che non manda il nome non se lo vede inventare
+        if let scritto = r.valore("nome_lega")?.testo {
+            let nome = scritto.trimmingCharacters(in: .whitespacesAndNewlines)
+            r.imposta("nome_lega", .testo(nome.isEmpty ? Catalogo.Regole.miaLega : nome))
         }
         return r
     }

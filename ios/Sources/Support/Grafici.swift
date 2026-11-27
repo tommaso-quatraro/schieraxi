@@ -189,11 +189,15 @@ struct ElencoNumeri: View {
 
 // MARK: - Prova del modello
 
-/// Punti delle formazioni giornata per giornata: SchieraXI, scelta da fantamedia e massimo possibile.
+/// Punti delle formazioni giornata per giornata, come il grafico della web (`mostraAffidabilita`): modello, da fantamedia e
+/// massimo possibile, con sotto la legenda le giornate («dalla 5ª alla 12ª giornata di Serie A»). Le parole, le stesse della web,
+/// sono in `ParoleAffidabilita`.
 struct GraficoAffidabilita: View {
     let righe: [RigaAffidabilita]
 
-    private static let massimo = "Massimo possibile"
+    private static let modello = ParoleAffidabilita.modello
+    private static let fantamedia = ParoleAffidabilita.fantamedia
+    private static let massimo = ParoleAffidabilita.massimo
     /// Il margine tra il bordo del grafico e i punti che ci arrivano vicino, come nel grafico dei voti (#969): senza, il punto
     /// della prima e dell'ultima giornata e la linea del massimo possibile venivano tagliati sul bordo.
     @ScaledMetric(relativeTo: .caption2) private var margine: CGFloat = 10
@@ -201,8 +205,8 @@ struct GraficoAffidabilita: View {
     private var punti: [PuntoGrafico] {
         righe.sorted { $0.giornata < $1.giornata }.flatMap { r -> [PuntoGrafico] in
             var lista: [PuntoGrafico] = []
-            if let v = r.puntiModello { lista.append(PuntoGrafico(serie: "SchieraXI", x: "\(r.giornata)", ordine: r.giornata, valore: v)) }
-            if let v = r.puntiFantamedia { lista.append(PuntoGrafico(serie: "Da fantamedia", x: "\(r.giornata)", ordine: r.giornata, valore: v)) }
+            if let v = r.puntiModello { lista.append(PuntoGrafico(serie: Self.modello, x: "\(r.giornata)", ordine: r.giornata, valore: v)) }
+            if let v = r.puntiFantamedia { lista.append(PuntoGrafico(serie: Self.fantamedia, x: "\(r.giornata)", ordine: r.giornata, valore: v)) }
             if let v = r.puntiPerfetta { lista.append(PuntoGrafico(serie: Self.massimo, x: "\(r.giornata)", ordine: r.giornata, valore: v)) }
             return lista
         }
@@ -215,12 +219,9 @@ struct GraficoAffidabilita: View {
         return primo...max(g.max() ?? 1, primo + 1)
     }
 
+    /// Una riga per giornata, per l'elenco dei numeri e per VoiceOver, con i nomi della legenda (`ParoleAffidabilita.riga`).
     static func descrizione(_ righe: [RigaAffidabilita]) -> [String] {
-        righe.sorted { $0.giornata < $1.giornata }.map { r in
-            "\(TempiLega.serieA(r.giornata)): SchieraXI \(r.puntiModello.map { Formato.decimali($0) } ?? "–"), "
-                + "da fantamedia \(r.puntiFantamedia.map { Formato.decimali($0) } ?? "–"), "
-                + "massimo possibile \(r.puntiPerfetta.map { Formato.decimali($0) } ?? "–")"
-        }
+        righe.sorted { $0.giornata < $1.giornata }.map(ParoleAffidabilita.riga)
     }
 
     var body: some View {
@@ -234,14 +235,18 @@ struct GraficoAffidabilita: View {
                     .foregroundStyle(by: .value("Serie", p.serie))
                     .symbolSize(p.serie == Self.massimo ? 0 : 24)
             }
-            .chartForegroundStyleScale(["SchieraXI": Color.verde, "Da fantamedia": Color.attenzione, Self.massimo: Color.gray])
+            .chartForegroundStyleScale([Self.modello: Color.verde, Self.fantamedia: Color.attenzione, Self.massimo: Color.gray])
             .chartYScale(domain: .automatic(includesZero: false), range: .plotDimension(padding: margine))
             .chartXScale(domain: dominioGiornate, range: .plotDimension(padding: margine))
             .chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) }
             .frame(height: 190)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Grafico dei punti delle formazioni, giornata per giornata: SchieraXI, scelta da fantamedia e massimo possibile")
+            .accessibilityLabel(ParoleAffidabilita.nomeGrafico)
             .accessibilityValue(Self.descrizione(righe).joined(separator: ". "))
+            // sotto la legenda, come la web: da quale a quale giornata è la prova
+            if let giornate = ParoleAffidabilita.giornate(righe) {
+                Text(giornate).font(.caption).foregroundStyle(Color.testoSecondario)
+            }
             ElencoNumeri(righe: Self.descrizione(righe))
         }
     }

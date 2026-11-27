@@ -65,5 +65,33 @@ extension Catalogo {
 
         /// `ar.salvate`
         static let salvate = "Rose salvate"
+
+        /// `ar.manca`
+        static func manca(n: String, ruolo: String) -> String {
+            "Manca \(n) \(ruolo)"
+        }
+
+        /// `ar.mancano`
+        static func mancano(n: String, ruolo: String) -> String {
+            "Mancano \(n) \(ruolo)"
+        }
+
+        /// `ar.in_piu`
+        static func inPiu(n: String, ruolo: String) -> String {
+            "\(n) \(ruolo) in più"
+        }
+
+        /// `ar.senza_ruolo.one`, `ar.senza_ruolo.other`
+        static func senzaRuolo(_ n: Int) -> String {
+            n == 1 ? "\(n) giocatore senza ruolo" : "\(n) giocatori senza ruolo"
+        }
+
+        /// `ar.c_e_scritto`
+        static func cEScritto(nome: String, squadra: String) -> String {
+            "Nella rosa di \(squadra) c'è scritto «\(nome)»."
+        }
+
+        /// `ar.giocatore_giusto`
+        static let giocatoreGiusto = "Giocatore giusto"
     }
 }

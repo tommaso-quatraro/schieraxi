@@ -14,5 +14,8 @@ extension Catalogo {
 
         /// `onb.tutti_giocatori_sono`
         static let tuttiGiocatoriSono = "✓ Tutti i giocatori sono riconosciuti."
+
+        /// `onb.nessun_risultato`
+        static let nessunRisultato = "Nessun risultato"
     }
 }

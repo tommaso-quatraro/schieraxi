@@ -62,6 +62,15 @@
       "forma": "web",
       "chi": "**fatto** (#889): prove `RegoleLimitiComeLaWebTests`; i limiti di riserva uguali al file, `tests/test_limiti_regole_iphone.py`; il meno: `RigaStepperMenoTests`",
       "stato": "fatto"
+    },
+    {
+      "id": 133,
+      "schermata": "Regole: «Togli la fascia», − e +, nome della lega e testi dal catalogo (27/11/2026)",
+      "web": "«✕» per togliere una fascia, con il nome «Togli la fascia 2» (`regole.togli_fascia`); − e + vanno al primo multiplo del passo sopra o sotto il valore (#911: da 1,25 con i passi da 0,5 a 1,5 o a 1,0); il nome della lega si salva senza spazi ai lati, vuoto «La mia lega» (`regole.mia_lega`); «Scegli almeno un modulo» e «Due fasce hanno la stessa media: toglierne una» (`regole.scegli_almeno_modulo`, `regole.due_fasce_hanno`); sotto il minimo dei difensori «La media è la somma di portiere + i 3 migliori difensori divisa per 4. …» (`regole.media_somma`, `regole.portiere_migliori_difensori`, `regole.divisa_per_per`); i voti della prova si chiamano «Voto del portiere», «Voto del difensore 1» (`regole.voto_portiere`, `regole.voto_difensore`)",
+      "iphone": "prima: «Togli la fascia» stava nella riga dei due − e + senza uno stile suo, così tutta la riga era il pulsante e un tocco sul testo o sul numero toglieva la fascia; − e + da 1,25 andavano a 1,75 o 0,75; il nome si salvava con gli spazi; frasi scritte a mano (con il punto finale, «difensori, divisa per 4», «Portiere», «Difensore 1»). Ora come la web: «Togli la fascia 2» risponde solo al suo tocco, − e + con `RegoleLogica.passoSuccessivo`, il nome pulito in `RegoleLogica.preparaPerSalvataggio`, le frasi dal catalogo (`TestiRegole`). Restano dell'iPhone, con chiavi loro nel catalogo, la domanda «Le modifiche alle regole non sono salvate» con «Esci senza salvare» e «Continua a modificare» e la barra «Modifiche non salvate» (`regole.uscita_titolo`, `regole.esci_senza_salvare`, `regole.continua_modificare`, `regole.modifiche_non_salvate`)",
+      "forma": "web",
+      "chi": "**fatto** (27/11/2026): prove `LaMiaLegaComeLaWebTests`, `RestiDalCatalogoTests`, `DominioTests`; foto `lega-regole`; il tocco su testo e numeri di una fascia si prova sul telefono",
+      "stato": "fatto"
     }
   ]
 }

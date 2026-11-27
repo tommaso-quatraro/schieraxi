@@ -46,3 +46,10 @@ lega.conferma_archivio
 lega.banner_stagione
 lega.importa_nuove_rose
 lega.controlla_regole
+
+# Stemma e maglia: «Rimuovi» e la frase dopo, come il foglio della web (RosaView, ParoleSquadre)
+lega.rimuovi
+lega.stemma_rimosso
+lega.maglia_rimossa
+# Solo iPhone: sotto «Scegli il file» in Aggiorna le rose (ImportaRoseView)
+lega.apri_file_con

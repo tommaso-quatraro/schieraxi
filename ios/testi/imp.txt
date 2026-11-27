@@ -21,3 +21,5 @@ imp.informazioni_sub
 imp.gestione
 imp.aggiorna_spiega
 imp.avanzate
+# «La mia squadra» spenta quando le squadre non arrivano perché il server non si raggiunge (VociImpostazioni.lega)
+imp.mia_squadra_senza_rete

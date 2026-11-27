@@ -20,3 +20,12 @@ ar.cerca_segnaposto
 ar.cerca_per
 ar.cambiate
 ar.salvate
+
+# I problemi di una rosa nell'anteprima (AnteprimaLogica.problemi), come arProblemi della web
+ar.manca
+ar.mancano
+ar.in_piu
+ar.senza_ruolo
+# Solo iPhone: la pagina che cerca il giocatore giusto (ImportaRoseView, CercaGiocatoreGiustoView in LegaExtra)
+ar.c_e_scritto
+ar.giocatore_giusto

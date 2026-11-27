@@ -162,6 +162,17 @@ final class Immagini: ObservableObject {
         versione += 1
     }
 
+    /// Toglie lo stemma o la maglia (`DELETE /api/squadre/immagine`, come «Rimuovi» della web) e rilegge gli elenchi: le viste
+    /// mostrano l'iniziale della squadra in un cerchio verde (`StemmaSquadra`). La copia su disco e quelle in memoria non valgono più.
+    func rimuovi(squadra: String, tipo: String) async throws {
+        let percorso = Self.percorsoSquadra(squadra, tipo: tipo)
+        try await attivo.invia("DELETE", percorso)
+        Cache.rimuovi(percorso, indirizzo: attivo.indirizzo, cartella: "img")
+        edizione += 1
+        await caricaElenchi()
+        versione += 1
+    }
+
     enum ErroreImmagine: LocalizedError {
         case indirizzoNonValido
         var errorDescription: String? { "L'indirizzo deve cominciare con https:// e portare a un'immagine." }

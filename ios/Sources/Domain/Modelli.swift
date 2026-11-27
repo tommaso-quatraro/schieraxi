@@ -688,8 +688,14 @@ struct StatoDati: Decodable {
             motivo = campo(.motivo)
         }
     }
-    /// `taratura`: un server vecchio non la manda.
-    struct Calibrazione: Decodable { let giornate: Int?; let gruppi: [GruppoCalibrazione]?; let taratura: Taratura? }
+    /// `taratura`: un server vecchio non la manda. `fattori`: la correzione che il modello usa per ogni gruppo, con il nome del gruppo
+    /// (italiano, senza «_», così la conversione delle chiavi non lo tocca) e solo per i gruppi che corregge.
+    struct Calibrazione: Decodable {
+        let giornate: Int?
+        let gruppi: [GruppoCalibrazione]?
+        let taratura: Taratura?
+        let fattori: [String: Double]?
+    }
     /// I gol attesi «nostri» (solo Fantacalcio.it, senza Understat) contro i numeri mostrati: I4 dal vivo (#401,
     /// `registro_nostri.riepilogo` del server). Le medie delle ultime `finestra` giornate misurate della `versione` di oggi del calcolo
     /// (le altre non contano), con le soglie e il verdetto (`regge` e `reggeTutto`, solo con `verdetto`), e una riga per giornata.

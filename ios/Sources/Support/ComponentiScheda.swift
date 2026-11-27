@@ -50,10 +50,14 @@ struct PillDifficolta: View {
 struct TesseraDato: View {
     let valore: String
     let etichetta: String
+    /// Il colore del numero quando vuol dire qualcosa (i punti del modello che battono la fantamedia, come la classe `positivo` della
+    /// web); senza, quello del testo intorno.
+    var tinta: Color? = nil
 
     var body: some View {
         VStack(spacing: 2) {
             Text(valore).font(.title3.bold()).monospacedDigit().minimumScaleFactor(0.7).lineLimit(1)
+                .foregroundStyle(tinta.map { AnyShapeStyle($0) } ?? AnyShapeStyle(.foreground))
             Text(etichetta).font(.caption2).foregroundStyle(Color.testoSecondario).multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)

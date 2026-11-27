@@ -1,14 +1,11 @@
 import Foundation
 
-/// Le parole e i numeri della pagina Novità, uguali alla web (issue #441): `vistaNovita` di `fanta/web/app.js` e le chiavi
-/// `novita.*` e `regole.nuovo` del catalogo comune (`Catalogo+Novita.swift`, `Catalogo+Regole.swift`). `NovitaComeLaWebTests` le prova. Quali versioni sono nuove e quante se
-/// ne vedono subito si decide qui, con la stessa regola della web.
+/// Le parole e i numeri della pagina Novità, uguali alla web (issue #441): `mostraNovita` di `fanta/web/impostazioni.js` e le chiavi
+/// `novita.*` del catalogo comune (`Catalogo+Novita.swift`). `NovitaComeLaWebTests` le prova. Come la web dalla #615, nessuna
+/// etichetta «Nuovo»: si vedono sempre le ultime `visibili` versioni.
 enum ParoleNovita {
     /// Quante versioni si vedono subito (`NOVITA_VISIBILI` della web): le altre, sono centinaia, dietro «Mostra le … precedenti».
     static let visibili = 10
-
-    /// L'etichetta delle versioni non ancora viste (`regole.nuovo`).
-    static let nuovo = Catalogo.Regole.nuovo
 
     /// «Versione 1.432» (`novita.versione`).
     static func versione(_ numero: String) -> String { Catalogo.Novita.versione(v: numero) }
@@ -19,17 +16,9 @@ enum ParoleNovita {
         return quando.isEmpty ? versione(numero) : "\(versione(numero)) · \(quando)"
     }
 
-    /// Quante delle versioni in cima sono «Nuovo». Alla prima visita (nessuna versione vista) solo l'ultima, non tutto lo storico;
-    /// se la versione vista non c'è più nell'elenco, le prime `visibili`; altrimenti tutte quelle sopra la versione vista.
-    static func nuoveDa(versioni: [String], ultimaVista: String?) -> Int {
-        guard let ultima = ultimaVista, !ultima.isEmpty else { return min(1, versioni.count) }
-        guard let trovata = versioni.firstIndex(of: ultima) else { return min(visibili, versioni.count) }
-        return trovata
-    }
-
-    /// Quante versioni si vedono subito: almeno `visibili` e tutte le nuove, mai più di quelle che ci sono.
-    static func quanteVisibili(totale: Int, nuoveDa: Int) -> Int {
-        min(totale, max(visibili, nuoveDa))
+    /// Quante versioni si vedono subito: le ultime `visibili`, come la web, mai più di quelle che ci sono.
+    static func quanteVisibili(totale: Int) -> Int {
+        min(totale, visibili)
     }
 
     /// Il pulsante che apre tutte le altre: «Mostra le 42 versioni precedenti» o «Mostra 1 versione precedente»

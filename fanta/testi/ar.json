@@ -147,5 +147,15 @@
   "ar.cerca_incompleta": {
     "it": "Per «{nome}» non hai ancora scelto il giocatore: tocca uno dei risultati oppure cambia la scelta nel menu.",
     "en": "For “{nome}” you have not picked the player yet: tap one of the results or change the choice in the menu."
+  },
+  "ar.c_e_scritto": {
+    "it": "Nella rosa di {squadra} c'è scritto «{nome}».",
+    "en": "The {squadra} roster lists “{nome}”.",
+    "nota": "solo iPhone: sotto il campo della pagina che cerca il giocatore giusto (anteprima delle rose, giocatori da sistemare)"
+  },
+  "ar.giocatore_giusto": {
+    "it": "Giocatore giusto",
+    "en": "Right player",
+    "nota": "solo iPhone: il titolo della pagina che cerca il giocatore giusto"
   }
 }

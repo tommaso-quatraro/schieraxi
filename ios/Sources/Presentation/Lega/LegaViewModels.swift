@@ -118,6 +118,25 @@ final class LegaViewModel: ViewModelBase {
     /// La propria squadra, se scelta.
     var miaSquadra: String? { squadre.dato?.first { $0.mia == true }?.nome }
 
+    /// Le squadre non sono arrivate perché il server non si raggiunge e sul telefono non ce n'è una copia: «La mia squadra» resta,
+    /// spenta, con la frase che dice quando si apre, come la web (`stato.squadreNonArrivate`, collaudo d'insieme del 26/11: spariva e
+    /// lasciava un buco). Un rifiuto del server sotto il 500 (un limite, il 403 di un Wi-Fi pubblico) non conta: allora la riga non
+    /// c'è, come sulla web (`serverNonRaggiunto`).
+    var squadreNonArrivate: Bool {
+        guard squadre.dato == nil, squadre.errore != nil, let errore = squadre.ultimoErrore else { return false }
+        return Self.serverNonRaggiunto(errore)
+    }
+
+    /// Il server non si raggiunge, come `e.rete || e.status >= 500` della web: la rete (senza rete, tempo scaduto, collegamento
+    /// rifiutato o caduto, `DatiVecchi.eDiRete`) o una risposta 5xx senza il JSON del server, come la pagina 502 del proxy mentre
+    /// il server riparte (revisione della #974). Un 500 che manda il suo messaggio arriva come `ErroreApi.server` senza il codice:
+    /// quello resta fuori (la web lo conta).
+    nonisolated static func serverNonRaggiunto(_ errore: Error) -> Bool {
+        if DatiVecchi.eDiRete(errore) { return true }
+        if case .risposta(let codice)? = errore as? ErroreApi { return codice >= 500 }
+        return false
+    }
+
     /// «Non è la tua squadra?» e la prima scelta della propria (come `collegaSceltaMia` della web, #863): `PUT /api/mia-squadra`,
     /// poi le squadre si rileggono (la riga «La mia squadra» dice quella nuova) e, come la web che ridisegna «La mia squadra», al
     /// posto della pagina aperta (la rosa di prima o la scelta) c'è la rosa della squadra scelta. Se nel frattempo si è passati a

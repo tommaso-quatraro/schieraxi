@@ -88,10 +88,6 @@
     "it": "Non ho riconosciuto nessuna regola in questo testo. Controlla di aver copiato la pagina del regolamento, oppure imposta i valori a mano qui sotto.",
     "en": "I did not recognise any rule in this text. Check that you copied the rules page, or set the values by hand below."
   },
-  "regole.nuovo": {
-    "it": "Nuovo",
-    "en": "New"
-  },
   "regole.panchina_sostituzioni": {
     "it": "Panchina e sostituzioni",
     "en": "Bench and substitutions"
@@ -433,5 +429,25 @@
   "regole.non_numero": {
     "it": "«{campo}» non è un numero: correggilo prima di salvare",
     "en": "“{campo}” is not a number: fix it before saving"
+  },
+  "regole.uscita_titolo": {
+    "it": "Le modifiche alle regole non sono salvate",
+    "en": "Your changes to the rules are not saved",
+    "nota": "solo iPhone: la domanda tornando indietro o aprendo un'altra pagina con modifiche non salvate (RegoleEditorView)"
+  },
+  "regole.esci_senza_salvare": {
+    "it": "Esci senza salvare",
+    "en": "Leave without saving",
+    "nota": "solo iPhone: una risposta della domanda regole.uscita_titolo"
+  },
+  "regole.continua_modificare": {
+    "it": "Continua a modificare",
+    "en": "Keep editing",
+    "nota": "solo iPhone: una risposta della domanda regole.uscita_titolo"
+  },
+  "regole.modifiche_non_salvate": {
+    "it": "Modifiche non salvate",
+    "en": "Unsaved changes",
+    "nota": "solo iPhone: la barra in basso con «Salva», finché ci sono modifiche"
   }
 }

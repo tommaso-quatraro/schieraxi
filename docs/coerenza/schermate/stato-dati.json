@@ -71,6 +71,15 @@
       "forma": "web",
       "chi": "**fatto**: prova `tests/browser/test_stato_dati_errori.py` e i test del server; sull'iPhone nessun cambio di codice, da vedere sul telefono",
       "stato": "fatto"
+    },
+    {
+      "id": 130,
+      "schermata": "Stato dei dati: «Quanto ci azzecca il modello» e la prova del modello (27/11/2026)",
+      "web": "sotto il titolo «Giornate già giocate con le probabili raccolte: N.» e «Se «hanno giocato» e «previsto» sono lontani, l'app corregge da sola i numeri di partenza (…)» (`sd.corregge`); ogni gruppo «312 giocatori · hanno giocato 94% · previsto 91% · correzione ×1,03» («hanno giocato» anche con un giocatore solo; la correzione è quella che il modello usa, dal campo `calibrazione.fattori`, `sd.correzione`); nella prova del modello i punti della formazione del modello in verde quando valgono almeno quelli da fantamedia (classe `positivo`); sotto il grafico la legenda «modello», «da fantamedia», «massimo possibile» e «dalla 5ª alla 12ª giornata di Serie A» (`avv.giornate_da_a`), per i lettori di schermo «Punti delle formazioni giornata per giornata: modello, fantamedia e massimo possibile» (`apriStatoDati`, `mostraAffidabilita`)",
+      "iphone": "prima: «1 giocatore · ha giocato …», senza la correzione e senza la frase `sd.corregge`; i punti del modello mai verdi; legenda, elenco dei numeri e VoiceOver del grafico con «SchieraXI» e senza le giornate. Ora come la web: le righe dei gruppi (`ParoleRegistro.gruppo`), la frase nel piè della sezione, il verde (`Color.positivo`) sulla tessera dei punti del modello, i nomi della legenda dalle stesse chiavi della web senza lo spazio fisso e le giornate sotto il grafico (`ParoleAffidabilita`, `GraficoAffidabilita`)",
+      "forma": "web",
+      "chi": "**fatto** (27/11/2026): prove `LaMiaLegaComeLaWebTests`, `RestiDalCatalogoTests`; foto `lega-stato-taratura`, `lega-stato-prova`",
+      "stato": "fatto"
     }
   ]
 }

@@ -22,7 +22,8 @@ struct ImpostazioniComeLaWebTests {
     func conPiuSquadre() {
         let voci = VociImpostazioni.lega(squadre: squadre(8, mia: 2), squadreAltrui: true)
         #expect(voci.map(\.id) == ["rose", "squadra", "regole", "squadre"])
-        #expect(voci.map(\.pagina) == [.importa, .rosa("Squadra 3"), .regole, .squadre])
+        let pagine: [PaginaImpostazioni?] = [.importa, .rosa("Squadra 3"), .regole, .squadre]
+        #expect(voci.map(\.pagina) == pagine)
     }
 
     @Test("Nomi e righe sotto vengono dal catalogo")
@@ -91,7 +92,8 @@ struct ImpostazioniComeLaWebTests {
         #expect(voci.map(\.sotto) == [Catalogo.Imp.informazioniSub, "\(Catalogo.Shell.aggiorna) · \(Catalogo.Av.stato)"])
         let sottoGestione = try #require(voci.last?.sotto)
         #expect(!sottoGestione.contains("Inviti"))
-        #expect(voci.map(\.pagina) == [.informazioni, .gestione])
+        let pagine: [PaginaImpostazioni?] = [.informazioni, .gestione]
+        #expect(voci.map(\.pagina) == pagine)
     }
 
     @Test("Le ore tranquille dicono la fascia scelta, con le ore del server")

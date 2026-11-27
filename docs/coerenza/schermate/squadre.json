@@ -10,6 +10,15 @@
       "stato": "fatto"
     },
     {
+      "id": 132,
+      "schermata": "La mia squadra: «Rimuovi» per stemma e maglia (27/11/2026)",
+      "web": "nel foglio «Stemma e maglia», sotto ogni immagine che c'è, «Rimuovi» (`lega.rimuovi`): `DELETE /api/squadre/immagine`, poi l'avviso «Stemma rimosso» o «Maglia rimossa» (`lega.stemma_rimosso`, `lega.maglia_rimossa`), o la frase del server; nessuna domanda prima",
+      "iphone": "prima: non c'era. Ora nella rosa, sotto lo stemma o la maglia che c'è, «Rimuovi» (VoiceOver: «Rimuovi stemma»), poi sotto le immagini la stessa frase o quella del server, e al posto dell'immagine compare l'iniziale della squadra in un cerchio verde (`RosaViewModel.rimuoviImmagine`, `Immagini.rimuovi`, `ParoleSquadre`); come la web, nessuna domanda prima",
+      "forma": "web",
+      "chi": "**fatto** (27/11/2026): prova `LaMiaLegaComeLaWebTests`; foto `lega-rosa`",
+      "stato": "fatto"
+    },
+    {
       "id": 145,
       "schermata": "Rosa: giocatore uscito dal listone",
       "web": "la riga si tocca e dice «Questo giocatore non è più nel listone di Serie A.» in un avviso breve (`err.fuori_listone`, `data-fuori-listone` in `vistaRosa` di `app.js`), senza chiedere la scheda. Chi è fuori lo dice il server (`fuori_listone` di `/api/rosa`); con un server di prima, la quotazione vuota. Prima il tocco apriva la scheda, che diceva «calciatore 1234 non nel listone», il testo interno del server",

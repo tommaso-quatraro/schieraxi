@@ -80,3 +80,9 @@ sd.pochi_dati
 
 # Ultimi aggiornamenti: un passo mai riuscito (NomiDati.quando)
 sd.mai
+
+# Quanto ci azzecca il modello: la riga di ogni gruppo e la frase sulla correzione, come la web (ParoleRegistro.gruppo)
+sd.n_giocatori
+sd.hanno_giocato
+sd.correzione
+sd.corregge

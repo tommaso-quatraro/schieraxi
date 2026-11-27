@@ -317,5 +317,10 @@
   "lega.per_usarlo_apri": {
     "it": "Per usarlo: apri il file Excel scaricato da Leghe, tocca Condividi, scegli «Importa in SchieraXI».",
     "en": "To use it: open the Excel file downloaded from Leghe, tap Share, choose “Import into SchieraXI”."
+  },
+  "lega.apri_file_con": {
+    "it": "Puoi anche aprire il file con SchieraXI da File, Mail o dal menu Condividi.",
+    "en": "You can also open the file with SchieraXI from Files, Mail or the Share menu.",
+    "nota": "solo iPhone: sotto «Scegli il file» in Aggiorna le rose"
   }
 }

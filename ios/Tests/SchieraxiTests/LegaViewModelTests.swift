@@ -457,7 +457,7 @@ final class LegaViewModelTests: XCTestCase {
         await vm.carica()
         for m in vm.moduliAttivi { vm.alternaModulo(m) }
         await vm.salva()
-        XCTAssertEqual(vm.esito, "Scegli almeno un modulo.")
+        XCTAssertEqual(vm.esito, Catalogo.Regole.scegliAlmenoModulo, "la frase della web")
         XCTAssertEqual(s.quante("PUT"), 0, "non parte nessuna richiesta se il controllo fallisce")
     }
 

@@ -83,9 +83,6 @@ regole.campo_vuoto
 regole.fuori_limiti
 regole.intero
 
-# Novità: l'etichetta delle versioni non ancora viste
-regole.nuovo
-
 # Partite rinviate: la sezione delle regole (TestiRinvio in Domain/PartiteRinviate.swift)
 regole.rinviate
 regole.rinviate_aiuto_formazione
@@ -95,3 +92,16 @@ regole.rv_ufficio
 regole.rv_aiuto_aspetta
 regole.rv_aiuto_senza_voto
 regole.rv_aiuto_voto_ufficio
+
+# Salvataggio (RegoleLogica.preparaPerSalvataggio): le frasi della web quando non si può salvare, e il nome della lega vuoto
+regole.scegli_almeno_modulo
+regole.due_fasce_hanno
+# Modificatore difesa: la frase sotto il numero minimo di difensori, come la web (tre pezzi)
+regole.media_somma
+regole.portiere_migliori_difensori
+regole.divisa_per_per
+# Solo iPhone: la domanda sulle modifiche non salvate e la barra in basso (RegoleEditorView)
+regole.uscita_titolo
+regole.esci_senza_salvare
+regole.continua_modificare
+regole.modifiche_non_salvate

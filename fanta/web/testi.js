@@ -220,6 +220,8 @@ const TESTI = {
     "ar.cambiate": "Nel frattempo le rose sono cambiate, forse da un altro dispositivo: le ho rilette. Ricontrolla e conferma di nuovo.",
     "ar.salvate": "Rose salvate",
     "ar.cerca_incompleta": "Per «{nome}» non hai ancora scelto il giocatore: tocca uno dei risultati oppure cambia la scelta nel menu.",
+    "ar.c_e_scritto": "Nella rosa di {squadra} c'è scritto «{nome}».",
+    "ar.giocatore_giusto": "Giocatore giusto",
 
     "asp.lingua": "Lingua",
     "asp.tema": "Tema",
@@ -1430,6 +1432,7 @@ const TESTI = {
     "lega.sc5": "<b>Corpo della richiesta</b> = <b>Modulo</b>; aggiungi un campo di tipo <b>File</b>, nome <code>file</code>, valore <b>Input del comando</b>.",
     "lega.sc6": "Aggiungi <b>Ottieni valore del dizionario</b> per la chiave <code>riepilogo</code> dai contenuti dell'URL, poi <b>Mostra notifica</b> (o <b>Mostra risultato</b>) con quel valore.",
     "lega.per_usarlo_apri": "Per usarlo: apri il file Excel scaricato da Leghe, tocca Condividi, scegli «Importa in SchieraXI».",
+    "lega.apri_file_con": "Puoi anche aprire il file con SchieraXI da File, Mail o dal menu Condividi.",
 
     "legale.privacy": "Privacy",
     "legale.termini": "Termini d'uso",
@@ -1714,7 +1717,6 @@ const TESTI = {
     "regole.moduli_ammessi": "Moduli ammessi",
     "regole.nome_della_lega": "Nome della lega",
     "regole.non_riconosciuto_nessuna": "Non ho riconosciuto nessuna regola in questo testo. Controlla di aver copiato la pagina del regolamento, oppure imposta i valori a mano qui sotto.",
-    "regole.nuovo": "Nuovo",
     "regole.panchina_sostituzioni": "Panchina e sostituzioni",
     "regole.portiere_migliori_difensori": "portiere + i 3 migliori difensori",
     "regole.prova": "Prova",
@@ -1799,6 +1801,10 @@ const TESTI = {
     "regole.fuori_limiti": "«{campo}» deve essere tra {min} e {max}",
     "regole.intero": "«{campo}» deve essere un numero intero",
     "regole.non_numero": "«{campo}» non è un numero: correggilo prima di salvare",
+    "regole.uscita_titolo": "Le modifiche alle regole non sono salvate",
+    "regole.esci_senza_salvare": "Esci senza salvare",
+    "regole.continua_modificare": "Continua a modificare",
+    "regole.modifiche_non_salvate": "Modifiche non salvate",
 
     "ruolo.P_pl": "Portieri",
     "ruolo.D_pl": "Difensori",
@@ -2269,6 +2275,8 @@ const TESTI = {
     "ar.cambiate": "Meanwhile the rosters changed, maybe from another device: I read them again. Check and confirm once more.",
     "ar.salvate": "Rosters saved",
     "ar.cerca_incompleta": "For “{nome}” you have not picked the player yet: tap one of the results or change the choice in the menu.",
+    "ar.c_e_scritto": "The {squadra} roster lists “{nome}”.",
+    "ar.giocatore_giusto": "Right player",
 
     "asp.lingua": "Language",
     "asp.tema": "Theme",
@@ -3479,6 +3487,7 @@ const TESTI = {
     "lega.sc5": "<b>Request Body</b> = <b>Form</b>; add a field of type <b>File</b>, name <code>file</code>, value <b>Shortcut Input</b>.",
     "lega.sc6": "Add <b>Get Dictionary Value</b> for the key <code>riepilogo</code> from the contents of the URL, then <b>Show Notification</b> (or <b>Show Result</b>) with that value.",
     "lega.per_usarlo_apri": "To use it: open the Excel file downloaded from Leghe, tap Share, choose “Import into SchieraXI”.",
+    "lega.apri_file_con": "You can also open the file with SchieraXI from Files, Mail or the Share menu.",
 
     "legale.privacy": "Privacy",
     "legale.termini": "Terms of use",
@@ -3763,7 +3772,6 @@ const TESTI = {
     "regole.moduli_ammessi": "Allowed formations",
     "regole.nome_della_lega": "League name",
     "regole.non_riconosciuto_nessuna": "I did not recognise any rule in this text. Check that you copied the rules page, or set the values by hand below.",
-    "regole.nuovo": "New",
     "regole.panchina_sostituzioni": "Bench and substitutions",
     "regole.portiere_migliori_difensori": "goalkeeper + the 3 best defenders",
     "regole.prova": "Try it",
@@ -3848,6 +3856,10 @@ const TESTI = {
     "regole.fuori_limiti": "“{campo}” must be between {min} and {max}",
     "regole.intero": "“{campo}” must be a whole number",
     "regole.non_numero": "“{campo}” is not a number: fix it before saving",
+    "regole.uscita_titolo": "Your changes to the rules are not saved",
+    "regole.esci_senza_salvare": "Leave without saving",
+    "regole.continua_modificare": "Keep editing",
+    "regole.modifiche_non_salvate": "Unsaved changes",
 
     "ruolo.P_pl": "Goalkeepers",
     "ruolo.D_pl": "Defenders",
