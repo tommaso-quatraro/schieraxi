@@ -48,6 +48,7 @@ TOLLERANZA_PUNTI = 0.051                                  # i punti attesi sono 
 TOLLERANZA_ORE = 0.25                                     # ore_mancanti è calcolato in un altro istante (e arrotondato)
 MAX_BYTE_WIDGET = 20 * 1024                               # docs/API.md: il widget resta sotto i 20 kB
 CONFERME = 2                                              # giri di fila con la stessa rottura prima di avvisare
+A_ROTAZIONE = 3                                           # giro leggero (ora prima della scadenza): utenti in più, i meno recenti
 RICORDA_RISOLTE = timedelta(hours=24)                     # una rottura già avvisata non si riavvisa prima che sia a posto da tanto
 TIENI_GIRI = timedelta(days=60)                           # storia dei giri nel file di stato (la legge la «giornata senza errori»)
 MAX_RIGHE_AVVISO = 6
@@ -747,8 +748,8 @@ def _controlla_un_utente(etichetta: str, ctx, db: sqlite3.Connection, r_regole, 
 def esegui(db: sqlite3.Connection, adesso: datetime | None = None, minuti: float = 15, stato: dict | None = None,
            contesti: list | None = None, solo: set[str] | None = None) -> dict:
     """Un giro completo: {rotture, controllati, rimandati, secondi, stagione}. Non scrive niente (per salvare: `registra`).
-    `solo` (giro leggero): si controllano solo questi utenti (le etichette, «utente N»), gli altri passano al giro dopo come quelli
-    rimasti fuori per il tempo; i controlli comuni si fanno sempre."""
+    `solo` (giro leggero): si controllano solo questi utenti (le etichette, «utente N») e, a rotazione, i A_ROTAZIONE controllati
+    meno di recente; gli altri passano al giro dopo come quelli rimasti fuori per il tempo. I controlli comuni si fanno sempre."""
     from . import consigli, lega, regole as mod_regole, server
     inizio = time.monotonic()
     adesso = adesso or datetime.now()
@@ -765,6 +766,9 @@ def esegui(db: sqlite3.Connection, adesso: datetime | None = None, minuti: float
     contesti = sorted(contesti, key=lambda c: ultimi.get(c[0], ""))          # prima chi è stato controllato meno di recente
     controllati: list[str] = []
     live_corpo = None
+    if solo is not None:                       # giro leggero: più i primi A_ROTAZIONE della fila (controllati meno di recente)
+        a_rotazione = [c[0] for c in contesti if c[0] not in solo][:A_ROTAZIONE]
+        solo = set(solo) | set(a_rotazione)
     for etichetta, ctx in (contesti if solo is None else [c for c in contesti if c[0] in solo]):
         if controllati and time.monotonic() - inizio > 60 * minuti:
             break
@@ -1007,9 +1011,10 @@ def giro(minuti: float = 15, manda: Callable[[str, str], bool] | None = manda_nt
     consumano gli avvisi e non entrano nella storia (non coprono il buco di un cron fermo).
     Nell'ora prima della scadenza della formazione di una lega attiva (`leghe`, di base `libero.leghe_attive`) il giro del cron è
     leggero: lì il servizio rifà probabili, consigliate e promemoria per tutti, e rifare a freddo Oggi, Formazione e widget di ogni
-    utente in questo processo gli toglierebbe il processore. Si ricontrolla solo chi ha una rottura aperta (`utenti_con_rotture`:
-    la conferma e l'avviso arrivano come sempre), più i controlli comuni; gli altri passano al giro dopo. Il giro entra nella
-    storia come gli altri. A mano il giro è sempre completo."""
+    utente in questo processo gli toglierebbe il processore. Si ricontrolla chi ha una rottura aperta (`utenti_con_rotture`: la
+    conferma e l'avviso arrivano come sempre) e, a rotazione, i A_ROTAZIONE utenti controllati meno di recente (una rottura nuova
+    si vede lo stesso), più i controlli comuni; gli altri passano al giro dopo. Il giro entra nella storia come gli altri. A mano
+    il giro è sempre completo."""
     from . import archivio
     adesso = adesso or datetime.now()
     file_stato = file_stato or FILE_STATO

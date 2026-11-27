@@ -7,7 +7,7 @@ Archivio con il calendario inventato di test_sentinella (giornata 10: prima part
 import copy
 import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -71,17 +71,40 @@ def test_a_mano_il_giro_e_sempre_completo(tmp_path, monkeypatch):
     assert solo is None and not any("giro leggero" in r for r in righe)
 
 
-def test_giro_leggero_controlla_solo_gli_utenti_indicati_e_rimanda_gli_altri(db, tmp_path, monkeypatch):  # noqa: F811
+def test_giro_leggero_chi_ha_una_rottura_aperta_e_tre_a_rotazione(db, tmp_path, monkeypatch):  # noqa: F811
+    """Oltre a chi ha una rottura aperta, i 3 controllati meno di recente: una rottura nuova di un altro utente si vede lo stesso
+    entro pochi giri, anche quando più giri di fila sono leggeri. Gli altri passano al giro dopo."""
     m = _mondo()
-    ctx = {u: _contesto(tmp_path, u.replace(" ", "")) for u in ("utente 1", "utente 2", "utente 3")}
+    nomi = [f"utente {i}" for i in range(1, 7)]
+    ctx = {u: _contesto(tmp_path, u.replace(" ", "")) for u in nomi}
+    chi = {str(c.rose): u for u, c in ctx.items()}
     visti = []
 
     def risposte(c, db):
-        visti.append(c.rose)
+        visti.append(chi[str(c.rose)])
         return copy.deepcopy(({k: v for k, v in m.items()}, {}, None))
     monkeypatch.setattr(sentinella, "risposte_utente", risposte)
     monkeypatch.setattr(sentinella, "_prepara_live", lambda: None)
-    esito = sentinella.esegui(db, PRIMA, contesti=list(ctx.items()), solo={"utente 2"})
-    assert esito["controllati"] == ["utente 2"] and esito["rimandati"] == 2 and visti == [ctx["utente 2"].rose]
-    esito = sentinella.esegui(db, PRIMA, contesti=list(ctx.items()), solo=set())       # nessuna rottura aperta: solo i comuni
-    assert esito["controllati"] == [] and esito["rimandati"] == 3 and len(visti) == 1
+    # controllati l'ultima volta: il 2 per primo, poi il 4, il 1, il 5 (ha una rottura aperta), il 6, il 3
+    ultimi = {"utente 2": "2026-10-30T08:00:00", "utente 4": "2026-10-30T09:00:00", "utente 1": "2026-10-30T10:00:00",
+              "utente 5": "2026-10-30T10:30:00", "utente 6": "2026-10-30T11:00:00", "utente 3": "2026-10-30T11:30:00"}
+    esito = sentinella.esegui(db, PRIMA, contesti=list(ctx.items()), stato={"utenti": ultimi}, solo={"utente 5"})
+    assert esito["controllati"] == ["utente 2", "utente 4", "utente 1", "utente 5"] and esito["rimandati"] == 2
+    assert visti == esito["controllati"]
+    # nessuna rottura aperta: i 3 a rotazione e i controlli comuni
+    esito = sentinella.esegui(db, PRIMA, contesti=list(ctx.items()), stato={"utenti": ultimi}, solo=set())
+    assert esito["controllati"] == ["utente 2", "utente 4", "utente 1"] and esito["rimandati"] == 3
+
+
+def test_due_giri_leggeri_di_fila_controllano_utenti_diversi(db, tmp_path, monkeypatch):  # noqa: F811
+    """Due leghe con scadenze in ore vicine: due giri leggeri di fila. Il secondo comincia da chi il primo non ha controllato."""
+    m = _mondo()
+    ctx = {u: _contesto(tmp_path, u.replace(" ", "")) for u in [f"utente {i}" for i in range(1, 7)]}
+    monkeypatch.setattr(sentinella, "risposte_utente", lambda c, db: copy.deepcopy(({k: v for k, v in m.items()}, {}, None)))
+    monkeypatch.setattr(sentinella, "_prepara_live", lambda: None)
+    stato: dict = {}
+    primo = sentinella.esegui(db, PRIMA, contesti=list(ctx.items()), stato=stato, solo=set())
+    stato, _ = sentinella.aggiorna_stato(stato, primo, PRIMA)
+    secondo = sentinella.esegui(db, PRIMA + timedelta(hours=1), contesti=list(ctx.items()), stato=stato, solo=set())
+    assert len(primo["controllati"]) == len(secondo["controllati"]) == 3
+    assert set(primo["controllati"]) | set(secondo["controllati"]) == set(ctx)        # in due giri leggeri, tutti
