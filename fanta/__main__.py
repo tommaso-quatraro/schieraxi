@@ -362,14 +362,15 @@ def cmd_foto(a) -> None:
         db.close()
 
 
-def _avvisi_per_utente(funzione: str) -> None:
+def _avvisi_per_utente(funzione: str, max_secondi: float | None = None) -> None:
     """Con gli account: gli avvisi di ogni utente attivo, con i suoi file (vedi avvisi_utenti.py). Nel log solo numeri: quello
-    dell'utente (mai il nome, come nelle righe del registro) e quanti avvisi; degli errori il solo tipo."""
+    dell'utente (mai il nome, come nelle righe del registro) e quanti avvisi; degli errori il solo tipo. `max_secondi`: il tempo
+    del giro, se non è quello di base (`avvisi_utenti.secondi_del_giro`)."""
     import contextlib
     from . import account, archivio, avvisi_utenti
     db = archivio.apri()
     try:
-        esiti, errori = avvisi_utenti.esegui(funzione, db)
+        esiti, errori = avvisi_utenti.esegui(funzione, db, max_secondi=max_secondi)
     finally:
         db.close()
     with contextlib.closing(account.apri()) as db_account:
@@ -412,12 +413,17 @@ def cmd_cambi(a) -> None:
 def cmd_promemoria(a) -> None:
     from . import account
     if account.multiutente():                     # con gli account il giro lo fa il servizio: il cron solo se il servizio non lo fa
+        import time
         from . import avvisi_utenti
-        fare, riga = avvisi_utenti.promemoria_dal_cron()
+        partenza = time.monotonic()
+        fare, riga = avvisi_utenti.promemoria_dal_cron()      # può aspettare la fine del giro del servizio (al massimo un minuto e mezzo)
         if not fare:
             return
         if riga:
             print(riga)
+        # promemoria.sh ferma il comando dopo un tempo massimo contato da quando parte: il tempo dell'attesa esce da quello del giro
+        aspettato = time.monotonic() - partenza
+        return _avvisi_per_utente("promemoria", avvisi_utenti.secondi_del_giro("promemoria") - aspettato)
     _avvisi_telefono("promemoria")
 
 
