@@ -20,8 +20,10 @@ struct SchedaNumeriDelServerTests {
         let r = try rendimento(#"{"sovra_rendimento": 0.5, "gol_meno_xg": 1.2, "assist_meno_xa": 0.1, "tendenza": "sblocca", "testo": "Crea più di quanto segna: è probabile che si sblocchi."}"#)
         #expect(LetturaScheda.tendenza(r) == .sblocca)
         #expect(LetturaScheda.fraseRendimento(r) == "Crea più di quanto segna: è probabile che si sblocchi.")
-        #expect(LetturaScheda.tendenza(try rendimento(#"{"sovra_rendimento": -0.5, "tendenza": "cala"}"#)) == .cala)
-        #expect(LetturaScheda.tendenza(try rendimento(#"{"sovra_rendimento": 0.9, "tendenza": "in_linea"}"#)) == .inLinea)
+        let cala = try rendimento(#"{"sovra_rendimento": -0.5, "tendenza": "cala"}"#)
+        #expect(LetturaScheda.tendenza(cala) == .cala)
+        let inLinea = try rendimento(#"{"sovra_rendimento": 0.9, "tendenza": "in_linea"}"#)
+        #expect(LetturaScheda.tendenza(inLinea) == .inLinea)
     }
 
     @Test("Un server di prima, senza codice né frase: la soglia 0,3 sul numero e la frase del catalogo")
@@ -32,11 +34,14 @@ struct SchedaNumeriDelServerTests {
         let sblocca = try rendimento(#"{"sovra_rendimento": -0.31}"#)
         #expect(LetturaScheda.tendenza(sblocca) == .sblocca)
         #expect(LetturaScheda.fraseRendimento(sblocca) == Catalogo.Mercato.rendSblocca)
-        #expect(LetturaScheda.tendenza(try rendimento(#"{"sovra_rendimento": 0.3}"#)) == .inLinea)
-        #expect(LetturaScheda.fraseRendimento(try rendimento(#"{"sovra_rendimento": -0.3}"#)) == Catalogo.Mercato.rendLinea)
-        #expect(LetturaScheda.tendenza(try rendimento(#"{"sovra_rendimento": 0.5, "tendenza": "boh"}"#)) == .cala,
-                "un codice che non conosciamo vale come un server di prima")
-        #expect(LetturaScheda.tendenza(try rendimento("{}")) == nil, "senza numero né codice niente blocco")
+        let soglia = try rendimento(#"{"sovra_rendimento": 0.3}"#)
+        #expect(LetturaScheda.tendenza(soglia) == .inLinea)
+        let sogliaSotto = try rendimento(#"{"sovra_rendimento": -0.3}"#)
+        #expect(LetturaScheda.fraseRendimento(sogliaSotto) == Catalogo.Mercato.rendLinea)
+        let sconosciuto = try rendimento(#"{"sovra_rendimento": 0.5, "tendenza": "boh"}"#)
+        #expect(LetturaScheda.tendenza(sconosciuto) == .cala, "un codice che non conosciamo vale come un server di prima")
+        let vuoto = try rendimento("{}")
+        #expect(LetturaScheda.tendenza(vuoto) == nil, "senza numero né codice niente blocco")
     }
 
     @Test("I gol con i rigori sono il numero del server; senza il campo, la somma di gol e rigori segnati")
@@ -49,9 +54,12 @@ struct SchedaNumeriDelServerTests {
 
     @Test("Nella Rosa chi non ha la quotazione è uscito dal listone: il tocco dice la frase del catalogo, non apre la scheda")
     func fuoriListone() throws {
-        #expect(RigaRosa.fuoriListone(try rosa(#"{"id": 7, "nome": "Paolo Esempio", "ruolo": "C", "quotazione": null}"#)))
-        #expect(!RigaRosa.fuoriListone(try rosa(#"{"id": 8, "nome": "Mauro Retalli", "ruolo": "A", "quotazione": 14}"#)))
-        #expect(!RigaRosa.fuoriListone(try rosa(#"{"nome": "Sconosciuto", "ruolo": "A"}"#)), "senza codice la riga resta spenta, come prima")
+        let fuori = try rosa(#"{"id": 7, "nome": "Paolo Esempio", "ruolo": "C", "quotazione": null}"#)
+        let dentro = try rosa(#"{"id": 8, "nome": "Mauro Retalli", "ruolo": "A", "quotazione": 14}"#)
+        let senzaCodice = try rosa(#"{"nome": "Sconosciuto", "ruolo": "A"}"#)
+        #expect(RigaRosa.fuoriListone(fuori))
+        #expect(RigaRosa.fuoriListone(dentro) == false)
+        #expect(RigaRosa.fuoriListone(senzaCodice) == false, "senza codice la riga resta spenta, come prima")
         #expect(Catalogo.Err.fuoriListone == "Questo giocatore non è più nel listone di Serie A.", "la frase del 404 del server")
     }
 }
