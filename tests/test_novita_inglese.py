@@ -2,19 +2,21 @@
 
 «» sono le virgolette italiane: in inglese si scrive “ ”. La giornata è «matchday», mai «round»; la formazione è «lineup», mai
 «line-up». Il controllo vale per le voci in attesa di rilascio (`fanta/novita.d/`, lette tutte senza nome) e per quello che legge
-chi usa l'app in inglese oggi: `fanta/novita.json` con le correzioni di `fanta/contenuti/novita.en.json`."""
+chi usa l'app in inglese oggi: `fanta/novita.json` con le correzioni di `fanta/contenuti/novita.en.json`. Le espressioni sono quelle
+del catalogo (`parole_inglesi.py`): solo il senso sbagliato, «year-round» va bene."""
 import json
-import re
 from pathlib import Path
+
+import parole_inglesi
 
 from fanta import server
 
 RADICE = Path(__file__).resolve().parent.parent
-VIETATE = re.compile(r"[«»]|\brounds?\b|\bline-ups?\b", re.I)
+VIETATE = (parole_inglesi.VIRGOLETTE, parole_inglesi.ROUND, parole_inglesi.LINE_UP)
 
 
 def _vietate(testi) -> list[str]:
-    return [t for t in testi if isinstance(t, str) and VIETATE.search(t)]
+    return [t for t in testi if isinstance(t, str) and any(r.search(t) for r in VIETATE)]
 
 
 def test_voci_in_attesa_in_inglese_senza_virgolette_italiane_ne_parole_sbagliate():

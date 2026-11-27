@@ -8,6 +8,7 @@ import subprocess
 from pathlib import Path
 
 import codice_web
+import parole_inglesi
 import pytest
 
 TESTI_JS = codice_web.leggi("testi.js")
@@ -64,11 +65,12 @@ def test_i_nomi_di_stato_dei_dati_si_traducono():
 
 # parole che in inglese non si usano più (#949): il voto è «grade», la giornata «matchday», le probabili «probable lineups». Dal
 # collaudo del 27/11/2026: «senza voto» = «no grade», la formazione «closes» (non «locks»), la rosa è «roster» («expected squad»
-# resta: sono i convocati), il calendario «calendar», le previsioni «forecasts»
-PAROLE_VIETATE = [(r"[«»]", "virgolette «» (in inglese “”)"), (r"\bratings?\b|\bvotes?\b", "voto = grade"),
-                  (r"\brounds?\b", "giornata = matchday"), (r"predicted line-?ups?", "probable lineups"), (r"\bDiaries\b", "Diaries"),
-                  (r"recogniz", "recognise"), (r"\bmaluse?s?\b", "malus = deduction"), (r"\bline-ups?\b", "lineup"),
-                  (r"\bno score\b", "senza voto = no grade"), (r"\block(s|ed)?\b", "si chiude = closes"),
+# resta: sono i convocati), il calendario «calendar», le previsioni «forecasts». «», «round», «line-up» e «lock» solo nel senso
+# sbagliato, con le espressioni comuni alle novità (`parole_inglesi.py`: niente allarmi per «year-round» o «Lock Screen»)
+PAROLE_VIETATE = [(parole_inglesi.VIRGOLETTE, "virgolette «» (in inglese “”)"), (r"\bratings?\b|\bvotes?\b", "voto = grade"),
+                  (parole_inglesi.ROUND, "giornata = matchday"), (r"predicted line-?ups?", "probable lineups"), (r"\bDiaries\b", "Diaries"),
+                  (r"recogniz", "recognise"), (r"\bmaluse?s?\b", "malus = deduction"), (parole_inglesi.LINE_UP, "lineup"),
+                  (r"\bno score\b", "senza voto = no grade"), (parole_inglesi.LOCK, "la formazione si chiude = closes"),
                   (r"(?<!expected )\bsquads?\b", "rosa = roster"), (r"\bfixtures?\b|fixture list", "calendario = calendar"),
                   (r"\bpredictions?\b", "previsione = forecast")]
 
@@ -77,5 +79,6 @@ def test_nel_catalogo_inglese_le_stesse_parole_dappertutto():
     storte = []
     for percorso in sorted(CATALOGO.glob("*.json")):
         for chiave, voce in json.loads(percorso.read_text(encoding="utf-8")).items():
-            storte += [f"{chiave}: {motivo}" for schema, motivo in PAROLE_VIETATE if re.search(schema, voce["en"], re.I)]
+            storte += [f"{chiave}: {motivo}" for schema, motivo in PAROLE_VIETATE
+                       if (schema if isinstance(schema, re.Pattern) else re.compile(schema, re.I)).search(voce["en"])]
     assert not storte, storte
