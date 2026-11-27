@@ -37,6 +37,10 @@ struct GraficoVoti: View {
     /// La giornata toccata (o trascinata) con il dito: compare una linea con i numeri di quella giornata.
     @State private var scelta: Int?
     @Environment(\.accessibilityReduceMotion) private var ridotto
+    /// Il margine tra il bordo del grafico e i punti che ci arrivano vicino (la prima e l'ultima giornata, il valore più alto,
+    /// la «sv» in basso): senza, il punto sul bordo veniva tagliato a metà (#969). La web lo fa con 18 unità su 320 di larghezza.
+    /// Cresce con il testo come la «sv» e le etichette degli assi, così con il testo grande il punto resta intero.
+    @ScaledMetric(relativeTo: .caption2) private var margine: CGFloat = 10
 
     private var votoScelto: VotoGiornata? {
         guard let scelta else { return nil }
@@ -142,8 +146,9 @@ struct GraficoVoti: View {
                 }
             }
             .chartForegroundStyleScale(["Fantavoto": Color.verde, "Voto": Color.blue])
-            .chartYScale(domain: dominio)
-            .chartXScale(domain: dominioGiornate)
+            // I numeri e le giornate dell'asse restano quelli di prima: cambia solo lo spazio vuoto tra i bordi e i punti.
+            .chartYScale(domain: dominio, range: .plotDimension(padding: margine))
+            .chartXScale(domain: dominioGiornate, range: .plotDimension(padding: margine))
             .chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) }
             .chartXSelection(value: $scelta)
             .sensoryFeedback(.selection, trigger: scelta)
