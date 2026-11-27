@@ -20,12 +20,14 @@ enum ParoleAffidabilita {
         testo.replacingOccurrences(of: "&nbsp;", with: " ").trimmingCharacters(in: .whitespaces)
     }
 
-    /// «dalla 5ª alla 12ª giornata di Serie A» (`avv.giornate_da_a`): dalla prima all'ultima giornata del grafico, con l'apostrofo
-    /// davanti all'8ª e all'11ª come la web (`elidiOrdinali`). Nil senza giornate.
+    /// «dalla 5ª alla 12ª giornata di Serie A» (`avv.giornate_da_a`), come la web: la giornata della prima e dell'ultima riga
+    /// nell'ordine del server, solo quelle con i punti del modello, con l'apostrofo davanti all'8ª e all'11ª (`elidiOrdinali`).
+    /// Non la più bassa e la più alta: a inizio stagione, con le ultime giornate della stagione prima, diceva «dalla 1ª alla 38ª»
+    /// (revisione della #974). Nil senza righe con i punti del modello.
     static func giornate(_ righe: [RigaAffidabilita]) -> String? {
-        let numeri = righe.map(\.giornata)
-        guard let prima = numeri.min(), let ultima = numeri.max() else { return nil }
-        return TempiLega.elidiOrdinali(Catalogo.Avv.giornateDaA(a: String(prima), b: String(ultima)))
+        let conPunti = righe.filter { $0.puntiModello != nil }
+        guard let prima = conPunti.first, let ultima = conPunti.last else { return nil }
+        return TempiLega.elidiOrdinali(Catalogo.Avv.giornateDaA(a: String(prima.giornata), b: String(ultima.giornata)))
     }
 
     /// Una giornata nell'elenco dei numeri e per VoiceOver, con i nomi della legenda: «5ª giornata di Serie A: modello 70,1,

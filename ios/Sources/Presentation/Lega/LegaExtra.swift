@@ -190,7 +190,7 @@ final class RosaViewModel: ViewModelBase {
 
     /// «Rimuovi» sotto lo stemma («stemma») o la maglia («maglia»), come il foglio della web: `DELETE /api/squadre/immagine`, poi
     /// «Stemma rimosso» o «Maglia rimossa»; se non riesce, la frase del server. Gli elenchi si rileggono (`Immagini.rimuovi`), e
-    /// al posto dell'immagine torna la maglietta con i colori della squadra.
+    /// al posto dell'immagine compare l'iniziale della squadra in un cerchio verde (`StemmaSquadra`).
     func rimuoviImmagine(tipo: String) async {
         guard !inCorso else { return }
         inCorso = true

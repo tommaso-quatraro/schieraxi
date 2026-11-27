@@ -163,7 +163,7 @@ final class Immagini: ObservableObject {
     }
 
     /// Toglie lo stemma o la maglia (`DELETE /api/squadre/immagine`, come «Rimuovi» della web) e rilegge gli elenchi: le viste
-    /// tornano alla maglietta con i colori della squadra. La copia su disco e quelle in memoria non valgono più.
+    /// mostrano l'iniziale della squadra in un cerchio verde (`StemmaSquadra`). La copia su disco e quelle in memoria non valgono più.
     func rimuovi(squadra: String, tipo: String) async throws {
         let percorso = Self.percorsoSquadra(squadra, tipo: tipo)
         try await attivo.invia("DELETE", percorso)

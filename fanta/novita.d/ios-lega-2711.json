@@ -7,9 +7,9 @@
   ],
   "titolo_en": "iPhone: My league like the web",
   "voci_en": [
-    "iPhone, My league: under your team's crest and shirt there is «Remove»; without a connection «My team» stays, greyed out, instead of disappearing.",
-    "iPhone, Rules and deadline: «Remove band» only reacts to its own tap, − and + go to the nearest value and the league name is saved without extra spaces.",
-    "iPhone: What's new with the last 10 versions and no «New» label; Data status with the correction of each group and the words of the web."
+    "iPhone, My league: under your team's crest and shirt there is “Remove”; without a connection “My team” stays, greyed out, instead of disappearing.",
+    "iPhone, Rules and deadline: “Remove band” only reacts to its own tap, − and + go to the nearest value and the league name is saved without extra spaces.",
+    "iPhone: What's new with the last 10 versions and no “New” label; Data status with the correction of each group and the words of the web."
   ],
   "tecnico": [
     "iPhone: RosaViewModel.rimuoviImmagine e Immagini.rimuovi (DELETE /api/squadre/immagine, poi lega.stemma_rimosso o lega.maglia_rimossa); LegaViewModel.squadreNonArrivate e VoceImpostazioni senza pagina (riga spenta con imp.mia_squadra_senza_rete).",
