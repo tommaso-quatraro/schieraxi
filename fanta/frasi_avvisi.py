@@ -8,7 +8,7 @@ from __future__ import annotations
 
 NOTIFICHE: dict[str, tuple[str, str]] = {
     # ---- il numero della giornata (frasi.nome_giornata con avviso=True): lo stesso testo di «giornata.*» di frasi.CATALOGO
-    "n.giornata.lega": ("Giornata {n} · {a}ª di Serie A", "Matchday {n} · Serie A {a}"),
+    "n.giornata.lega": ("Giornata {n} · {a}ª di Serie A", "Matchday {n} · Serie A matchday {a}"),
     "n.giornata.serie_a": ("{a}ª giornata di Serie A", "Serie A matchday {a}"),
     # ---- cambi nelle probabili (notifiche.confronta: dice se lo stato di un giocatore è cambiato)
     "n.ora_infortunato": ("{nome}: ora infortunato", "{nome}: now injured"),

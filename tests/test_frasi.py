@@ -360,7 +360,7 @@ def test_una_frase_nella_lingua_dell_utente():
                       F("n.consigliato", modulo="3-4-3", punti=71.34)], sep=" ")
     assert f.in_lingua("it") == str(f) == ("Giornata 6 · 9ª di Serie A: la formazione si chiude tra circa un'ora (scadenza alle 18:30). "
                                           "Consigliato: 3-4-3, 71,3 punti attesi.")
-    assert f.in_lingua("en") == ("Matchday 6 · Serie A 9: the lineup closes in about an hour (deadline at 18:30). "
+    assert f.in_lingua("en") == ("Matchday 6 · Serie A matchday 9: the lineup closes in about an hour (deadline at 18:30). "
                                  "Recommended: 3-4-3, 71.3 expected points.")
     righe = frasi.elenco([F("n.ora_dubbio", nome="Rossi"), F("n.ora_infortunato", nome="Bianchi")], sep="\n")
     assert righe.in_lingua("en") == "Rossi: now in doubt\nBianchi: now injured" and str(righe) == "Rossi: ora in dubbio\nBianchi: ora infortunato"
