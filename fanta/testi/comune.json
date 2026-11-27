@@ -101,19 +101,15 @@
     "it": "{n} secondi",
     "en": "{n} seconds"
   },
-  "comune.attesa_minuti.one": {
-    "it": "{n} minuto",
-    "en": "{n} minute"
-  },
-  "comune.attesa_minuti.other": {
+  "comune.attesa_minuti": {
     "it": "{n} minuti",
     "en": "{n} minutes"
   },
-  "comune.attesa_ore.one": {
+  "comune.attesa_ora": {
     "it": "circa {n} ora",
     "en": "about {n} hour"
   },
-  "comune.attesa_ore.other": {
+  "comune.attesa_ore": {
     "it": "circa {n} ore",
     "en": "about {n} hours"
   }

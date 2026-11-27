@@ -3,11 +3,15 @@ import SwiftUI
 /// Formazione, riquadro «Partita rinviata» (campo `rinvio` di `GET /api/oggi`, `cardRinvio` della web): quali partite, la data del
 /// recupero, i miei giocatori coinvolti e il menu «Per questa giornata i loro giocatori…», che vale solo per questa giornata.
 /// A giornata finita (`riepilogo.rinvio`, #895) lo stesso riquadro sta sotto i punti, con `titolo` («Giornata 7 · 10ª di Serie A:
-/// partita rinviata») e `nota` («Manca il recupero: i punti possono ancora cambiare.») sotto le partite.
+/// partita rinviata») e `nota` («Manca il recupero: i punti possono ancora cambiare.») sotto le partite. Sotto il menu la conferma
+/// della scelta salvata («Fatto: consigli aggiornati per questa giornata», come l'avviso della web) o il motivo per cui non si è
+/// salvata.
 struct CartaPartitaRinviata: View {
     let scelta: SceltaRinvio
     var inCorso = false
     var errore: String? = nil
+    /// La scelta appena salvata: la conferma, che la Formazione toglie dopo qualche secondo.
+    var conferma: String? = nil
     /// Al posto di «Partita rinviata» (la giornata finita, già pronto).
     var titolo: String? = nil
     var nota: String? = nil
@@ -33,6 +37,11 @@ struct CartaPartitaRinviata: View {
             }
             MenuRinvio(scelta: scelta, inCorso: inCorso) { _, m in await cambia(m) }
             if let errore { Text(errore).font(.footnote).foregroundStyle(Color.attenzione).fixedSize(horizontal: false, vertical: true) }
+            if let conferma {
+                Label(conferma, systemImage: "checkmark.circle")
+                    .font(.footnote).foregroundStyle(Color.testoSecondario)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }

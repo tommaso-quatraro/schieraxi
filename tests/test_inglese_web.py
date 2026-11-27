@@ -27,14 +27,11 @@ def _node(lingua: str, espressioni: list[str]) -> list:
 def test_plurali_con_uno_in_inglese_e_in_italiano():
     casi = ['tp("mercato.prec_assist", 1, { xa: "0.3" })', 'tp("mercato.prec_assist", 2, { xa: "0.3" })',
             'tp("mercato.prec_gol", 1, { xg: "0.8" })', 'tp("mercato.n_gol_rig", 1, { r: 0 })', 'tp("mercato.n_gol_rig", 3, { r: 1 })',
-            'tp("accesso.riprova_secondi", 1)', 'tp("accesso.riprova_ore", 1)', 'tp("accesso.riprova_ore", 2)',
-            'tp("comune.attesa_secondi", 1)', 'tp("comune.attesa_minuti", 2)', 'tp("comune.attesa_ore", 1)']
+            'tp("comune.attesa_secondi", 1)']
     assert _node("en", casi) == ["1 assist (0.3 expected)", "2 assists (0.3 expected)", "1 goal (0.8 expected)", "goal (0 pen.)",
-                                 "goals (1 pen.)", " (try again in 1 second)", " (try again in about 1 hour)",
-                                 " (try again in about 2 hours)", "1 second", "2 minutes", "about 1 hour"]
+                                 "goals (1 pen.)", "1 second"]
     assert _node("it", casi) == ["1 assist (0.3 attesi)", "2 assist (0.3 attesi)", "1 gol (0.8 attesi)", "gol (0 rig.)", "gol (1 rig.)",
-                                 " (riprova tra 1 secondo)", " (riprova tra circa 1 ora)", " (riprova tra circa 2 ore)",
-                                 "1 secondo", "2 minuti", "circa 1 ora"]
+                                 "1 secondo"]
 
 
 def test_le_date_con_l_anno_hanno_il_mese_a_parole_in_inglese():
@@ -60,7 +57,7 @@ def test_i_nomi_di_stato_dei_dati_si_traducono():
 # parole che in inglese non si usano più (#949): il voto è «grade», la giornata «matchday», le probabili «probable lineups»
 PAROLE_VIETATE = [(r"[«»]", "virgolette «» (in inglese “”)"), (r"\bratings?\b|\bvotes?\b", "voto = grade"),
                   (r"\brounds?\b", "giornata = matchday"), (r"predicted line-?ups?", "probable lineups"), (r"\bDiaries\b", "Diaries"),
-                  (r"recogniz", "recognise"), (r"\bmaluse?s?\b", "malus = deduction")]
+                  (r"recogniz", "recognise"), (r"\bmaluse?s?\b", "malus = deduction"), (r"\bline-ups?\b", "lineup")]
 
 
 def test_nel_catalogo_inglese_le_stesse_parole_dappertutto():

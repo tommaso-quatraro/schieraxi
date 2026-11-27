@@ -258,6 +258,71 @@ def test_aggiorna_dall_app_non_si_rilancia_prima_di_dieci_minuti(client, monkeyp
     assert chiamate == [1, 1]
 
 
+PROXY = ("listone: ProxyError: HTTPSConnectionPool(host='fonte.invalid', port=443): Max retries exceeded with url: /quotazioni "
+         "(Caused by ProxyError('Unable to connect to proxy', NewConnectionError('[WinError 10061] Impossibile stabilire la "
+         "connessione'))) (mai riuscito)")
+
+
+def _aggiorna_e_leggi(client, monkeypatch, esegui) -> dict:
+    """«Aggiorna i dati» con `esegui` al posto dell'aggiornamento vero; la risposta di GET /api/aggiorna a lavoro finito."""
+    import contextlib
+    monkeypatch.setattr(server.aggiorna, "esegui", esegui)
+    monkeypatch.setattr(server.aggiorna, "fonti_accese", lambda: ["fantacalcio"])
+    monkeypatch.setattr(server.pianificatore, "blocco_processo", lambda: contextlib.nullcontext(True))
+    monkeypatch.setattr(server, "_scalda", lambda *a, **k: None)
+    assert client.post("/api/aggiorna").json() == {"avviato": True}
+    _fine_aggiornamento()
+    return client.get("/api/aggiorna").json()
+
+
+def test_aggiorna_dice_le_frasi_e_tiene_il_dettaglio_tecnico_nel_registro(client, monkeypatch, caplog):
+    """Collaudo d'insieme del 26/11: con le fonti irraggiungibili l'avviso mostrava l'errore tecnico intero («ProxyError:
+    HTTPSConnectionPool…»), che copriva lo schermo. Ora `errori` ha le frasi del catalogo (con `errori_frasi` per tradurle) e il
+    dettaglio tecnico va solo nel registro del server."""
+    from fanta import frasi
+
+    def esegui(scrivi=print, per_utente=None, **k):
+        per_utente.append(frasi.F("aggiorna.non_risponde", fonte="Fantacalcio.it"))
+        return [PROXY]
+    with caplog.at_level("WARNING"):
+        r = _aggiorna_e_leggi(client, monkeypatch, esegui)
+    assert r["errori"] == ["Fantacalcio.it non risponde: riprova più tardi."], r
+    assert r["errori_frasi"] == [{"chiave": "aggiorna.non_risponde", "param": {"fonte": "Fantacalcio.it"}}]
+    assert "ProxyError" not in json.dumps(r["errori"]) and "fonte.invalid" not in json.dumps(r["errori"])
+    assert "ProxyError: HTTPSConnectionPool" in caplog.text, "il dettaglio tecnico non è nel registro"
+
+
+def test_aggiorna_che_si_ferma_per_un_errore_del_server_non_mostra_l_eccezione(client, monkeypatch, caplog):
+    def esegui(**k):
+        raise RuntimeError("database is locked: /percorso/interno/archivio.sqlite")
+    with caplog.at_level("WARNING"):
+        r = _aggiorna_e_leggi(client, monkeypatch, esegui)
+    assert r["errori"] == ["L'aggiornamento si è fermato per un errore del server: il dettaglio è nel registro."], r
+    assert r["errori_frasi"] == [{"chiave": "aggiorna.errore_server", "param": {}}]
+    assert "/percorso/interno" in caplog.text
+
+
+def test_aggiorna_con_errori_senza_frase_ne_mostra_una_generica(client, monkeypatch):
+    """Un errore senza la sua frase (per esempio dei passi che `per_utente` non conosce) non diventa «Dati aggiornati»: c'è una
+    frase generica, mai l'errore tecnico."""
+    r = _aggiorna_e_leggi(client, monkeypatch, lambda **k: [PROXY])
+    assert r["errori"] == ["Una parte dei dati non si è aggiornata: il dettaglio è in Stato dei dati."], r
+
+
+def test_aggiorna_ha_gli_stessi_campi_all_avvio_e_dopo_un_giro(client, monkeypatch):
+    """Revisione della #956: appena avviato il server, GET /api/aggiorna non aveva `errori_frasi`, che docs/API.md dà sempre."""
+    monkeypatch.setattr(server, "_aggiornamento", server.stato_aggiornamento_iniziale())      # com'è all'avvio del server
+    prima = client.get("/api/aggiorna").json()
+    assert prima == {"in_corso": False, "righe": [], "errori": [], "errori_frasi": []}, prima
+    dopo = _aggiorna_e_leggi(client, monkeypatch, lambda **k: [])
+    assert set(dopo) == set(prima), dopo
+
+
+def test_aggiorna_riuscito_nessun_errore(client, monkeypatch):
+    r = _aggiorna_e_leggi(client, monkeypatch, lambda **k: [])
+    assert r["errori"] == [] and r["errori_frasi"] == [] and r["in_corso"] is False
+
+
 def test_stato_dice_aggiornamento_in_corso_anche_se_lo_fa_un_altro(client, monkeypatch):
     """`aggiornamento_in_corso` di /api/stato è vero anche quando i dati li sta aggiornando un altro (l'aggiornamento programmato
     del server o un giro leggero, che tengono il blocco su file), non solo dopo «Aggiorna i dati» da qui (#763)."""

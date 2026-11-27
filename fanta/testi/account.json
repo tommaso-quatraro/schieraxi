@@ -225,5 +225,9 @@
   "account.elimina_conferma": {
     "it": "Elimino il tuo account e TUTTI i tuoi dati? Non si può annullare.",
     "en": "Delete your account and ALL your data? This cannot be undone."
+  },
+  "account.eliminato_fatto": {
+    "it": "Il tuo account e tutti i tuoi dati sono stati eliminati.",
+    "en": "Your account and all your data have been deleted."
   }
 }

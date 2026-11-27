@@ -7,9 +7,18 @@
     "it": "La sessione è finita: accedi di nuovo.",
     "en": "Your session has ended: please sign in again."
   },
+  "accesso.riprova_tra": {
+    "it": "Riprova tra {attesa}",
+    "en": "Try again in {attesa}",
+    "nota": "il pulsante d'invio dopo «troppi tentativi», mentre conta; {attesa} = comune.attesa_*"
+  },
   "accesso.nome_utente": {
     "it": "Nome utente",
     "en": "Username"
+  },
+  "accesso.nome_utente_aiuto": {
+    "it": "Da 3 a 32 caratteri: lettere senza accenti, numeri, punto, trattino o trattino basso. Comincia con una lettera o un numero.",
+    "en": "3 to 32 characters: letters without accents, numbers, dot, hyphen or underscore. It starts with a letter or a number."
   },
   "accesso.password": {
     "it": "Password",
@@ -112,30 +121,6 @@
   "accesso.password_cambiata_accedi": {
     "it": "Password cambiata: accedi con quella nuova.",
     "en": "Password changed: sign in with the new one."
-  },
-  "accesso.riprova_secondi.one": {
-    "it": " (riprova tra {n} secondo)",
-    "en": " (try again in {n} second)"
-  },
-  "accesso.riprova_secondi.other": {
-    "it": " (riprova tra {n} secondi)",
-    "en": " (try again in {n} seconds)"
-  },
-  "accesso.riprova_minuti.one": {
-    "it": " (riprova tra {n} minuto)",
-    "en": " (try again in {n} minute)"
-  },
-  "accesso.riprova_minuti.other": {
-    "it": " (riprova tra {n} minuti)",
-    "en": " (try again in {n} minutes)"
-  },
-  "accesso.riprova_ore.one": {
-    "it": " (riprova tra circa {n} ora)",
-    "en": " (try again in about {n} hour)"
-  },
-  "accesso.riprova_ore.other": {
-    "it": " (riprova tra circa {n} ore)",
-    "en": " (try again in about {n} hours)"
   },
   "accesso.errore_generico": {
     "it": "Qualcosa non ha funzionato: riprova",

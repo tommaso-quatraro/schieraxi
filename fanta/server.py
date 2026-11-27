@@ -421,7 +421,15 @@ def _dati_non_validi(_, e: RequestValidationError) -> JSONResponse:
                     for err in e.errors()})
     return JSONResponse(status_code=422, content={"detail": DATI_NON_VALIDI, "campi": campi[:20]},
                         headers={"Cache-Control": "no-store"})
-_aggiornamento = {"in_corso": False, "righe": [], "errori": []}
+
+
+def stato_aggiornamento_iniziale() -> dict:
+    """Lo stato di «Aggiorna i dati» (GET /api/aggiorna) all'avvio del server e all'inizio di ogni giro: gli stessi campi di un
+    giro finito (docs/API.md), anche `errori_frasi` (revisione della #956)."""
+    return {"in_corso": False, "righe": [], "errori": [], "errori_frasi": []}
+
+
+_aggiornamento = stato_aggiornamento_iniziale()
 _blocco = threading.Lock()
 
 
@@ -897,14 +905,26 @@ def avvia_aggiornamento():
         _blocco.release()
         return GIA_IN_CORSO
 
+    # Chi ha premuto legge una frase del catalogo per fatto (`errori`, con `errori_frasi` per tradurla: aggiorna.Aggiornamento.per_utente),
+    # mai l'errore tecnico (collaudo d'insieme del 26/11: «ProxyError: HTTPSConnectionPool…» copriva lo schermo). Il dettaglio resta per
+    # chi gestisce il server: nel registro, in `righe` della stessa risposta (rotta solo per l'amministratore, nessun client le mostra)
+    # e in Stato dei dati. Errori senza una loro frase: una frase generica, così l'avviso non dice «Dati aggiornati».
     def lavoro():
         global _aggiorna_finito_alle
+        registro = logging.getLogger("uvicorn.error")
+        per_utente: list = []
         try:
-            _aggiornamento["errori"] = aggiorna.esegui(scrivi=_aggiornamento["righe"].append)
+            errori = aggiorna.esegui(scrivi=_aggiornamento["righe"].append, per_utente=per_utente)
+            for e in errori:
+                registro.warning("Aggiorna i dati: %s", str(e)[:1000])
+            if errori and not per_utente:
+                per_utente.append(frasi.F("aggiorna.parte_non_aggiornata_generica"))
             _scalda()
-        except Exception as e:  # noqa: BLE001 - va riportato all'app, non deve far cadere il server
-            _aggiornamento["errori"].append(str(e))
+        except Exception:  # noqa: BLE001 - va riportato all'app, non deve far cadere il server
+            registro.exception("Aggiorna i dati: aggiornamento fermato")
+            per_utente.append(frasi.F("aggiorna.errore_server"))
         finally:
+            _aggiornamento.update(errori=[str(f) for f in per_utente], errori_frasi=frasi.lista(per_utente))
             _aggiorna_finito_alle = _orologio_aggiorna()       # prima di lasciare il lucchetto: la pausa parte da qui
             _aggiornamento["in_corso"] = False
             try:
@@ -912,7 +932,7 @@ def avvia_aggiornamento():
             finally:
                 _blocco.release()
 
-    _aggiornamento.update(in_corso=True, righe=[], errori=[])
+    _aggiornamento.update(stato_aggiornamento_iniziale(), in_corso=True)
     threading.Thread(target=lavoro, daemon=True).start()
     return {"avviato": True}
 
@@ -1008,8 +1028,10 @@ def _copia_automatica(db, ctx: Contesto, f: dict) -> None:
         if prima is None or datetime.now() >= prima:
             return
         copia_scadenza.salva(f, stagione, ctx.scelte, ctx.diario)    # copia e consigliata di allora per il diario (si congela alla scadenza)
-    except Exception:                       # noqa: BLE001 - la copia è un di più
-        pass
+    except Exception as e:                  # noqa: BLE001 - la copia è un di più: la risposta esce lo stesso, il guasto va nel registro
+        # senza l'istantanea il Diario non avrà la consigliata mostrata di questa giornata: solo il tipo (il messaggio può avere dati)
+        logging.getLogger("uvicorn.error").warning("Formazione: copia automatica e consigliata per il Diario non salvate (%s)",
+                                                   type(e).__name__)
 
 
 class FormazioneScelta(BaseModel):
@@ -1432,14 +1454,19 @@ def diario_schierata(dati: SchierataDiario, request: Request, response: Response
 @app.get("/api/diario")
 def leggi_diario(ctx: Contesto = Depends(lega_corrente)):
     """Giornata per giornata: la formazione che hai schierato contro quella consigliata, con punti attesi e fatti."""
-    r = diario.elenco(ctx.diario, _regole(ctx))
-    r["precisione"] = precisione.riassunto(r["giornate"])          # «Quanto ci abbiamo preso» (campo nuovo: i client vecchi lo ignorano)
-    r["precisione"]["serie_a"] = None
     try:
         db = _db()
-    except sqlite3.Error:                                          # archivio occupato o assente: il Diario si apre lo stesso, senza la riga
-        return r
+    except sqlite3.Error as e:
+        # archivio occupato o assente: il Diario si apre lo stesso, senza la riga su tutta la Serie A e senza sapere quali voci
+        # sono sospese (diario.sospesa: giornata riaperta da una regola dei rinvii cambiata), quindi le mostra tutte
+        logging.getLogger("uvicorn.error").warning("Diario: archivio non aperto (%s), le voci si mostrano tutte", type(e).__name__)
+        db = None
     try:
+        r = diario.elenco(ctx.diario, _regole(ctx), db)
+        r["precisione"] = precisione.riassunto(r["giornate"])      # «Quanto ci abbiamo preso» (campo nuovo: i client vecchi lo ignorano)
+        r["precisione"]["serie_a"] = None
+        if db is None:
+            return r
         try:
             r["precisione"]["serie_a"] = precisione.serie_a(db)    # la riga su tutta la Serie A, dal registro delle giornate (#374)
         except sqlite3.Error:
@@ -1447,7 +1474,8 @@ def leggi_diario(ctx: Contesto = Depends(lega_corrente)):
         if not r["giornate"]:
             r["motivo_vuoto"] = diario.motivo_vuoto(db, _regole(ctx), _rose(ctx))          # campo facoltativo: i client vecchi lo ignorano
     finally:
-        db.close()
+        if db is not None:
+            db.close()
     return r
 
 

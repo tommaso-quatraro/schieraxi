@@ -158,7 +158,7 @@ def test_index_ha_le_parti_fisse_traducibili():
 @pytest.mark.skipif(shutil.which("node") is None, reason="node non installato")
 def test_funzione_t_in_node():
     prova = TESTI_JS + """
-    const esito = [t("account.dal", { ruolo: "Utente", data: "1 gennaio" }), t("non.esiste"), tp("accesso.riprova_secondi", 5)];
+    const esito = [t("account.dal", { ruolo: "Utente", data: "1 gennaio" }), t("non.esiste"), t("accesso.riprova_tra", { attesa: "5 secondi" })];
     LINGUA = "fr";                       // lingua senza traduzioni: si torna all'italiano
     esito.push(t("account.esci"));
     LINGUA = "en";
@@ -167,7 +167,7 @@ def test_funzione_t_in_node():
     """
     r = subprocess.run(["node", "-"], input=prova, capture_output=True, encoding="utf-8", timeout=30)
     assert r.returncode == 0, r.stderr
-    assert json.loads(r.stdout) == ["Utente · dal 1 gennaio", "non.esiste", " (riprova tra 5 secondi)", "Esci",
+    assert json.loads(r.stdout) == ["Utente · dal 1 gennaio", "non.esiste", "Riprova tra 5 secondi", "Esci",
                                     "Sign out", "User · since 1 Jan", "account.esci.other", "1,234.5"]
 
 

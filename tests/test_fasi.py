@@ -239,7 +239,7 @@ def _giornata_finita(a, voti=(VOTI_DOMENICA, VOTI_LUNEDI)):
 def test_giornata_finita_riepilogo_dal_diario_e_prossima(ambiente):
     _giornata_finita(ambiente)
     (ambiente.tmp / "diario.json").write_text(json.dumps({"giornate": {f"{ST}/10": {
-        "consigliata": {"reale": 70.5, "atteso": 68.0}, "schierata": {"reale": 66.0, "atteso": 67.0, "tipo": "manuale",
+        "consigliata": {"reale": 70.5, "atteso": 68.0, "origine": "mostrata"}, "schierata": {"reale": 66.0, "atteso": 67.0, "tipo": "manuale",
                                                                       "intervallo": {"basso": 60, "alto": 75}}}}}), encoding="utf-8")
     o = _oggi(ambiente, datetime(2026, 11, 10, 10, 0))             # martedì mattina
     assert o["fase"] == "finita" and o["giornata"] == 11 and o["in_corso"] is None

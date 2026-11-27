@@ -1164,6 +1164,10 @@
     "it": "Hai schierato gli stessi undici della consigliata in tutte le giornate che si possono confrontare. {fuori}",
     "en": "You fielded the same eleven as the recommended lineup in every matchday that can be compared. {fuori}"
   },
+  "frase.diario.in_attesa_recupero": {
+    "it": "{giornata}: in attesa del recupero, i punti arrivano dopo.",
+    "en": "{giornata}: waiting for the make-up game, the points will come later."
+  },
   "frase.diario.senza_confronto": {
     "it": "Qui il confronto con la consigliata non c'è: {perche}.",
     "en": "No comparison with the recommended lineup here: {perche}."
@@ -1558,5 +1562,29 @@
   "frase.uso.funzione_novita": {
     "it": "Novità",
     "en": "What's new"
+  },
+  "frase.aggiorna.non_risponde": {
+    "it": "{fonte} non risponde: riprova più tardi.",
+    "en": "{fonte} is not responding: try again later."
+  },
+  "frase.aggiorna.non_rispondono": {
+    "it": "{fonti} non rispondono: riprova più tardi.",
+    "en": "{fonti} are not responding: try again later."
+  },
+  "frase.aggiorna.parte_non_aggiornata": {
+    "it": "Una parte dei dati di {fonte} non si è aggiornata: il dettaglio è in Stato dei dati.",
+    "en": "Part of the data from {fonte} was not refreshed: the details are in Data status."
+  },
+  "frase.aggiorna.parte_non_aggiornata_generica": {
+    "it": "Una parte dei dati non si è aggiornata: il dettaglio è in Stato dei dati.",
+    "en": "Part of the data was not refreshed: the details are in Data status."
+  },
+  "frase.aggiorna.controlli": {
+    "it": "I controlli sui dati hanno trovato un problema: il dettaglio è in Stato dei dati.",
+    "en": "The data checks found a problem: the details are in Data status."
+  },
+  "frase.aggiorna.errore_server": {
+    "it": "L'aggiornamento si è fermato per un errore del server: il dettaglio è nel registro.",
+    "en": "The refresh stopped because of a server error: the details are in the log."
   }
 }

@@ -100,9 +100,14 @@ def test_la_riga_generale_non_avanza_se_nessun_passo_dei_dati_riesce(db, monkeyp
 
 
 def test_la_riga_generale_avanza_se_un_passo_dei_dati_riesce(db, monkeypatch):
+    """Riuscito e con una pagina scaricata davvero (`rete.arrivate_qui`): un passo che riesce senza chiedere niente non basta
+    (tests/test_aggiorna_senza_rete.py)."""
     archivio.segna(db, "aggiornamento", "2026-11-01T21:03:00", "[]")
     db.commit()
-    _tutti(monkeypatch, {"probabili", "controlli"})
+    _tutti(monkeypatch, {"controlli"})
+    monkeypatch.setattr(aggiorna.rete, "PAUSA", 0)
+    monkeypatch.setattr(aggiorna.rete._sessione, "get", lambda url, **k: SimpleNamespace(status_code=200, raise_for_status=lambda: None))
+    monkeypatch.setattr(aggiorna.Aggiornamento, "probabili", lambda self: aggiorna.rete.scarica("https://fonte.invalid/probabili"))
     _agg(db, monkeypatch, "2026-11-02T08:03:00").esegui()
     quando, dettaglio = db.execute("SELECT quando, dettaglio FROM aggiornamenti WHERE cosa = 'aggiornamento'").fetchone()
     assert quando == "2026-11-02T08:03:00" and any(e.startswith("Understat:") for e in json.loads(dettaglio))

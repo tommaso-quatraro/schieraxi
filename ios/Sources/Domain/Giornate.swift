@@ -108,7 +108,11 @@ struct PaginaGiornate {
     /// I numeri di «Quanto ci abbiamo preso»; la voce «la consigliata contro la tua» solo se una giornata ha la consigliata mostrata.
     let dettagli: TestoPrecisione?
     let righe: [RigaGiornata]
-    /// La frase della pagina senza giornate, secondo `motivo_vuoto`; nil se le giornate ci sono.
+    /// In cima, una frase per ogni giornata che aspetta il recupero e non ha la sua riga (`in_attesa`, revisione di #947), come
+    /// la scrive il server: «Giornata 9 · 12ª di Serie A: in attesa del recupero, i punti arrivano dopo.».
+    let inAttesa: [String]
+    /// La frase della pagina senza giornate, secondo `motivo_vuoto`; nil se le giornate ci sono o se c'è una giornata in attesa del
+    /// recupero (la sua frase prende il posto di questa, come sulla web).
     let vuoto: String?
 
     private let voci: [VoceDiario]
@@ -127,7 +131,9 @@ struct PaginaGiornate {
         let testo = TestoPrecisione(d.precisione, conConfronto: voci.contains { $0.conMostrata })
         dettagli = testo
         titoloDettagli = testo == nil ? nil : (errore != nil ? Catalogo.Giornate.dettagli : Catalogo.Diario.afTitolo)
-        if voci.isEmpty {
+        let inAttesa = (d.inAttesa ?? []).compactMap(\.testo)
+        self.inAttesa = inAttesa
+        if voci.isEmpty && inAttesa.isEmpty {
             switch d.motivoVuoto {
             case "squadra": vuoto = Catalogo.Giornate.vuotoSquadra(voce: Catalogo.Lega.miaSquadra)
             case "giornate": vuoto = Catalogo.Giornate.vuotoGiornate
